@@ -5,30 +5,76 @@
 
 #include <cstdint>
 #include <optional>
+#include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 namespace arc {
 
 enum class ResourceKind : std::uint8_t { Buffer, Texture1D, Texture2D, Texture3D, Unknown };
 enum class SafetyClass : std::uint8_t { Unknown, GreenCandidate, Yellow, Red };
+enum class Temperature : std::uint8_t { Unknown, Hot, Warm, Cold, Pinned };
+enum class ViewType : std::uint8_t { Unknown, Cbv, Srv, Uav, Rtv, Dsv, Sampler };
+enum class QueueClass : std::uint8_t { Unknown, Graphics, Compute, Copy };
+enum class ResourceAllocationKind : std::uint8_t { Committed, Placed, Reserved };
+
+struct HeapCreatePayload final {
+    HeapId heap{};
+    std::uint64_t size{};
+    std::uint64_t backend_properties{};
+    std::uint64_t backend_flags{};
+};
+
+struct HeapDestroyPayload final { HeapId heap{}; };
 
 struct ResourceCreatePayload final {
     ResourceId resource{};
     HeapId heap{};
     std::uint64_t virtual_bytes{};
     std::uint64_t allocation_bytes{};
+    std::uint64_t heap_offset{};
     std::uint32_t width{};
     std::uint32_t height{};
     std::uint32_t depth{};
     std::uint16_t mip_levels{};
     std::uint16_t array_layers{};
     ResourceKind kind{ResourceKind::Unknown};
-    std::uint8_t reserved[7]{};
+    ResourceAllocationKind allocation_kind{ResourceAllocationKind::Committed};
+    std::uint16_t format{};
+    std::uint32_t resource_flags{};
+    std::uint8_t plane_count{1};
+    std::uint8_t reserved[3]{};
 };
-static_assert(sizeof(ResourceCreatePayload) == 56);
 
 struct ResourceDestroyPayload final { ResourceId resource{}; };
-static_assert(sizeof(ResourceDestroyPayload) == 8);
+
+struct DescriptorWrittenPayload final {
+    DescriptorId descriptor{};
+    ResourceId resource{};
+    ViewType type{ViewType::Unknown};
+    std::uint8_t reserved{};
+    std::uint16_t first_mip{};
+    std::uint16_t mip_count{};
+    std::uint16_t first_layer{};
+    std::uint16_t layer_count{};
+    std::uint16_t format{};
+};
+
+struct QueueCreatePayload final { QueueId queue{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };
+struct CommandListPayload final { CommandId command{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };
+struct QueueSubmitPayload final { QueueId queue{}; CommandId command{}; std::uint64_t submission{}; };
+struct BarrierPayload final { ResourceId resource{}; CommandId command{}; std::uint32_t before_state{}; std::uint32_t after_state{}; std::uint32_t subresource{}; std::uint32_t reserved{}; };
+struct CopyPayload final { ResourceId source{}; ResourceId destination{}; CommandId command{}; std::uint64_t approximate_bytes{}; };
+struct PresentPayload final { std::uint64_t swapchain{}; FrameId frame{}; std::uint32_t sync_interval{}; std::uint32_t flags{}; };
+struct MemoryBudgetPayload final {
+    std::uint64_t local_budget{}; std::uint64_t local_usage{};
+    std::uint64_t local_available_for_reservation{}; std::uint64_t local_current_reservation{};
+    std::uint64_t nonlocal_budget{}; std::uint64_t nonlocal_usage{};
+};
+
+struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
+struct ViewRecord final { DescriptorWrittenPayload description{}; };
+struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; };
 
 struct ResourceRecord final {
     ResourceCreatePayload description{};
@@ -39,6 +85,10 @@ struct ResourceRecord final {
     std::uint64_t read_count{};
     std::uint64_t write_count{};
     SafetyClass safety{SafetyClass::Unknown};
+    float safety_confidence{};
+    Temperature temperature{Temperature::Unknown};
+    FrameId last_used_frame{};
+    std::unordered_set<QueueId> queues;
     bool alive{};
 };
 
@@ -48,12 +98,25 @@ class ResourceGraph final {
 public:
     void consume(const Event& event);
     [[nodiscard]] std::optional<ResourceRecord> find(ResourceId id) const;
+    [[nodiscard]] std::optional<HeapRecord> find_heap(HeapId id) const;
+    [[nodiscard]] std::optional<ViewRecord> find_view(DescriptorId id) const;
     [[nodiscard]] std::size_t resource_count() const noexcept;
     [[nodiscard]] std::uint64_t live_allocation_bytes() const noexcept;
+    [[nodiscard]] std::uint64_t live_heap_bytes() const noexcept;
+    [[nodiscard]] std::vector<ResourceId> resources_on_heap(HeapId heap) const;
+    [[nodiscard]] std::vector<ResourceId> largest_resources(std::size_t limit) const;
+    [[nodiscard]] FrameId presentation_frame() const noexcept;
+    [[nodiscard]] std::optional<MemoryBudgetPayload> latest_budget() const noexcept;
 
 private:
     std::unordered_map<ResourceId, ResourceRecord> resources_;
+    std::unordered_map<HeapId, HeapRecord> heaps_;
+    std::unordered_map<DescriptorId, ViewRecord> views_;
+    std::unordered_map<QueueId, QueueRecord> queues_;
     std::uint64_t live_allocation_bytes_{};
+    std::uint64_t live_heap_bytes_{};
+    FrameId presentation_frame_{};
+    std::optional<MemoryBudgetPayload> latest_budget_;
 };
 
 }  // namespace arc

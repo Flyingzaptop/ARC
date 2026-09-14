@@ -48,6 +48,37 @@ int main() {
     assert(graph.live_allocation_bytes() == 0);
     assert(graph.find(42)->destroy_timestamp_ns == 20);
 
+    arc::HeapCreatePayload heap_payload{.heap = 7, .size = 8192};
+    arc::Event heap{};
+    heap.header.type = arc::EventType::HeapCreated;
+    heap.header.payload_bytes = sizeof(heap_payload);
+    std::memcpy(heap.payload.data(), &heap_payload, sizeof(heap_payload));
+    graph.consume(heap);
+    assert(graph.live_heap_bytes() == 8192);
+    arc::DescriptorWrittenPayload descriptor_payload{
+        .descriptor = 9, .resource = 42, .type = arc::ViewType::Srv, .mip_count = 1, .layer_count = 1,
+    };
+    arc::Event descriptor{};
+    descriptor.header.type = arc::EventType::DescriptorWritten;
+    descriptor.header.payload_bytes = sizeof(descriptor_payload);
+    std::memcpy(descriptor.payload.data(), &descriptor_payload, sizeof(descriptor_payload));
+    graph.consume(descriptor);
+    assert(graph.find_view(9)->description.resource == 42);
+    arc::PresentPayload present_payload{.swapchain = 1, .frame = 3};
+    arc::Event present{};
+    present.header.type = arc::EventType::Present;
+    present.header.payload_bytes = sizeof(present_payload);
+    std::memcpy(present.payload.data(), &present_payload, sizeof(present_payload));
+    graph.consume(present);
+    assert(graph.presentation_frame() == 3);
+    arc::MemoryBudgetPayload budget_payload{.local_budget = 100, .local_usage = 80};
+    arc::Event budget{};
+    budget.header.type = arc::EventType::MemoryBudgetSample;
+    budget.header.payload_bytes = sizeof(budget_payload);
+    std::memcpy(budget.payload.data(), &budget_payload, sizeof(budget_payload));
+    graph.consume(budget);
+    assert(graph.latest_budget()->local_usage == 80);
+
     const auto trace_path = std::filesystem::temp_directory_path() / "arc_core_trace_test.arcbin";
     {
         arc::TraceWriter writer(trace_path);
