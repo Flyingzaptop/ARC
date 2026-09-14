@@ -2,10 +2,14 @@
 #include "arc/trace.hpp"
 #include "arc/resource_graph.hpp"
 
-#include <cassert>
+#include <cstdlib>
+#include <iostream>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+
+// Assertions must execute in Release too, and must not open a CRT dialog.
+#define assert(condition) do { if (!(condition)) { std::cerr << "CHECK failed: " << #condition << " at line " << __LINE__ << '\n'; std::exit(1); } } while (false)
 
 int main() {
     arc::EventRing ring(2);

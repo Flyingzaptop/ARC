@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.24)
 
 project(ARC VERSION 0.1.0 LANGUAGES CXX)
 
+if(MSVC)
+    # This toolchain has only Russian diagnostics installed. Ninja otherwise
+    # misses header dependencies and can silently link incompatible objects.
+    set(CMAKE_CL_SHOWINCLUDES_PREFIX "Примечание: включение файла:")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
