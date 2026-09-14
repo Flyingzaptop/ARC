@@ -38,6 +38,8 @@ endif()
 
 add_executable(arc-trace src/tools/arc_trace_main.cpp)
 target_link_libraries(arc-trace PRIVATE arc::core)
+add_executable(arc-trace-viewer src/tools/trace_viewer.cpp)
+target_link_libraries(arc-trace-viewer PRIVATE arc::core)
 
 add_executable(arc-calibrate src/calibrate/arc_calibrate_main.cpp)
 target_link_libraries(arc-calibrate PRIVATE arc::core)
