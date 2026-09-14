@@ -38,6 +38,8 @@ public:
     bool observe_dsv(DescriptorId id, ResourceId resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& view) noexcept;
     bool observe_cbv(DescriptorId id, ResourceId resource, std::uint64_t offset, std::uint32_t bytes) noexcept;
     bool observe_sampler(DescriptorId id) noexcept;
+    std::uint64_t observe_descriptor_heap(const D3D12_DESCRIPTOR_HEAP_DESC& desc, std::uint32_t increment) noexcept;
+    void observe_descriptor_heap_destroyed(std::uint64_t heap) noexcept;
     bool observe_barrier(CommandId command, ResourceId resource, const D3D12_RESOURCE_BARRIER& barrier, ResourceId related = 0) noexcept;
     bool observe_barrier(CommandId command, const D3D12_GLOBAL_BARRIER& barrier) noexcept;
     bool observe_barrier(CommandId command, ResourceId resource, const D3D12_BUFFER_BARRIER& barrier) noexcept;

@@ -26,6 +26,9 @@ void ResourceGraph::consume(const Event& event) {
     case EventType::HeapCreated: expected = sizeof(HeapCreatePayload); break;
     case EventType::HeapDestroyed: expected = sizeof(HeapDestroyPayload); break;
     case EventType::DescriptorWritten: expected = sizeof(DescriptorWrittenPayload); break;
+    case EventType::DescriptorHeapCreated: case EventType::DescriptorHeapDestroyed: expected = sizeof(DescriptorHeapPayload); break;
+    case EventType::DescriptorLocation: expected = sizeof(DescriptorLocationPayload); break;
+    case EventType::DescriptorCopied: expected = sizeof(DescriptorCopyPayload); break;
     case EventType::CommandQueueCreated: expected = sizeof(QueueCreatePayload); break;
     case EventType::CommandListCreated: case EventType::CommandListReset: case EventType::CommandListClosed: expected = sizeof(CommandListPayload); break;
     case EventType::QueueSubmit: expected = sizeof(QueueSubmitPayload); break;
@@ -40,6 +43,28 @@ void ResourceGraph::consume(const Event& event) {
     default: break;
     }
     if (event.header.payload_bytes > kMaxEventPayloadBytes || (expected && event.header.payload_bytes != expected)) { ++errors_; return; }
+    if (event.header.type == EventType::DescriptorHeapCreated) {
+        DescriptorHeapPayload p{}; decode(event, p); descriptor_heaps_[p.heap] = p; return;
+    }
+    if (event.header.type == EventType::DescriptorHeapDestroyed) {
+        DescriptorHeapPayload p{}; decode(event, p);
+        if (!descriptor_heaps_.erase(p.heap)) { ++errors_; }
+        for (const auto& [id, location] : descriptor_locations_) { if (location.heap == p.heap) { if (auto v = views_.find(id); v != views_.end()) { v->second.alive = false; } } }
+        return;
+    }
+    if (event.header.type == EventType::DescriptorLocation) {
+        DescriptorLocationPayload p{}; decode(event, p);
+        const auto heap = descriptor_heaps_.find(p.heap);
+        if (heap == descriptor_heaps_.end() || p.index >= heap->second.count) { ++errors_; return; }
+        descriptor_locations_[p.descriptor] = p; return;
+    }
+    if (event.header.type == EventType::DescriptorCopied) {
+        DescriptorCopyPayload p{}; decode(event, p);
+        const auto source = views_.find(p.source);
+        if (source == views_.end() || !source->second.alive) { ++errors_; return; }
+        auto view = source->second; view.description.descriptor = p.destination;
+        views_[p.destination] = view; return;
+    }
     if (event.header.type == EventType::HeapCreated) {
         HeapCreatePayload payload{};
         if (decode(event, payload) && !heaps_.contains(payload.heap)) {

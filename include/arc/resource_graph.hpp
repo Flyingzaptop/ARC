@@ -26,6 +26,9 @@ struct HeapCreatePayload final {
 };
 
 struct HeapDestroyPayload final { HeapId heap{}; };
+struct DescriptorHeapPayload { std::uint64_t heap{}; std::uint32_t count{}, type{}, increment{}, flags{}; };
+struct DescriptorLocationPayload { DescriptorId descriptor{}; std::uint64_t heap{}; std::uint32_t index{}, reserved{}; };
+struct DescriptorCopyPayload { DescriptorId source{}, destination{}; };
 
 struct ResourceCreatePayload final {
     ResourceId resource{};
@@ -85,7 +88,7 @@ struct MemoryBudgetPayload final {
 };
 
 struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
-struct ViewRecord final { DescriptorWrittenPayload description{}; };
+struct ViewRecord final { DescriptorWrittenPayload description{}; bool alive{true}; };
 struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; };
 struct SubmissionRecord { QueueSubmitPayload description{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; CountersPayload counters{}; };
 struct CopyRecord { CopyPayload description{}; QueueId queue{}; std::uint64_t timestamp_ns{}; };
@@ -143,6 +146,8 @@ private:
     std::unordered_map<ResourceId, ResourceRecord> resources_;
     std::unordered_map<HeapId, HeapRecord> heaps_;
     std::unordered_map<DescriptorId, ViewRecord> views_;
+    std::unordered_map<std::uint64_t, DescriptorHeapPayload> descriptor_heaps_;
+    std::unordered_map<DescriptorId, DescriptorLocationPayload> descriptor_locations_;
     std::unordered_map<QueueId, QueueRecord> queues_;
     std::uint64_t live_allocation_bytes_{};
     std::uint64_t live_heap_bytes_{};

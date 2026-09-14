@@ -95,9 +95,11 @@ int main(int argc, char** argv) try {
     for (std::size_t i = 0; i < bytes; ++i) { static_cast<unsigned char*>(mapped)[i] = static_cast<unsigned char>((i * 17 + 31) & 255); }
     owned[upload].resource->Unmap(0, nullptr);
     ComPtr<ID3D12DescriptorHeap> srvHeap, rtvHeap, dsvHeap;
+    std::vector<std::uint64_t> descriptorHeapIds;
     for (auto entry : {std::pair{D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, std::addressof(srvHeap)}, {D3D12_DESCRIPTOR_HEAP_TYPE_RTV, std::addressof(rtvHeap)}, {D3D12_DESCRIPTOR_HEAP_TYPE_DSV, std::addressof(dsvHeap)}}) {
         D3D12_DESCRIPTOR_HEAP_DESC desc{}; desc.Type = entry.first; desc.NumDescriptors = 64;
         check(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(entry.second->GetAddressOf())));
+        descriptorHeapIds.push_back(baseline ? ids.next() : observer.observe_descriptor_heap(desc, device->GetDescriptorHandleIncrementSize(desc.Type)));
     }
     unsigned viewIndex{};
     std::vector<arc::DescriptorWrittenPayload> expectedViews;
@@ -108,6 +110,13 @@ int main(int argc, char** argv) try {
         device->CreateConstantBufferView(&cbv, handle);
         const auto id = ids.next(); expectedViews.push_back({.descriptor = id, .resource = owned[upload].id, .type = arc::ViewType::Cbv, .buffer_bytes = 256});
         if (!baseline && !observer.observe_cbv(id, owned[upload].id, 0, 256)) { throw std::runtime_error("CBV observation failed"); }
+        emit(arc::EventType::DescriptorLocation, arc::DescriptorLocationPayload{.descriptor = id, .heap = descriptorHeapIds[0], .index = viewIndex - 1});
+        auto destination = srvHeap->GetCPUDescriptorHandleForHeapStart();
+        destination.ptr += viewIndex++ * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CopyDescriptorsSimple(1, destination, handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        const auto copyId = ids.next(); expectedViews.push_back({.descriptor = copyId, .resource = owned[upload].id, .type = arc::ViewType::Cbv, .buffer_bytes = 256});
+        emit(arc::EventType::DescriptorLocation, arc::DescriptorLocationPayload{.descriptor = copyId, .heap = descriptorHeapIds[0], .index = viewIndex - 1});
+        emit(arc::EventType::DescriptorCopied, arc::DescriptorCopyPayload{.source = id, .destination = copyId});
     }
     ComPtr<ID3D12DescriptorHeap> samplerHeap;
     D3D12_DESCRIPTOR_HEAP_DESC samplerHeapDesc{}; samplerHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER; samplerHeapDesc.NumDescriptors = 1;
@@ -132,6 +141,7 @@ int main(int argc, char** argv) try {
                 const auto descriptorId = ids.next();
                 expectedViews.push_back({.descriptor = descriptorId, .resource = owned[index].id, .type = arc::ViewType::Srv, .mip_count = 5, .layer_count = 1, .format = static_cast<unsigned>(format)});
                 if (!baseline && !observer.observe_srv(descriptorId, owned[index].id, v)) { throw std::runtime_error("SRV observation failed"); }
+                emit(arc::EventType::DescriptorLocation, arc::DescriptorLocationPayload{.descriptor = descriptorId, .heap = descriptorHeapIds[0], .index = viewIndex - 1});
             }
         }
     }
@@ -401,6 +411,8 @@ int main(int argc, char** argv) try {
     UINT64 expectedBytes{}; for (auto& o : owned) { expectedBytes += o.bytes; o.resource.Reset(); if (!baseline) { observer.observe_resource_destroyed(o.id); } }
     heap.Reset(); if (!baseline) { observer.observe_heap_destroyed(heapId); }
     swap.Reset(); swap1.Reset(); DestroyWindow(window);
+    srvHeap.Reset(); rtvHeap.Reset(); dsvHeap.Reset();
+    for (auto id : descriptorHeapIds) { if (!baseline) { observer.observe_descriptor_heap_destroyed(id); } }
     if (session) { session->finish(); }
     bool valid = contents && (!session || session->complete());
     if (std::getenv("ARC_D3D12_DEBUG")) {

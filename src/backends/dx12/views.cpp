@@ -1,5 +1,12 @@
 #include "arc/dx12_observer.hpp"
 namespace arc::dx12 {
+std::uint64_t Observer::observe_descriptor_heap(const D3D12_DESCRIPTOR_HEAP_DESC& d, std::uint32_t increment) noexcept {
+    const auto id = ids_.next();
+    return observe(EventType::DescriptorHeapCreated, DescriptorHeapPayload{.heap = id, .count = d.NumDescriptors, .type = static_cast<unsigned>(d.Type), .increment = increment, .flags = static_cast<unsigned>(d.Flags)}) ? id : 0;
+}
+void Observer::observe_descriptor_heap_destroyed(std::uint64_t heap) noexcept {
+    (void)observe(EventType::DescriptorHeapDestroyed, DescriptorHeapPayload{.heap = heap});
+}
 bool Observer::observe_srv(DescriptorId id, ResourceId resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& v) noexcept {
     DescriptorWrittenPayload p{.descriptor = id, .resource = resource, .type = ViewType::Srv, .mip_count = 1, .layer_count = 1, .format = static_cast<unsigned>(v.Format)};
     switch (v.ViewDimension) {

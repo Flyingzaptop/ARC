@@ -17,5 +17,12 @@ int main() {
     if (!observer.observe_barrier(7, 8, b) || !ring.try_pop(e)) { return 1; }
     arc::ExtendedBarrierPayload p{}; std::memcpy(&p, e.payload.data(), sizeof(p));
     if (p.resource != 8 || p.command != 7 || p.first_mip != 2 || p.mip_count != 3 || p.first_layer != 4 || p.layer_count != 5 || p.layout_after != static_cast<unsigned>(D3D12_BARRIER_LAYOUT_SHADER_RESOURCE)) { return 1; }
+    D3D12_DESCRIPTOR_HEAP_DESC heap{}; heap.NumDescriptors = 8;
+    const auto heapId = observer.observe_descriptor_heap(heap, 32);
+    if (!observer.observe(arc::EventType::DescriptorLocation, arc::DescriptorLocationPayload{.descriptor = 1, .heap = heapId})) { return 1; }
+    if (!observer.observe(arc::EventType::DescriptorCopied, arc::DescriptorCopyPayload{.source = 1, .destination = 9})) { return 1; }
+    observer.observe_descriptor_heap_destroyed(heapId);
+    while (ring.try_pop(e)) { g.consume(e); }
+    if (g.find_view(1)->alive || g.find_view(9)->description.mip_count != UINT_MAX || g.errors()) { return 1; }
     return 0;
 }

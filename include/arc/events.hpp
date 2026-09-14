@@ -43,6 +43,9 @@ enum class EventType : std::uint16_t {
     CommandCounters,
     ResourceUse,
     ExtendedBarrier,
+    DescriptorHeapDestroyed,
+    DescriptorLocation,
+    DescriptorCopied,
 };
 
 struct EventHeader final {
