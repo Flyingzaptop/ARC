@@ -1,6 +1,7 @@
 #include "arc/dx12_observer.hpp"
 #include "arc/session.hpp"
 #include <wrl/client.h>
+#include <d3dcompiler.h>
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -106,6 +107,32 @@ int main(int argc, char** argv) try {
     ComPtr<ID3D12GraphicsCommandList> list; check(device->CreateCommandList(0, qd.Type, allocator.Get(), nullptr, IID_PPV_ARGS(&list)));
     ComPtr<ID3D12Fence> fence; check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
     const auto queueId = ids.next(), commandId = ids.next(), fenceId = ids.next();
+    // A deterministic fullscreen draw provides an independently checkable image.
+    D3D12_RESOURCE_DESC imageDesc{}; imageDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    imageDesc.Width = imageDesc.Height = 64; imageDesc.DepthOrArraySize = imageDesc.MipLevels = 1;
+    imageDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; imageDesc.SampleDesc.Count = 1; imageDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    const auto imageIndex = allocate(imageDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    const auto imageReadback = allocate(buffer(64 * 256), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    auto imageRtv = rtvHeap->GetCPUDescriptorHandleForHeapStart(); imageRtv.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    device->CreateRenderTargetView(owned[imageIndex].resource.Get(), nullptr, imageRtv);
+    emit(arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = ids.next(), .resource = owned[imageIndex].id, .type = arc::ViewType::Rtv, .mip_count = 1, .layer_count = 1});
+    D3D12_ROOT_SIGNATURE_DESC rootDesc{}; rootDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    ComPtr<ID3DBlob> rootBlob, errorBlob; check(D3D12SerializeRootSignature(&rootDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rootBlob, &errorBlob));
+    ComPtr<ID3D12RootSignature> root; check(device->CreateRootSignature(0, rootBlob->GetBufferPointer(), rootBlob->GetBufferSize(), IID_PPV_ARGS(&root)));
+    const char* shader = "float4 vs(uint id:SV_VertexID):SV_Position { float2 p=float2((id<<1)&2,id&2); return float4(p*float2(2,-2)+float2(-1,1),0,1); } float4 ps():SV_Target { return float4(1,0,1,1); }";
+    ComPtr<ID3DBlob> vs, ps;
+    check(D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "vs", "vs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &vs, &errorBlob));
+    check(D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "ps", "ps_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &ps, &errorBlob));
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline{}; pipeline.pRootSignature = root.Get();
+    pipeline.VS = {vs->GetBufferPointer(), vs->GetBufferSize()}; pipeline.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+    pipeline.SampleMask = UINT_MAX; pipeline.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID; pipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; pipeline.RasterizerState.DepthClipEnable = TRUE;
+    auto& blend = pipeline.BlendState.RenderTarget[0]; blend.SrcBlend = blend.SrcBlendAlpha = D3D12_BLEND_ONE;
+    blend.DestBlend = blend.DestBlendAlpha = D3D12_BLEND_ZERO; blend.BlendOp = blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    blend.LogicOp = D3D12_LOGIC_OP_NOOP; blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    pipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+    pipeline.DepthStencilState.FrontFace = pipeline.DepthStencilState.BackFace = {D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS};
+    pipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE; pipeline.NumRenderTargets = 1; pipeline.RTVFormats[0] = imageDesc.Format; pipeline.SampleDesc.Count = 1;
+    ComPtr<ID3D12PipelineState> pso; check(device->CreateGraphicsPipelineState(&pipeline, IID_PPV_ARGS(&pso)));
     emit(arc::EventType::CommandQueueCreated, arc::QueueCreatePayload{.queue = queueId, .type = arc::QueueClass::Graphics});
     emit(arc::EventType::CommandListCreated, arc::CommandListPayload{.command = commandId});
     HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr); if (!done) { throw std::runtime_error("CreateEvent failed"); }
@@ -119,6 +146,28 @@ int main(int argc, char** argv) try {
     for (unsigned frame = 0; frame < iterations; ++frame) {
         auto start = std::chrono::steady_clock::now();
         if (frame) { check(allocator->Reset()); check(list->Reset(allocator.Get(), nullptr)); emit(arc::EventType::CommandListReset, arc::CommandListPayload{.command = commandId}); transition(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST); }
+        D3D12_RESOURCE_BARRIER imageBarrier{}; imageBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        imageBarrier.Transition.pResource = owned[imageIndex].resource.Get(); imageBarrier.Transition.Subresource = UINT_MAX;
+        imageBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE; imageBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        if (frame) {
+            list->ResourceBarrier(1, &imageBarrier);
+            emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[imageIndex].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .after_state = D3D12_RESOURCE_STATE_RENDER_TARGET, .subresource = UINT_MAX});
+        }
+        list->SetGraphicsRootSignature(root.Get()); list->SetPipelineState(pso.Get());
+        D3D12_VIEWPORT viewport{0, 0, 64, 64, 0, 1}; D3D12_RECT scissor{0, 0, 64, 64};
+        list->RSSetViewports(1, &viewport); list->RSSetScissorRects(1, &scissor); list->OMSetRenderTargets(1, &imageRtv, FALSE, nullptr);
+        list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); list->DrawInstanced(3, 1, 0, 0);
+        emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[imageIndex].id, .write = 1});
+        if (full) { emit(arc::EventType::Draw, arc::CountersPayload{.command = commandId, .draws = 1}); }
+        emit(arc::EventType::CommandCounters, arc::CountersPayload{.command = commandId, .draws = 1});
+        imageBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET; imageBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+        list->ResourceBarrier(1, &imageBarrier);
+        emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[imageIndex].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_RENDER_TARGET, .after_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .subresource = UINT_MAX});
+        D3D12_TEXTURE_COPY_LOCATION imageSource{}; imageSource.pResource = owned[imageIndex].resource.Get(); imageSource.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        D3D12_TEXTURE_COPY_LOCATION imageDestination{}; imageDestination.pResource = owned[imageReadback].resource.Get(); imageDestination.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        imageDestination.PlacedFootprint.Footprint = {DXGI_FORMAT_R8G8B8A8_UNORM, 64, 64, 1, 256};
+        list->CopyTextureRegion(&imageDestination, 0, 0, 0, &imageSource, nullptr);
+        emit(arc::EventType::CopyTexture, arc::CopyPayload{.source = owned[imageIndex].id, .destination = owned[imageReadback].id, .command = commandId, .approximate_bytes = 16384});
         list->CopyBufferRegion(owned[gpu].resource.Get(), 0, owned[upload].resource.Get(), 0, bytes);
         emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[upload].id, .destination = owned[gpu].id, .command = commandId, .approximate_bytes = bytes});
         transition(D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -141,13 +190,17 @@ int main(int argc, char** argv) try {
     bool contents = true;
     for (std::size_t i = 0; i < bytes; ++i) { if (static_cast<unsigned char*>(mapped)[i] != static_cast<unsigned char>((i * 17 + 31) & 255)) { contents = false; break; } }
     owned[readback].resource->Unmap(0, &empty);
+    D3D12_RANGE imageRange{0, 16384}; check(owned[imageReadback].resource->Map(0, &imageRange, &mapped));
+    const unsigned char color[] = {255, 0, 255, 255};
+    for (unsigned i = 0; i < 16384; ++i) { if (static_cast<unsigned char*>(mapped)[i] != color[i % 4]) { contents = false; break; } }
+    owned[imageReadback].resource->Unmap(0, &empty);
     UINT64 expectedBytes{}; for (auto& o : owned) { expectedBytes += o.bytes; o.resource.Reset(); if (!baseline) { observer.observe_resource_destroyed(o.id); } }
     heap.Reset(); if (!baseline) { observer.observe_heap_destroyed(heapId); }
     if (session) { session->finish(); }
     bool valid = contents && (!session || session->complete());
     if (!baseline) {
         const auto& g = session->graph();
-        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == iterations && g.copies().size() == 2ULL * iterations;
+        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == iterations && g.copies().size() == 3ULL * iterations;
         for (const auto& o : owned) { auto r = g.find(o.id); valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes; }
         valid = valid && g.live_heap_bytes() == 0 && g.resources_on_heap(heapId).size() == 2;
         valid = valid && arc::TraceReader::inspect("traces/" + stem + ".arcbin").status == arc::TraceReader::Status::Complete;

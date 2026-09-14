@@ -56,7 +56,7 @@ if(WIN32)
     foreach(sample dx12-memory-pressure dx12-texture-pressure dx12-mixed-resources)
         add_executable(${sample} samples/observer_validation.cpp)
         target_compile_definitions(${sample} PRIVATE ARC_SAMPLE_NAME="${sample}")
-        target_link_libraries(${sample} PRIVATE arc-dx12-observer)
+        target_link_libraries(${sample} PRIVATE arc-dx12-observer d3dcompiler)
     endforeach()
 endif()
 
