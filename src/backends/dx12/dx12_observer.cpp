@@ -2,6 +2,7 @@
 
 #include "arc/clock.hpp"
 #include "arc/resource_graph.hpp"
+#include "arc/footprint.hpp"
 
 #include <cstring>
 #include <optional>
@@ -26,7 +27,24 @@ std::uint64_t logical_bytes(const D3D12_RESOURCE_DESC& desc) noexcept {
     // The allocation query below is the authoritative host estimate. This is
     // deliberately just a conservative logical placeholder until format/mip
     // footprint accounting is added in the descriptor and subresource work.
-    return 0;
+    arc::TexelLayout layout{};
+    switch (desc.Format) {
+    case DXGI_FORMAT_R8G8B8A8_UNORM: case DXGI_FORMAT_D32_FLOAT: case DXGI_FORMAT_R32_FLOAT: break;
+    case DXGI_FORMAT_BC1_UNORM: case DXGI_FORMAT_BC4_UNORM: layout = {4, 4, 8}; break;
+    case DXGI_FORMAT_BC2_UNORM: case DXGI_FORMAT_BC3_UNORM: case DXGI_FORMAT_BC5_UNORM: case DXGI_FORMAT_BC7_UNORM: layout = {4, 4, 16}; break;
+    default: return 0; // Unsupported logical format is explicitly unknown.
+    }
+    auto mips = desc.MipLevels;
+    if (!mips) { auto size = (std::max)(desc.Width, static_cast<UINT64>(desc.Height)); do { ++mips; size >>= 1; } while (size); }
+    auto w = desc.Width; UINT64 h = desc.Height;
+    UINT64 depth = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? desc.DepthOrArraySize : 1;
+    const UINT64 layers = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? 1 : desc.DepthOrArraySize;
+    UINT64 total{};
+    for (unsigned mip = 0; mip < mips; ++mip) {
+        total += ((w + layout.block_width - 1) / layout.block_width) * ((h + layout.block_height - 1) / layout.block_height) * layout.bytes_per_block * depth * layers * desc.SampleDesc.Count;
+        w = (std::max)(1ULL, w / 2); h = (std::max)(1ULL, h / 2); depth = (std::max)(1ULL, depth / 2);
+    }
+    return total;
 }
 
 }  // namespace

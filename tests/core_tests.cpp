@@ -2,6 +2,7 @@
 #include "arc/trace.hpp"
 #include "arc/resource_graph.hpp"
 #include "arc/session.hpp"
+#include "arc/footprint.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -19,6 +20,14 @@ template<class T> void feed(arc::ResourceGraph& graph, arc::EventType type, cons
 }
 
 int main() {
+    {
+        auto bc = arc::estimate_footprints(7, 5, 1, 3, 2, 1, {4, 4, 8});
+        assert(bc && bc->size() == 6);
+        assert((*bc)[0].logical_bytes == 32 && (*bc)[1].logical_bytes == 8);
+        assert((*bc)[0].aligned_row_bytes == 256);
+        auto msaa = arc::estimate_footprints(4, 4, 1, 1, 1, 4, {});
+        assert(msaa && (*msaa)[0].logical_bytes == 256);
+    }
     {
         arc::ResourceGraph g;
         feed(g, arc::EventType::HeapCreated, arc::HeapCreatePayload{.heap = 1, .size = 65536});
