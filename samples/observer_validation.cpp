@@ -2,6 +2,8 @@
 #include "arc/session.hpp"
 #include <wrl/client.h>
 #include <d3dcompiler.h>
+#include <psapi.h>
+#include "arc/statistics.hpp"
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -14,6 +16,12 @@ static void check(HRESULT hr) { if (FAILED(hr)) { throw std::runtime_error("D3D1
 static D3D12_RESOURCE_DESC buffer(UINT64 size) {
     D3D12_RESOURCE_DESC d{}; d.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; d.Width = size;
     d.Height = 1; d.DepthOrArraySize = 1; d.MipLevels = 1; d.SampleDesc.Count = 1; d.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; return d;
+}
+static std::uint64_t cpu_ticks() {
+    FILETIME created{}, exited{}, kernel{}, user{};
+    if (!GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernel, &user)) { throw std::runtime_error("GetProcessTimes failed"); }
+    auto value = [](FILETIME t) { return (static_cast<std::uint64_t>(t.dwHighDateTime) << 32) | t.dwLowDateTime; };
+    return value(kernel) + value(user);
 }
 struct Owned { arc::ResourceId id{}; ComPtr<ID3D12Resource> resource; UINT64 bytes{}; };
 int main(int argc, char** argv) try {
@@ -165,6 +173,8 @@ int main(int argc, char** argv) try {
     emit(arc::EventType::CommandListCreated, arc::CommandListPayload{.command = commandId});
     HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr); if (!done) { throw std::runtime_error("CreateEvent failed"); }
     std::vector<double> times; times.reserve(iterations);
+    const auto cpuStart = cpu_ticks(); const auto runStart = std::chrono::steady_clock::now();
+    unsigned occludedPresents{};
     auto transition = [&](D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
         D3D12_RESOURCE_BARRIER b{}; b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; b.Transition.pResource = owned[gpu].resource.Get();
         b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES; b.Transition.StateBefore = before; b.Transition.StateAfter = after;
@@ -225,10 +235,15 @@ int main(int argc, char** argv) try {
         // CPU wait uses queue=0, never implies a GPU queue dependency.
         emit(arc::EventType::FenceWait, arc::FencePayload{.fence = copyFenceId, .value = frame + 1ULL});
         const auto presentResult = swap->Present(0, 0); check(presentResult);
-        emit(arc::EventType::Present, arc::PresentPayload{.swapchain = swapId, .frame = frame + 1ULL});
+        occludedPresents += presentResult == DXGI_STATUS_OCCLUDED;
+        emit(arc::EventType::Present, arc::PresentPayload{.swapchain = swapId, .frame = frame + 1ULL, .result = presentResult});
         if (frame % 60 == 0) { budget(); }
         times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
     }
+    const auto cpuMs = static_cast<double>(cpu_ticks() - cpuStart) / 10000.0;
+    const auto wallMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - runStart).count();
+    PROCESS_MEMORY_COUNTERS_EX memory{}; memory.cb = sizeof(memory);
+    if (!GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory))) { throw std::runtime_error("GetProcessMemoryInfo failed"); }
     CloseHandle(done);
     D3D12_RANGE range{0, bytes}; check(owned[readback].resource->Map(0, &range, &mapped));
     bool contents = true;
@@ -243,20 +258,40 @@ int main(int argc, char** argv) try {
     swap.Reset(); swap1.Reset(); DestroyWindow(window);
     if (session) { session->finish(); }
     bool valid = contents && (!session || session->complete());
+    std::size_t matchedCreates{}, matchedDestroys{};
+    std::uint64_t observedBytes{};
     if (!baseline) {
         const auto& g = session->graph();
         valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == 2ULL * iterations && g.copies().size() == 4ULL * iterations;
-        for (const auto& o : owned) { auto r = g.find(o.id); valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes; }
+        for (const auto& o : owned) {
+            auto r = g.find(o.id);
+            matchedCreates += r.has_value(); matchedDestroys += r && !r->alive;
+            if (r) { observedBytes += r->description.allocation_bytes; }
+            valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes;
+        }
         valid = valid && g.live_heap_bytes() == 0 && g.resources_on_heap(heapId).size() == 2;
         valid = valid && arc::TraceReader::inspect("traces/" + stem + ".arcbin").status == arc::TraceReader::Status::Complete;
     }
     std::sort(times.begin(), times.end());
+    const auto stats = arc::summarize(times);
     auto percentile = [&](double p) { return times[static_cast<std::size_t>(p * (times.size() - 1))]; };
     std::ofstream report("traces/" + stem + ".json");
     report << "{\n\"sample\":\"" << ARC_SAMPLE_NAME << "\",\"iterations\":" << iterations << ",\"resources\":" << owned.size()
         << ",\"expected_allocation_bytes\":" << expectedBytes << ",\"contents_match\":" << (contents ? "true" : "false")
         << ",\"valid\":" << (valid ? "true" : "false") << ",\"dropped\":" << (session ? session->dropped() : 0)
         << ",\"iteration_ms_p50\":" << percentile(.5) << ",\"iteration_ms_p95\":" << percentile(.95) << ",\"iteration_ms_p99\":" << percentile(.99) << "}\n";
+    report.close();
+    // Detailed measured sidecar; values describe this controlled workload only.
+    std::ofstream metrics("traces/" + stem + "-metrics.json");
+    metrics << "{\"schema\":1,\"cpu_ms\":" << cpuMs << ",\"wall_ms\":" << wallMs
+        << ",\"cpu_one_core_percent\":" << 100 * cpuMs / wallMs << ",\"process_private_bytes\":" << memory.PrivateUsage
+        << ",\"trace_bytes\":" << (baseline ? 0 : std::filesystem::file_size("traces/" + stem + ".arcbin"))
+        << ",\"mean_iteration_ms\":" << stats.mean << ",\"iteration_variance\":" << stats.variance
+        << ",\"iterations_per_second\":" << 1000.0 / stats.mean << ",\"occluded_presents\":" << occludedPresents
+        << ",\"reserved_supported\":" << (reservedSupported ? "true" : "false")
+        << ",\"create_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedCreates) / owned.size()))
+        << ",\"destroy_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedDestroys) / owned.size()))
+        << ",\"allocation_error_bytes\":" << (baseline ? "null" : std::to_string(observedBytes > expectedBytes ? observedBytes - expectedBytes : expectedBytes - observedBytes)) << "}\n";
     std::cout << stem << ": valid=" << valid << " resources=" << owned.size() << " iterations=" << iterations << " p50_ms=" << percentile(.5) << " p99_ms=" << percentile(.99) << '\n';
     return valid ? 0 : 1;
 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

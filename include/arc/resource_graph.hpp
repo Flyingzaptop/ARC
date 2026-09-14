@@ -68,7 +68,7 @@ struct CopyPayload final { ResourceId source{}; ResourceId destination{}; Comman
 struct FencePayload final { QueueId queue{}; std::uint64_t fence{}; std::uint64_t value{}; };
 struct CountersPayload final { CommandId command{}; std::uint64_t draws{}; std::uint64_t indexed_draws{}; std::uint64_t dispatches{}; std::uint64_t indirect{}; };
 struct ResourceUsePayload final { CommandId command{}; ResourceId resource{}; std::uint32_t write{}; std::uint32_t reserved{}; };
-struct PresentPayload final { std::uint64_t swapchain{}; FrameId frame{}; std::uint32_t sync_interval{}; std::uint32_t flags{}; };
+struct PresentPayload final { std::uint64_t swapchain{}; FrameId frame{}; std::uint32_t sync_interval{}; std::uint32_t flags{}; std::int32_t result{}; std::uint32_t reserved{}; };
 struct MemoryBudgetPayload final {
     std::uint64_t local_budget{}; std::uint64_t local_usage{};
     std::uint64_t local_available_for_reservation{}; std::uint64_t local_current_reservation{};
