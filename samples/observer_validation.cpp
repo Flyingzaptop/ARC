@@ -169,6 +169,27 @@ int main(int argc, char** argv) try {
     pipeline.DepthStencilState.FrontFace = pipeline.DepthStencilState.BackFace = {D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS};
     pipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE; pipeline.NumRenderTargets = 1; pipeline.RTVFormats[0] = imageDesc.Format; pipeline.SampleDesc.Count = 1;
     ComPtr<ID3D12PipelineState> pso; check(device->CreateGraphicsPipelineState(&pipeline, IID_PPV_ARGS(&pso)));
+    auto computeDesc = buffer(65536); computeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    const auto computeBuffer = allocate(computeDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    const auto computeReadback = allocate(buffer(65536), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    D3D12_ROOT_PARAMETER computeParam{}; computeParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+    D3D12_ROOT_SIGNATURE_DESC computeRootDesc{}; computeRootDesc.NumParameters = 1; computeRootDesc.pParameters = &computeParam;
+    check(D3D12SerializeRootSignature(&computeRootDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rootBlob, &errorBlob));
+    ComPtr<ID3D12RootSignature> computeRoot; check(device->CreateRootSignature(0, rootBlob->GetBufferPointer(), rootBlob->GetBufferSize(), IID_PPV_ARGS(&computeRoot)));
+    const char* computeShader = "RWByteAddressBuffer result:register(u0); [numthreads(64,1,1)] void main(uint3 id:SV_DispatchThreadID) { result.Store(id.x*4,id.x*13+7); }";
+    ComPtr<ID3DBlob> cs; check(D3DCompile(computeShader, std::strlen(computeShader), nullptr, nullptr, nullptr, "main", "cs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, 0, &cs, &errorBlob));
+    D3D12_COMPUTE_PIPELINE_STATE_DESC computePipeline{}; computePipeline.pRootSignature = computeRoot.Get(); computePipeline.CS = {cs->GetBufferPointer(), cs->GetBufferSize()};
+    ComPtr<ID3D12PipelineState> computePso; check(device->CreateComputePipelineState(&computePipeline, IID_PPV_ARGS(&computePso)));
+    emit(arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = ids.next(), .resource = owned[computeBuffer].id, .type = arc::ViewType::Uav});
+    const auto indexBuffer = allocate(buffer(65536), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+    check(owned[indexBuffer].resource->Map(0, &empty, &mapped));
+    auto indices = static_cast<unsigned*>(mapped); indices[0] = 0; indices[1] = 1; indices[2] = 2; owned[indexBuffer].resource->Unmap(0, nullptr);
+    const auto indirectBuffer = allocate(buffer(65536), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+    check(owned[indirectBuffer].resource->Map(0, &empty, &mapped));
+    const D3D12_DRAW_ARGUMENTS arguments{3, 1, 0, 0}; std::memcpy(mapped, &arguments, sizeof(arguments)); owned[indirectBuffer].resource->Unmap(0, nullptr);
+    D3D12_INDIRECT_ARGUMENT_DESC argumentDesc{}; argumentDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+    D3D12_COMMAND_SIGNATURE_DESC signatureDesc{}; signatureDesc.ByteStride = sizeof(arguments); signatureDesc.NumArgumentDescs = 1; signatureDesc.pArgumentDescs = &argumentDesc;
+    ComPtr<ID3D12CommandSignature> signature; check(device->CreateCommandSignature(&signatureDesc, nullptr, IID_PPV_ARGS(&signature)));
     emit(arc::EventType::CommandQueueCreated, arc::QueueCreatePayload{.queue = queueId, .type = arc::QueueClass::Graphics});
     emit(arc::EventType::CommandListCreated, arc::CommandListPayload{.command = commandId});
     HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr); if (!done) { throw std::runtime_error("CreateEvent failed"); }
@@ -195,9 +216,18 @@ int main(int argc, char** argv) try {
         D3D12_VIEWPORT viewport{0, 0, 64, 64, 0, 1}; D3D12_RECT scissor{0, 0, 64, 64};
         list->RSSetViewports(1, &viewport); list->RSSetScissorRects(1, &scissor); list->OMSetRenderTargets(1, &imageRtv, FALSE, nullptr);
         list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); list->DrawInstanced(3, 1, 0, 0);
+        D3D12_INDEX_BUFFER_VIEW ib{owned[indexBuffer].resource->GetGPUVirtualAddress(), 12, DXGI_FORMAT_R32_UINT};
+        list->IASetIndexBuffer(&ib); list->DrawIndexedInstanced(3, 1, 0, 0, 0);
+        list->ExecuteIndirect(signature.Get(), 1, owned[indirectBuffer].resource.Get(), 0, nullptr, 0);
+        emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[indexBuffer].id});
+        emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[indirectBuffer].id});
         emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[imageIndex].id, .write = 1});
-        if (full) { emit(arc::EventType::Draw, arc::CountersPayload{.command = commandId, .draws = 1}); }
-        emit(arc::EventType::CommandCounters, arc::CountersPayload{.command = commandId, .draws = 1});
+        if (full) {
+            emit(arc::EventType::Draw, arc::CountersPayload{.command = commandId, .draws = 1});
+            emit(arc::EventType::DrawIndexed, arc::CountersPayload{.command = commandId, .indexed_draws = 1});
+            emit(arc::EventType::ExecuteIndirect, arc::CountersPayload{.command = commandId, .indirect = 1});
+        }
+        emit(arc::EventType::CommandCounters, arc::CountersPayload{.command = commandId, .draws = 1, .indexed_draws = 1, .dispatches = 1, .indirect = 1});
         imageBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET; imageBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
         list->ResourceBarrier(1, &imageBarrier);
         emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[imageIndex].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_RENDER_TARGET, .after_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .subresource = UINT_MAX});
@@ -206,6 +236,18 @@ int main(int argc, char** argv) try {
         imageDestination.PlacedFootprint.Footprint = {DXGI_FORMAT_R8G8B8A8_UNORM, 64, 64, 1, 256};
         list->CopyTextureRegion(&imageDestination, 0, 0, 0, &imageSource, nullptr);
         emit(arc::EventType::CopyTexture, arc::CopyPayload{.source = owned[imageIndex].id, .destination = owned[imageReadback].id, .command = commandId, .approximate_bytes = 16384});
+        D3D12_RESOURCE_BARRIER cb{}; cb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; cb.Transition.pResource = owned[computeBuffer].resource.Get(); cb.Transition.Subresource = UINT_MAX;
+        cb.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE; cb.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        if (frame) { list->ResourceBarrier(1, &cb); }
+        if (frame) { emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[computeBuffer].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .after_state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS, .subresource = UINT_MAX}); }
+        list->SetComputeRootSignature(computeRoot.Get()); list->SetPipelineState(computePso.Get());
+        list->SetComputeRootUnorderedAccessView(0, owned[computeBuffer].resource->GetGPUVirtualAddress()); list->Dispatch(256, 1, 1);
+        emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[computeBuffer].id, .write = 1});
+        if (full) { emit(arc::EventType::Dispatch, arc::CountersPayload{.command = commandId, .dispatches = 1}); }
+        cb.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS; cb.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE; list->ResourceBarrier(1, &cb);
+        emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[computeBuffer].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS, .after_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .subresource = UINT_MAX});
+        list->CopyResource(owned[computeReadback].resource.Get(), owned[computeBuffer].resource.Get());
+        emit(arc::EventType::CopyResource, arc::CopyPayload{.source = owned[computeBuffer].id, .destination = owned[computeReadback].id, .command = commandId, .approximate_bytes = 65536});
         const auto backbuffer = backbuffers[swap->GetCurrentBackBufferIndex()];
         D3D12_RESOURCE_BARRIER bb{}; bb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; bb.Transition.pResource = owned[backbuffer].resource.Get();
         bb.Transition.Subresource = UINT_MAX; bb.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT; bb.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
@@ -253,6 +295,9 @@ int main(int argc, char** argv) try {
     const unsigned char color[] = {255, 0, 255, 255};
     for (unsigned i = 0; i < 16384; ++i) { if (static_cast<unsigned char*>(mapped)[i] != color[i % 4]) { contents = false; break; } }
     owned[imageReadback].resource->Unmap(0, &empty);
+    D3D12_RANGE computeRange{0, 65536}; check(owned[computeReadback].resource->Map(0, &computeRange, &mapped));
+    for (unsigned i = 0; i < 16384; ++i) { if (static_cast<unsigned*>(mapped)[i] != i * 13 + 7) { contents = false; break; } }
+    owned[computeReadback].resource->Unmap(0, &empty);
     UINT64 expectedBytes{}; for (auto& o : owned) { expectedBytes += o.bytes; o.resource.Reset(); if (!baseline) { observer.observe_resource_destroyed(o.id); } }
     heap.Reset(); if (!baseline) { observer.observe_heap_destroyed(heapId); }
     swap.Reset(); swap1.Reset(); DestroyWindow(window);
@@ -262,7 +307,10 @@ int main(int argc, char** argv) try {
     std::uint64_t observedBytes{};
     if (!baseline) {
         const auto& g = session->graph();
-        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == 2ULL * iterations && g.copies().size() == 4ULL * iterations;
+        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == 2ULL * iterations && g.copies().size() == 5ULL * iterations;
+        for (const auto& sub : g.submissions()) {
+            if (sub.description.queue == queueId) { valid = valid && sub.counters.draws == 1 && sub.counters.indexed_draws == 1 && sub.counters.dispatches == 1 && sub.counters.indirect == 1; }
+        }
         for (const auto& o : owned) {
             auto r = g.find(o.id);
             matchedCreates += r.has_value(); matchedDestroys += r && !r->alive;
