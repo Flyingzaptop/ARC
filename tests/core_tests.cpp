@@ -167,7 +167,7 @@ int main() {
     assert(recovered[0].header.sequence == 1);
     assert(recovered[1].header.sequence == 2);
     assert(arc::TraceReader::inspect(trace_path).status == arc::TraceReader::Status::TruncatedTail);
-    std::filesystem::resize_file(trace_path, 2 * (sizeof(arc::TraceChunkHeader) + sizeof(arc::Event)));
+    std::filesystem::resize_file(trace_path, std::filesystem::file_size(trace_path) - 10);
     assert(arc::TraceReader::inspect(trace_path).status == arc::TraceReader::Status::Complete);
     {
         std::fstream corrupt(trace_path, std::ios::binary | std::ios::in | std::ios::out);

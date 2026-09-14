@@ -28,18 +28,21 @@ TraceReader::Result TraceReader::inspect(const std::filesystem::path& path) {
         if (input.gcount() != sizeof(header)) { result.status = Status::TruncatedTail; break; }
         if (header.schema != kTraceSchemaVersion) { result.status = Status::SchemaMismatch; break; }
         if (header.magic != kTraceChunkMagic || header.chunk_sequence != result.complete_chunks ||
-            header.payload_bytes == 0 || header.payload_bytes > kMaxTraceChunkBytes ||
-            header.payload_bytes % sizeof(Event) != 0) { result.status = Status::CorruptTail; break; }
+            header.payload_bytes == 0 || header.payload_bytes > kMaxTraceChunkBytes) { result.status = Status::CorruptTail; break; }
         std::vector<std::byte> payload(header.payload_bytes);
         input.read(reinterpret_cast<char*>(payload.data()), static_cast<std::streamsize>(payload.size()));
         if (input.gcount() != static_cast<std::streamsize>(payload.size())) { result.status = Status::TruncatedTail; break; }
         if (fnv1a(payload) != header.checksum) { result.status = Status::CorruptTail; break; }
         const auto old_size = result.events.size();
-        result.events.resize(old_size + payload.size() / sizeof(Event));
-        std::memcpy(result.events.data() + old_size, payload.data(), payload.size());
         bool valid = true;
-        for (std::size_t i = old_size; i < result.events.size(); ++i) {
-            if (result.events[i].header.payload_bytes > kMaxEventPayloadBytes) { valid = false; break; }
+        std::size_t offset{};
+        while (offset < payload.size()) {
+            Event event{};
+            if (payload.size() - offset < sizeof(EventHeader)) { valid = false; break; }
+            std::memcpy(&event.header, payload.data() + offset, sizeof(EventHeader)); offset += sizeof(EventHeader);
+            if (event.header.payload_bytes > kMaxEventPayloadBytes || event.header.payload_bytes > payload.size() - offset) { valid = false; break; }
+            std::memcpy(event.payload.data(), payload.data() + offset, event.header.payload_bytes); offset += event.header.payload_bytes;
+            result.events.push_back(event);
         }
         if (!valid) { result.events.resize(old_size); result.status = Status::CorruptTail; break; }
         ++result.complete_chunks;

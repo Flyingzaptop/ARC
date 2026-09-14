@@ -51,6 +51,7 @@ struct EventHeader final {
     EventType type{};
     std::uint16_t flags{};
     std::uint32_t payload_bytes{};
+    std::uint32_t reserved{};
 };
 static_assert(std::is_trivially_copyable_v<EventHeader>);
 static_assert(sizeof(EventHeader) == 32);

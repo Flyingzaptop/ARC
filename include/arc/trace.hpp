@@ -11,7 +11,7 @@
 
 namespace arc {
 
-inline constexpr std::uint32_t kTraceSchemaVersion = 2;
+inline constexpr std::uint32_t kTraceSchemaVersion = 3;
 inline constexpr std::uint32_t kMaxTraceChunkBytes = 16 * 1024 * 1024;
 inline constexpr std::uint64_t kTraceChunkMagic = 0x314B4E4843524141ULL; // "ARCHNK1"
 

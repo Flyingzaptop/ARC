@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <memory>
+#include <cstring>
 
 namespace arc {
 namespace {
@@ -31,13 +32,19 @@ bool TraceWriter::append(const std::span<const Event> events) {
     if (!good() || events.empty()) {
         return events.empty() && good();
     }
-    const auto payload = std::as_bytes(events);
-    if (payload.size_bytes() > kMaxTraceChunkBytes) {
-        return false;
-    }
+    std::size_t total{};
     for (const auto& event : events) {
         if (event.header.payload_bytes > kMaxEventPayloadBytes) { return false; }
+        total += sizeof(EventHeader) + event.header.payload_bytes;
+        if (total > kMaxTraceChunkBytes) { return false; }
     }
+    std::vector<std::byte> packed(total);
+    std::size_t offset{};
+    for (const auto& event : events) {
+        std::memcpy(packed.data() + offset, &event.header, sizeof(EventHeader)); offset += sizeof(EventHeader);
+        std::memcpy(packed.data() + offset, event.payload.data(), event.header.payload_bytes); offset += event.header.payload_bytes;
+    }
+    const std::span<const std::byte> payload(packed);
     const TraceChunkHeader header{
         .chunk_sequence = impl_->next_chunk++,
         .payload_bytes = static_cast<std::uint32_t>(payload.size_bytes()),
