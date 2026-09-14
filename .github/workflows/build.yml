@@ -1,0 +1,13 @@
+name: Stage 1 core validation
+on: [push, pull_request]
+jobs:
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -A x64
+      - run: cmake --build build --config ${{ matrix.configuration }}
+      - run: ctest --test-dir build -C ${{ matrix.configuration }} --output-on-failure --timeout 60

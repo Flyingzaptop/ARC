@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 
 project(ARC VERSION 0.1.0 LANGUAGES CXX)
 
-if(MSVC)
-    # This toolchain has only Russian diagnostics installed. Ninja otherwise
-    # misses header dependencies and can silently link incompatible objects.
-    set(CMAKE_CL_SHOWINCLUDES_PREFIX "Примечание: включение файла:")
+set(ARC_MSVC_INCLUDE_PREFIX "" CACHE STRING "Override localized MSVC include diagnostic prefix")
+if(MSVC AND ARC_MSVC_INCLUDE_PREFIX)
+    set(CMAKE_CL_SHOWINCLUDES_PREFIX "${ARC_MSVC_INCLUDE_PREFIX}")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
@@ -13,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ARC_BUILD_TESTS "Build ARC tests" ON)
+option(ARC_GPU_TESTS "Run GPU-backed synthetic tests on this machine" OFF)
 
 add_library(arc-core STATIC
     src/core/clock.cpp
@@ -70,5 +70,11 @@ if(ARC_BUILD_TESTS)
         add_executable(arc-dx12-view-tests tests/dx12_view_tests.cpp)
         target_link_libraries(arc-dx12-view-tests PRIVATE arc-dx12-observer)
         add_test(NAME arc-dx12-view-tests COMMAND arc-dx12-view-tests)
+        if(ARC_GPU_TESTS)
+            foreach(sample dx12-memory-pressure dx12-texture-pressure dx12-mixed-resources)
+                add_test(NAME ${sample} COMMAND ${sample} full 30)
+                set_tests_properties(${sample} PROPERTIES LABELS gpu TIMEOUT 60 RUN_SERIAL TRUE)
+            endforeach()
+        endif()
     endif()
 endif()
