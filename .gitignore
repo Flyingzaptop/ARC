@@ -1,0 +1,5 @@
+/build/
+*.arcbin
+*.sqlite
+*.user
+*.vcxproj.user

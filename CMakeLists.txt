@@ -11,6 +11,7 @@ option(ARC_BUILD_TESTS "Build ARC tests" ON)
 add_library(arc-core STATIC
     src/core/clock.cpp
     src/core/event_ring.cpp
+    src/core/resource_graph.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
