@@ -161,6 +161,11 @@ void ResourceGraph::use(ResourceId id, QueueId queue, std::uint64_t timestamp, b
     if (it == resources_.end() || !it->second.alive) { ++errors_; return; }
     auto& r = it->second;
     r.queues.insert(queue);
+    if (r.read_count + r.write_count && presentation_frame_ > r.last_used_frame) {
+        const auto gap = static_cast<double>(presentation_frame_ - r.last_used_frame);
+        r.reuse_interval_frames = r.reuse_interval_frames == 0 ? gap : 0.875 * r.reuse_interval_frames + 0.125 * gap;
+        if (gap > 1) { ++r.usage_bursts; }
+    }
     r.last_used_frame = presentation_frame_;
     if (write) { ++r.write_count; r.last_write_timestamp_ns = timestamp; }
     else { ++r.read_count; r.last_read_timestamp_ns = timestamp; }
@@ -197,7 +202,8 @@ void ResourceGraph::analyze() {
         else if (r.read_count + r.write_count == 0) { r.temperature = Temperature::Unknown; }
         else {
             const auto age = presentation_frame_ >= r.last_used_frame ? presentation_frame_ - r.last_used_frame : 0;
-            r.temperature = age <= 3 ? Temperature::Hot : age <= 60 ? Temperature::Warm : Temperature::Cold;
+            const auto warmHorizon = (std::max)(60.0, r.reuse_interval_frames * 3);
+            r.temperature = age <= 3 ? Temperature::Hot : static_cast<double>(age) <= warmHorizon ? Temperature::Warm : Temperature::Cold;
         }
     }
 }

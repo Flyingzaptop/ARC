@@ -102,6 +102,8 @@ struct ResourceRecord final {
     std::uint32_t evidence{}; // historical view bits; descriptor overwrite does not erase history
     std::uint64_t create_sequence{};
     std::uint64_t destroy_sequence{};
+    double reuse_interval_frames{};
+    std::uint64_t usage_bursts{};
 };
 
 // A slow-path backend-neutral view of resource life. It deliberately receives
