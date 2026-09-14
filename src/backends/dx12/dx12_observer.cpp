@@ -93,6 +93,11 @@ ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, c
     const auto allocation = device == nullptr ? D3D12_RESOURCE_ALLOCATION_INFO{} :
         device->GetResourceAllocationInfo(0, 1, &description);
     const ResourceId id = ids_.next();
+    std::uint8_t planeCount = description.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ? 1 : 0;
+    if (device && description.Format != DXGI_FORMAT_UNKNOWN) {
+        D3D12_FEATURE_DATA_FORMAT_INFO formatInfo{}; formatInfo.Format = description.Format;
+        if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_INFO, &formatInfo, sizeof(formatInfo)))) { planeCount = formatInfo.PlaneCount; }
+    }
     const ResourceCreatePayload payload{
         .resource = id,
         .heap = heap,
@@ -108,6 +113,8 @@ ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, c
         .allocation_kind = kind,
         .format = static_cast<std::uint32_t>(description.Format),
         .resource_flags = static_cast<std::uint32_t>(description.Flags),
+        .sample_count = description.SampleDesc.Count,
+        .plane_count = planeCount,
     };
     return emit(EventType::ResourceCreated, &payload, sizeof(payload)) ? id : 0;
 }

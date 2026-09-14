@@ -42,6 +42,7 @@ struct ResourceCreatePayload final {
     ResourceAllocationKind allocation_kind{ResourceAllocationKind::Committed};
     std::uint32_t format{};
     std::uint32_t resource_flags{};
+    std::uint32_t sample_count{1};
     std::uint8_t plane_count{1};
     std::uint8_t reserved[3]{};
 };

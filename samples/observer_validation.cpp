@@ -82,6 +82,8 @@ int main(int argc, char** argv) try {
         o.bytes = device->GetResourceAllocationInfo(0, 1, &d).SizeInBytes; owned.push_back(std::move(o));
     }
     D3D12_FEATURE_DATA_D3D12_OPTIONS options{}; check(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)));
+    D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12{};
+    const auto enhancedQuery = device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
     const bool reservedSupported = options.TiledResourcesTier != D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED;
     if (reservedSupported) {
         Owned o; auto d = buffer(2 * bytes);
@@ -449,6 +451,7 @@ int main(int argc, char** argv) try {
         << ",\"iterations_per_second\":" << 1000.0 / stats.mean << ",\"occluded_presents\":" << occludedPresents
         << ",\"reserved_supported\":" << (reservedSupported ? "true" : "false")
         << ",\"msaa_resolve_supported\":" << (msaaSupported ? "true" : "false")
+        << ",\"enhanced_barriers_supported\":" << (FAILED(enhancedQuery) ? "null" : options12.EnhancedBarriersSupported ? "true" : "false")
         << ",\"create_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedCreates) / owned.size()))
         << ",\"destroy_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedDestroys) / owned.size()))
         << ",\"descriptor_mapping_accuracy\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedViews) / expectedViews.size()))
