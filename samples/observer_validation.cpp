@@ -22,9 +22,11 @@ int main(int argc, char** argv) try {
     if (iterations == 0 || iterations > 100000) { throw std::runtime_error("iterations must be 1..100000"); }
     std::filesystem::create_directories("traces");
     const std::string stem = std::string(ARC_SAMPLE_NAME) + (baseline ? "-baseline" : full ? "-full" : "-light");
-    arc::Session session("traces/" + stem + ".arcbin", 65536);
+    std::unique_ptr<arc::Session> session;
+    if (!baseline) { session = std::make_unique<arc::Session>("traces/" + stem + ".arcbin", 65536); }
+    arc::EventRing inactiveRing(1);
     arc::IdAllocator ids;
-    arc::dx12::Observer observer(session.ring(), ids);
+    arc::dx12::Observer observer(session ? session->ring() : inactiveRing, ids);
     auto emit = [&](arc::EventType type, const auto& p) { if (!baseline && !observer.observe(type, p)) { throw std::runtime_error("trace overflow"); } };
     ComPtr<ID3D12Device> device; check(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)));
     ComPtr<IDXGIFactory4> factory; check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
@@ -44,6 +46,22 @@ int main(int argc, char** argv) try {
     const auto upload = allocate(buffer(bytes), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
     const auto gpu = allocate(buffer(bytes), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST);
     const auto readback = allocate(buffer(bytes), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    // Separate heap ownership from resource footprints, including aliasing.
+    D3D12_HEAP_DESC hd{}; hd.SizeInBytes = 4 * bytes; hd.Properties.Type = D3D12_HEAP_TYPE_DEFAULT; hd.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+    ComPtr<ID3D12Heap> heap; check(device->CreateHeap(&hd, IID_PPV_ARGS(&heap)));
+    const auto heapId = baseline ? ids.next() : observer.observe_heap(hd, heap.Get());
+    for (auto offset : {0ULL, 2 * bytes}) {
+        Owned o; auto d = buffer(bytes); check(device->CreatePlacedResource(heap.Get(), offset, &d, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&o.resource)));
+        o.id = baseline ? ids.next() : observer.observe_placed_resource(device.Get(), heapId, offset, d, o.resource.Get());
+        o.bytes = device->GetResourceAllocationInfo(0, 1, &d).SizeInBytes; owned.push_back(std::move(o));
+    }
+    D3D12_FEATURE_DATA_D3D12_OPTIONS options{}; check(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)));
+    const bool reservedSupported = options.TiledResourcesTier != D3D12_TILED_RESOURCES_TIER_NOT_SUPPORTED;
+    if (reservedSupported) {
+        Owned o; auto d = buffer(2 * bytes);
+        check(device->CreateReservedResource(&d, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&o.resource)));
+        o.id = baseline ? ids.next() : observer.observe_reserved_resource(d, o.resource.Get()); owned.push_back(std::move(o));
+    }
     void* mapped{}; D3D12_RANGE empty{};
     check(owned[upload].resource->Map(0, &empty, &mapped));
     for (std::size_t i = 0; i < bytes; ++i) { static_cast<unsigned char*>(mapped)[i] = static_cast<unsigned char>((i * 17 + 31) & 255); }
@@ -124,12 +142,14 @@ int main(int argc, char** argv) try {
     for (std::size_t i = 0; i < bytes; ++i) { if (static_cast<unsigned char*>(mapped)[i] != static_cast<unsigned char>((i * 17 + 31) & 255)) { contents = false; break; } }
     owned[readback].resource->Unmap(0, &empty);
     UINT64 expectedBytes{}; for (auto& o : owned) { expectedBytes += o.bytes; o.resource.Reset(); if (!baseline) { observer.observe_resource_destroyed(o.id); } }
-    session.finish();
-    bool valid = contents && session.complete();
+    heap.Reset(); if (!baseline) { observer.observe_heap_destroyed(heapId); }
+    if (session) { session->finish(); }
+    bool valid = contents && (!session || session->complete());
     if (!baseline) {
-        const auto& g = session.graph();
+        const auto& g = session->graph();
         valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == iterations && g.copies().size() == 2ULL * iterations;
         for (const auto& o : owned) { auto r = g.find(o.id); valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes; }
+        valid = valid && g.live_heap_bytes() == 0 && g.resources_on_heap(heapId).size() == 2;
         valid = valid && arc::TraceReader::inspect("traces/" + stem + ".arcbin").status == arc::TraceReader::Status::Complete;
     }
     std::sort(times.begin(), times.end());
@@ -137,7 +157,7 @@ int main(int argc, char** argv) try {
     std::ofstream report("traces/" + stem + ".json");
     report << "{\n\"sample\":\"" << ARC_SAMPLE_NAME << "\",\"iterations\":" << iterations << ",\"resources\":" << owned.size()
         << ",\"expected_allocation_bytes\":" << expectedBytes << ",\"contents_match\":" << (contents ? "true" : "false")
-        << ",\"valid\":" << (valid ? "true" : "false") << ",\"dropped\":" << session.dropped()
+        << ",\"valid\":" << (valid ? "true" : "false") << ",\"dropped\":" << (session ? session->dropped() : 0)
         << ",\"iteration_ms_p50\":" << percentile(.5) << ",\"iteration_ms_p95\":" << percentile(.95) << ",\"iteration_ms_p99\":" << percentile(.99) << "}\n";
     std::cout << stem << ": valid=" << valid << " resources=" << owned.size() << " iterations=" << iterations << " p50_ms=" << percentile(.5) << " p99_ms=" << percentile(.99) << '\n';
     return valid ? 0 : 1;
