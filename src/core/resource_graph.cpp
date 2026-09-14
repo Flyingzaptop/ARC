@@ -183,6 +183,34 @@ void ResourceGraph::analyze() {
     }
 }
 
+std::vector<ResourceId> ResourceGraph::with_view(ViewType type) const {
+    std::vector<ResourceId> result;
+    for (const auto& [id, r] : resources_) { if (r.evidence & (1U << static_cast<unsigned>(type))) { result.push_back(id); } }
+    return result;
+}
+std::vector<ResourceId> ResourceGraph::unused_for(FrameId presentations) const {
+    std::vector<ResourceId> result;
+    for (const auto& [id, r] : resources_) {
+        if (r.alive && r.read_count + r.write_count && presentation_frame_ >= r.last_used_frame && presentation_frame_ - r.last_used_frame >= presentations) { result.push_back(id); }
+    }
+    return result;
+}
+std::vector<ResourceId> ResourceGraph::seen_on_queue(QueueId queue) const {
+    std::vector<ResourceId> result;
+    for (const auto& [id, r] : resources_) { if (r.queues.contains(queue)) { result.push_back(id); } }
+    return result;
+}
+std::vector<ResourceId> ResourceGraph::largest_textures(std::size_t limit) const {
+    auto sorted = largest_resources(resources_.size()); std::vector<ResourceId> result;
+    for (auto id : sorted) {
+        const auto kind = resources_.at(id).description.kind;
+        if (kind == ResourceKind::Texture1D || kind == ResourceKind::Texture2D || kind == ResourceKind::Texture3D) { result.push_back(id); }
+        if (result.size() >= limit) { break; }
+    }
+    if (!limit) { result.clear(); }
+    return result;
+}
+
 std::optional<ResourceRecord> ResourceGraph::find(const ResourceId id) const {
     const auto it = resources_.find(id);
     return it == resources_.end() ? std::nullopt : std::optional<ResourceRecord>(it->second);

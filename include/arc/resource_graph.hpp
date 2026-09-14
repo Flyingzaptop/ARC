@@ -121,6 +121,10 @@ public:
     [[nodiscard]] std::optional<MemoryBudgetPayload> latest_budget() const noexcept;
     void analyze();
     [[nodiscard]] std::vector<ResourceId> alive_at(std::uint64_t timestamp_ns) const;
+    [[nodiscard]] std::vector<ResourceId> with_view(ViewType type) const;
+    [[nodiscard]] std::vector<ResourceId> unused_for(FrameId presentations) const;
+    [[nodiscard]] std::vector<ResourceId> seen_on_queue(QueueId queue) const;
+    [[nodiscard]] std::vector<ResourceId> largest_textures(std::size_t limit) const;
     [[nodiscard]] std::uint64_t committed_bytes() const noexcept;
     [[nodiscard]] const auto& resources() const noexcept { return resources_; }
     [[nodiscard]] const auto& submissions() const noexcept { return submissions_; }

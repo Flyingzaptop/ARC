@@ -9,6 +9,8 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <thread>
+#include <unordered_set>
 
 // Assertions must execute in Release too, and must not open a CRT dialog.
 #define assert(condition) do { if (!(condition)) { std::cerr << "CHECK failed: " << #condition << " at line " << __LINE__ << '\n'; std::exit(1); } } while (false)
@@ -20,6 +22,27 @@ template<class T> void feed(arc::ResourceGraph& graph, arc::EventType type, cons
 }
 
 int main() {
+    {
+        arc::IdAllocator allocator;
+        std::vector<std::vector<std::uint64_t>> values(4);
+        std::vector<std::thread> workers;
+        for (unsigned t = 0; t < 4; ++t) { workers.emplace_back([&, t] { for (unsigned i = 0; i < 10000; ++i) { values[t].push_back(allocator.next()); } }); }
+        for (auto& worker : workers) { worker.join(); }
+        std::unordered_set<std::uint64_t> unique;
+        for (const auto& group : values) { for (auto id : group) { assert(id != 0); assert(unique.insert(id).second); } }
+        arc::EventRing ring(31);
+        std::thread producer([&] {
+            for (std::uint64_t i = 1; i <= 100000; ++i) {
+                arc::Event e{}; e.header.sequence = i;
+                while (!ring.try_emit(e)) { std::this_thread::yield(); }
+            }
+        });
+        for (std::uint64_t i = 1; i <= 100000; ++i) {
+            arc::Event e{}; while (!ring.try_pop(e)) { std::this_thread::yield(); }
+            assert(e.header.sequence == i);
+        }
+        producer.join();
+    }
     {
         auto bc = arc::estimate_footprints(7, 5, 1, 3, 2, 1, {4, 4, 8});
         assert(bc && bc->size() == 6);
@@ -52,6 +75,8 @@ int main() {
         assert(g.find(3)->write_count == 1 && g.find(3)->queues.contains(5));
         feed(g, arc::EventType::Present, arc::PresentPayload{.frame = 100});
         g.analyze(); assert(g.find(3)->temperature == arc::Temperature::Cold);
+        assert(g.unused_for(60).size() == 2 && g.seen_on_queue(5).size() == 2);
+        assert(g.with_view(arc::ViewType::Uav).size() == 1 && g.largest_textures(1).size() == 1);
         feed(g, arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{.resource = 2}, 20);
         assert(g.alive_at(15).size() == 2 && g.alive_at(20).size() == 1);
         assert(g.errors() == 0);
