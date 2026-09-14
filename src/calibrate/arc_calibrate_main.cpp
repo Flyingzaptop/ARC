@@ -4,10 +4,17 @@
 #include <wrl/client.h>
 
 #include <iostream>
+#include "benchmarks.hpp"
 
 using Microsoft::WRL::ComPtr;
 
-int main() {
+int main(int argc, char** argv) try {
+    const auto benchmarkJson = calibration::run(argc > 2 ? argv[2] : argv[0]);
+    std::wofstream output(argc > 1 ? argv[1] : "hardware-profile.json");
+    if (!output) { throw std::runtime_error("cannot write hardware profile"); }
+    MEMORYSTATUSEX memory{}; memory.dwLength = sizeof(memory); GlobalMemoryStatusEx(&memory);
+    SYSTEM_INFO system{}; GetNativeSystemInfo(&system);
+    DEVMODEW display{}; display.dmSize = sizeof(display); EnumDisplaySettingsW(nullptr, ENUM_CURRENT_SETTINGS, &display);
     ComPtr<IDXGIFactory1> factory;
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
         std::cerr << "Cannot create DXGI factory\n";
@@ -21,15 +28,24 @@ int main() {
         ComPtr<IDXGIAdapter3> adapter3;
         if (FAILED(adapter1.As(&adapter3))) { continue; }
         const auto budget = arc::dx12::query_memory_budget(adapter3.Get());
-        std::wcout << L"{\n  \"schema\": 1,\n  \"gpu\": {\n    \"name\": \"" << description.Description
+        output << L"{\n  \"schema\": 2,\n  \"gpu\": {\n    \"name\": \"" << description.Description
                    << L"\",\n    \"dedicated_vram_bytes\": " << description.DedicatedVideoMemory;
         if (budget) {
-            std::wcout << L",\n    \"local_budget_bytes\": " << budget->local_budget
+            output << L",\n    \"local_budget_bytes\": " << budget->local_budget
                        << L",\n    \"local_usage_bytes\": " << budget->local_usage;
         }
-        std::wcout << L"\n  }\n}\n";
+        LARGE_INTEGER driver{};
+        const bool driverAvailable = SUCCEEDED(adapter3->CheckInterfaceSupport(__uuidof(IDXGIDevice), &driver));
+        output << L",\"driver_version_raw\":" << (driverAvailable ? std::to_wstring(driver.QuadPart) : L"null")
+            << L"\n  },\"os\":\"Windows\",\"logical_processors\":" << system.dwNumberOfProcessors
+            << L",\"ram_physical_bytes\":" << memory.ullTotalPhys << L",\"ram_available_bytes\":" << memory.ullAvailPhys
+            << L",\"display_width\":" << display.dmPelsWidth << L",\"display_height\":" << display.dmPelsHeight
+            << L",\"display_refresh_hz\":" << display.dmDisplayFrequency << L','
+            << std::wstring(benchmarkJson.begin(), benchmarkJson.end())
+            << L",\"limitations\":[\"storage cache warmed; not raw disk throughput\",\"GPU workload measurements reported separately\",\"multi-thread timings include thread startup\"]}\n";
+        std::cout << "Calibration completed: 7 benchmarks, 9 measured runs each\n";
         return 0;
     }
     std::cerr << "No hardware DXGI adapter available\n";
     return 1;
-}
+} catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
