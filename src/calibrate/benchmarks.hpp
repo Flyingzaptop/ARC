@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <sstream>
 #include <iomanip>
+#include <compressapi.h>
 namespace calibration {
 inline volatile std::uint64_t sink{};
 template<class F> arc::Statistics measure(F fn) {
@@ -38,6 +39,23 @@ inline std::string run(const std::filesystem::path& file) {
     });
     constexpr std::size_t size = 32 * 1024 * 1024;
     std::vector<char> source(size, 17), target(size);
+    {
+        COMPRESSOR_HANDLE compressor{}; DECOMPRESSOR_HANDLE decompressor{};
+        if (!CreateCompressor(COMPRESS_ALGORITHM_XPRESS_HUFF, nullptr, &compressor)) { throw std::runtime_error("CreateCompressor failed"); }
+        if (!CreateDecompressor(COMPRESS_ALGORITHM_XPRESS_HUFF, nullptr, &decompressor)) { CloseCompressor(compressor); throw std::runtime_error("CreateDecompressor failed"); }
+        struct Handles { COMPRESSOR_HANDLE c; DECOMPRESSOR_HANDLE d; ~Handles() { CloseCompressor(c); CloseDecompressor(d); } } handles{compressor, decompressor};
+        for (std::size_t i = 0; i < size; ++i) { source[i] = static_cast<char>((i * 13) ^ (i >> 8)); }
+        SIZE_T compressedBytes{};
+        if (Compress(compressor, source.data(), size, nullptr, 0, &compressedBytes) || GetLastError() != ERROR_INSUFFICIENT_BUFFER) { throw std::runtime_error("Compression sizing failed"); }
+        std::vector<char> compressed(compressedBytes);
+        if (!Compress(compressor, source.data(), size, compressed.data(), compressed.size(), &compressedBytes)) { throw std::runtime_error("Compression failed"); }
+        record("xpress_huff_decompress_32MiB", [&] {
+            SIZE_T actual{};
+            if (!Decompress(decompressor, compressed.data(), compressedBytes, target.data(), target.size(), &actual) || actual != size) { throw std::runtime_error("Decompression failed"); }
+            sink = target[size / 2];
+        });
+        if (source != target) { throw std::runtime_error("Decompression contents mismatch"); }
+    }
     record("ram_copy_32MiB", [&] { std::memcpy(target.data(), source.data(), size); sink = target[size / 2]; });
     record("ram_multi_copy_32MiB", [&] {
         std::vector<std::thread> workers;

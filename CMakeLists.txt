@@ -54,7 +54,7 @@ if(WIN32)
     target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)
     target_compile_features(arc-dx12-observer PUBLIC cxx_std_23)
-    target_link_libraries(arc-calibrate PRIVATE arc-dx12-observer dxgi)
+    target_link_libraries(arc-calibrate PRIVATE arc-dx12-observer dxgi cabinet)
 
     foreach(sample dx12-memory-pressure dx12-texture-pressure dx12-mixed-resources)
         add_executable(${sample} samples/observer_validation.cpp)

@@ -43,7 +43,7 @@ int main(int argc, char** argv) try {
             << L",\"display_refresh_hz\":" << display.dmDisplayFrequency << L','
             << std::wstring(benchmarkJson.begin(), benchmarkJson.end())
             << L",\"limitations\":[\"storage cache warmed; not raw disk throughput\",\"GPU workload measurements reported separately\",\"multi-thread timings include thread startup\"]}\n";
-        std::cout << "Calibration completed: 7 benchmarks, 9 measured runs each\n";
+        std::cout << "Calibration completed: 8 benchmarks, 9 measured runs each\n";
         return 0;
     }
     std::cerr << "No hardware DXGI adapter available\n";
