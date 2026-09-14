@@ -190,6 +190,12 @@ int main(int argc, char** argv) try {
     check(owned[indexBuffer].resource->Map(0, &empty, &mapped));
     auto indices = static_cast<unsigned*>(mapped); indices[0] = 0; indices[1] = 1; indices[2] = 2; owned[indexBuffer].resource->Unmap(0, nullptr);
     const auto indirectBuffer = allocate(buffer(65536), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+    D3D12_QUERY_HEAP_DESC queryDesc{}; queryDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP; queryDesc.Count = 8;
+    ComPtr<ID3D12QueryHeap> queries; check(device->CreateQueryHeap(&queryDesc, IID_PPV_ARGS(&queries)));
+    const auto timingReadback = allocate(buffer(65536), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    UINT64 timestampFrequency{}; check(queue->GetTimestampFrequency(&timestampFrequency));
+    if (!timestampFrequency) { throw std::runtime_error("invalid GPU timestamp frequency"); }
+    std::array<std::vector<double>, 4> gpuTimes;
     check(owned[indirectBuffer].resource->Map(0, &empty, &mapped));
     const D3D12_DRAW_ARGUMENTS arguments{3, 1, 0, 0}; std::memcpy(mapped, &arguments, sizeof(arguments)); owned[indirectBuffer].resource->Unmap(0, nullptr);
     D3D12_INDIRECT_ARGUMENT_DESC argumentDesc{}; argumentDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
@@ -220,10 +226,12 @@ int main(int argc, char** argv) try {
         list->SetGraphicsRootSignature(root.Get()); list->SetPipelineState(pso.Get());
         D3D12_VIEWPORT viewport{0, 0, 64, 64, 0, 1}; D3D12_RECT scissor{0, 0, 64, 64};
         list->RSSetViewports(1, &viewport); list->RSSetScissorRects(1, &scissor); list->OMSetRenderTargets(1, &imageRtv, FALSE, nullptr);
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
         list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); list->DrawInstanced(3, 1, 0, 0);
         D3D12_INDEX_BUFFER_VIEW ib{owned[indexBuffer].resource->GetGPUVirtualAddress(), 12, DXGI_FORMAT_R32_UINT};
         list->IASetIndexBuffer(&ib); list->DrawIndexedInstanced(3, 1, 0, 0, 0);
         list->ExecuteIndirect(signature.Get(), 1, owned[indirectBuffer].resource.Get(), 0, nullptr, 0);
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1);
         emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[indexBuffer].id});
         emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[indirectBuffer].id});
         emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[imageIndex].id, .write = 1});
@@ -246,12 +254,16 @@ int main(int argc, char** argv) try {
         if (frame) { list->ResourceBarrier(1, &cb); }
         if (frame) { emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[computeBuffer].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .after_state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS, .subresource = UINT_MAX}); }
         list->SetComputeRootSignature(computeRoot.Get()); list->SetPipelineState(computePso.Get());
-        list->SetComputeRootUnorderedAccessView(0, owned[computeBuffer].resource->GetGPUVirtualAddress()); list->Dispatch(256, 1, 1);
+        list->SetComputeRootUnorderedAccessView(0, owned[computeBuffer].resource->GetGPUVirtualAddress());
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 2); list->Dispatch(256, 1, 1);
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 3);
         emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[computeBuffer].id, .write = 1});
         if (full) { emit(arc::EventType::Dispatch, arc::CountersPayload{.command = commandId, .dispatches = 1}); }
         cb.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS; cb.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE; list->ResourceBarrier(1, &cb);
         emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[computeBuffer].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS, .after_state = D3D12_RESOURCE_STATE_COPY_SOURCE, .subresource = UINT_MAX});
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 6);
         list->CopyResource(owned[computeReadback].resource.Get(), owned[computeBuffer].resource.Get());
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 7);
         emit(arc::EventType::CopyResource, arc::CopyPayload{.source = owned[computeBuffer].id, .destination = owned[computeReadback].id, .command = commandId, .approximate_bytes = 65536});
         const auto backbuffer = backbuffers[swap->GetCurrentBackBufferIndex()];
         D3D12_RESOURCE_BARRIER bb{}; bb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; bb.Transition.pResource = owned[backbuffer].resource.Get();
@@ -263,10 +275,14 @@ int main(int argc, char** argv) try {
         bb.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST; bb.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
         list->ResourceBarrier(1, &bb);
         emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[backbuffer].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_COPY_DEST, .subresource = UINT_MAX});
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 4);
         list->CopyBufferRegion(owned[gpu].resource.Get(), 0, owned[upload].resource.Get(), 0, bytes);
+        list->EndQuery(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 5);
         emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[upload].id, .destination = owned[gpu].id, .command = commandId, .approximate_bytes = bytes});
         transition(D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
         if (full) { emit(arc::EventType::TelemetrySample, arc::CountersPayload{.command = commandId}); }
+        list->ResolveQueryData(queries.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0, 8, owned[timingReadback].resource.Get(), 0);
+        emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[timingReadback].id, .write = 1});
         check(list->Close()); emit(arc::EventType::CommandListClosed, arc::CommandListPayload{.command = commandId});
         ID3D12CommandList* submit[] = {list.Get()}; queue->ExecuteCommandLists(1, submit);
         emit(arc::EventType::QueueSubmit, arc::QueueSubmitPayload{.queue = queueId, .command = commandId, .submission = frame + 1ULL});
@@ -281,6 +297,13 @@ int main(int argc, char** argv) try {
         if (WaitForSingleObject(done, 10000) != WAIT_OBJECT_0) { throw std::runtime_error("GPU fence timeout"); }
         // CPU wait uses queue=0, never implies a GPU queue dependency.
         emit(arc::EventType::FenceWait, arc::FencePayload{.fence = copyFenceId, .value = frame + 1ULL});
+        UINT64* timestamps{}; D3D12_RANGE timingRange{0, 8 * sizeof(UINT64)};
+        check(owned[timingReadback].resource->Map(0, &timingRange, reinterpret_cast<void**>(&timestamps)));
+        for (unsigned i = 0; i < 4; ++i) {
+            if (timestamps[2 * i + 1] < timestamps[2 * i]) { throw std::runtime_error("GPU timestamp order error"); }
+            if (frame >= 10 || iterations <= 10) { gpuTimes[i].push_back(1000.0 * static_cast<double>(timestamps[2 * i + 1] - timestamps[2 * i]) / timestampFrequency); }
+        }
+        owned[timingReadback].resource->Unmap(0, &empty);
         const auto presentResult = swap->Present(0, 0); check(presentResult);
         occludedPresents += presentResult == DXGI_STATUS_OCCLUDED;
         emit(arc::EventType::Present, arc::PresentPayload{.swapchain = swapId, .frame = frame + 1ULL, .result = presentResult});
@@ -352,7 +375,13 @@ int main(int argc, char** argv) try {
         << ",\"reserved_supported\":" << (reservedSupported ? "true" : "false")
         << ",\"create_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedCreates) / owned.size()))
         << ",\"destroy_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedDestroys) / owned.size()))
-        << ",\"allocation_error_bytes\":" << (baseline ? "null" : std::to_string(observedBytes > expectedBytes ? observedBytes - expectedBytes : expectedBytes - observedBytes)) << "}\n";
+        << ",\"allocation_error_bytes\":" << (baseline ? "null" : std::to_string(observedBytes > expectedBytes ? observedBytes - expectedBytes : expectedBytes - observedBytes)) << ",\"gpu_proxies_ms\":{";
+    const char* gpuNames[] = {"three_draws_64x64", "compute_16384_uints", "upload_1MiB", "readback_64KiB"};
+    for (unsigned i = 0; i < 4; ++i) {
+        if (i) { metrics << ','; } const auto s = arc::summarize(gpuTimes[i]);
+        metrics << '"' << gpuNames[i] << "\":{\"median\":" << s.median << ",\"p10\":" << s.p10 << ",\"p90\":" << s.p90 << ",\"variance\":" << s.variance << '}';
+    }
+    metrics << "}}\n";
     std::cout << stem << ": valid=" << valid << " resources=" << owned.size() << " iterations=" << iterations << " p50_ms=" << percentile(.5) << " p99_ms=" << percentile(.99) << '\n';
     return valid ? 0 : 1;
 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
