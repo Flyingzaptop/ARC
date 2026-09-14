@@ -1,0 +1,108 @@
+{
+  "schema": 2,
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "dedicated_vram_bytes": 6285164544,
+    "local_budget_bytes": 5479858176,
+    "local_usage_bytes": 0,
+    "driver_version_raw": 9007199255791232
+  },
+  "os": "Windows",
+  "logical_processors": 16,
+  "ram_physical_bytes": 42569789440,
+  "ram_available_bytes": 19618054144,
+  "display_width": 1920,
+  "display_height": 1080,
+  "display_refresh_hz": 120,
+  "warmup_runs": 1,
+  "measured_runs": 9,
+  "benchmark_threads": 8,
+  "storage_bytes_per_sequential_run": 89600,
+  "benchmarks": {
+    "cpu_single": {
+      "median_ms": 2.9522,
+      "p10_ms": 2.9214,
+      "p90_ms": 2.9593,
+      "variance_ms2": 0.000297278
+    },
+    "cpu_multi": {
+      "median_ms": 3.7652,
+      "p10_ms": 3.6612,
+      "p90_ms": 3.8369,
+      "variance_ms2": 0.0127163
+    },
+    "xpress_huff_decompress_32MiB": {
+      "median_ms": 47.139,
+      "p10_ms": 46.782,
+      "p90_ms": 50.4764,
+      "variance_ms2": 4.80402
+    },
+    "ram_copy_32MiB": {
+      "median_ms": 2.1914,
+      "p10_ms": 2.0293,
+      "p90_ms": 2.6955,
+      "variance_ms2": 0.0677563
+    },
+    "ram_multi_copy_32MiB": {
+      "median_ms": 2.8697,
+      "p10_ms": 2.6946,
+      "p90_ms": 2.9268,
+      "variance_ms2": 0.00764438
+    },
+    "ram_pointer_chase_2M": {
+      "median_ms": 16.6485,
+      "p10_ms": 16.3093,
+      "p90_ms": 17.0529,
+      "variance_ms2": 0.0969798
+    },
+    "storage_cached_sequential": {
+      "median_ms": 0.03,
+      "p10_ms": 0.0299,
+      "p90_ms": 0.0369,
+      "variance_ms2": 0.0000203022
+    },
+    "storage_cached_small_reads_64": {
+      "median_ms": 0.1713,
+      "p10_ms": 0.171,
+      "p90_ms": 0.1716,
+      "variance_ms2": 0.00000216395
+    }
+  },
+  "limitations": [
+    "storage cache warmed; not raw disk throughput",
+    "GPU workload measurements reported separately",
+    "multi-thread timings include thread startup"
+  ],
+  "gpu_proxies_ms": {
+    "three_draws_64x64": {
+      "median": 0.002048,
+      "p10": 0.001024,
+      "p90": 0.002048,
+      "variance": 1.30218e-7
+    },
+    "compute_16384_uints": {
+      "median": 0.002656,
+      "p10": 0.002048,
+      "p90": 0.003072,
+      "variance": 1.16114e-7
+    },
+    "upload_1MiB": {
+      "median": 0.086528,
+      "p10": 0.085824,
+      "p90": 0.087488,
+      "variance": 0.00000973575
+    },
+    "readback_64KiB": {
+      "median": 0.004576,
+      "p10": 0.004128,
+      "p90": 0.00496,
+      "variance": 1.85536e-7
+    }
+  },
+  "cpu_name": "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+  "physical_cores": 8,
+  "os_build": "26200",
+  "timestamp_utc": "2026-09-14T21:04:52.4855293Z",
+  "arc_commit": "73765ef7a0a5d362b069770d2d643df49746315c",
+  "storage_read_file": "C:\\Users\\r3d_flzp\\Desktop\\ARC\\build\\Release\\arc-calibrate.exe"
+}

@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "trace_status": 0,
+  "events": 3901779,
+  "created": 33,
+  "destroyed": 33,
+  "live_at_shutdown": 0,
+  "peak_committed_bytes": 174653440,
+  "peak_heap_bytes": 4194304,
+  "peak_local_budget": 5479858176,
+  "peak_local_usage": 185413632,
+  "submissions": 200000,
+  "copies": 700000,
+  "presents": 100000,
+  "signals": 200000,
+  "waits": 200000,
+  "graph_errors": 0,
+  "cold_resources": 0,
+  "unknown_resources": 15,
+  "green_candidates": 12,
+  "yellow_resources": 4,
+  "red_resources": 2,
+  "largest_resources": [
+    {
+      "id": 32,
+      "allocation_bytes": 89391104,
+      "logical_estimate_bytes": 89391104,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 36,
+      "allocation_bytes": 22347776,
+      "logical_estimate_bytes": 22347776,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 26,
+      "allocation_bytes": 22347776,
+      "logical_estimate_bytes": 22347776,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 34,
+      "allocation_bytes": 11206656,
+      "logical_estimate_bytes": 11173888,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 30,
+      "allocation_bytes": 5636096,
+      "logical_estimate_bytes": 5586944,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 20,
+      "allocation_bytes": 5636096,
+      "logical_estimate_bytes": 5586944,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 55,
+      "allocation_bytes": 4194304,
+      "logical_estimate_bytes": 65536,
+      "kind": 2,
+      "safety": 2,
+      "view_evidence": 16
+    },
+    {
+      "id": 28,
+      "allocation_bytes": 2818048,
+      "logical_estimate_bytes": 2793472,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 24,
+      "allocation_bytes": 1441792,
+      "logical_estimate_bytes": 1396736,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    },
+    {
+      "id": 14,
+      "allocation_bytes": 1441792,
+      "logical_estimate_bytes": 1396736,
+      "kind": 2,
+      "safety": 1,
+      "view_evidence": 4
+    }
+  ]
+}

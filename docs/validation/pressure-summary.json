@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "trace_status": 0,
+  "events": 2986,
+  "created": 96,
+  "destroyed": 96,
+  "live_at_shutdown": 0,
+  "peak_committed_bytes": 2721513472,
+  "peak_heap_bytes": 4194304,
+  "peak_local_budget": 5479858176,
+  "peak_local_usage": 2736467968,
+  "submissions": 200,
+  "copies": 500,
+  "presents": 100,
+  "signals": 200,
+  "waits": 200,
+  "graph_errors": 0,
+  "cold_resources": 0,
+  "unknown_resources": 94,
+  "green_candidates": 0,
+  "yellow_resources": 1,
+  "red_resources": 1,
+  "largest_resources": [
+    {
+      "id": 84,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 15,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 14,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 13,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 12,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 11,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 10,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 9,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 8,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    },
+    {
+      "id": 7,
+      "allocation_bytes": 33554432,
+      "logical_estimate_bytes": 33554432,
+      "kind": 0,
+      "safety": 0,
+      "view_evidence": 0
+    }
+  ]
+}

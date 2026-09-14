@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "cpu_ms": 23093.8,
+  "wall_ms": 46451.8,
+  "cpu_one_core_percent": 49.7155,
+  "process_private_bytes": 302804992,
+  "trace_bytes": 242220400,
+  "mean_iteration_ms": 0.464423,
+  "iteration_variance": 0.0111999,
+  "iterations_per_second": 2153.21,
+  "occluded_presents": 0,
+  "reserved_supported": true,
+  "msaa_resolve_supported": true,
+  "enhanced_barriers_supported": true,
+  "create_recall": 1,
+  "destroy_recall": 1,
+  "descriptor_mapping_accuracy": 1,
+  "allocation_error_bytes": 0,
+  "gpu_proxies_ms": {
+    "three_draws_64x64": {
+      "median": 0.002048,
+      "p10": 0.001024,
+      "p90": 0.002048,
+      "variance": 8.77042e-7
+    },
+    "compute_16384_uints": {
+      "median": 0.002048,
+      "p10": 0.00176,
+      "p90": 0.002592,
+      "variance": 9.11666e-8
+    },
+    "upload_1MiB": {
+      "median": 0.086368,
+      "p10": 0.085696,
+      "p90": 0.08816,
+      "variance": 0.0000130671
+    },
+    "readback_64KiB": {
+      "median": 0.00416,
+      "p10": 0.00368,
+      "p90": 0.004576,
+      "variance": 5.49995e-7
+    }
+  }
+}
