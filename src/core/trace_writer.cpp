@@ -32,8 +32,11 @@ bool TraceWriter::append(const std::span<const Event> events) {
         return events.empty() && good();
     }
     const auto payload = std::as_bytes(events);
-    if (payload.size_bytes() > UINT32_MAX) {
+    if (payload.size_bytes() > kMaxTraceChunkBytes) {
         return false;
+    }
+    for (const auto& event : events) {
+        if (event.header.payload_bytes > kMaxEventPayloadBytes) { return false; }
     }
     const TraceChunkHeader header{
         .chunk_sequence = impl_->next_chunk++,

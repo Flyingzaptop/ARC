@@ -17,27 +17,38 @@ std::uint32_t fnv1a(std::span<const std::byte> bytes) noexcept {
 
 }  // namespace
 
-std::vector<Event> TraceReader::read_recoverable(const std::filesystem::path& path) {
-    std::vector<Event> result;
+TraceReader::Result TraceReader::inspect(const std::filesystem::path& path) {
+    Result result;
     std::ifstream input(path, std::ios::binary);
+    if (!input) { result.status = Status::IoError; return result; }
     while (input.good()) {
         TraceChunkHeader header{};
         input.read(reinterpret_cast<char*>(&header), sizeof(header));
-        if (input.gcount() != static_cast<std::streamsize>(sizeof(header)) ||
-            header.magic != kTraceChunkMagic || header.schema != kTraceSchemaVersion ||
-            header.payload_bytes % sizeof(Event) != 0) {
-            break;
-        }
+        if (input.gcount() == 0 && input.eof()) { break; }
+        if (input.gcount() != sizeof(header)) { result.status = Status::TruncatedTail; break; }
+        if (header.schema != kTraceSchemaVersion) { result.status = Status::SchemaMismatch; break; }
+        if (header.magic != kTraceChunkMagic || header.chunk_sequence != result.complete_chunks ||
+            header.payload_bytes == 0 || header.payload_bytes > kMaxTraceChunkBytes ||
+            header.payload_bytes % sizeof(Event) != 0) { result.status = Status::CorruptTail; break; }
         std::vector<std::byte> payload(header.payload_bytes);
         input.read(reinterpret_cast<char*>(payload.data()), static_cast<std::streamsize>(payload.size()));
-        if (input.gcount() != static_cast<std::streamsize>(payload.size()) || fnv1a(payload) != header.checksum) {
-            break;
+        if (input.gcount() != static_cast<std::streamsize>(payload.size())) { result.status = Status::TruncatedTail; break; }
+        if (fnv1a(payload) != header.checksum) { result.status = Status::CorruptTail; break; }
+        const auto old_size = result.events.size();
+        result.events.resize(old_size + payload.size() / sizeof(Event));
+        std::memcpy(result.events.data() + old_size, payload.data(), payload.size());
+        bool valid = true;
+        for (std::size_t i = old_size; i < result.events.size(); ++i) {
+            if (result.events[i].header.payload_bytes > kMaxEventPayloadBytes) { valid = false; break; }
         }
-        const auto old_size = result.size();
-        result.resize(old_size + payload.size() / sizeof(Event));
-        std::memcpy(result.data() + old_size, payload.data(), payload.size());
+        if (!valid) { result.events.resize(old_size); result.status = Status::CorruptTail; break; }
+        ++result.complete_chunks;
     }
     return result;
+}
+
+std::vector<Event> TraceReader::read_recoverable(const std::filesystem::path& path) {
+    return inspect(path).events;
 }
 
 }  // namespace arc

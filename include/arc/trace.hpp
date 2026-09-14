@@ -11,7 +11,8 @@
 
 namespace arc {
 
-inline constexpr std::uint32_t kTraceSchemaVersion = 1;
+inline constexpr std::uint32_t kTraceSchemaVersion = 2;
+inline constexpr std::uint32_t kMaxTraceChunkBytes = 16 * 1024 * 1024;
 inline constexpr std::uint64_t kTraceChunkMagic = 0x314B4E4843524141ULL; // "ARCHNK1"
 
 struct TraceChunkHeader final {
@@ -40,6 +41,13 @@ private:
 
 class TraceReader final {
 public:
+    enum class Status { Complete, TruncatedTail, CorruptTail, SchemaMismatch, IoError };
+    struct Result {
+        std::vector<Event> events;
+        Status status{Status::Complete};
+        std::uint32_t complete_chunks{};
+    };
+    [[nodiscard]] static Result inspect(const std::filesystem::path& path);
     // Reads complete valid chunks only. A partially written final chunk is
     // intentionally ignored so crash recovery preserves earlier data.
     [[nodiscard]] static std::vector<Event> read_recoverable(const std::filesystem::path& path);

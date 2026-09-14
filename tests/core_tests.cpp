@@ -97,5 +97,28 @@ int main() {
     assert(recovered.size() == 2);
     assert(recovered[0].header.sequence == 1);
     assert(recovered[1].header.sequence == 2);
+    assert(arc::TraceReader::inspect(trace_path).status == arc::TraceReader::Status::TruncatedTail);
+    std::filesystem::resize_file(trace_path, 2 * (sizeof(arc::TraceChunkHeader) + sizeof(arc::Event)));
+    assert(arc::TraceReader::inspect(trace_path).status == arc::TraceReader::Status::Complete);
+    {
+        std::fstream corrupt(trace_path, std::ios::binary | std::ios::in | std::ios::out);
+        corrupt.seekp(-1, std::ios::end);
+        corrupt.put('x');
+    }
+    assert(arc::TraceReader::inspect(trace_path).status == arc::TraceReader::Status::CorruptTail);
+    assert(arc::TraceReader::inspect(trace_path).events.size() == 1);
+    {
+        std::ofstream incompatible(trace_path, std::ios::binary | std::ios::trunc);
+        arc::TraceChunkHeader header{};
+        header.schema = 999;
+        incompatible.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    }
+    assert(arc::TraceReader::inspect(trace_path).status == arc::TraceReader::Status::SchemaMismatch);
+    {
+        arc::TraceWriter writer(trace_path);
+        first.header.type = static_cast<arc::EventType>(60000);
+        assert(writer.append({&first, 1}));
+    }
+    assert(arc::TraceReader::inspect(trace_path).events.size() == 1);
     std::filesystem::remove(trace_path);
 }
