@@ -107,6 +107,34 @@ int main(int argc, char** argv) try {
     ComPtr<ID3D12GraphicsCommandList> list; check(device->CreateCommandList(0, qd.Type, allocator.Get(), nullptr, IID_PPV_ARGS(&list)));
     ComPtr<ID3D12Fence> fence; check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
     const auto queueId = ids.next(), commandId = ids.next(), fenceId = ids.next();
+    ComPtr<ID3D12CommandQueue> copyQueue; D3D12_COMMAND_QUEUE_DESC copyDesc{}; copyDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    check(device->CreateCommandQueue(&copyDesc, IID_PPV_ARGS(&copyQueue)));
+    ComPtr<ID3D12CommandAllocator> copyAllocator; check(device->CreateCommandAllocator(copyDesc.Type, IID_PPV_ARGS(&copyAllocator)));
+    ComPtr<ID3D12GraphicsCommandList> copyList; check(device->CreateCommandList(0, copyDesc.Type, copyAllocator.Get(), nullptr, IID_PPV_ARGS(&copyList)));
+    ComPtr<ID3D12Fence> copyFence; check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&copyFence)));
+    const auto copyQueueId = ids.next(), copyCommandId = ids.next(), copyFenceId = ids.next();
+    emit(arc::EventType::CommandQueueCreated, arc::QueueCreatePayload{.queue = copyQueueId, .type = arc::QueueClass::Copy});
+    emit(arc::EventType::CommandListCreated, arc::CommandListPayload{.command = copyCommandId, .type = arc::QueueClass::Copy});
+    copyList->CopyBufferRegion(owned[readback].resource.Get(), 0, owned[gpu].resource.Get(), 0, bytes);
+    emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[gpu].id, .destination = owned[readback].id, .command = copyCommandId, .approximate_bytes = bytes});
+    check(copyList->Close()); emit(arc::EventType::CommandListClosed, arc::CommandListPayload{.command = copyCommandId, .type = arc::QueueClass::Copy});
+    // Hidden window: exercise DXGI without taking focus from the user.
+    const auto module = GetModuleHandleW(nullptr);
+    WNDCLASSW windowClass{}; windowClass.lpfnWndProc = DefWindowProcW; windowClass.hInstance = module; windowClass.lpszClassName = L"ARCStage1Validation";
+    if (!RegisterClassW(&windowClass) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) { throw std::runtime_error("RegisterClass failed"); }
+    HWND window = CreateWindowExW(0, windowClass.lpszClassName, L"ARC validation", WS_OVERLAPPEDWINDOW, 0, 0, 64, 64, nullptr, nullptr, module, nullptr);
+    if (!window) { throw std::runtime_error("CreateWindow failed"); }
+    DXGI_SWAP_CHAIN_DESC1 swapDesc{}; swapDesc.Width = swapDesc.Height = 64; swapDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapDesc.SampleDesc.Count = 1; swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; swapDesc.BufferCount = 2; swapDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    ComPtr<IDXGISwapChain1> swap1; check(factory->CreateSwapChainForHwnd(queue.Get(), window, &swapDesc, nullptr, nullptr, &swap1));
+    ComPtr<IDXGISwapChain3> swap; check(swap1.As(&swap));
+    const auto swapId = ids.next(); emit(arc::EventType::SwapchainCreated, arc::PresentPayload{.swapchain = swapId});
+    std::array<std::size_t, 2> backbuffers{};
+    for (unsigned i = 0; i < 2; ++i) {
+        Owned o; check(swap->GetBuffer(i, IID_PPV_ARGS(&o.resource))); o.id = ids.next();
+        emit(arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = o.id, .virtual_bytes = 16384, .width = 64, .height = 64, .depth = 1, .mip_levels = 1, .array_layers = 1, .kind = arc::ResourceKind::Texture2D, .allocation_kind = arc::ResourceAllocationKind::External, .format = DXGI_FORMAT_R8G8B8A8_UNORM});
+        backbuffers[i] = owned.size(); owned.push_back(std::move(o));
+    }
     // A deterministic fullscreen draw provides an independently checkable image.
     D3D12_RESOURCE_DESC imageDesc{}; imageDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     imageDesc.Width = imageDesc.Height = 64; imageDesc.DepthOrArraySize = imageDesc.MipLevels = 1;
@@ -168,20 +196,36 @@ int main(int argc, char** argv) try {
         imageDestination.PlacedFootprint.Footprint = {DXGI_FORMAT_R8G8B8A8_UNORM, 64, 64, 1, 256};
         list->CopyTextureRegion(&imageDestination, 0, 0, 0, &imageSource, nullptr);
         emit(arc::EventType::CopyTexture, arc::CopyPayload{.source = owned[imageIndex].id, .destination = owned[imageReadback].id, .command = commandId, .approximate_bytes = 16384});
+        const auto backbuffer = backbuffers[swap->GetCurrentBackBufferIndex()];
+        D3D12_RESOURCE_BARRIER bb{}; bb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; bb.Transition.pResource = owned[backbuffer].resource.Get();
+        bb.Transition.Subresource = UINT_MAX; bb.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT; bb.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+        list->ResourceBarrier(1, &bb);
+        emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[backbuffer].id, .command = commandId, .after_state = D3D12_RESOURCE_STATE_COPY_DEST, .subresource = UINT_MAX});
+        list->CopyResource(owned[backbuffer].resource.Get(), owned[imageIndex].resource.Get());
+        emit(arc::EventType::CopyResource, arc::CopyPayload{.source = owned[imageIndex].id, .destination = owned[backbuffer].id, .command = commandId, .approximate_bytes = 16384});
+        bb.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST; bb.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+        list->ResourceBarrier(1, &bb);
+        emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[backbuffer].id, .command = commandId, .before_state = D3D12_RESOURCE_STATE_COPY_DEST, .subresource = UINT_MAX});
         list->CopyBufferRegion(owned[gpu].resource.Get(), 0, owned[upload].resource.Get(), 0, bytes);
         emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[upload].id, .destination = owned[gpu].id, .command = commandId, .approximate_bytes = bytes});
         transition(D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        list->CopyBufferRegion(owned[readback].resource.Get(), 0, owned[gpu].resource.Get(), 0, bytes);
-        emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[gpu].id, .destination = owned[readback].id, .command = commandId, .approximate_bytes = bytes});
         if (full) { emit(arc::EventType::TelemetrySample, arc::CountersPayload{.command = commandId}); }
         check(list->Close()); emit(arc::EventType::CommandListClosed, arc::CommandListPayload{.command = commandId});
         ID3D12CommandList* submit[] = {list.Get()}; queue->ExecuteCommandLists(1, submit);
         emit(arc::EventType::QueueSubmit, arc::QueueSubmitPayload{.queue = queueId, .command = commandId, .submission = frame + 1ULL});
         check(queue->Signal(fence.Get(), frame + 1ULL)); emit(arc::EventType::FenceSignal, arc::FencePayload{.queue = queueId, .fence = fenceId, .value = frame + 1ULL});
-        check(fence->SetEventOnCompletion(frame + 1ULL, done));
+        check(copyQueue->Wait(fence.Get(), frame + 1ULL));
+        emit(arc::EventType::FenceWait, arc::FencePayload{.queue = copyQueueId, .fence = fenceId, .value = frame + 1ULL});
+        ID3D12CommandList* copySubmit[] = {copyList.Get()}; copyQueue->ExecuteCommandLists(1, copySubmit);
+        emit(arc::EventType::QueueSubmit, arc::QueueSubmitPayload{.queue = copyQueueId, .command = copyCommandId, .submission = frame + 1ULL});
+        check(copyQueue->Signal(copyFence.Get(), frame + 1ULL));
+        emit(arc::EventType::FenceSignal, arc::FencePayload{.queue = copyQueueId, .fence = copyFenceId, .value = frame + 1ULL});
+        check(copyFence->SetEventOnCompletion(frame + 1ULL, done));
         if (WaitForSingleObject(done, 10000) != WAIT_OBJECT_0) { throw std::runtime_error("GPU fence timeout"); }
         // CPU wait uses queue=0, never implies a GPU queue dependency.
-        emit(arc::EventType::FenceWait, arc::FencePayload{.fence = fenceId, .value = frame + 1ULL});
+        emit(arc::EventType::FenceWait, arc::FencePayload{.fence = copyFenceId, .value = frame + 1ULL});
+        const auto presentResult = swap->Present(0, 0); check(presentResult);
+        emit(arc::EventType::Present, arc::PresentPayload{.swapchain = swapId, .frame = frame + 1ULL});
         if (frame % 60 == 0) { budget(); }
         times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
     }
@@ -196,11 +240,12 @@ int main(int argc, char** argv) try {
     owned[imageReadback].resource->Unmap(0, &empty);
     UINT64 expectedBytes{}; for (auto& o : owned) { expectedBytes += o.bytes; o.resource.Reset(); if (!baseline) { observer.observe_resource_destroyed(o.id); } }
     heap.Reset(); if (!baseline) { observer.observe_heap_destroyed(heapId); }
+    swap.Reset(); swap1.Reset(); DestroyWindow(window);
     if (session) { session->finish(); }
     bool valid = contents && (!session || session->complete());
     if (!baseline) {
         const auto& g = session->graph();
-        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == iterations && g.copies().size() == 3ULL * iterations;
+        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == 2ULL * iterations && g.copies().size() == 4ULL * iterations;
         for (const auto& o : owned) { auto r = g.find(o.id); valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes; }
         valid = valid && g.live_heap_bytes() == 0 && g.resources_on_heap(heapId).size() == 2;
         valid = valid && arc::TraceReader::inspect("traces/" + stem + ".arcbin").status == arc::TraceReader::Status::Complete;

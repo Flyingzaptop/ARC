@@ -16,7 +16,7 @@ enum class SafetyClass : std::uint8_t { Unknown, GreenCandidate, Yellow, Red };
 enum class Temperature : std::uint8_t { Unknown, Hot, Warm, Cold, Pinned };
 enum class ViewType : std::uint8_t { Unknown, Cbv, Srv, Uav, Rtv, Dsv, Sampler };
 enum class QueueClass : std::uint8_t { Unknown, Graphics, Compute, Copy };
-enum class ResourceAllocationKind : std::uint8_t { Committed, Placed, Reserved };
+enum class ResourceAllocationKind : std::uint8_t { Committed, Placed, Reserved, External };
 
 struct HeapCreatePayload final {
     HeapId heap{};
