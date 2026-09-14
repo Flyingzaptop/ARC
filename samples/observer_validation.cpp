@@ -2,6 +2,7 @@
 #include "arc/session.hpp"
 #include <wrl/client.h>
 #include <d3dcompiler.h>
+#include <d3d12sdklayers.h>
 #include <psapi.h>
 #include "arc/statistics.hpp"
 #include <algorithm>
@@ -37,6 +38,10 @@ int main(int argc, char** argv) try {
     arc::IdAllocator ids;
     arc::dx12::Observer observer(session ? session->ring() : inactiveRing, ids);
     auto emit = [&](arc::EventType type, const auto& p) { if (!baseline && !observer.observe(type, p)) { throw std::runtime_error("trace overflow"); } };
+    if (std::getenv("ARC_D3D12_DEBUG")) {
+        ComPtr<ID3D12Debug> debug;
+        check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))); debug->EnableDebugLayer();
+    }
     ComPtr<ID3D12Device> device; check(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)));
     ComPtr<IDXGIFactory4> factory; check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
     ComPtr<IDXGIAdapter3> adapter; check(factory->EnumAdapterByLuid(device->GetAdapterLuid(), IID_PPV_ARGS(&adapter)));
@@ -303,6 +308,14 @@ int main(int argc, char** argv) try {
     swap.Reset(); swap1.Reset(); DestroyWindow(window);
     if (session) { session->finish(); }
     bool valid = contents && (!session || session->complete());
+    if (std::getenv("ARC_D3D12_DEBUG")) {
+        ComPtr<ID3D12InfoQueue> info; check(device.As(&info));
+        for (UINT64 i = 0; i < info->GetNumStoredMessages(); ++i) {
+            SIZE_T length{}; check(info->GetMessage(i, nullptr, &length)); std::vector<std::byte> storage(length);
+            auto message = reinterpret_cast<D3D12_MESSAGE*>(storage.data()); check(info->GetMessage(i, message, &length));
+            if (message->Severity <= D3D12_MESSAGE_SEVERITY_ERROR) { std::cerr << message->pDescription << '\n'; valid = false; }
+        }
+    }
     std::size_t matchedCreates{}, matchedDestroys{};
     std::uint64_t observedBytes{};
     if (!baseline) {
