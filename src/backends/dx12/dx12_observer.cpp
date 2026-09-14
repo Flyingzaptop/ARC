@@ -83,11 +83,13 @@ ResourceId Observer::observe_reserved_resource(const D3D12_RESOURCE_DESC& descri
 }
 
 ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, const std::uint64_t offset,
-                                      const ResourceAllocationKind kind, const D3D12_RESOURCE_DESC& description,
+                                      const ResourceAllocationKind kind, const D3D12_RESOURCE_DESC& requested,
                                       ID3D12Resource* resource) noexcept {
     if (resource == nullptr || (kind != ResourceAllocationKind::Reserved && device == nullptr)) {
         return 0;
     }
+    (void)requested;
+    const auto description = resource->GetDesc(); // resolves requested MipLevels=0
     const auto allocation = device == nullptr ? D3D12_RESOURCE_ALLOCATION_INFO{} :
         device->GetResourceAllocationInfo(0, 1, &description);
     const ResourceId id = ids_.next();
@@ -97,7 +99,7 @@ ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, c
         .virtual_bytes = logical_bytes(description),
         .allocation_bytes = kind == ResourceAllocationKind::Reserved ? 0 : allocation.SizeInBytes,
         .heap_offset = offset,
-        .width = static_cast<std::uint32_t>(description.Width > UINT32_MAX ? UINT32_MAX : description.Width),
+        .width = description.Width,
         .height = description.Height,
         .depth = description.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? description.DepthOrArraySize : 1U,
         .mip_levels = description.MipLevels,

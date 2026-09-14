@@ -19,6 +19,23 @@ bool decode(const Event& event, T& output) noexcept {
 
 void ResourceGraph::consume(const Event& event) {
     if (event.header.type == EventType::TraceOverflow || event.header.type == EventType::DiagnosticError) { ++errors_; return; }
+    std::size_t expected{};
+    switch (event.header.type) {
+    case EventType::ResourceCreated: expected = sizeof(ResourceCreatePayload); break;
+    case EventType::ResourceDestroyed: expected = sizeof(ResourceDestroyPayload); break;
+    case EventType::HeapCreated: expected = sizeof(HeapCreatePayload); break;
+    case EventType::HeapDestroyed: expected = sizeof(HeapDestroyPayload); break;
+    case EventType::DescriptorWritten: expected = sizeof(DescriptorWrittenPayload); break;
+    case EventType::CommandQueueCreated: expected = sizeof(QueueCreatePayload); break;
+    case EventType::CommandListCreated: case EventType::CommandListReset: case EventType::CommandListClosed: expected = sizeof(CommandListPayload); break;
+    case EventType::QueueSubmit: expected = sizeof(QueueSubmitPayload); break;
+    case EventType::CopyResource: case EventType::CopyBuffer: case EventType::CopyTexture: case EventType::ResolveSubresource: expected = sizeof(CopyPayload); break;
+    case EventType::Barrier: expected = sizeof(BarrierPayload); break;
+    case EventType::Present: expected = sizeof(PresentPayload); break;
+    case EventType::MemoryBudgetSample: expected = sizeof(MemoryBudgetPayload); break;
+    default: break;
+    }
+    if (event.header.payload_bytes > kMaxEventPayloadBytes || (expected && event.header.payload_bytes != expected)) { ++errors_; return; }
     if (event.header.type == EventType::HeapCreated) {
         HeapCreatePayload payload{};
         if (decode(event, payload) && !heaps_.contains(payload.heap)) {
@@ -39,7 +56,8 @@ void ResourceGraph::consume(const Event& event) {
     }
     if (event.header.type == EventType::ResourceCreated) {
         ResourceCreatePayload payload{};
-        if (!decode(event, payload) || resources_.contains(payload.resource)) {
+        if (!decode(event, payload) || !payload.resource || resources_.contains(payload.resource)) {
+            ++errors_;
             return;
         }
         resources_.emplace(payload.resource, ResourceRecord{
@@ -62,7 +80,7 @@ void ResourceGraph::consume(const Event& event) {
             it->second.destroy_timestamp_ns = event.header.timestamp_ns;
             it->second.destroy_sequence = event.header.sequence;
             live_allocation_bytes_ -= it->second.description.allocation_bytes;
-        }
+        } else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::DescriptorWritten) {

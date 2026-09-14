@@ -18,7 +18,7 @@ struct EventRing::Storage final {
 };
 
 EventRing::EventRing(const std::size_t capacity) {
-    if (capacity == 0) {
+    if (capacity == 0 || capacity == SIZE_MAX) {
         throw std::invalid_argument("EventRing capacity must be non-zero");
     }
     storage_ = std::make_unique<Storage>(capacity);

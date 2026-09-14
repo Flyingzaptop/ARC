@@ -33,7 +33,7 @@ struct ResourceCreatePayload final {
     std::uint64_t virtual_bytes{};
     std::uint64_t allocation_bytes{};
     std::uint64_t heap_offset{};
-    std::uint32_t width{};
+    std::uint64_t width{};
     std::uint32_t height{};
     std::uint32_t depth{};
     std::uint16_t mip_levels{};
