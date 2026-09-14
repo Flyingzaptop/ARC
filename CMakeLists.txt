@@ -35,6 +35,18 @@ target_link_libraries(arc-trace PRIVATE arc::core)
 add_executable(arc-calibrate src/calibrate/arc_calibrate_main.cpp)
 target_link_libraries(arc-calibrate PRIVATE arc::core)
 
+if(WIN32)
+    add_library(arc-dx12-observer STATIC
+        src/backends/dx12/dx12_observer.cpp
+    )
+    target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+    target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)
+    target_compile_features(arc-dx12-observer PUBLIC cxx_std_23)
+
+    add_executable(dx12-memory-pressure samples/dx12_memory_pressure/main.cpp)
+    target_link_libraries(dx12-memory-pressure PRIVATE arc-dx12-observer)
+endif()
+
 if(ARC_BUILD_TESTS)
     enable_testing()
     add_executable(arc-core-tests tests/core_tests.cpp)
