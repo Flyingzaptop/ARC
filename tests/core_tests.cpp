@@ -11,7 +11,41 @@
 // Assertions must execute in Release too, and must not open a CRT dialog.
 #define assert(condition) do { if (!(condition)) { std::cerr << "CHECK failed: " << #condition << " at line " << __LINE__ << '\n'; std::exit(1); } } while (false)
 
+template<class T> void feed(arc::ResourceGraph& graph, arc::EventType type, const T& payload, std::uint64_t time = 1) {
+    arc::Event event{};
+    event.header.type = type; event.header.timestamp_ns = time; event.header.payload_bytes = sizeof(T);
+    std::memcpy(event.payload.data(), &payload, sizeof(T)); graph.consume(event);
+}
+
 int main() {
+    {
+        arc::ResourceGraph g;
+        feed(g, arc::EventType::HeapCreated, arc::HeapCreatePayload{.heap = 1, .size = 65536});
+        for (auto id : {2ULL, 3ULL}) {
+            feed(g, arc::EventType::ResourceCreated, arc::ResourceCreatePayload{
+                .resource = id, .heap = 1, .allocation_bytes = 65536, .mip_levels = 4,
+                .kind = arc::ResourceKind::Texture2D, .allocation_kind = arc::ResourceAllocationKind::Placed});
+        }
+        assert(g.committed_bytes() == 0 && g.live_heap_bytes() == 65536 && g.live_allocation_bytes() == 131072);
+        feed(g, arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = 4, .resource = 2, .type = arc::ViewType::Srv});
+        g.analyze(); assert(g.find(2)->safety == arc::SafetyClass::GreenCandidate);
+        feed(g, arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = 4, .resource = 2, .type = arc::ViewType::Uav});
+        feed(g, arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = 4, .resource = 2, .type = arc::ViewType::Srv});
+        g.analyze(); assert(g.find(2)->safety == arc::SafetyClass::Red);
+        feed(g, arc::EventType::CommandQueueCreated, arc::QueueCreatePayload{.queue = 5});
+        feed(g, arc::EventType::CommandListCreated, arc::CommandListPayload{.command = 6});
+        feed(g, arc::EventType::CopyResource, arc::CopyPayload{.source = 2, .destination = 3, .command = 6});
+        assert(g.find(3)->write_count == 0);
+        feed(g, arc::EventType::CommandListClosed, arc::CommandListPayload{.command = 6});
+        feed(g, arc::EventType::QueueSubmit, arc::QueueSubmitPayload{.queue = 5, .command = 6}, 10);
+        assert(g.find(2)->read_count == 1 && g.find(2)->write_count == 0);
+        assert(g.find(3)->write_count == 1 && g.find(3)->queues.contains(5));
+        feed(g, arc::EventType::Present, arc::PresentPayload{.frame = 100});
+        g.analyze(); assert(g.find(3)->temperature == arc::Temperature::Cold);
+        feed(g, arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{.resource = 2}, 20);
+        assert(g.alive_at(15).size() == 2 && g.alive_at(20).size() == 1);
+        assert(g.errors() == 0);
+    }
     arc::EventRing ring(2);
     arc::Event first{};
     first.header.sequence = 1;

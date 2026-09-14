@@ -45,6 +45,7 @@ void ResourceGraph::consume(const Event& event) {
             .description = payload,
             .create_timestamp_ns = event.header.timestamp_ns,
             .alive = true,
+            .create_sequence = event.header.sequence,
         });
         live_allocation_bytes_ += payload.allocation_bytes;
         return;
@@ -58,13 +59,19 @@ void ResourceGraph::consume(const Event& event) {
         if (it != resources_.end() && it->second.alive) {
             it->second.alive = false;
             it->second.destroy_timestamp_ns = event.header.timestamp_ns;
+            it->second.destroy_sequence = event.header.sequence;
             live_allocation_bytes_ -= it->second.description.allocation_bytes;
         }
         return;
     }
     if (event.header.type == EventType::DescriptorWritten) {
         DescriptorWrittenPayload payload{};
-        if (decode(event, payload)) { views_.insert_or_assign(payload.descriptor, ViewRecord{.description = payload}); }
+        if (decode(event, payload)) {
+            views_.insert_or_assign(payload.descriptor, ViewRecord{.description = payload});
+            if (auto r = resources_.find(payload.resource); r != resources_.end()) {
+                r->second.evidence |= 1U << static_cast<unsigned>(payload.type);
+            }
+        }
         return;
     }
     if (event.header.type == EventType::CommandQueueCreated) {
@@ -76,19 +83,46 @@ void ResourceGraph::consume(const Event& event) {
         QueueSubmitPayload payload{};
         if (decode(event, payload)) {
             if (auto queue = queues_.find(payload.queue); queue != queues_.end()) { ++queue->second.submissions; }
+            else { ++errors_; }
+            auto command = commands_.find(payload.command);
+            if (command == commands_.end() || !command->second.closed) { ++errors_; return; }
+            submissions_.push_back({payload, event.header.timestamp_ns, presentation_frame_, command->second.counters});
+            for (const auto& copy : command->second.copies) {
+                use(copy.source, payload.queue, event.header.timestamp_ns, false);
+                use(copy.destination, payload.queue, event.header.timestamp_ns, true);
+                copies_.push_back({copy, payload.queue, event.header.timestamp_ns});
+            }
+            for (const auto& u : command->second.uses) { use(u.resource, payload.queue, event.header.timestamp_ns, u.write != 0); }
         }
         return;
     }
-    if (event.header.type == EventType::CopyResource || event.header.type == EventType::CopyBuffer || event.header.type == EventType::CopyTexture) {
+    if (event.header.type == EventType::CommandListCreated || event.header.type == EventType::CommandListReset || event.header.type == EventType::CommandListClosed) {
+        CommandListPayload p{};
+        if (decode(event, p)) {
+            if (event.header.type == EventType::CommandListClosed) { commands_[p.command].closed = true; }
+            else { commands_[p.command] = {}; }
+        }
+        return;
+    }
+    if (event.header.type == EventType::Barrier) {
+        BarrierPayload p{};
+        if (decode(event, p)) { commands_[p.command].barriers.push_back(p); }
+        return;
+    }
+    if (event.header.type == EventType::ResourceUse) {
+        ResourceUsePayload p{};
+        if (decode(event, p)) { commands_[p.command].uses.push_back(p); }
+        return;
+    }
+    if (event.header.type == EventType::CommandCounters) {
+        CountersPayload p{};
+        if (decode(event, p)) { commands_[p.command].counters = p; }
+        return;
+    }
+    if (event.header.type == EventType::CopyResource || event.header.type == EventType::CopyBuffer || event.header.type == EventType::CopyTexture || event.header.type == EventType::ResolveSubresource) {
         CopyPayload payload{};
         if (decode(event, payload)) {
-            for (const auto id : {payload.source, payload.destination}) {
-                if (auto resource = resources_.find(id); resource != resources_.end()) {
-                    resource->second.last_read_timestamp_ns = event.header.timestamp_ns;
-                    resource->second.last_used_frame = presentation_frame_;
-                    ++resource->second.read_count;
-                }
-            }
+            commands_[payload.command].copies.push_back(payload);
         }
         return;
     }
@@ -100,6 +134,52 @@ void ResourceGraph::consume(const Event& event) {
     if (event.header.type == EventType::MemoryBudgetSample) {
         MemoryBudgetPayload payload{};
         if (decode(event, payload)) { latest_budget_ = payload; }
+    }
+}
+
+void ResourceGraph::use(ResourceId id, QueueId queue, std::uint64_t timestamp, bool write) {
+    auto it = resources_.find(id);
+    if (it == resources_.end() || !it->second.alive) { ++errors_; return; }
+    auto& r = it->second;
+    r.queues.insert(queue);
+    r.last_used_frame = presentation_frame_;
+    if (write) { ++r.write_count; r.last_write_timestamp_ns = timestamp; }
+    else { ++r.read_count; r.last_read_timestamp_ns = timestamp; }
+}
+
+std::uint64_t ResourceGraph::committed_bytes() const noexcept {
+    std::uint64_t sum{};
+    for (const auto& [id, r] : resources_) {
+        if (r.alive && r.description.allocation_kind == ResourceAllocationKind::Committed) { sum += r.description.allocation_bytes; }
+    }
+    return sum;
+}
+
+std::vector<ResourceId> ResourceGraph::alive_at(std::uint64_t timestamp) const {
+    std::vector<ResourceId> result;
+    for (const auto& [id, r] : resources_) {
+        if (r.create_timestamp_ns <= timestamp && (r.alive || timestamp < r.destroy_timestamp_ns)) { result.push_back(id); }
+    }
+    return result;
+}
+
+void ResourceGraph::analyze() {
+    constexpr auto srv = 1U << static_cast<unsigned>(ViewType::Srv);
+    constexpr auto uav = 1U << static_cast<unsigned>(ViewType::Uav);
+    constexpr auto targets = (1U << static_cast<unsigned>(ViewType::Rtv)) | (1U << static_cast<unsigned>(ViewType::Dsv));
+    for (auto& [id, r] : resources_) {
+        r.safety = SafetyClass::Unknown; r.safety_confidence = 0;
+        if (r.evidence & uav) { r.safety = SafetyClass::Red; r.safety_confidence = 1; }
+        else if (r.evidence & targets) { r.safety = SafetyClass::Yellow; r.safety_confidence = 1; }
+        else if ((r.evidence & srv) && r.description.kind == ResourceKind::Texture2D && r.description.mip_levels > 1) {
+            r.safety = SafetyClass::GreenCandidate; r.safety_confidence = 0.6F;
+        }
+        if (r.safety == SafetyClass::Red) { r.temperature = Temperature::Pinned; }
+        else if (r.read_count + r.write_count == 0) { r.temperature = Temperature::Unknown; }
+        else {
+            const auto age = presentation_frame_ >= r.last_used_frame ? presentation_frame_ - r.last_used_frame : 0;
+            r.temperature = age <= 3 ? Temperature::Hot : age <= 60 ? Temperature::Warm : Temperature::Cold;
+        }
     }
 }
 

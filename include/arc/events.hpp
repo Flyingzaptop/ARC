@@ -39,6 +39,9 @@ enum class EventType : std::uint16_t {
     TelemetrySample,
     TraceOverflow,
     DiagnosticError,
+    ResolveSubresource,
+    CommandCounters,
+    ResourceUse,
 };
 
 struct EventHeader final {

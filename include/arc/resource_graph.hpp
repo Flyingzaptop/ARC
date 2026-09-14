@@ -65,16 +65,23 @@ struct CommandListPayload final { CommandId command{}; QueueClass type{QueueClas
 struct QueueSubmitPayload final { QueueId queue{}; CommandId command{}; std::uint64_t submission{}; };
 struct BarrierPayload final { ResourceId resource{}; CommandId command{}; std::uint32_t before_state{}; std::uint32_t after_state{}; std::uint32_t subresource{}; std::uint32_t reserved{}; };
 struct CopyPayload final { ResourceId source{}; ResourceId destination{}; CommandId command{}; std::uint64_t approximate_bytes{}; };
+struct FencePayload final { QueueId queue{}; std::uint64_t fence{}; std::uint64_t value{}; };
+struct CountersPayload final { CommandId command{}; std::uint64_t draws{}; std::uint64_t indexed_draws{}; std::uint64_t dispatches{}; std::uint64_t indirect{}; };
+struct ResourceUsePayload final { CommandId command{}; ResourceId resource{}; std::uint32_t write{}; std::uint32_t reserved{}; };
 struct PresentPayload final { std::uint64_t swapchain{}; FrameId frame{}; std::uint32_t sync_interval{}; std::uint32_t flags{}; };
 struct MemoryBudgetPayload final {
     std::uint64_t local_budget{}; std::uint64_t local_usage{};
     std::uint64_t local_available_for_reservation{}; std::uint64_t local_current_reservation{};
     std::uint64_t nonlocal_budget{}; std::uint64_t nonlocal_usage{};
+    std::uint64_t nonlocal_available_for_reservation{}; std::uint64_t nonlocal_current_reservation{};
 };
 
 struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
 struct ViewRecord final { DescriptorWrittenPayload description{}; };
 struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; };
+struct SubmissionRecord { QueueSubmitPayload description{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; CountersPayload counters{}; };
+struct CopyRecord { CopyPayload description{}; QueueId queue{}; std::uint64_t timestamp_ns{}; };
+struct CommandRecord { bool closed{}; std::vector<CopyPayload> copies; std::vector<ResourceUsePayload> uses; std::vector<BarrierPayload> barriers; CountersPayload counters{}; };
 
 struct ResourceRecord final {
     ResourceCreatePayload description{};
@@ -90,6 +97,9 @@ struct ResourceRecord final {
     FrameId last_used_frame{};
     std::unordered_set<QueueId> queues;
     bool alive{};
+    std::uint32_t evidence{}; // historical view bits; descriptor overwrite does not erase history
+    std::uint64_t create_sequence{};
+    std::uint64_t destroy_sequence{};
 };
 
 // A slow-path backend-neutral view of resource life. It deliberately receives
@@ -107,6 +117,13 @@ public:
     [[nodiscard]] std::vector<ResourceId> largest_resources(std::size_t limit) const;
     [[nodiscard]] FrameId presentation_frame() const noexcept;
     [[nodiscard]] std::optional<MemoryBudgetPayload> latest_budget() const noexcept;
+    void analyze();
+    [[nodiscard]] std::vector<ResourceId> alive_at(std::uint64_t timestamp_ns) const;
+    [[nodiscard]] std::uint64_t committed_bytes() const noexcept;
+    [[nodiscard]] const auto& resources() const noexcept { return resources_; }
+    [[nodiscard]] const auto& submissions() const noexcept { return submissions_; }
+    [[nodiscard]] const auto& copies() const noexcept { return copies_; }
+    [[nodiscard]] std::uint64_t errors() const noexcept { return errors_; }
 
 private:
     std::unordered_map<ResourceId, ResourceRecord> resources_;
@@ -117,6 +134,11 @@ private:
     std::uint64_t live_heap_bytes_{};
     FrameId presentation_frame_{};
     std::optional<MemoryBudgetPayload> latest_budget_;
+    std::unordered_map<CommandId, CommandRecord> commands_;
+    std::vector<SubmissionRecord> submissions_;
+    std::vector<CopyRecord> copies_;
+    std::uint64_t errors_{};
+    void use(ResourceId resource, QueueId queue, std::uint64_t timestamp, bool write);
 };
 
 }  // namespace arc
