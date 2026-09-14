@@ -86,6 +86,24 @@ int main(int argc, char** argv) try {
         check(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(entry.second->GetAddressOf())));
     }
     unsigned viewIndex{};
+    std::vector<arc::DescriptorWrittenPayload> expectedViews;
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbv{}; cbv.BufferLocation = owned[upload].resource->GetGPUVirtualAddress(); cbv.SizeInBytes = 256;
+        auto handle = srvHeap->GetCPUDescriptorHandleForHeapStart();
+        handle.ptr += viewIndex++ * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CreateConstantBufferView(&cbv, handle);
+        const auto id = ids.next(); expectedViews.push_back({.descriptor = id, .resource = owned[upload].id, .type = arc::ViewType::Cbv, .buffer_bytes = 256});
+        if (!baseline && !observer.observe_cbv(id, owned[upload].id, 0, 256)) { throw std::runtime_error("CBV observation failed"); }
+    }
+    ComPtr<ID3D12DescriptorHeap> samplerHeap;
+    D3D12_DESCRIPTOR_HEAP_DESC samplerHeapDesc{}; samplerHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER; samplerHeapDesc.NumDescriptors = 1;
+    check(device->CreateDescriptorHeap(&samplerHeapDesc, IID_PPV_ARGS(&samplerHeap)));
+    D3D12_SAMPLER_DESC sampler{}; sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+    sampler.AddressU = sampler.AddressV = sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS; sampler.MaxLOD = D3D12_FLOAT32_MAX;
+    device->CreateSampler(&sampler, samplerHeap->GetCPUDescriptorHandleForHeapStart());
+    const auto samplerId = ids.next(); expectedViews.push_back({.descriptor = samplerId, .type = arc::ViewType::Sampler});
+    if (!baseline && !observer.observe_sampler(samplerId)) { throw std::runtime_error("Sampler observation failed"); }
     if (std::string(ARC_SAMPLE_NAME) != "dx12-memory-pressure") {
         for (auto size : {512U, 1024U, 2048U, 4096U}) {
             for (auto format : {DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_BC1_UNORM, DXGI_FORMAT_BC7_UNORM}) {
@@ -97,7 +115,9 @@ int main(int argc, char** argv) try {
                 auto handle = srvHeap->GetCPUDescriptorHandleForHeapStart();
                 handle.ptr += viewIndex++ * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
                 device->CreateShaderResourceView(owned[index].resource.Get(), &v, handle);
-                if (!baseline && !observer.observe_srv(ids.next(), owned[index].id, v)) { throw std::runtime_error("SRV observation failed"); }
+                const auto descriptorId = ids.next();
+                expectedViews.push_back({.descriptor = descriptorId, .resource = owned[index].id, .type = arc::ViewType::Srv, .mip_count = 5, .layer_count = 1, .format = static_cast<unsigned>(format)});
+                if (!baseline && !observer.observe_srv(descriptorId, owned[index].id, v)) { throw std::runtime_error("SRV observation failed"); }
             }
         }
     }
@@ -339,7 +359,7 @@ int main(int argc, char** argv) try {
             if (message->Severity <= D3D12_MESSAGE_SEVERITY_ERROR) { std::cerr << message->pDescription << '\n'; valid = false; }
         }
     }
-    std::size_t matchedCreates{}, matchedDestroys{};
+    std::size_t matchedCreates{}, matchedDestroys{}, matchedViews{};
     std::uint64_t observedBytes{};
     if (!baseline) {
         const auto& g = session->graph();
@@ -354,6 +374,11 @@ int main(int argc, char** argv) try {
             valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes;
         }
         valid = valid && g.live_heap_bytes() == 0 && g.resources_on_heap(heapId).size() == 2;
+        for (const auto& expected : expectedViews) {
+            const auto actual = g.find_view(expected.descriptor);
+            matchedViews += actual && actual->description.resource == expected.resource && actual->description.type == expected.type && actual->description.mip_count == expected.mip_count && actual->description.layer_count == expected.layer_count && actual->description.buffer_bytes == expected.buffer_bytes;
+        }
+        valid = valid && matchedViews == expectedViews.size();
         valid = valid && arc::TraceReader::inspect("traces/" + stem + ".arcbin").status == arc::TraceReader::Status::Complete;
     }
     std::sort(times.begin(), times.end());
@@ -375,6 +400,7 @@ int main(int argc, char** argv) try {
         << ",\"reserved_supported\":" << (reservedSupported ? "true" : "false")
         << ",\"create_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedCreates) / owned.size()))
         << ",\"destroy_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedDestroys) / owned.size()))
+        << ",\"descriptor_mapping_accuracy\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedViews) / expectedViews.size()))
         << ",\"allocation_error_bytes\":" << (baseline ? "null" : std::to_string(observedBytes > expectedBytes ? observedBytes - expectedBytes : expectedBytes - observedBytes)) << ",\"gpu_proxies_ms\":{";
     const char* gpuNames[] = {"three_draws_64x64", "compute_16384_uints", "upload_1MiB", "readback_64KiB"};
     for (unsigned i = 0; i < 4; ++i) {
