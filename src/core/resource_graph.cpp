@@ -18,6 +18,7 @@ bool decode(const Event& event, T& output) noexcept {
 }  // namespace
 
 void ResourceGraph::consume(const Event& event) {
+    if (event.header.type == EventType::TraceOverflow || event.header.type == EventType::DiagnosticError) { ++errors_; return; }
     if (event.header.type == EventType::HeapCreated) {
         HeapCreatePayload payload{};
         if (decode(event, payload) && !heaps_.contains(payload.heap)) {

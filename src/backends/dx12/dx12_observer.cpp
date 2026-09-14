@@ -121,6 +121,7 @@ bool Observer::emit(const EventType type, const void* payload, const std::uint32
     }
     Event event{};
     event.header.timestamp_ns = monotonic_time_ns();
+    event.header.thread_id = GetCurrentThreadId();
     event.header.sequence = sequence_.fetch_add(1, std::memory_order_relaxed);
     event.header.type = type;
     event.header.payload_bytes = bytes;

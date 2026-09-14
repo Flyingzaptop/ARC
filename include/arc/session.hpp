@@ -32,6 +32,7 @@ public:
     bool complete() const noexcept { return stopped_ && !io_error_ && ring_.dropped_events() == 0; }
     std::size_t dropped() const noexcept { return ring_.dropped_events(); }
 private:
+    std::filesystem::path trace_path_;
     EventRing ring_;
     TraceWriter writer_;
     ResourceGraph graph_;
