@@ -29,6 +29,8 @@ int main(int argc, char** argv) try {
     const bool baseline = argc > 1 && std::string(argv[1]) == "baseline";
     const bool full = argc > 1 && std::string(argv[1]) == "full";
     const unsigned iterations = argc > 2 ? static_cast<unsigned>(std::stoul(argv[2])) : 200;
+    const double pressureFraction = argc > 3 ? std::stod(argv[3]) : 0.0;
+    if (!(pressureFraction >= 0.0 && pressureFraction <= 0.85)) { throw std::runtime_error("pressure fraction must be 0..0.85"); }
     if (iterations == 0 || iterations > 100000) { throw std::runtime_error("iterations must be 1..100000"); }
     std::filesystem::create_directories("traces");
     const std::string stem = std::string(ARC_SAMPLE_NAME) + (baseline ? "-baseline" : full ? "-full" : "-light");
@@ -60,6 +62,16 @@ int main(int argc, char** argv) try {
     const auto upload = allocate(buffer(bytes), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
     const auto gpu = allocate(buffer(bytes), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST);
     const auto readback = allocate(buffer(bytes), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    if (pressureFraction > 0) {
+        constexpr UINT64 increment = 32 * 1024 * 1024;
+        for (unsigned step = 0; step < 256; ++step) {
+            auto b = arc::dx12::query_memory_budget(adapter.Get());
+            if (!b) { throw std::runtime_error("pressure test needs a dynamic budget"); }
+            emit(arc::EventType::MemoryBudgetSample, *b);
+            if (b->local_usage + increment >= static_cast<UINT64>(b->local_budget * pressureFraction)) { break; }
+            allocate(buffer(increment), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON);
+        }
+    }
     // Separate heap ownership from resource footprints, including aliasing.
     D3D12_HEAP_DESC hd{}; hd.SizeInBytes = 4 * bytes; hd.Properties.Type = D3D12_HEAP_TYPE_DEFAULT; hd.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
     ComPtr<ID3D12Heap> heap; check(device->CreateHeap(&hd, IID_PPV_ARGS(&heap)));
