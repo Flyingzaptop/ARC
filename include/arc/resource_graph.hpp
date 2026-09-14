@@ -67,6 +67,11 @@ struct QueueCreatePayload final { QueueId queue{}; QueueClass type{QueueClass::U
 struct CommandListPayload final { CommandId command{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };
 struct QueueSubmitPayload final { QueueId queue{}; CommandId command{}; std::uint64_t submission{}; };
 struct BarrierPayload final { ResourceId resource{}; CommandId command{}; std::uint32_t before_state{}; std::uint32_t after_state{}; std::uint32_t subresource{}; std::uint32_t reserved{}; };
+struct ExtendedBarrierPayload {
+    CommandId command{}; ResourceId resource{}, related_resource{};
+    std::uint64_t sync_before{}, sync_after{}, access_before{}, access_after{}, offset{}, bytes{};
+    std::uint32_t layout_before{}, layout_after{}, first_mip{}, mip_count{}, first_layer{}, layer_count{}, first_plane{}, plane_count{}, flags{}, kind{};
+};
 struct CopyPayload final { ResourceId source{}; ResourceId destination{}; CommandId command{}; std::uint64_t approximate_bytes{}; };
 struct FencePayload final { QueueId queue{}; std::uint64_t fence{}; std::uint64_t value{}; };
 struct CountersPayload final { CommandId command{}; std::uint64_t draws{}; std::uint64_t indexed_draws{}; std::uint64_t dispatches{}; std::uint64_t indirect{}; };
@@ -84,7 +89,7 @@ struct ViewRecord final { DescriptorWrittenPayload description{}; };
 struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; };
 struct SubmissionRecord { QueueSubmitPayload description{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; CountersPayload counters{}; };
 struct CopyRecord { CopyPayload description{}; QueueId queue{}; std::uint64_t timestamp_ns{}; };
-struct CommandRecord { bool closed{}; std::vector<CopyPayload> copies; std::vector<ResourceUsePayload> uses; std::vector<BarrierPayload> barriers; CountersPayload counters{}; };
+struct CommandRecord { bool closed{}; std::vector<CopyPayload> copies; std::vector<ResourceUsePayload> uses; std::vector<BarrierPayload> barriers; std::vector<ExtendedBarrierPayload> extended_barriers; CountersPayload counters{}; };
 
 struct ResourceRecord final {
     ResourceCreatePayload description{};

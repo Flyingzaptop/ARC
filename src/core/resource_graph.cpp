@@ -31,6 +31,10 @@ void ResourceGraph::consume(const Event& event) {
     case EventType::QueueSubmit: expected = sizeof(QueueSubmitPayload); break;
     case EventType::CopyResource: case EventType::CopyBuffer: case EventType::CopyTexture: case EventType::ResolveSubresource: expected = sizeof(CopyPayload); break;
     case EventType::Barrier: expected = sizeof(BarrierPayload); break;
+    case EventType::ExtendedBarrier: expected = sizeof(ExtendedBarrierPayload); break;
+    case EventType::ResourceUse: expected = sizeof(ResourceUsePayload); break;
+    case EventType::CommandCounters: case EventType::Draw: case EventType::DrawIndexed: case EventType::Dispatch: case EventType::ExecuteIndirect: expected = sizeof(CountersPayload); break;
+    case EventType::FenceSignal: case EventType::FenceWait: expected = sizeof(FencePayload); break;
     case EventType::Present: expected = sizeof(PresentPayload); break;
     case EventType::MemoryBudgetSample: expected = sizeof(MemoryBudgetPayload); break;
     default: break;
@@ -126,6 +130,11 @@ void ResourceGraph::consume(const Event& event) {
     if (event.header.type == EventType::Barrier) {
         BarrierPayload p{};
         if (decode(event, p)) { commands_[p.command].barriers.push_back(p); }
+        return;
+    }
+    if (event.header.type == EventType::ExtendedBarrier) {
+        ExtendedBarrierPayload p{};
+        if (decode(event, p)) { commands_[p.command].extended_barriers.push_back(p); }
         return;
     }
     if (event.header.type == EventType::ResourceUse) {

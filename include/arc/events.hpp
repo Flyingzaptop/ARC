@@ -42,6 +42,7 @@ enum class EventType : std::uint16_t {
     ResolveSubresource,
     CommandCounters,
     ResourceUse,
+    ExtendedBarrier,
 };
 
 struct EventHeader final {

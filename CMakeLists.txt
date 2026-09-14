@@ -49,6 +49,7 @@ if(WIN32)
     add_library(arc-dx12-observer STATIC
         src/backends/dx12/dx12_observer.cpp
         src/backends/dx12/views.cpp
+        src/backends/dx12/barriers.cpp
     )
     target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)

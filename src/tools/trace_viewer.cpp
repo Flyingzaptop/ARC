@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
             }
             case arc::EventType::Present: { auto p = decode<arc::PresentPayload>(e); row("present", 0, 0, p.swapchain, 0, p.frame, static_cast<std::uint32_t>(p.result)); break; }
             case arc::EventType::Barrier: { auto p = decode<arc::BarrierPayload>(e); row("barrier", 0, p.command, p.resource, 0, p.before_state, p.after_state); break; }
+            case arc::EventType::ExtendedBarrier: { auto p = decode<arc::ExtendedBarrierPayload>(e); row("extended_barrier_sync", 0, p.command, p.resource, p.related_resource, p.sync_before, p.sync_after); row("extended_barrier_access", 0, p.command, p.resource, p.related_resource, p.access_before, p.access_after); row("extended_barrier_layout", 0, p.command, p.resource, p.related_resource, p.layout_before, p.layout_after); break; }
             case arc::EventType::CopyResource: case arc::EventType::CopyBuffer: case arc::EventType::CopyTexture: case arc::EventType::ResolveSubresource: {
                 auto p = decode<arc::CopyPayload>(e); row("copy_or_resolve_recorded", 0, p.command, p.source, p.destination, p.approximate_bytes, static_cast<unsigned>(e.header.type)); break;
             }

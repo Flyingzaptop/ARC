@@ -38,6 +38,10 @@ public:
     bool observe_dsv(DescriptorId id, ResourceId resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& view) noexcept;
     bool observe_cbv(DescriptorId id, ResourceId resource, std::uint64_t offset, std::uint32_t bytes) noexcept;
     bool observe_sampler(DescriptorId id) noexcept;
+    bool observe_barrier(CommandId command, ResourceId resource, const D3D12_RESOURCE_BARRIER& barrier, ResourceId related = 0) noexcept;
+    bool observe_barrier(CommandId command, const D3D12_GLOBAL_BARRIER& barrier) noexcept;
+    bool observe_barrier(CommandId command, ResourceId resource, const D3D12_BUFFER_BARRIER& barrier) noexcept;
+    bool observe_barrier(CommandId command, ResourceId resource, const D3D12_TEXTURE_BARRIER& barrier) noexcept;
     // Explicit integration hooks: caller reports a successful API operation.
     // One Observer is confined to one producer thread/ring.
     template<class T> bool observe(EventType type, const T& payload) noexcept {
