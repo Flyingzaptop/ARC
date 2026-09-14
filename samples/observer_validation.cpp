@@ -186,6 +186,20 @@ int main(int argc, char** argv) try {
     imageDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; imageDesc.SampleDesc.Count = 1; imageDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
     const auto imageIndex = allocate(imageDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_RENDER_TARGET);
     const auto imageReadback = allocate(buffer(64 * 256), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msaaSupport{}; msaaSupport.Format = imageDesc.Format; msaaSupport.SampleCount = 4;
+    check(device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &msaaSupport, sizeof(msaaSupport)));
+    const bool msaaSupported = msaaSupport.NumQualityLevels != 0;
+    std::size_t msaaIndex{}, resolveIndex{}, resolveReadback{};
+    auto msaaRtv = rtvHeap->GetCPUDescriptorHandleForHeapStart(); msaaRtv.ptr += 2 * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    if (msaaSupported) {
+        auto d = imageDesc; d.SampleDesc.Count = 4;
+        msaaIndex = allocate(d, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+        resolveIndex = allocate(imageDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+        resolveReadback = allocate(buffer(16384), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+        D3D12_RENDER_TARGET_VIEW_DESC v{}; v.Format = d.Format; v.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+        device->CreateRenderTargetView(owned[msaaIndex].resource.Get(), &v, msaaRtv);
+        if (!baseline && !observer.observe_rtv(ids.next(), owned[msaaIndex].id, v)) { throw std::runtime_error("MSAA view observation failed"); }
+    }
     auto imageRtv = rtvHeap->GetCPUDescriptorHandleForHeapStart(); imageRtv.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     device->CreateRenderTargetView(owned[imageIndex].resource.Get(), nullptr, imageRtv);
     emit(arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = ids.next(), .resource = owned[imageIndex].id, .type = arc::ViewType::Rtv, .mip_count = 1, .layer_count = 1});
@@ -281,6 +295,25 @@ int main(int argc, char** argv) try {
         imageDestination.PlacedFootprint.Footprint = {DXGI_FORMAT_R8G8B8A8_UNORM, 64, 64, 1, 256};
         list->CopyTextureRegion(&imageDestination, 0, 0, 0, &imageSource, nullptr);
         emit(arc::EventType::CopyTexture, arc::CopyPayload{.source = owned[imageIndex].id, .destination = owned[imageReadback].id, .command = commandId, .approximate_bytes = 16384});
+        if (msaaSupported) {
+            auto change = [&](std::size_t index, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+                D3D12_RESOURCE_BARRIER b{}; b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; b.Transition.pResource = owned[index].resource.Get();
+                b.Transition.Subresource = UINT_MAX; b.Transition.StateBefore = before; b.Transition.StateAfter = after;
+                list->ResourceBarrier(1, &b); emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[index].id, .command = commandId, .before_state = static_cast<unsigned>(before), .after_state = static_cast<unsigned>(after), .subresource = UINT_MAX});
+            };
+            change(msaaIndex, D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            const float color[] = {1, 0, 1, 1}; list->ClearRenderTargetView(msaaRtv, color, 0, nullptr);
+            emit(arc::EventType::ResourceUse, arc::ResourceUsePayload{.command = commandId, .resource = owned[msaaIndex].id, .write = 1});
+            change(msaaIndex, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+            if (frame) { change(resolveIndex, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST); }
+            list->ResolveSubresource(owned[resolveIndex].resource.Get(), 0, owned[msaaIndex].resource.Get(), 0, imageDesc.Format);
+            emit(arc::EventType::ResolveSubresource, arc::CopyPayload{.source = owned[msaaIndex].id, .destination = owned[resolveIndex].id, .command = commandId, .approximate_bytes = 16384});
+            change(resolveIndex, D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            auto source = imageSource; source.pResource = owned[resolveIndex].resource.Get();
+            auto destination = imageDestination; destination.pResource = owned[resolveReadback].resource.Get();
+            list->CopyTextureRegion(&destination, 0, 0, 0, &source, nullptr);
+            emit(arc::EventType::CopyTexture, arc::CopyPayload{.source = owned[resolveIndex].id, .destination = owned[resolveReadback].id, .command = commandId, .approximate_bytes = 16384});
+        }
         D3D12_RESOURCE_BARRIER cb{}; cb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; cb.Transition.pResource = owned[computeBuffer].resource.Get(); cb.Transition.Subresource = UINT_MAX;
         cb.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE; cb.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         if (frame) { list->ResourceBarrier(1, &cb); }
@@ -355,6 +388,11 @@ int main(int argc, char** argv) try {
     const unsigned char color[] = {255, 0, 255, 255};
     for (unsigned i = 0; i < 16384; ++i) { if (static_cast<unsigned char*>(mapped)[i] != color[i % 4]) { contents = false; break; } }
     owned[imageReadback].resource->Unmap(0, &empty);
+    if (msaaSupported) {
+        check(owned[resolveReadback].resource->Map(0, &imageRange, &mapped));
+        for (unsigned i = 0; i < 16384; ++i) { if (static_cast<unsigned char*>(mapped)[i] != color[i % 4]) { contents = false; break; } }
+        owned[resolveReadback].resource->Unmap(0, &empty);
+    }
     D3D12_RANGE computeRange{0, 65536}; check(owned[computeReadback].resource->Map(0, &computeRange, &mapped));
     for (unsigned i = 0; i < 16384; ++i) { if (static_cast<unsigned*>(mapped)[i] != i * 13 + 7) { contents = false; break; } }
     owned[computeReadback].resource->Unmap(0, &empty);
@@ -375,7 +413,7 @@ int main(int argc, char** argv) try {
     std::uint64_t observedBytes{};
     if (!baseline) {
         const auto& g = session->graph();
-        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == 2ULL * iterations && g.copies().size() == 5ULL * iterations;
+        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == 2ULL * iterations && g.copies().size() == (msaaSupported ? 7ULL : 5ULL) * iterations;
         for (const auto& sub : g.submissions()) {
             if (sub.description.queue == queueId) { valid = valid && sub.counters.draws == 1 && sub.counters.indexed_draws == 1 && sub.counters.dispatches == 1 && sub.counters.indirect == 1; }
         }
@@ -410,6 +448,7 @@ int main(int argc, char** argv) try {
         << ",\"mean_iteration_ms\":" << stats.mean << ",\"iteration_variance\":" << stats.variance
         << ",\"iterations_per_second\":" << 1000.0 / stats.mean << ",\"occluded_presents\":" << occludedPresents
         << ",\"reserved_supported\":" << (reservedSupported ? "true" : "false")
+        << ",\"msaa_resolve_supported\":" << (msaaSupported ? "true" : "false")
         << ",\"create_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedCreates) / owned.size()))
         << ",\"destroy_recall\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedDestroys) / owned.size()))
         << ",\"descriptor_mapping_accuracy\":" << (baseline ? "null" : std::to_string(static_cast<double>(matchedViews) / expectedViews.size()))
