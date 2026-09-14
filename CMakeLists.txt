@@ -17,6 +17,7 @@ option(ARC_GPU_TESTS "Run GPU-backed synthetic tests on this machine" OFF)
 add_library(arc-core STATIC
     src/core/clock.cpp
     src/core/session.cpp
+    src/core/multi_session.cpp
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
     src/core/trace_writer.cpp

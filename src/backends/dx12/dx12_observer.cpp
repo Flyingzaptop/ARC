@@ -49,7 +49,7 @@ std::uint64_t logical_bytes(const D3D12_RESOURCE_DESC& desc) noexcept {
 
 }  // namespace
 
-Observer::Observer(EventRing& events, IdAllocator& ids) noexcept : events_(events), ids_(ids) {}
+Observer::Observer(EventRing& events, IdAllocator& ids, std::atomic<std::uint64_t>* global_sequence) noexcept : events_(events), ids_(ids), global_sequence_(global_sequence) {}
 
 ResourceId Observer::observe_committed_resource(
     ID3D12Device* device, const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
@@ -131,7 +131,8 @@ bool Observer::emit(const EventType type, const void* payload, const std::uint32
     Event event{};
     event.header.timestamp_ns = monotonic_time_ns();
     event.header.thread_id = GetCurrentThreadId();
-    event.header.sequence = sequence_.fetch_add(1, std::memory_order_relaxed);
+    event.header.sequence = (global_sequence_ ? *global_sequence_ : sequence_).fetch_add(1, std::memory_order_relaxed);
+    event.header.flags = global_sequence_ ? 1 : 0;
     event.header.type = type;
     event.header.payload_bytes = bytes;
     std::memcpy(event.payload.data(), payload, bytes);

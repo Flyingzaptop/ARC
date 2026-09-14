@@ -2,6 +2,7 @@
 #include "arc/trace.hpp"
 #include "arc/resource_graph.hpp"
 #include "arc/session.hpp"
+#include "arc/multi_session.hpp"
 #include "arc/footprint.hpp"
 
 #include <cstdlib>
@@ -189,6 +190,23 @@ int main() {
         assert(writer.append({&first, 1}));
     }
     assert(arc::TraceReader::inspect(trace_path).events.size() == 1);
+    std::filesystem::remove(trace_path);
+    {
+        arc::MultiSession session(trace_path, 4, 16384);
+        std::vector<std::thread> producers;
+        for (std::size_t t = 0; t < 4; ++t) { producers.emplace_back([&, t] {
+            for (std::uint64_t i = 1; i <= 4000; ++i) {
+                const auto id = t * 4000 + i;
+                assert(session.emit(t, arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = id, .allocation_bytes = 4096}));
+                assert(session.emit(t, arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{.resource = id}));
+            }
+        }); }
+        for (auto& producer : producers) { producer.join(); }
+        session.finish(); assert(session.complete());
+        assert(session.graph().resource_count() == 16000 && session.graph().live_allocation_bytes() == 0);
+        auto trace = arc::TraceReader::inspect(trace_path); assert(trace.events.size() == 32000);
+        for (std::size_t i = 0; i < trace.events.size(); ++i) { assert(trace.events[i].header.sequence == i + 1); }
+    }
     std::filesystem::remove(trace_path);
     {
         arc::Session session(trace_path, 32768);

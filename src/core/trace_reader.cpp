@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <fstream>
+#include <algorithm>
 
 namespace arc {
 namespace {
@@ -46,6 +47,10 @@ TraceReader::Result TraceReader::inspect(const std::filesystem::path& path) {
         }
         if (!valid) { result.events.resize(old_size); result.status = Status::CorruptTail; break; }
         ++result.complete_chunks;
+    }
+    if (std::any_of(result.events.begin(), result.events.end(), [](const Event& e) { return (e.header.flags & 1) != 0; })) {
+        if (!std::all_of(result.events.begin(), result.events.end(), [](const Event& e) { return (e.header.flags & 1) != 0; })) { result.status = Status::CorruptTail; }
+        else { std::stable_sort(result.events.begin(), result.events.end(), [](const Event& a, const Event& b) { return a.header.sequence < b.header.sequence; }); }
     }
     return result;
 }

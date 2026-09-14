@@ -18,7 +18,7 @@ namespace arc::dx12 {
 // substitutes descriptors, transitions, or resource contents.
 class Observer final {
 public:
-    Observer(EventRing& events, IdAllocator& ids) noexcept;
+    Observer(EventRing& events, IdAllocator& ids, std::atomic<std::uint64_t>* global_sequence = nullptr) noexcept;
 
     [[nodiscard]] ResourceId observe_committed_resource(
         ID3D12Device* device,
@@ -54,6 +54,7 @@ private:
     EventRing& events_;
     IdAllocator& ids_;
     std::atomic<std::uint64_t> sequence_{1};
+    std::atomic<std::uint64_t>* global_sequence_{};
 };
 
 // Snapshot only. DXGI reports current process accounting; physical VRAM is not
