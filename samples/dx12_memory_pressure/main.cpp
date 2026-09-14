@@ -39,11 +39,37 @@ int main() {
         resources.emplace_back(observer.observe_committed_resource(device.Get(), desc, resource.Get()), resource);
     }
 
+    D3D12_HEAP_DESC placed_heap_desc{};
+    placed_heap_desc.SizeInBytes = 16ULL * 1024ULL * 1024ULL;
+    placed_heap_desc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
+    placed_heap_desc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+    ComPtr<ID3D12Heap> placed_heap;
+    arc::HeapId placed_heap_id{};
+    if (SUCCEEDED(device->CreateHeap(&placed_heap_desc, IID_PPV_ARGS(&placed_heap)))) {
+        placed_heap_id = observer.observe_heap(placed_heap_desc, placed_heap.Get());
+        D3D12_RESOURCE_DESC placed_desc{};
+        placed_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        placed_desc.Width = 4ULL * 1024ULL * 1024ULL;
+        placed_desc.Height = 1;
+        placed_desc.DepthOrArraySize = 1;
+        placed_desc.MipLevels = 1;
+        placed_desc.SampleDesc.Count = 1;
+        placed_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        ComPtr<ID3D12Resource> placed_resource;
+        if (SUCCEEDED(device->CreatePlacedResource(placed_heap.Get(), 0, &placed_desc,
+                D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&placed_resource)))) {
+            resources.emplace_back(observer.observe_placed_resource(
+                device.Get(), placed_heap_id, 0, placed_desc, placed_resource.Get()), placed_resource);
+        }
+    }
+
     arc::ResourceGraph graph;
     arc::Event event{};
     while (events.try_pop(event)) { graph.consume(event); }
-    std::cout << "Observed " << graph.resource_count() << " resources, "
-              << graph.live_allocation_bytes() / (1024 * 1024) << " MiB allocated\n";
+    std::cout << "Observed " << graph.resource_count() << " resources; resource footprints: "
+              << graph.live_allocation_bytes() / (1024 * 1024) << " MiB; heap allocations: "
+              << graph.live_heap_bytes() / (1024 * 1024) << " MiB\n";
     for (const auto& [id, resource] : resources) { observer.observe_resource_destroyed(id); }
+    if (placed_heap_id != 0) { observer.observe_heap_destroyed(placed_heap_id); }
     return 0;
 }

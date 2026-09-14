@@ -34,21 +34,59 @@ Observer::Observer(EventRing& events, IdAllocator& ids) noexcept : events_(event
 
 ResourceId Observer::observe_committed_resource(
     ID3D12Device* device, const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
-    if (device == nullptr || resource == nullptr) {
+    return observe_resource(device, 0, 0, ResourceAllocationKind::Committed, description, resource);
+}
+
+HeapId Observer::observe_heap(const D3D12_HEAP_DESC& description, ID3D12Heap* heap) noexcept {
+    if (heap == nullptr) { return 0; }
+    const HeapId id = ids_.next();
+    const HeapCreatePayload payload{
+        .heap = id,
+        .size = description.SizeInBytes,
+        .backend_properties = static_cast<std::uint64_t>(description.Properties.Type),
+        .backend_flags = static_cast<std::uint64_t>(description.Flags),
+    };
+    return emit(EventType::HeapCreated, &payload, sizeof(payload)) ? id : 0;
+}
+
+void Observer::observe_heap_destroyed(const HeapId heap) noexcept {
+    const HeapDestroyPayload payload{.heap = heap};
+    (void)emit(EventType::HeapDestroyed, &payload, sizeof(payload));
+}
+
+ResourceId Observer::observe_placed_resource(ID3D12Device* device, const HeapId heap, const std::uint64_t offset,
+                                              const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
+    return observe_resource(device, heap, offset, ResourceAllocationKind::Placed, description, resource);
+}
+
+ResourceId Observer::observe_reserved_resource(const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
+    return observe_resource(nullptr, 0, 0, ResourceAllocationKind::Reserved, description, resource);
+}
+
+ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, const std::uint64_t offset,
+                                      const ResourceAllocationKind kind, const D3D12_RESOURCE_DESC& description,
+                                      ID3D12Resource* resource) noexcept {
+    if (resource == nullptr || (kind != ResourceAllocationKind::Reserved && device == nullptr)) {
         return 0;
     }
-    const auto allocation = device->GetResourceAllocationInfo(0, 1, &description);
+    const auto allocation = device == nullptr ? D3D12_RESOURCE_ALLOCATION_INFO{} :
+        device->GetResourceAllocationInfo(0, 1, &description);
     const ResourceId id = ids_.next();
     const ResourceCreatePayload payload{
         .resource = id,
+        .heap = heap,
         .virtual_bytes = logical_bytes(description),
-        .allocation_bytes = allocation.SizeInBytes,
+        .allocation_bytes = kind == ResourceAllocationKind::Reserved ? 0 : allocation.SizeInBytes,
+        .heap_offset = offset,
         .width = static_cast<std::uint32_t>(description.Width > UINT32_MAX ? UINT32_MAX : description.Width),
         .height = description.Height,
         .depth = description.DepthOrArraySize,
         .mip_levels = description.MipLevels,
         .array_layers = description.DepthOrArraySize,
         .kind = resource_kind(description.Dimension),
+        .allocation_kind = kind,
+        .format = static_cast<std::uint32_t>(description.Format),
+        .resource_flags = static_cast<std::uint32_t>(description.Flags),
     };
     return emit(EventType::ResourceCreated, &payload, sizeof(payload)) ? id : 0;
 }

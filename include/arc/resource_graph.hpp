@@ -40,7 +40,7 @@ struct ResourceCreatePayload final {
     std::uint16_t array_layers{};
     ResourceKind kind{ResourceKind::Unknown};
     ResourceAllocationKind allocation_kind{ResourceAllocationKind::Committed};
-    std::uint16_t format{};
+    std::uint32_t format{};
     std::uint32_t resource_flags{};
     std::uint8_t plane_count{1};
     std::uint8_t reserved[3]{};
@@ -57,7 +57,7 @@ struct DescriptorWrittenPayload final {
     std::uint16_t mip_count{};
     std::uint16_t first_layer{};
     std::uint16_t layer_count{};
-    std::uint16_t format{};
+    std::uint32_t format{};
 };
 
 struct QueueCreatePayload final { QueueId queue{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };

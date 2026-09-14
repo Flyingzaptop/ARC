@@ -2,6 +2,7 @@
 
 #include "arc/event_ring.hpp"
 #include "arc/ids.hpp"
+#include "arc/resource_graph.hpp"
 
 #include <d3d12.h>
 
@@ -21,10 +22,20 @@ public:
         ID3D12Device* device,
         const D3D12_RESOURCE_DESC& description,
         ID3D12Resource* resource) noexcept;
+    [[nodiscard]] HeapId observe_heap(const D3D12_HEAP_DESC& description, ID3D12Heap* heap) noexcept;
+    void observe_heap_destroyed(HeapId heap) noexcept;
+    [[nodiscard]] ResourceId observe_placed_resource(
+        ID3D12Device* device, HeapId heap, std::uint64_t offset,
+        const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
+    [[nodiscard]] ResourceId observe_reserved_resource(
+        const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
     void observe_resource_destroyed(ResourceId resource) noexcept;
 
 private:
     [[nodiscard]] bool emit(EventType type, const void* payload, std::uint32_t bytes) noexcept;
+    [[nodiscard]] ResourceId observe_resource(
+        ID3D12Device* device, HeapId heap, std::uint64_t offset,
+        ResourceAllocationKind kind, const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
 
     EventRing& events_;
     IdAllocator& ids_;
