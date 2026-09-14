@@ -5,9 +5,11 @@
 #include "arc/resource_graph.hpp"
 
 #include <d3d12.h>
+#include <dxgi1_4.h>
 
 #include <atomic>
 #include <cstdint>
+#include <optional>
 
 namespace arc::dx12 {
 
@@ -41,5 +43,9 @@ private:
     IdAllocator& ids_;
     std::atomic<std::uint64_t> sequence_{1};
 };
+
+// Snapshot only. DXGI reports current process accounting; physical VRAM is not
+// substituted for the dynamic operating-system budget.
+[[nodiscard]] std::optional<MemoryBudgetPayload> query_memory_budget(IDXGIAdapter3* adapter) noexcept;
 
 }  // namespace arc::dx12

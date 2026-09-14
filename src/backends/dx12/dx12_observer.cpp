@@ -4,6 +4,7 @@
 #include "arc/resource_graph.hpp"
 
 #include <cstring>
+#include <optional>
 
 namespace arc::dx12 {
 namespace {
@@ -107,6 +108,24 @@ bool Observer::emit(const EventType type, const void* payload, const std::uint32
     event.header.payload_bytes = bytes;
     std::memcpy(event.payload.data(), payload, bytes);
     return events_.try_emit(event);
+}
+
+std::optional<MemoryBudgetPayload> query_memory_budget(IDXGIAdapter3* adapter) noexcept {
+    if (adapter == nullptr) { return std::nullopt; }
+    DXGI_QUERY_VIDEO_MEMORY_INFO local{};
+    DXGI_QUERY_VIDEO_MEMORY_INFO nonlocal{};
+    if (FAILED(adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &local)) ||
+        FAILED(adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &nonlocal))) {
+        return std::nullopt;
+    }
+    return MemoryBudgetPayload{
+        .local_budget = local.Budget,
+        .local_usage = local.CurrentUsage,
+        .local_available_for_reservation = local.AvailableForReservation,
+        .local_current_reservation = local.CurrentReservation,
+        .nonlocal_budget = nonlocal.Budget,
+        .nonlocal_usage = nonlocal.CurrentUsage,
+    };
 }
 
 }  // namespace arc::dx12

@@ -42,6 +42,7 @@ if(WIN32)
     target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)
     target_compile_features(arc-dx12-observer PUBLIC cxx_std_23)
+    target_link_libraries(arc-calibrate PRIVATE arc-dx12-observer dxgi)
 
     add_executable(dx12-memory-pressure samples/dx12_memory_pressure/main.cpp)
     target_link_libraries(dx12-memory-pressure PRIVATE arc-dx12-observer)
