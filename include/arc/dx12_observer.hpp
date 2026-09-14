@@ -32,6 +32,12 @@ public:
     [[nodiscard]] ResourceId observe_reserved_resource(
         const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
     void observe_resource_destroyed(ResourceId resource) noexcept;
+    bool observe_srv(DescriptorId id, ResourceId resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& view) noexcept;
+    bool observe_uav(DescriptorId id, ResourceId resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& view) noexcept;
+    bool observe_rtv(DescriptorId id, ResourceId resource, const D3D12_RENDER_TARGET_VIEW_DESC& view) noexcept;
+    bool observe_dsv(DescriptorId id, ResourceId resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& view) noexcept;
+    bool observe_cbv(DescriptorId id, ResourceId resource, std::uint64_t offset, std::uint32_t bytes) noexcept;
+    bool observe_sampler(DescriptorId id) noexcept;
     // Explicit integration hooks: caller reports a successful API operation.
     // One Observer is confined to one producer thread/ring.
     template<class T> bool observe(EventType type, const T& payload) noexcept {

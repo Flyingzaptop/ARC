@@ -53,11 +53,13 @@ struct DescriptorWrittenPayload final {
     ResourceId resource{};
     ViewType type{ViewType::Unknown};
     std::uint8_t reserved{};
-    std::uint16_t first_mip{};
-    std::uint16_t mip_count{};
-    std::uint16_t first_layer{};
-    std::uint16_t layer_count{};
+    std::uint32_t first_mip{};
+    std::uint32_t mip_count{}; // UINT32_MAX preserves native all-remaining sentinel
+    std::uint32_t first_layer{};
+    std::uint32_t layer_count{};
     std::uint32_t format{};
+    std::uint64_t buffer_offset{};
+    std::uint64_t buffer_bytes{};
 };
 
 struct QueueCreatePayload final { QueueId queue{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };

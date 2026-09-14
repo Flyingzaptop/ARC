@@ -97,7 +97,7 @@ int main(int argc, char** argv) try {
                 auto handle = srvHeap->GetCPUDescriptorHandleForHeapStart();
                 handle.ptr += viewIndex++ * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
                 device->CreateShaderResourceView(owned[index].resource.Get(), &v, handle);
-                emit(arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = ids.next(), .resource = owned[index].id, .type = arc::ViewType::Srv, .mip_count = 5, .layer_count = 1, .format = static_cast<std::uint32_t>(format)});
+                if (!baseline && !observer.observe_srv(ids.next(), owned[index].id, v)) { throw std::runtime_error("SRV observation failed"); }
             }
         }
     }

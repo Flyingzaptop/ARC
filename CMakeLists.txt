@@ -47,6 +47,7 @@ target_link_libraries(arc-calibrate PRIVATE arc::core)
 if(WIN32)
     add_library(arc-dx12-observer STATIC
         src/backends/dx12/dx12_observer.cpp
+        src/backends/dx12/views.cpp
     )
     target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)
@@ -65,4 +66,9 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-core-tests tests/core_tests.cpp)
     target_link_libraries(arc-core-tests PRIVATE arc::core)
     add_test(NAME arc-core-tests COMMAND arc-core-tests)
+    if(WIN32)
+        add_executable(arc-dx12-view-tests tests/dx12_view_tests.cpp)
+        target_link_libraries(arc-dx12-view-tests PRIVATE arc-dx12-observer)
+        add_test(NAME arc-dx12-view-tests COMMAND arc-dx12-view-tests)
+    endif()
 endif()
