@@ -1,0 +1,144 @@
+#include "arc/dx12_observer.hpp"
+#include "arc/session.hpp"
+#include <wrl/client.h>
+#include <algorithm>
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+using Microsoft::WRL::ComPtr;
+static void check(HRESULT hr) { if (FAILED(hr)) { throw std::runtime_error("D3D12 HRESULT " + std::to_string(static_cast<unsigned>(hr))); } }
+static D3D12_RESOURCE_DESC buffer(UINT64 size) {
+    D3D12_RESOURCE_DESC d{}; d.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER; d.Width = size;
+    d.Height = 1; d.DepthOrArraySize = 1; d.MipLevels = 1; d.SampleDesc.Count = 1; d.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; return d;
+}
+struct Owned { arc::ResourceId id{}; ComPtr<ID3D12Resource> resource; UINT64 bytes{}; };
+int main(int argc, char** argv) try {
+    const bool baseline = argc > 1 && std::string(argv[1]) == "baseline";
+    const bool full = argc > 1 && std::string(argv[1]) == "full";
+    const unsigned iterations = argc > 2 ? static_cast<unsigned>(std::stoul(argv[2])) : 200;
+    if (iterations == 0 || iterations > 100000) { throw std::runtime_error("iterations must be 1..100000"); }
+    std::filesystem::create_directories("traces");
+    const std::string stem = std::string(ARC_SAMPLE_NAME) + (baseline ? "-baseline" : full ? "-full" : "-light");
+    arc::Session session("traces/" + stem + ".arcbin", 65536);
+    arc::IdAllocator ids;
+    arc::dx12::Observer observer(session.ring(), ids);
+    auto emit = [&](arc::EventType type, const auto& p) { if (!baseline && !observer.observe(type, p)) { throw std::runtime_error("trace overflow"); } };
+    ComPtr<ID3D12Device> device; check(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)));
+    ComPtr<IDXGIFactory4> factory; check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
+    ComPtr<IDXGIAdapter3> adapter; check(factory->EnumAdapterByLuid(device->GetAdapterLuid(), IID_PPV_ARGS(&adapter)));
+    auto budget = [&] { if (auto b = arc::dx12::query_memory_budget(adapter.Get())) { emit(arc::EventType::MemoryBudgetSample, *b); } };
+    budget();
+    std::vector<Owned> owned;
+    auto allocate = [&](D3D12_RESOURCE_DESC d, D3D12_HEAP_TYPE type, D3D12_RESOURCE_STATES state) -> std::size_t {
+        D3D12_HEAP_PROPERTIES hp{}; hp.Type = type;
+        Owned o; check(device->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &d, state, nullptr, IID_PPV_ARGS(&o.resource)));
+        o.bytes = device->GetResourceAllocationInfo(0, 1, &d).SizeInBytes;
+        o.id = baseline ? ids.next() : observer.observe_committed_resource(device.Get(), d, o.resource.Get());
+        if (!o.id) { throw std::runtime_error("resource observation failed"); }
+        owned.push_back(std::move(o)); return owned.size() - 1;
+    };
+    constexpr UINT64 bytes = 1024 * 1024;
+    const auto upload = allocate(buffer(bytes), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+    const auto gpu = allocate(buffer(bytes), D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST);
+    const auto readback = allocate(buffer(bytes), D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+    void* mapped{}; D3D12_RANGE empty{};
+    check(owned[upload].resource->Map(0, &empty, &mapped));
+    for (std::size_t i = 0; i < bytes; ++i) { static_cast<unsigned char*>(mapped)[i] = static_cast<unsigned char>((i * 17 + 31) & 255); }
+    owned[upload].resource->Unmap(0, nullptr);
+    ComPtr<ID3D12DescriptorHeap> srvHeap, rtvHeap, dsvHeap;
+    for (auto entry : {std::pair{D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, std::addressof(srvHeap)}, {D3D12_DESCRIPTOR_HEAP_TYPE_RTV, std::addressof(rtvHeap)}, {D3D12_DESCRIPTOR_HEAP_TYPE_DSV, std::addressof(dsvHeap)}}) {
+        D3D12_DESCRIPTOR_HEAP_DESC desc{}; desc.Type = entry.first; desc.NumDescriptors = 64;
+        check(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(entry.second->GetAddressOf())));
+    }
+    unsigned viewIndex{};
+    if (std::string(ARC_SAMPLE_NAME) != "dx12-memory-pressure") {
+        for (auto size : {512U, 1024U, 2048U, 4096U}) {
+            for (auto format : {DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_BC1_UNORM, DXGI_FORMAT_BC7_UNORM}) {
+                D3D12_RESOURCE_DESC d{}; d.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width = size; d.Height = size;
+                d.DepthOrArraySize = 1; d.MipLevels = 5; d.Format = format; d.SampleDesc.Count = 1;
+                auto index = allocate(d, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON);
+                D3D12_SHADER_RESOURCE_VIEW_DESC v{}; v.Format = format; v.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                v.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; v.Texture2D.MipLevels = 5;
+                auto handle = srvHeap->GetCPUDescriptorHandleForHeapStart();
+                handle.ptr += viewIndex++ * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                device->CreateShaderResourceView(owned[index].resource.Get(), &v, handle);
+                emit(arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = ids.next(), .resource = owned[index].id, .type = arc::ViewType::Srv, .mip_count = 5, .layer_count = 1, .format = static_cast<std::uint32_t>(format)});
+            }
+        }
+    }
+    if (std::string(ARC_SAMPLE_NAME) == "dx12-mixed-resources") {
+        for (auto type : {arc::ViewType::Uav, arc::ViewType::Rtv, arc::ViewType::Dsv}) {
+            D3D12_RESOURCE_DESC d{}; d.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D; d.Width = d.Height = 512;
+            d.DepthOrArraySize = 1; d.MipLevels = 1; d.SampleDesc.Count = 1;
+            d.Format = type == arc::ViewType::Dsv ? DXGI_FORMAT_D32_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+            d.Flags = type == arc::ViewType::Dsv ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : type == arc::ViewType::Rtv ? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            auto index = allocate(d, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COMMON);
+            if (type == arc::ViewType::Rtv) { device->CreateRenderTargetView(owned[index].resource.Get(), nullptr, rtvHeap->GetCPUDescriptorHandleForHeapStart()); }
+            else if (type == arc::ViewType::Dsv) { device->CreateDepthStencilView(owned[index].resource.Get(), nullptr, dsvHeap->GetCPUDescriptorHandleForHeapStart()); }
+            else { auto h = srvHeap->GetCPUDescriptorHandleForHeapStart(); h.ptr += viewIndex++ * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV); device->CreateUnorderedAccessView(owned[index].resource.Get(), nullptr, nullptr, h); }
+            emit(arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = ids.next(), .resource = owned[index].id, .type = type, .mip_count = 1, .layer_count = 1});
+        }
+    }
+    ComPtr<ID3D12CommandQueue> queue; D3D12_COMMAND_QUEUE_DESC qd{}; qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    check(device->CreateCommandQueue(&qd, IID_PPV_ARGS(&queue)));
+    ComPtr<ID3D12CommandAllocator> allocator; check(device->CreateCommandAllocator(qd.Type, IID_PPV_ARGS(&allocator)));
+    ComPtr<ID3D12GraphicsCommandList> list; check(device->CreateCommandList(0, qd.Type, allocator.Get(), nullptr, IID_PPV_ARGS(&list)));
+    ComPtr<ID3D12Fence> fence; check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+    const auto queueId = ids.next(), commandId = ids.next(), fenceId = ids.next();
+    emit(arc::EventType::CommandQueueCreated, arc::QueueCreatePayload{.queue = queueId, .type = arc::QueueClass::Graphics});
+    emit(arc::EventType::CommandListCreated, arc::CommandListPayload{.command = commandId});
+    HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr); if (!done) { throw std::runtime_error("CreateEvent failed"); }
+    std::vector<double> times; times.reserve(iterations);
+    auto transition = [&](D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+        D3D12_RESOURCE_BARRIER b{}; b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; b.Transition.pResource = owned[gpu].resource.Get();
+        b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES; b.Transition.StateBefore = before; b.Transition.StateAfter = after;
+        list->ResourceBarrier(1, &b);
+        emit(arc::EventType::Barrier, arc::BarrierPayload{.resource = owned[gpu].id, .command = commandId, .before_state = static_cast<unsigned>(before), .after_state = static_cast<unsigned>(after), .subresource = UINT32_MAX});
+    };
+    for (unsigned frame = 0; frame < iterations; ++frame) {
+        auto start = std::chrono::steady_clock::now();
+        if (frame) { check(allocator->Reset()); check(list->Reset(allocator.Get(), nullptr)); emit(arc::EventType::CommandListReset, arc::CommandListPayload{.command = commandId}); transition(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST); }
+        list->CopyBufferRegion(owned[gpu].resource.Get(), 0, owned[upload].resource.Get(), 0, bytes);
+        emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[upload].id, .destination = owned[gpu].id, .command = commandId, .approximate_bytes = bytes});
+        transition(D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        list->CopyBufferRegion(owned[readback].resource.Get(), 0, owned[gpu].resource.Get(), 0, bytes);
+        emit(arc::EventType::CopyBuffer, arc::CopyPayload{.source = owned[gpu].id, .destination = owned[readback].id, .command = commandId, .approximate_bytes = bytes});
+        if (full) { emit(arc::EventType::TelemetrySample, arc::CountersPayload{.command = commandId}); }
+        check(list->Close()); emit(arc::EventType::CommandListClosed, arc::CommandListPayload{.command = commandId});
+        ID3D12CommandList* submit[] = {list.Get()}; queue->ExecuteCommandLists(1, submit);
+        emit(arc::EventType::QueueSubmit, arc::QueueSubmitPayload{.queue = queueId, .command = commandId, .submission = frame + 1ULL});
+        check(queue->Signal(fence.Get(), frame + 1ULL)); emit(arc::EventType::FenceSignal, arc::FencePayload{.queue = queueId, .fence = fenceId, .value = frame + 1ULL});
+        check(fence->SetEventOnCompletion(frame + 1ULL, done));
+        if (WaitForSingleObject(done, 10000) != WAIT_OBJECT_0) { throw std::runtime_error("GPU fence timeout"); }
+        // CPU wait uses queue=0, never implies a GPU queue dependency.
+        emit(arc::EventType::FenceWait, arc::FencePayload{.fence = fenceId, .value = frame + 1ULL});
+        if (frame % 60 == 0) { budget(); }
+        times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+    }
+    CloseHandle(done);
+    D3D12_RANGE range{0, bytes}; check(owned[readback].resource->Map(0, &range, &mapped));
+    bool contents = true;
+    for (std::size_t i = 0; i < bytes; ++i) { if (static_cast<unsigned char*>(mapped)[i] != static_cast<unsigned char>((i * 17 + 31) & 255)) { contents = false; break; } }
+    owned[readback].resource->Unmap(0, &empty);
+    UINT64 expectedBytes{}; for (auto& o : owned) { expectedBytes += o.bytes; o.resource.Reset(); if (!baseline) { observer.observe_resource_destroyed(o.id); } }
+    session.finish();
+    bool valid = contents && session.complete();
+    if (!baseline) {
+        const auto& g = session.graph();
+        valid = valid && g.resource_count() == owned.size() && g.live_allocation_bytes() == 0 && g.errors() == 0 && g.submissions().size() == iterations && g.copies().size() == 2ULL * iterations;
+        for (const auto& o : owned) { auto r = g.find(o.id); valid = valid && r && !r->alive && r->description.allocation_bytes == o.bytes; }
+        valid = valid && arc::TraceReader::inspect("traces/" + stem + ".arcbin").status == arc::TraceReader::Status::Complete;
+    }
+    std::sort(times.begin(), times.end());
+    auto percentile = [&](double p) { return times[static_cast<std::size_t>(p * (times.size() - 1))]; };
+    std::ofstream report("traces/" + stem + ".json");
+    report << "{\n\"sample\":\"" << ARC_SAMPLE_NAME << "\",\"iterations\":" << iterations << ",\"resources\":" << owned.size()
+        << ",\"expected_allocation_bytes\":" << expectedBytes << ",\"contents_match\":" << (contents ? "true" : "false")
+        << ",\"valid\":" << (valid ? "true" : "false") << ",\"dropped\":" << session.dropped()
+        << ",\"iteration_ms_p50\":" << percentile(.5) << ",\"iteration_ms_p95\":" << percentile(.95) << ",\"iteration_ms_p99\":" << percentile(.99) << "}\n";
+    std::cout << stem << ": valid=" << valid << " resources=" << owned.size() << " iterations=" << iterations << " p50_ms=" << percentile(.5) << " p99_ms=" << percentile(.99) << '\n';
+    return valid ? 0 : 1;
+} catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

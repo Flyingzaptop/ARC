@@ -32,6 +32,12 @@ public:
     [[nodiscard]] ResourceId observe_reserved_resource(
         const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
     void observe_resource_destroyed(ResourceId resource) noexcept;
+    // Explicit integration hooks: caller reports a successful API operation.
+    // One Observer is confined to one producer thread/ring.
+    template<class T> bool observe(EventType type, const T& payload) noexcept {
+        static_assert(std::is_trivially_copyable_v<T> && sizeof(T) <= kMaxEventPayloadBytes);
+        return emit(type, &payload, sizeof(T));
+    }
 
 private:
     [[nodiscard]] bool emit(EventType type, const void* payload, std::uint32_t bytes) noexcept;

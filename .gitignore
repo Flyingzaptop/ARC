@@ -1,4 +1,5 @@
 /build/
+/traces/
 *.arcbin
 *.sqlite
 *.user

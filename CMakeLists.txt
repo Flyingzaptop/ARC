@@ -51,8 +51,11 @@ if(WIN32)
     target_compile_features(arc-dx12-observer PUBLIC cxx_std_23)
     target_link_libraries(arc-calibrate PRIVATE arc-dx12-observer dxgi)
 
-    add_executable(dx12-memory-pressure samples/dx12_memory_pressure/main.cpp)
-    target_link_libraries(dx12-memory-pressure PRIVATE arc-dx12-observer)
+    foreach(sample dx12-memory-pressure dx12-texture-pressure dx12-mixed-resources)
+        add_executable(${sample} samples/observer_validation.cpp)
+        target_compile_definitions(${sample} PRIVATE ARC_SAMPLE_NAME="${sample}")
+        target_link_libraries(${sample} PRIVATE arc-dx12-observer)
+    endforeach()
 endif()
 
 if(ARC_BUILD_TESTS)

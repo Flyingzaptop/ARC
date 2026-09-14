@@ -81,9 +81,9 @@ ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, c
         .heap_offset = offset,
         .width = static_cast<std::uint32_t>(description.Width > UINT32_MAX ? UINT32_MAX : description.Width),
         .height = description.Height,
-        .depth = description.DepthOrArraySize,
+        .depth = description.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? description.DepthOrArraySize : 1U,
         .mip_levels = description.MipLevels,
-        .array_layers = description.DepthOrArraySize,
+        .array_layers = description.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D ? std::uint16_t{1} : description.DepthOrArraySize,
         .kind = resource_kind(description.Dimension),
         .allocation_kind = kind,
         .format = static_cast<std::uint32_t>(description.Format),
@@ -125,6 +125,8 @@ std::optional<MemoryBudgetPayload> query_memory_budget(IDXGIAdapter3* adapter) n
         .local_current_reservation = local.CurrentReservation,
         .nonlocal_budget = nonlocal.Budget,
         .nonlocal_usage = nonlocal.CurrentUsage,
+        .nonlocal_available_for_reservation = nonlocal.AvailableForReservation,
+        .nonlocal_current_reservation = nonlocal.CurrentReservation,
     };
 }
 
