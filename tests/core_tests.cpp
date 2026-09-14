@@ -1,6 +1,7 @@
 #include "arc/event_ring.hpp"
 #include "arc/trace.hpp"
 #include "arc/resource_graph.hpp"
+#include "arc/session.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -154,5 +155,17 @@ int main() {
         assert(writer.append({&first, 1}));
     }
     assert(arc::TraceReader::inspect(trace_path).events.size() == 1);
+    std::filesystem::remove(trace_path);
+    {
+        arc::Session session(trace_path, 32768);
+        for (std::uint64_t id = 1; id <= 10000; ++id) {
+            assert(session.emit(arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = id, .allocation_bytes = 4096}));
+            assert(session.emit(arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{.resource = id}));
+        }
+        session.finish();
+        assert(session.complete() && session.graph().resource_count() == 10000);
+        assert(session.graph().live_allocation_bytes() == 0);
+        assert(arc::TraceReader::inspect(trace_path).events.size() == 20000);
+    }
     std::filesystem::remove(trace_path);
 }
