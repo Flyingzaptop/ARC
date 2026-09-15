@@ -11,6 +11,11 @@ commands, submissions, copies/resolves, barriers, fences, presents and DXGI
 budgets. A bounded producer ring feeds a background trace collector. Graph
 reconstruction, conservative classification and temperature analysis run offline.
 
+Stage 1.1 hardening adds strict online multi-producer ordering, measured capture
+CPU phases and broader view/graph validation. Stage 2A adds a mutating residency
+backend only to a controlled ARC lab. See the [hardening report](docs/STAGE1_1_HARDENING.md)
+and [residency report](docs/STAGE2A_REPORT.md). No arbitrary-game mutation exists.
+
 Three D3D12 workloads validate GPU buffer, raster, MSAA resolve and compute
 outputs against independent expected values. They compare baseline, Light and
 Full observation in the same executable. See [Stage 1 status](docs/STAGE1_STATUS.md)
@@ -24,6 +29,7 @@ for the exact supported surface and remaining limitations.
 ./scripts/validate.ps1 -Configuration Release -GpuTests -DebugLayer
 ./scripts/calibrate.ps1
 ./scripts/benchmark.ps1 -Iterations 10000 -Rounds 3
+./scripts/residency-benchmark.ps1 -Rounds 5 -Objects 24 -ObjectMiB 2
 ```
 
 The local script discovers MSVC/CMake/Ninja through Visual Studio Installer and

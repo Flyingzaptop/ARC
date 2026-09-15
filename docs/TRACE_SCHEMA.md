@@ -27,6 +27,11 @@ statuses distinguish Complete, TruncatedTail, CorruptTail, SchemaMismatch and
 IoError. Only complete checksum-valid chunks are committed to recovered output.
 An incomplete final header/payload leaves previous valid chunks readable.
 
+TraceWriter reuses one packing buffer. The default checkpoint policy flushes
+every 64 chunks and at clean shutdown. A crash can lose the current buffered
+tail: up to 63 completed in-process chunks before the next checkpoint, plus the
+chunk being assembled. The earlier checksum-valid prefix remains recoverable.
+
 The session sidecar `<trace>.session.json` reports completeness and overflow.
 TraceOverflow also exists in the event stream so losing the sidecar cannot make
 an overflowed capture appear correct to the graph/viewer.

@@ -5,6 +5,9 @@ integration and supported controlled workloads. Graphics Tools is installed;
 Debug/Release pass 6/6 tests with the D3D12 debug layer, and the corrected sample
 passes 100,000 iterations with debug validation. See [the gate update](STAGE1_GATE_UPDATE.md).
 
+Stage 1.1 ordering, CPU and coverage hardening is recorded in
+[STAGE1_1_HARDENING.md](STAGE1_1_HARDENING.md). Stage 2A results are separate.
+
 This implementation is an explicit D3D12 integration surface, exercised by
 controlled workloads. It is not an automatic interceptor for arbitrary games.
 No Stage 2 policy or resource mutation is implemented in the observer.
