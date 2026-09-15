@@ -45,6 +45,15 @@ int main(int argc, char** argv) try {
         check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))); debug->EnableDebugLayer();
     }
     ComPtr<ID3D12Device> device; check(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)));
+    ComPtr<ID3D12InfoQueue1> liveDebugMessages;
+    DWORD debugCallbackCookie{};
+    if (std::getenv("ARC_D3D12_DEBUG")) {
+        check(device.As(&liveDebugMessages));
+        check(liveDebugMessages->RegisterMessageCallback(
+            [](D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void*) {
+                if (severity <= D3D12_MESSAGE_SEVERITY_WARNING) { std::cerr << "D3D12[" << static_cast<unsigned>(id) << "]: " << description << std::endl; }
+            }, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &debugCallbackCookie));
+    }
     ComPtr<IDXGIFactory4> factory; check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
     ComPtr<IDXGIAdapter3> adapter; check(factory->EnumAdapterByLuid(device->GetAdapterLuid(), IID_PPV_ARGS(&adapter)));
     auto budget = [&] { if (auto b = arc::dx12::query_memory_budget(adapter.Get())) { emit(arc::EventType::MemoryBudgetSample, *b); } };
@@ -391,6 +400,13 @@ int main(int argc, char** argv) try {
     const auto wallMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - runStart).count();
     PROCESS_MEMORY_COUNTERS_EX memory{}; memory.cb = sizeof(memory);
     if (!GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory))) { throw std::runtime_error("GetProcessMemoryInfo failed"); }
+    // Present can enqueue additional graphics-queue work after the per-frame
+    // fence. Retire that work before releasing swapchain resources at shutdown.
+    check(queue->Signal(fence.Get(), iterations + 1ULL));
+    emit(arc::EventType::FenceSignal, arc::FencePayload{.queue = queueId, .fence = fenceId, .value = iterations + 1ULL});
+    check(fence->SetEventOnCompletion(iterations + 1ULL, done));
+    if (WaitForSingleObject(done, 10000) != WAIT_OBJECT_0) { throw std::runtime_error("Final graphics fence timeout"); }
+    emit(arc::EventType::FenceWait, arc::FencePayload{.fence = fenceId, .value = iterations + 1ULL});
     CloseHandle(done);
     D3D12_RANGE range{0, bytes}; check(owned[readback].resource->Map(0, &range, &mapped));
     bool contents = true;
