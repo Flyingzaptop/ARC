@@ -23,12 +23,20 @@ bool ResidencyGovernor::transition(ResidencyId id, ResidencyState expected, Resi
 }
 void ResidencyGovernor::update_budget(std::uint64_t budget, std::uint64_t usage) {
     budget_ = budget; usage_ = usage;
-    if (!budget) { pressure_ = PressureState::Emergency; return; }
+    if (!budget) { pressure_ = PressureState::Emergency; stable_samples_ = 0; return; }
     const auto ratio = static_cast<double>(usage) / static_cast<double>(budget);
-    if (pressure_ == PressureState::Emergency) { pressure_ = ratio < .75 ? PressureState::Pressure : PressureState::Emergency; }
-    else if (ratio >= .95) { pressure_ = PressureState::Emergency; }
-    else if (pressure_ == PressureState::Pressure) { pressure_ = ratio < .70 ? PressureState::Normal : PressureState::Pressure; }
-    else if (ratio >= .85) { pressure_ = PressureState::Pressure; }
+    if (ratio >= .95) { pressure_ = PressureState::Emergency; stable_samples_ = 0; return; }
+    if (pressure_ == PressureState::Emergency) {
+        if (ratio < .75 && ++stable_samples_ >= 3) { pressure_ = PressureState::Pressure; stable_samples_ = 0; }
+        else if (ratio >= .75) { stable_samples_ = 0; }
+        return;
+    }
+    if (pressure_ == PressureState::Pressure) {
+        if (ratio < .70 && ++stable_samples_ >= 3) { pressure_ = PressureState::Normal; stable_samples_ = 0; }
+        else if (ratio >= .70) { stable_samples_ = 0; }
+        return;
+    }
+    if (ratio >= .85) { pressure_ = PressureState::Pressure; stable_samples_ = 0; }
 }
 std::vector<ResidencyAction> ResidencyGovernor::plan(std::uint64_t epoch) const {
     std::vector<ResidencyAction> actions;
@@ -47,8 +55,8 @@ std::optional<ResidencyObject> ResidencyGovernor::find(ResidencyId id) const {
 }
 void ResidencyGovernor::record_eviction(ResidencyId id, bool laterReloaded) {
     const auto it = objects_.find(id); if (it == objects_.end()) { return; }
-    ++metrics_.useful_evictions; metrics_.bytes_evicted += it->second.cost.bytes;
-    if (laterReloaded) { ++metrics_.false_evictions; }
+    metrics_.bytes_evicted += it->second.cost.bytes;
+    if (laterReloaded) { ++metrics_.false_evictions; } else { ++metrics_.useful_evictions; }
 }
 void ResidencyGovernor::record_resident(ResidencyId id, bool late) {
     const auto it = objects_.find(id); if (it == objects_.end()) { return; }

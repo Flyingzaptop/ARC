@@ -34,8 +34,11 @@ int main() {
         assert(governor.transition(1, arc::ResidencyState::Resident, arc::ResidencyState::Evicted));
         assert(!governor.transition(2, arc::ResidencyState::Pinned, arc::ResidencyState::Evicted));
         assert(!governor.transition(3, arc::ResidencyState::Unknown, arc::ResidencyState::Evicted));
-        governor.update_budget(100, 60); assert(governor.pressure() == arc::PressureState::Pressure);
-        governor.update_budget(100, 60); assert(governor.pressure() == arc::PressureState::Normal);
+        assert(!governor.speculative_promotions_allowed());
+        for (int i = 0; i < 3; ++i) { governor.update_budget(100, 60); }
+        assert(governor.pressure() == arc::PressureState::Pressure);
+        for (int i = 0; i < 3; ++i) { governor.update_budget(100, 60); }
+        assert(governor.pressure() == arc::PressureState::Normal && governor.speculative_promotions_allowed());
     }
     {
         arc::ResourceGraph malformed;

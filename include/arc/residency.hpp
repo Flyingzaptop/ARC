@@ -31,6 +31,7 @@ public:
     [[nodiscard]] std::vector<ResidencyAction> plan(std::uint64_t epoch) const;
     [[nodiscard]] std::optional<ResidencyObject> find(ResidencyId id) const;
     [[nodiscard]] PressureState pressure() const noexcept { return pressure_; }
+    [[nodiscard]] bool speculative_promotions_allowed() const noexcept { return pressure_ == PressureState::Normal; }
     [[nodiscard]] ResidencyMetrics metrics() const noexcept { return metrics_; }
     void record_eviction(ResidencyId id, bool later_reloaded);
     void record_resident(ResidencyId id, bool late);
@@ -39,5 +40,6 @@ private:
     PressureState pressure_{PressureState::Normal};
     ResidencyMetrics metrics_{};
     std::uint64_t budget_{}, usage_{};
+    std::uint32_t stable_samples_{};
 };
 }
