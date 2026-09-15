@@ -1,5 +1,6 @@
 #pragma once
 #include "arc/ids.hpp"
+#include "arc/events.hpp"
 #include <cstdint>
 #include <optional>
 #include <unordered_map>
@@ -16,6 +17,8 @@ struct ResidencyObject {
     std::uint64_t last_use_epoch{}, last_completed_fence{}, use_count{};
 };
 struct ResidencyAction { enum class Type : std::uint8_t { Evict, MakeResident } type{}; ResidencyId object{}; std::uint64_t bytes{}; };
+struct ResidencyTransitionPayload { ResidencyId object{}; ResidencyState before{}, after{}; std::uint8_t reserved[6]{}; std::uint64_t fence_value{}, bytes{}; };
+static_assert(sizeof(ResidencyTransitionPayload) <= kMaxEventPayloadBytes);
 struct ResidencyMetrics {
     std::uint64_t useful_evictions{}, false_evictions{}, reloads{}, bytes_evicted{}, bytes_made_resident{}, late_residency{};
 };

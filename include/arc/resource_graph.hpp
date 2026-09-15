@@ -86,6 +86,8 @@ struct MemoryBudgetPayload final {
     std::uint64_t nonlocal_budget{}; std::uint64_t nonlocal_usage{};
     std::uint64_t nonlocal_available_for_reservation{}; std::uint64_t nonlocal_current_reservation{};
 };
+static_assert(sizeof(ExtendedBarrierPayload) <= kMaxEventPayloadBytes);
+static_assert(sizeof(ResourceCreatePayload) <= kMaxEventPayloadBytes);
 
 struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
 struct ViewRecord final { DescriptorWrittenPayload description{}; bool alive{true}; };

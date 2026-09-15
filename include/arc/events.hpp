@@ -46,6 +46,7 @@ enum class EventType : std::uint16_t {
     DescriptorHeapDestroyed,
     DescriptorLocation,
     DescriptorCopied,
+    ResidencyTransition,
 };
 
 struct EventHeader final {
@@ -60,7 +61,7 @@ struct EventHeader final {
 static_assert(std::is_trivially_copyable_v<EventHeader>);
 static_assert(sizeof(EventHeader) == 32);
 
-constexpr std::size_t kMaxEventPayloadBytes = 224;
+constexpr std::size_t kMaxEventPayloadBytes = 128;
 
 // Fixed-size event envelope avoids allocation in render/API call paths.
 struct Event final {
@@ -68,5 +69,6 @@ struct Event final {
     std::array<std::byte, kMaxEventPayloadBytes> payload{};
 };
 static_assert(std::is_trivially_copyable_v<Event>);
+static_assert(sizeof(Event) == 160);
 
 }  // namespace arc
