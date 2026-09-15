@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ARC_BUILD_TESTS "Build ARC tests" ON)
 option(ARC_GPU_TESTS "Run GPU-backed synthetic tests on this machine" OFF)
+option(ARC_STRESS_TESTS "Build and register long-running adversarial tests" OFF)
 
 add_library(arc-core STATIC
     src/core/clock.cpp
@@ -68,6 +69,12 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-core-tests tests/core_tests.cpp)
     target_link_libraries(arc-core-tests PRIVATE arc::core)
     add_test(NAME arc-core-tests COMMAND arc-core-tests)
+    if(ARC_STRESS_TESTS)
+        add_executable(arc-multisession-stress tests/multisession_stress.cpp)
+        target_link_libraries(arc-multisession-stress PRIVATE arc::core)
+        add_test(NAME arc-multisession-stress COMMAND arc-multisession-stress 3 2000000)
+        set_tests_properties(arc-multisession-stress PROPERTIES LABELS stress TIMEOUT 300 RUN_SERIAL TRUE)
+    endif()
     if(WIN32)
         add_executable(arc-dx12-view-tests tests/dx12_view_tests.cpp)
         target_link_libraries(arc-dx12-view-tests PRIVATE arc-dx12-observer)

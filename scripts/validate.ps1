@@ -1,4 +1,4 @@
-param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug', [switch]$GpuTests, [switch]$DebugLayer)
+param([ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug', [switch]$GpuTests, [switch]$DebugLayer, [switch]$StressTests)
 $ErrorActionPreference = 'Stop'
 $vswhere = 'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe'
 $installation = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
@@ -10,7 +10,9 @@ $ninja = Join-Path $installation 'Common7\IDE\CommonExtensions\Microsoft\CMake\N
 $buildDirectory = "build/$Configuration"
 # CMake configures the installed compiler's include diagnostic prefix.
 $gpu = if ($GpuTests) { 'ON' } else { 'OFF' }
-$command = "call `"$vcvars`" >nul && set VSLANG=1033&& `"$cmake`" -S . -B $buildDirectory -G Ninja -DCMAKE_BUILD_TYPE=$Configuration -DARC_GPU_TESTS=$gpu -DARC_MSVC_INCLUDE_PREFIX=`"Примечание: включение файла:`" -DCMAKE_MAKE_PROGRAM=`"$ninja`" && `"$cmake`" --build $buildDirectory && `"$ctest`" --test-dir $buildDirectory --output-on-failure --timeout 60"
+$stress = if ($StressTests) { 'ON' } else { 'OFF' }
+$timeout = if ($StressTests) { 300 } else { 60 }
+$command = "call `"$vcvars`" >nul && set VSLANG=1033&& `"$cmake`" -S . -B $buildDirectory -G Ninja -DCMAKE_BUILD_TYPE=$Configuration -DARC_GPU_TESTS=$gpu -DARC_STRESS_TESTS=$stress -DARC_MSVC_INCLUDE_PREFIX=`"Примечание: включение файла:`" -DCMAKE_MAKE_PROGRAM=`"$ninja`" && `"$cmake`" --build $buildDirectory && `"$ctest`" --test-dir $buildDirectory --output-on-failure --timeout $timeout"
 if ($DebugLayer) { $command = 'set ARC_D3D12_DEBUG=1&& ' + $command }
 & cmd.exe /d /c $command
 if ($LASTEXITCODE -ne 0) { throw "Validation failed: $LASTEXITCODE" }

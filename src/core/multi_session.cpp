@@ -1,6 +1,7 @@
 #include "arc/multi_session.hpp"
 #include <array>
 #include <fstream>
+#include <optional>
 namespace arc {
 MultiSession::MultiSession(const std::filesystem::path& path, std::size_t producers, std::size_t capacity) : path_(path) {
     if (!producers || producers > 1024) { throw std::invalid_argument("producer count must be 1..1024"); }
@@ -13,24 +14,47 @@ std::uint64_t MultiSession::dropped() const noexcept {
 }
 void MultiSession::collect() {
     try {
-        TraceWriter writer(path_); std::array<Event, 256> batch{};
+        TraceWriter writer(path_);
+        std::array<Event, 1024> batch{};
+        std::vector<std::optional<Event>> heads(rings_.size());
+        std::uint64_t expectedSequence = 1;
         for (;;) {
-            bool work = false;
-            for (const auto& ring : rings_) {
-                std::size_t count{}; while (count < batch.size() && ring->try_pop(batch[count])) { ++count; }
-                if (count) { work = true; if (!writer.append({batch.data(), count})) { failed_ = true; } }
+            for (std::size_t producer = 0; producer < rings_.size(); ++producer) {
+                if (!heads[producer]) {
+                    Event event{};
+                    if (rings_[producer]->try_pop(event)) { heads[producer] = event; }
+                }
             }
-            if (!work && stopping_.load(std::memory_order_acquire)) {
-                // Stop is published only after all producer threads have joined.
-                bool remainder = false;
-                for (const auto& ring : rings_) { if (ring->try_pop(batch[0])) { remainder = true; if (!writer.append({batch.data(), 1})) { failed_ = true; } } }
-                if (!remainder) { break; }
-            } else if (!work) { std::this_thread::sleep_for(std::chrono::microseconds(100)); }
-        }
-        if (auto count = dropped()) {
-            Event e{}; e.header.type = EventType::TraceOverflow; e.header.flags = 1;
-            e.header.sequence = sequence_.fetch_add(1); e.header.timestamp_ns = monotonic_time_ns(); e.header.payload_bytes = sizeof(count);
-            std::memcpy(e.payload.data(), &count, sizeof(count)); if (!writer.append({&e, 1})) { failed_ = true; }
+            std::size_t count{};
+            while (count < batch.size()) {
+                std::size_t selected = heads.size();
+                for (std::size_t producer = 0; producer < heads.size(); ++producer) {
+                    if (heads[producer] && heads[producer]->header.sequence == expectedSequence) {
+                        selected = producer; break;
+                    }
+                }
+                if (selected == heads.size()) { break; }
+                batch[count++] = *heads[selected]; heads[selected].reset(); ++expectedSequence;
+                Event next{};
+                if (rings_[selected]->try_pop(next)) { heads[selected] = next; }
+            }
+            if (count) {
+                if (!writer.append({batch.data(), count})) { failed_ = true; }
+                continue;
+            }
+            const bool noHeads = std::none_of(heads.begin(), heads.end(), [](const auto& head) { return head.has_value(); });
+            if (stopping_.load(std::memory_order_acquire)) {
+                if (!noHeads || dropped()) {
+                    failed_ = true;
+                    const auto countDropped = dropped();
+                    Event overflow{}; overflow.header.type = EventType::TraceOverflow; overflow.header.flags = 1;
+                    overflow.header.sequence = expectedSequence; overflow.header.timestamp_ns = monotonic_time_ns(); overflow.header.payload_bytes = sizeof(countDropped);
+                    std::memcpy(overflow.payload.data(), &countDropped, sizeof(countDropped));
+                    if (!writer.append({&overflow, 1})) { failed_ = true; }
+                }
+                break;
+            }
+            std::this_thread::yield();
         }
     } catch (...) { failed_ = true; }
 }
