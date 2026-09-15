@@ -21,6 +21,7 @@ add_library(arc-core STATIC
     src/core/multi_session.cpp
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
+    src/core/residency.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
