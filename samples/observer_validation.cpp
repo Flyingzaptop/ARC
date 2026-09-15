@@ -45,15 +45,21 @@ int main(int argc, char** argv) try {
         check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))); debug->EnableDebugLayer();
     }
     ComPtr<ID3D12Device> device; check(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)));
+    std::atomic<unsigned> debugErrorCount{};
     ComPtr<ID3D12InfoQueue1> liveDebugMessages;
     DWORD debugCallbackCookie{};
     if (std::getenv("ARC_D3D12_DEBUG")) {
         check(device.As(&liveDebugMessages));
         check(liveDebugMessages->RegisterMessageCallback(
-            [](D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void*) {
+            [](D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY severity, D3D12_MESSAGE_ID id, LPCSTR description, void* context) {
+                if (severity <= D3D12_MESSAGE_SEVERITY_ERROR) { static_cast<std::atomic<unsigned>*>(context)->fetch_add(1, std::memory_order_relaxed); }
                 if (severity <= D3D12_MESSAGE_SEVERITY_WARNING) { std::cerr << "D3D12[" << static_cast<unsigned>(id) << "]: " << description << std::endl; }
-            }, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &debugCallbackCookie));
+            }, D3D12_MESSAGE_CALLBACK_IGNORE_FILTERS, &debugErrorCount, &debugCallbackCookie));
     }
+    struct DebugCallbackGuard {
+        ID3D12InfoQueue1* queue; DWORD cookie;
+        ~DebugCallbackGuard() { if (queue) { queue->UnregisterMessageCallback(cookie); } }
+    } debugCallbackGuard{liveDebugMessages.Get(), debugCallbackCookie};
     ComPtr<IDXGIFactory4> factory; check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
     ComPtr<IDXGIAdapter3> adapter; check(factory->EnumAdapterByLuid(device->GetAdapterLuid(), IID_PPV_ARGS(&adapter)));
     auto budget = [&] { if (auto b = arc::dx12::query_memory_budget(adapter.Get())) { emit(arc::EventType::MemoryBudgetSample, *b); } };
@@ -430,7 +436,7 @@ int main(int argc, char** argv) try {
     srvHeap.Reset(); rtvHeap.Reset(); dsvHeap.Reset();
     for (auto id : descriptorHeapIds) { if (!baseline) { observer.observe_descriptor_heap_destroyed(id); } }
     if (session) { session->finish(); }
-    bool valid = contents && (!session || session->complete());
+    bool valid = contents && (!session || session->complete()) && debugErrorCount.load(std::memory_order_relaxed) == 0;
     if (std::getenv("ARC_D3D12_DEBUG")) {
         ComPtr<ID3D12InfoQueue> info; check(device.As(&info));
         for (UINT64 i = 0; i < info->GetNumStoredMessages(); ++i) {
@@ -472,7 +478,9 @@ int main(int argc, char** argv) try {
     report.close();
     // Detailed measured sidecar; values describe this controlled workload only.
     std::ofstream metrics("traces/" + stem + "-metrics.json");
-    metrics << "{\"schema\":1,\"cpu_ms\":" << cpuMs << ",\"wall_ms\":" << wallMs
+    metrics << "{\"schema\":1,\"debug_layer\":" << (std::getenv("ARC_D3D12_DEBUG") ? "true" : "false")
+        << ",\"debug_errors\":" << debugErrorCount.load(std::memory_order_relaxed)
+        << ",\"cpu_ms\":" << cpuMs << ",\"wall_ms\":" << wallMs
         << ",\"cpu_one_core_percent\":" << 100 * cpuMs / wallMs << ",\"process_private_bytes\":" << memory.PrivateUsage
         << ",\"trace_bytes\":" << (baseline ? 0 : std::filesystem::file_size("traces/" + stem + ".arcbin"))
         << ",\"mean_iteration_ms\":" << stats.mean << ",\"iteration_variance\":" << stats.variance
