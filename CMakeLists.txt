@@ -52,6 +52,7 @@ if(WIN32)
         src/backends/dx12/dx12_observer.cpp
         src/backends/dx12/views.cpp
         src/backends/dx12/barriers.cpp
+        src/backends/dx12/residency.cpp
     )
     target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)
@@ -63,6 +64,8 @@ if(WIN32)
         target_compile_definitions(${sample} PRIVATE ARC_SAMPLE_NAME="${sample}")
         target_link_libraries(${sample} PRIVATE arc-dx12-observer d3dcompiler psapi)
     endforeach()
+    add_executable(dx12-residency-lab samples/residency_lab.cpp)
+    target_link_libraries(dx12-residency-lab PRIVATE arc-dx12-observer)
 endif()
 
 if(ARC_BUILD_TESTS)
@@ -89,6 +92,9 @@ if(ARC_BUILD_TESTS)
                 add_test(NAME ${sample} COMMAND ${sample} full 30)
                 set_tests_properties(${sample} PROPERTIES LABELS gpu TIMEOUT 60 RUN_SERIAL TRUE)
             endforeach()
+            add_test(NAME dx12-residency-lab-baseline COMMAND dx12-residency-lab baseline 24 2)
+            add_test(NAME dx12-residency-lab-arc COMMAND dx12-residency-lab arc 24 2)
+            set_tests_properties(dx12-residency-lab-baseline dx12-residency-lab-arc PROPERTIES LABELS gpu TIMEOUT 60 RUN_SERIAL TRUE)
         endif()
     endif()
 endif()
