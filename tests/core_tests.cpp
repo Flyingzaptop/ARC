@@ -222,6 +222,17 @@ int main() {
     assert(arc::TraceReader::inspect(trace_path).events.size() == 1);
     std::filesystem::remove(trace_path);
     {
+        arc::TraceWriter writer(trace_path, {.checkpoint_every_chunks = 2});
+        arc::Event event{}; event.header.payload_bytes = 0;
+        assert(writer.append({&event, 1})); assert(writer.statistics().checkpoints == 0);
+        const auto initialCapacity = writer.statistics().packing_capacity;
+        assert(writer.append({&event, 1}));
+        const auto statistics = writer.statistics();
+        assert(statistics.checkpoints == 1 && statistics.chunks == 2 && statistics.packing_capacity == initialCapacity);
+    }
+    assert(arc::TraceReader::inspect(trace_path).events.size() == 2);
+    std::filesystem::remove(trace_path);
+    {
         arc::MultiSession session(trace_path, 4, 16384);
         std::vector<std::thread> producers;
         for (std::size_t t = 0; t < 4; ++t) { producers.emplace_back([&, t] {

@@ -79,7 +79,11 @@ int main(int argc, char** argv) try {
         execute(); governor.note_use(objects[index].residency, index + 1, fenceValue);
     }
     if (residencyBackend.evict_after(objects[0].object.Get(), fence.Get(), fenceValue + 1) != arc::dx12::ResidencyResult::UnsafeInFlight) { throw std::runtime_error("unsafe eviction was not rejected"); }
-    std::uint64_t notificationCount{}; if (notification.wait(100)) { ++notificationCount; }
+    std::uint64_t notificationCount{};
+    if (auto notified = notification.wait(100)) {
+        ++notificationCount;
+        governor.update_budget(notified->local_budget, notified->local_usage);
+    }
     std::uint64_t bytesEvicted{}, bytesResident{}, reloads{}, useful{}, falseEvictions{}, late{};
     std::vector<unsigned> sequence; sequence.reserve(2000);
     for (unsigned epoch = 0; epoch < 2000; ++epoch) {
