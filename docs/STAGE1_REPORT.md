@@ -1,5 +1,10 @@
 # Stage 1 implementation and validation report
 
+Historical report from 2026-09-14. The Graphics Tools blocker and sample teardown
+bug were resolved on 2026-09-15; see [the current gate update](STAGE1_GATE_UPDATE.md).
+The measurements below remain historical evidence, not results from the later
+debug-layer-enabled runs.
+
 Date: 2026-09-14. Environment: Windows build 26200, MSVC 19.50,
 Core i7-11800H, RTX 3060 Laptop GPU.
 
@@ -152,4 +157,3 @@ Technical options:
 Complete the missing debug-layer validation and review coverage/CPU overhead
 before signing off Stage 1. Stage 2 has not been implemented and must be a separate
 authorized task after that gate is accepted.
-

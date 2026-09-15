@@ -21,6 +21,7 @@ for the exact supported surface and remaining limitations.
 ```powershell
 ./scripts/validate.ps1 -Configuration Release -GpuTests
 ./scripts/validate.ps1 -Configuration Debug -GpuTests
+./scripts/validate.ps1 -Configuration Release -GpuTests -DebugLayer
 ./scripts/calibrate.ps1
 ./scripts/benchmark.ps1 -Iterations 10000 -Rounds 3
 ```

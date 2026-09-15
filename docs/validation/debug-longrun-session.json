@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "trace_schema": 4,
+  "complete": true,
+  "dropped_events": 0,
+  "graph_errors": 0,
+  "stream_model": "single producer; CPU timestamps",
+  "byte_order": "little-endian"
+}

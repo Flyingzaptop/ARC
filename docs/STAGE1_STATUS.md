@@ -1,5 +1,10 @@
 # Stage 1 implementation status
 
+Current gate (2026-09-15): practical Stage 1 validation has passed for the explicit
+integration and supported controlled workloads. Graphics Tools is installed;
+Debug/Release pass 6/6 tests with the D3D12 debug layer, and the corrected sample
+passes 100,000 iterations with debug validation. See [the gate update](STAGE1_GATE_UPDATE.md).
+
 This implementation is an explicit D3D12 integration surface, exercised by
 controlled workloads. It is not an automatic interceptor for arbitrary games.
 No Stage 2 policy or resource mutation is implemented in the observer.
@@ -44,15 +49,15 @@ No Stage 2 policy or resource mutation is implemented in the observer.
 
 ## Known limitations and completion qualification
 
-- Windows Graphics Tools/debug layer is missing on this machine. Requesting
-  `D3D12GetDebugInterface` returns `DXGI_ERROR_SDK_COMPONENT_MISSING`; querying
-  Windows optional capabilities requires elevation. `ARC_D3D12_DEBUG=1` enables
-  a strict error-checking path once the component is installed. Debug-layer
-  validation is blocked; it is not reported as passed.
+- Windows Graphics Tools was installed on 2026-09-15 through user-approved UAC;
+  no restart was required. Debug-layer validation uncovered an unsafe sample
+  teardown after Present. A final graphics fence now retires presentation work
+  before resources are released. `-DebugLayer` enables this regression check.
 - Enhanced barriers are capability-probed and normalized into pointer-free
   layout/access/sync/range records. Legacy aliasing/UAV records are supported too.
-  Normalization is unit-tested; the GPU workload currently exercises legacy
-  transitions. Enhanced and aliasing GPU execution coverage remains unverified.
+  Normalization is unit-tested. The GPU tests exercise legacy transitions and
+  enhanced texture transitions with readback verification. Enhanced buffer/global
+  and aliasing execution coverage is not exhaustive.
 - No automatic COM wrapping, descriptor handle registry, per-game injection
   or arbitrary engine pipeline inference exists.
   Explicit hooks cover controlled workloads; they cannot claim whole-game recall.
@@ -78,9 +83,10 @@ No Stage 2 policy or resource mutation is implemented in the observer.
   general renderer would need to aggregate its own command-list counters.
 - There is no GUI or SQLite database; reconstructing a large trace currently
   retains events and graph history in memory during offline analysis.
-- Core/sample outputs are valid for the tested machine and workloads. Full Stage 1
-  sign-off requires the blocked debug validation and review of the above integration
-  gaps. Do not start Stage 2 based only on a passing synthetic run.
+- Core/sample outputs are valid for the tested machine and workloads. The practical
+  Stage 1 gate is passed for that scope; this is not unrestricted native-game
+  compatibility certification. CPU overhead <2% remains an unproven engineering
+  target. Stage 2 requires a separate user task and conservative capability gates.
 
 ## Technical references used
 
