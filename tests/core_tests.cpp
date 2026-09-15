@@ -4,6 +4,7 @@
 #include "arc/session.hpp"
 #include "arc/multi_session.hpp"
 #include "arc/footprint.hpp"
+#include "arc/residency.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -23,6 +24,19 @@ template<class T> void feed(arc::ResourceGraph& graph, arc::EventType type, cons
 }
 
 int main() {
+    {
+        arc::ResidencyGovernor governor;
+        assert(governor.register_object({.id = 1, .state = arc::ResidencyState::Resident, .safety = arc::ResidencySafety::ControlledSafe, .cost = {.bytes = 4096}}));
+        assert(governor.register_object({.id = 2, .state = arc::ResidencyState::Resident, .safety = arc::ResidencySafety::Pinned, .cost = {.bytes = 8192}}));
+        assert(governor.register_object({.id = 3, .state = arc::ResidencyState::Resident, .safety = arc::ResidencySafety::Unknown, .cost = {.bytes = 16384}}));
+        governor.update_budget(100, 96); assert(governor.pressure() == arc::PressureState::Emergency);
+        const auto actions = governor.plan(100); assert(actions.size() == 1 && actions[0].object == 1);
+        assert(governor.transition(1, arc::ResidencyState::Resident, arc::ResidencyState::Evicted));
+        assert(!governor.transition(2, arc::ResidencyState::Pinned, arc::ResidencyState::Evicted));
+        assert(!governor.transition(3, arc::ResidencyState::Unknown, arc::ResidencyState::Evicted));
+        governor.update_budget(100, 60); assert(governor.pressure() == arc::PressureState::Pressure);
+        governor.update_budget(100, 60); assert(governor.pressure() == arc::PressureState::Normal);
+    }
     {
         arc::ResourceGraph malformed;
         feed(malformed, arc::EventType::CommandListClosed, arc::CommandListPayload{.command = 1});
