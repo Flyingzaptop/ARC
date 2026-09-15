@@ -104,5 +104,5 @@
   "os_build": "26200",
   "timestamp_utc": "2026-09-14T21:04:52.4855293Z",
   "arc_commit": "73765ef7a0a5d362b069770d2d643df49746315c",
-  "storage_read_file": "C:\\Users\\r3d_flzp\\Desktop\\ARC\\build\\Release\\arc-calibrate.exe"
+  "storage_read_file": "build/Release/arc-calibrate.exe"
 }

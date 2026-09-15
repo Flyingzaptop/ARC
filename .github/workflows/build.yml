@@ -1,4 +1,6 @@
 name: Stage 1 core validation
+permissions:
+  contents: read
 on: [push, pull_request]
 jobs:
   windows:

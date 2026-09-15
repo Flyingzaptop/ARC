@@ -4,3 +4,6 @@
 *.sqlite
 *.user
 *.vcxproj.user
+.env
+.env.*
+!.env.example

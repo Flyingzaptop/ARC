@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "gpu": {
+    "vendor": "example",
+    "device": "example",
+    "driver": "example",
+    "vram_physical_mb": 6144,
+    "vram_safe_mb": 5200,
+    "upload_gbps": null,
+    "readback_gbps": null,
+    "compute_score": null,
+    "graphics_score": null
+  },
+  "ram": {
+    "physical_mb": 16384,
+    "safe_cache_mb": null,
+    "copy_gbps": null,
+    "latency_score": null
+  },
+  "storage": {
+    "volume": "example",
+    "seq_read_gbps": null,
+    "random_score": null
+  },
+  "display": {
+    "width": null,
+    "height": null,
+    "refresh_hz": null,
+    "vrr": null
+  }
+}
