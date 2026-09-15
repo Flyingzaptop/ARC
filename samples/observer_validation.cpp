@@ -278,7 +278,8 @@ int main(int argc, char** argv) try {
     emit(arc::EventType::CommandListCreated, arc::CommandListPayload{.command = commandId});
     HANDLE done = CreateEventW(nullptr, FALSE, FALSE, nullptr); if (!done) { throw std::runtime_error("CreateEvent failed"); }
     std::vector<double> times; times.reserve(iterations);
-    const auto cpuStart = cpu_ticks(); const auto runStart = std::chrono::steady_clock::now();
+    const auto cpuStart = cpu_ticks(); const auto producerCpuStart = arc::current_thread_cpu_time_ns();
+    const auto runStart = std::chrono::steady_clock::now();
     unsigned occludedPresents{};
     auto transition = [&](D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
         D3D12_RESOURCE_BARRIER b{}; b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION; b.Transition.pResource = owned[gpu].resource.Get();
@@ -402,7 +403,9 @@ int main(int argc, char** argv) try {
         if (frame % 60 == 0) { budget(); }
         times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
     }
+    const auto producerCpuEnd = arc::current_thread_cpu_time_ns();
     const auto cpuMs = static_cast<double>(cpu_ticks() - cpuStart) / 10000.0;
+    const auto producerCpuMs = static_cast<double>(producerCpuEnd - producerCpuStart) / 1000000.0;
     const auto wallMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - runStart).count();
     PROCESS_MEMORY_COUNTERS_EX memory{}; memory.cb = sizeof(memory);
     if (!GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory))) { throw std::runtime_error("GetProcessMemoryInfo failed"); }
@@ -436,6 +439,7 @@ int main(int argc, char** argv) try {
     srvHeap.Reset(); rtvHeap.Reset(); dsvHeap.Reset();
     for (auto id : descriptorHeapIds) { if (!baseline) { observer.observe_descriptor_heap_destroyed(id); } }
     if (session) { session->finish(); }
+    const auto sessionStats = session ? session->statistics() : arc::SessionStatistics{};
     bool valid = contents && (!session || session->complete()) && debugErrorCount.load(std::memory_order_relaxed) == 0;
     if (std::getenv("ARC_D3D12_DEBUG")) {
         ComPtr<ID3D12InfoQueue> info; check(device.As(&info));
@@ -480,7 +484,13 @@ int main(int argc, char** argv) try {
     std::ofstream metrics("traces/" + stem + "-metrics.json");
     metrics << "{\"schema\":1,\"debug_layer\":" << (std::getenv("ARC_D3D12_DEBUG") ? "true" : "false")
         << ",\"debug_errors\":" << debugErrorCount.load(std::memory_order_relaxed)
-        << ",\"cpu_ms\":" << cpuMs << ",\"wall_ms\":" << wallMs
+        << ",\"cpu_ms\":" << cpuMs << ",\"producer_thread_cpu_ms\":" << producerCpuMs
+        << ",\"collector_cpu_ms\":" << sessionStats.collector_cpu_ns / 1000000.0
+        << ",\"trace_writer_cpu_ms\":" << sessionStats.writer_cpu_ns / 1000000.0
+        << ",\"offline_graph_cpu_ms\":" << sessionStats.offline_graph_cpu_ns / 1000000.0
+        << ",\"trace_chunks\":" << sessionStats.trace_chunks << ",\"trace_checkpoints\":" << sessionStats.checkpoints
+        << ",\"packing_capacity_bytes\":" << sessionStats.packing_capacity
+        << ",\"wall_ms\":" << wallMs
         << ",\"cpu_one_core_percent\":" << 100 * cpuMs / wallMs << ",\"process_private_bytes\":" << memory.PrivateUsage
         << ",\"trace_bytes\":" << (baseline ? 0 : std::filesystem::file_size("traces/" + stem + ".arcbin"))
         << ",\"mean_iteration_ms\":" << stats.mean << ",\"iteration_variance\":" << stats.variance

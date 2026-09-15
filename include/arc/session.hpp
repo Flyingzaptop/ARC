@@ -9,6 +9,11 @@
 
 namespace arc {
 enum class ObserverMode { Light, Full };
+struct SessionStatistics final {
+    std::uint64_t collector_cpu_ns{}, writer_cpu_ns{}, offline_graph_cpu_ns{}, trace_payload_bytes{};
+    std::uint32_t trace_chunks{}, checkpoints{};
+    std::size_t packing_capacity{};
+};
 
 // One producer per Session. Integrations with multiple API threads give each
 // producer a separate stream; callers must stop producing before destruction.
@@ -31,6 +36,7 @@ public:
     const ResourceGraph& graph() const { return graph_; } // only after finish
     bool complete() const noexcept { return stopped_ && !io_error_ && ring_.dropped_events() == 0; }
     std::size_t dropped() const noexcept { return ring_.dropped_events(); }
+    SessionStatistics statistics() const noexcept { return statistics_; }
 private:
     std::filesystem::path trace_path_;
     EventRing ring_;
@@ -40,6 +46,7 @@ private:
     std::atomic<bool> stopping_{false};
     bool stopped_{};
     bool io_error_{};
+    SessionStatistics statistics_{};
     std::thread collector_;
     void collect();
 };

@@ -14,6 +14,9 @@ for ($round = 0; $round -lt $Rounds; $round++) {
             round = $round; mode = $mode; iterations = $Iterations; p50_ms = $correctness.iteration_ms_p50
             p95_ms = $correctness.iteration_ms_p95; p99_ms = $correctness.iteration_ms_p99
             cpu_ms = $metrics.cpu_ms; wall_ms = $metrics.wall_ms; private_bytes = $metrics.process_private_bytes
+            producer_cpu_ms = $metrics.producer_thread_cpu_ms; collector_cpu_ms = $metrics.collector_cpu_ms
+            writer_cpu_ms = $metrics.trace_writer_cpu_ms; offline_graph_cpu_ms = $metrics.offline_graph_cpu_ms
+            trace_chunks = $metrics.trace_chunks; trace_checkpoints = $metrics.trace_checkpoints
             trace_bytes = $metrics.trace_bytes; trace_mb_s = $metrics.trace_bytes / 1000 / $metrics.wall_ms
             valid = $correctness.valid; dropped = $correctness.dropped; occluded_presents = $metrics.occluded_presents
         }

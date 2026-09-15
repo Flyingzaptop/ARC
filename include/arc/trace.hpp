@@ -24,15 +24,24 @@ struct TraceChunkHeader final {
 };
 static_assert(sizeof(TraceChunkHeader) == 24);
 
+struct TraceWriterOptions final { std::uint32_t checkpoint_every_chunks{64}; };
+struct TraceWriterStatistics final {
+    std::uint64_t cpu_ns{}, payload_bytes{};
+    std::uint32_t chunks{}, checkpoints{};
+    std::size_t packing_capacity{};
+};
+
 class TraceWriter final {
 public:
-    explicit TraceWriter(const std::filesystem::path& path);
+    explicit TraceWriter(const std::filesystem::path& path, TraceWriterOptions options = {});
     ~TraceWriter();
     TraceWriter(const TraceWriter&) = delete;
     TraceWriter& operator=(const TraceWriter&) = delete;
 
     [[nodiscard]] bool append(std::span<const Event> events);
+    [[nodiscard]] bool checkpoint();
     [[nodiscard]] bool good() const noexcept;
+    [[nodiscard]] TraceWriterStatistics statistics() const noexcept;
 
 private:
     class Impl;
