@@ -2,6 +2,8 @@
 #include <iostream>
 int main() {
     arc::EventRing ring(16); arc::IdAllocator ids; arc::dx12::Observer observer(ring, ids);
+    if (!observer.observe(arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = 2}) ||
+        !observer.observe(arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = 4})) { return 1; }
     D3D12_SHADER_RESOURCE_VIEW_DESC srv{}; srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
     srv.Texture2DArray.MostDetailedMip = 2; srv.Texture2DArray.MipLevels = UINT_MAX;
     srv.Texture2DArray.FirstArraySlice = 3; srv.Texture2DArray.ArraySize = 5;

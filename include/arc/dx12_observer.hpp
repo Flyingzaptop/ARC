@@ -30,7 +30,7 @@ public:
         ID3D12Device* device, HeapId heap, std::uint64_t offset,
         const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
     [[nodiscard]] ResourceId observe_reserved_resource(
-        const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
+        ID3D12Device* device, const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept;
     void observe_resource_destroyed(ResourceId resource) noexcept;
     bool observe_srv(DescriptorId id, ResourceId resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& view) noexcept;
     bool observe_uav(DescriptorId id, ResourceId resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& view) noexcept;

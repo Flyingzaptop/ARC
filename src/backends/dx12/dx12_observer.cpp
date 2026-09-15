@@ -78,14 +78,14 @@ ResourceId Observer::observe_placed_resource(ID3D12Device* device, const HeapId 
     return observe_resource(device, heap, offset, ResourceAllocationKind::Placed, description, resource);
 }
 
-ResourceId Observer::observe_reserved_resource(const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
-    return observe_resource(nullptr, 0, 0, ResourceAllocationKind::Reserved, description, resource);
+ResourceId Observer::observe_reserved_resource(ID3D12Device* device, const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
+    return observe_resource(device, 0, 0, ResourceAllocationKind::Reserved, description, resource);
 }
 
 ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, const std::uint64_t offset,
                                       const ResourceAllocationKind kind, const D3D12_RESOURCE_DESC& requested,
                                       ID3D12Resource* resource) noexcept {
-    if (resource == nullptr || (kind != ResourceAllocationKind::Reserved && device == nullptr)) {
+    if (resource == nullptr || device == nullptr) {
         return 0;
     }
     (void)requested;

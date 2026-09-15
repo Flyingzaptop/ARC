@@ -103,7 +103,7 @@ int main(int argc, char** argv) try {
     if (reservedSupported) {
         Owned o; auto d = buffer(2 * bytes);
         check(device->CreateReservedResource(&d, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&o.resource)));
-        o.id = baseline ? ids.next() : observer.observe_reserved_resource(d, o.resource.Get()); owned.push_back(std::move(o));
+        o.id = baseline ? ids.next() : observer.observe_reserved_resource(device.Get(), d, o.resource.Get()); owned.push_back(std::move(o));
     }
     void* mapped{}; D3D12_RANGE empty{};
     check(owned[upload].resource->Map(0, &empty, &mapped));

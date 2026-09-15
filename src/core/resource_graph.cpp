@@ -67,10 +67,10 @@ void ResourceGraph::consume(const Event& event) {
     }
     if (event.header.type == EventType::HeapCreated) {
         HeapCreatePayload payload{};
-        if (decode(event, payload) && !heaps_.contains(payload.heap)) {
+        if (decode(event, payload) && payload.heap && !heaps_.contains(payload.heap)) {
             heaps_.emplace(payload.heap, HeapRecord{.description = payload, .alive = true});
             live_heap_bytes_ += payload.size;
-        }
+        } else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::HeapDestroyed) {
@@ -80,7 +80,7 @@ void ResourceGraph::consume(const Event& event) {
         if (it != heaps_.end() && it->second.alive) {
             it->second.alive = false;
             live_heap_bytes_ -= it->second.description.size;
-        }
+        } else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::ResourceCreated) {
@@ -115,6 +115,8 @@ void ResourceGraph::consume(const Event& event) {
     if (event.header.type == EventType::DescriptorWritten) {
         DescriptorWrittenPayload payload{};
         if (decode(event, payload)) {
+            if (payload.type != ViewType::Sampler && (!payload.resource || !resources_.contains(payload.resource))) { ++errors_; return; }
+            if (payload.type == ViewType::Sampler && payload.resource) { ++errors_; return; }
             views_.insert_or_assign(payload.descriptor, ViewRecord{.description = payload});
             if (auto r = resources_.find(payload.resource); r != resources_.end()) {
                 r->second.evidence |= 1U << static_cast<unsigned>(payload.type);
@@ -124,7 +126,8 @@ void ResourceGraph::consume(const Event& event) {
     }
     if (event.header.type == EventType::CommandQueueCreated) {
         QueueCreatePayload payload{};
-        if (decode(event, payload)) { queues_.insert_or_assign(payload.queue, QueueRecord{.description = payload}); }
+        if (decode(event, payload) && payload.queue && !queues_.contains(payload.queue)) { queues_.emplace(payload.queue, QueueRecord{.description = payload}); }
+        else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::QueueSubmit) {
@@ -147,35 +150,55 @@ void ResourceGraph::consume(const Event& event) {
     if (event.header.type == EventType::CommandListCreated || event.header.type == EventType::CommandListReset || event.header.type == EventType::CommandListClosed) {
         CommandListPayload p{};
         if (decode(event, p)) {
-            if (event.header.type == EventType::CommandListClosed) { commands_[p.command].closed = true; }
-            else { commands_[p.command] = {}; }
+            const auto existing = commands_.find(p.command);
+            if (event.header.type == EventType::CommandListCreated) {
+                if (!p.command || existing != commands_.end()) { ++errors_; }
+                else { commands_.emplace(p.command, CommandRecord{}); }
+            } else if (existing == commands_.end()) { ++errors_; }
+            else if (event.header.type == EventType::CommandListClosed) {
+                if (existing->second.closed) { ++errors_; } else { existing->second.closed = true; }
+            } else { existing->second = {}; }
         }
         return;
     }
     if (event.header.type == EventType::Barrier) {
         BarrierPayload p{};
-        if (decode(event, p)) { commands_[p.command].barriers.push_back(p); }
+        if (!decode(event, p)) { ++errors_; return; }
+        const auto command = commands_.find(p.command);
+        if (command != commands_.end() && resources_.contains(p.resource)) { command->second.barriers.push_back(p); }
+        else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::ExtendedBarrier) {
         ExtendedBarrierPayload p{};
-        if (decode(event, p)) { commands_[p.command].extended_barriers.push_back(p); }
+        if (!decode(event, p)) { ++errors_; return; }
+        const auto command = commands_.find(p.command);
+        if (command != commands_.end() && (!p.resource || resources_.contains(p.resource))) { command->second.extended_barriers.push_back(p); }
+        else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::ResourceUse) {
         ResourceUsePayload p{};
-        if (decode(event, p)) { commands_[p.command].uses.push_back(p); }
+        if (!decode(event, p)) { ++errors_; return; }
+        const auto command = commands_.find(p.command);
+        if (command != commands_.end() && resources_.contains(p.resource)) { command->second.uses.push_back(p); }
+        else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::CommandCounters) {
         CountersPayload p{};
-        if (decode(event, p)) { commands_[p.command].counters = p; }
+        if (!decode(event, p)) { ++errors_; return; }
+        const auto command = commands_.find(p.command);
+        if (command != commands_.end()) { command->second.counters = p; }
+        else { ++errors_; }
         return;
     }
     if (event.header.type == EventType::CopyResource || event.header.type == EventType::CopyBuffer || event.header.type == EventType::CopyTexture || event.header.type == EventType::ResolveSubresource) {
         CopyPayload payload{};
         if (decode(event, payload)) {
-            commands_[payload.command].copies.push_back(payload);
+            const auto command = commands_.find(payload.command);
+            if (command == commands_.end() || !resources_.contains(payload.source) || !resources_.contains(payload.destination)) { ++errors_; }
+            else { command->second.copies.push_back(payload); }
         }
         return;
     }

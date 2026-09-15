@@ -29,8 +29,9 @@ bool Observer::observe_uav(DescriptorId id, ResourceId resource, const D3D12_UNO
     switch (v.ViewDimension) {
     case D3D12_UAV_DIMENSION_TEXTURE2D: p.first_mip = static_cast<std::uint32_t>(v.Texture2D.MipSlice); break;
     case D3D12_UAV_DIMENSION_TEXTURE2DARRAY: p.first_mip = static_cast<std::uint32_t>(v.Texture2DArray.MipSlice); p.first_layer = static_cast<std::uint32_t>(v.Texture2DArray.FirstArraySlice); p.layer_count = static_cast<std::uint32_t>(v.Texture2DArray.ArraySize); break;
-    case D3D12_UAV_DIMENSION_TEXTURE3D: p.first_mip = static_cast<std::uint32_t>(v.Texture3D.MipSlice); break;
     case D3D12_UAV_DIMENSION_TEXTURE1D: p.first_mip = static_cast<std::uint32_t>(v.Texture1D.MipSlice); break;
+    case D3D12_UAV_DIMENSION_TEXTURE1DARRAY: p.first_mip = v.Texture1DArray.MipSlice; p.first_layer = v.Texture1DArray.FirstArraySlice; p.layer_count = v.Texture1DArray.ArraySize; break;
+    case D3D12_UAV_DIMENSION_TEXTURE3D: p.first_mip = v.Texture3D.MipSlice; p.first_layer = v.Texture3D.FirstWSlice; p.layer_count = v.Texture3D.WSize; break;
     case D3D12_UAV_DIMENSION_BUFFER: p.mip_count = p.layer_count = 0; p.buffer_offset = v.Buffer.FirstElement * v.Buffer.StructureByteStride; p.buffer_bytes = static_cast<std::uint64_t>(v.Buffer.NumElements) * v.Buffer.StructureByteStride; break;
     default: p.type = ViewType::Unknown; break;
     }
@@ -42,6 +43,10 @@ bool Observer::observe_rtv(DescriptorId id, ResourceId resource, const D3D12_REN
     case D3D12_RTV_DIMENSION_TEXTURE2D: p.first_mip = static_cast<std::uint32_t>(v.Texture2D.MipSlice); break;
     case D3D12_RTV_DIMENSION_TEXTURE2DARRAY: p.first_mip = static_cast<std::uint32_t>(v.Texture2DArray.MipSlice); p.first_layer = static_cast<std::uint32_t>(v.Texture2DArray.FirstArraySlice); p.layer_count = static_cast<std::uint32_t>(v.Texture2DArray.ArraySize); break;
     case D3D12_RTV_DIMENSION_TEXTURE2DMS: break;
+    case D3D12_RTV_DIMENSION_TEXTURE1D: p.first_mip = v.Texture1D.MipSlice; break;
+    case D3D12_RTV_DIMENSION_TEXTURE1DARRAY: p.first_mip = v.Texture1DArray.MipSlice; p.first_layer = v.Texture1DArray.FirstArraySlice; p.layer_count = v.Texture1DArray.ArraySize; break;
+    case D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY: p.first_layer = v.Texture2DMSArray.FirstArraySlice; p.layer_count = v.Texture2DMSArray.ArraySize; break;
+    case D3D12_RTV_DIMENSION_TEXTURE3D: p.first_mip = v.Texture3D.MipSlice; p.first_layer = v.Texture3D.FirstWSlice; p.layer_count = v.Texture3D.WSize; break;
     default: p.type = ViewType::Unknown; break;
     }
     return observe(EventType::DescriptorWritten, p);
@@ -52,6 +57,9 @@ bool Observer::observe_dsv(DescriptorId id, ResourceId resource, const D3D12_DEP
     case D3D12_DSV_DIMENSION_TEXTURE2D: p.first_mip = static_cast<std::uint32_t>(v.Texture2D.MipSlice); break;
     case D3D12_DSV_DIMENSION_TEXTURE2DARRAY: p.first_mip = static_cast<std::uint32_t>(v.Texture2DArray.MipSlice); p.first_layer = static_cast<std::uint32_t>(v.Texture2DArray.FirstArraySlice); p.layer_count = static_cast<std::uint32_t>(v.Texture2DArray.ArraySize); break;
     case D3D12_DSV_DIMENSION_TEXTURE2DMS: break;
+    case D3D12_DSV_DIMENSION_TEXTURE1D: p.first_mip = v.Texture1D.MipSlice; break;
+    case D3D12_DSV_DIMENSION_TEXTURE1DARRAY: p.first_mip = v.Texture1DArray.MipSlice; p.first_layer = v.Texture1DArray.FirstArraySlice; p.layer_count = v.Texture1DArray.ArraySize; break;
+    case D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY: p.first_layer = v.Texture2DMSArray.FirstArraySlice; p.layer_count = v.Texture2DMSArray.ArraySize; break;
     default: p.type = ViewType::Unknown; break;
     }
     return observe(EventType::DescriptorWritten, p);

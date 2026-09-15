@@ -24,6 +24,19 @@ template<class T> void feed(arc::ResourceGraph& graph, arc::EventType type, cons
 
 int main() {
     {
+        arc::ResourceGraph malformed;
+        feed(malformed, arc::EventType::CommandListClosed, arc::CommandListPayload{.command = 1});
+        feed(malformed, arc::EventType::QueueSubmit, arc::QueueSubmitPayload{.queue = 1, .command = 1});
+        feed(malformed, arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = 1, .resource = 99, .type = arc::ViewType::Srv});
+        feed(malformed, arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = 2});
+        feed(malformed, arc::EventType::ResourceCreated, arc::ResourceCreatePayload{.resource = 2});
+        feed(malformed, arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{.resource = 2});
+        feed(malformed, arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{.resource = 2});
+        feed(malformed, arc::EventType::DescriptorWritten, arc::DescriptorWrittenPayload{.descriptor = 3, .type = arc::ViewType::Sampler});
+        assert(malformed.errors() == 6);
+        assert(malformed.find_view(3).has_value());
+    }
+    {
         arc::IdAllocator allocator;
         std::vector<std::vector<std::uint64_t>> values(4);
         std::vector<std::thread> workers;
