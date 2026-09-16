@@ -3,13 +3,14 @@ $ErrorActionPreference = 'Stop'
 if ($Rounds -lt 3 -or $Rounds -gt 30) { throw 'Rounds must be 3..30' }
 if ($Objects -lt 8 -or $Objects -gt 128) { throw 'Objects must be 8..128' }
 if ($ObjectMiB -lt 1 -or $ObjectMiB -gt 64) { throw 'ObjectMiB must be 1..64' }
+# Performance measurements intentionally run without the D3D12 debug layer.
+Remove-Item Env:ARC_D3D12_DEBUG -ErrorAction SilentlyContinue
 $orders = @(
     @('baseline', 'arc', 'auto'),
     @('auto', 'baseline', 'arc'),
     @('arc', 'auto', 'baseline')
 )
 $results = @()
-$env:ARC_D3D12_DEBUG = '1'
 for ($round = 0; $round -lt $Rounds; $round++) {
     $order = $orders[$round % $orders.Count]
     for ($position = 0; $position -lt $order.Count; $position++) {
@@ -62,6 +63,7 @@ $summary = [ordered]@{
     rounds = $Rounds
     objects = $Objects
     object_mib = $ObjectMiB
+    debug_layer = $false
     baseline = $baseline
     oracle = $oracle
     auto = $auto
