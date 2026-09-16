@@ -88,6 +88,10 @@ if(ARC_BUILD_TESTS)
     target_link_libraries(arc-residency-invariant-stress PRIVATE arc::core)
     add_test(NAME arc-residency-invariant-stress COMMAND arc-residency-invariant-stress)
 
+    add_executable(arc-residency-workload-matrix-tests tests/residency_workload_matrix_tests.cpp)
+    target_link_libraries(arc-residency-workload-matrix-tests PRIVATE arc::core)
+    add_test(NAME arc-residency-workload-matrix-tests COMMAND arc-residency-workload-matrix-tests)
+
     add_executable(arc-texture-quality-policy-tests tests/texture_quality_policy_tests.cpp)
     target_link_libraries(arc-texture-quality-policy-tests PRIVATE arc::core)
     add_test(NAME arc-texture-quality-policy-tests COMMAND arc-texture-quality-policy-tests)
@@ -120,7 +124,14 @@ if(ARC_BUILD_TESTS)
             add_test(NAME dx12-residency-lab-auto COMMAND dx12-residency-lab auto 24 2)
             set_tests_properties(dx12-residency-lab-baseline dx12-residency-lab-arc dx12-residency-lab-auto PROPERTIES LABELS gpu TIMEOUT 90 RUN_SERIAL TRUE)
             add_test(NAME dx12-tiled-texture-lab COMMAND dx12-tiled-texture-lab)
-            set_tests_properties(dx12-tiled-texture-lab PROPERTIES LABELS gpu TIMEOUT 120 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
+            set_tests_properties(
+                dx12-tiled-texture-lab
+                PROPERTIES
+                    LABELS gpu
+                    TIMEOUT 120
+                    SKIP_RETURN_CODE 77
+                    RUN_SERIAL TRUE
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
         endif()
     endif()
 endif()
