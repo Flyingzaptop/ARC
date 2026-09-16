@@ -25,6 +25,10 @@ if (-not $SkipDebugBuild) {
     if ($LASTEXITCODE -ne 0) { throw "Debug validation failed: $LASTEXITCODE" }
 }
 
+Write-Host 'Observer baseline/light/full regression benchmark'
+& "$PSScriptRoot/benchmark.ps1" -Iterations 3000 -Rounds 3
+if ($LASTEXITCODE -ne 0) { throw "Observer benchmark failed: $LASTEXITCODE" }
+
 Write-Host 'Rotated baseline/oracle/autonomous residency benchmark'
 & "$PSScriptRoot/residency-benchmark.ps1" -Rounds $Rounds -Objects $Objects -ObjectMiB $ObjectMiB
 if ($LASTEXITCODE -ne 0) { throw "Residency benchmark failed: $LASTEXITCODE" }
@@ -35,6 +39,8 @@ $frontierRounds = [Math]::Max(2, [Math]::Min(3, [int][Math]::Ceiling($Rounds / 3
 if ($LASTEXITCODE -ne 0) { throw "Residency frontier failed: $LASTEXITCODE" }
 
 $expected = @(
+    'traces/benchmark-matrix.json',
+    'traces/benchmark-summary.json',
     'traces/residency-benchmark.json',
     'traces/residency-benchmark-summary.json',
     'traces/residency-frontier.json',
