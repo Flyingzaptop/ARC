@@ -84,6 +84,11 @@ public:
         std::uint64_t headroom_bytes,
         std::uint64_t epoch) const;
 
+    // Complete locally-safe marginal action sets for global arbitration. The
+    // actions preserve dependency order per texture but are not byte-truncated.
+    [[nodiscard]] std::vector<TextureQualityAction> demotion_candidates(std::uint64_t epoch) const;
+    [[nodiscard]] std::vector<TextureQualityAction> promotion_candidates(std::uint64_t epoch) const;
+
     [[nodiscard]] TextureQualityPlanSummary demotion_summary(
         std::uint64_t bytes_to_free,
         std::uint64_t epoch) const;
