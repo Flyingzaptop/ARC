@@ -87,5 +87,65 @@ int main() {
         CHECK(plan.actions.size() == 1);
     }
 
+    // Restoration chooses the largest value-per-byte action without exceeding headroom.
+    {
+        MemoryArbiter arbiter;
+        const std::vector<MemoryRestoreCandidate> candidates{
+            {.kind=MemoryRestoreKind::MakeResident,.resource=1,.subject=101,.bytes_cost=100,.latency_benefit_ms=1.0,.confidence=.9},
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=2,.subject=201,.sequence=0,.bytes_cost=40,.quality_gain=.8,.confidence=1.0},
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=3,.subject=301,.sequence=0,.bytes_cost=30,.quality_gain=.1,.confidence=1.0},
+        };
+        const auto plan = arbiter.plan_restore(70, candidates);
+        CHECK(plan.planned_bytes <= 70);
+        CHECK(plan.actions.size() == 2);
+        CHECK(plan.actions[0].candidate.resource == 2);
+        CHECK(plan.actions[1].candidate.resource == 3);
+        CHECK(plan.planned_bytes == 70);
+    }
+
+    // Restoration promotion dependencies are sequential and cannot skip an earlier mip step.
+    {
+        MemoryArbiter arbiter;
+        const std::vector<MemoryRestoreCandidate> candidates{
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=4,.subject=401,.sequence=1,.bytes_cost=20,.quality_gain=5.0,.confidence=1.0},
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=4,.subject=401,.sequence=0,.bytes_cost=10,.quality_gain=.2,.confidence=1.0},
+        };
+        const auto plan = arbiter.plan_restore(30, candidates);
+        CHECK(plan.actions.size() == 2);
+        CHECK(plan.actions[0].candidate.sequence == 0);
+        CHECK(plan.actions[1].candidate.sequence == 1);
+        CHECK(plan.planned_bytes == 30);
+    }
+
+    // MakeResident and PromoteTexture conflict for the same resource in one restore plan.
+    {
+        MemoryArbiter arbiter;
+        const std::vector<MemoryRestoreCandidate> candidates{
+            {.kind=MemoryRestoreKind::MakeResident,.resource=7,.subject=70,.bytes_cost=80,.latency_benefit_ms=5.0,.confidence=1.0},
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=7,.subject=71,.sequence=0,.bytes_cost=40,.quality_gain=2.0,.confidence=1.0},
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=8,.subject=81,.sequence=0,.bytes_cost=20,.quality_gain=.5,.confidence=1.0},
+        };
+        const auto plan = arbiter.plan_restore(100, candidates);
+        bool resident7 = false, promoted7 = false;
+        for (const auto& action : plan.actions) {
+            resident7 |= action.candidate.resource == 7 && action.candidate.kind == MemoryRestoreKind::MakeResident;
+            promoted7 |= action.candidate.resource == 7 && action.candidate.kind == MemoryRestoreKind::PromoteTexture;
+        }
+        CHECK(!(resident7 && promoted7));
+        CHECK(plan.planned_bytes <= 100);
+    }
+
+    // Confidence discounts speculative residency restoration so uncertain prefetch loses to solid quality gain.
+    {
+        MemoryArbiter arbiter;
+        const std::vector<MemoryRestoreCandidate> candidates{
+            {.kind=MemoryRestoreKind::MakeResident,.resource=10,.subject=10,.bytes_cost=40,.latency_benefit_ms=1.0,.confidence=.05},
+            {.kind=MemoryRestoreKind::PromoteTexture,.resource=11,.subject=11,.sequence=0,.bytes_cost=40,.quality_gain=.2,.confidence=1.0},
+        };
+        const auto plan = arbiter.plan_restore(40, candidates);
+        CHECK(plan.actions.size() == 1);
+        CHECK(plan.actions[0].candidate.kind == MemoryRestoreKind::PromoteTexture);
+    }
+
     return 0;
 }
