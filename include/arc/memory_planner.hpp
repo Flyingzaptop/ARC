@@ -21,6 +21,13 @@ struct GlobalMemoryPlan {
     MemoryArbiterPlan arbitration{};
 };
 
+struct GlobalMemoryRestorePlan {
+    std::uint64_t headroom_bytes{};
+    std::uint64_t residency_candidate_bytes{};
+    std::uint64_t texture_candidate_bytes{};
+    MemoryRestorePlan arbitration{};
+};
+
 // Slow-loop planner only. Specialized governors remain authoritative for
 // safety; this class compares already-safe actions and never performs them.
 class GlobalMemoryPlanner final {
@@ -31,6 +38,12 @@ public:
         const ResidencyGovernor& residency,
         const TextureQualityGovernor& textures,
         std::uint64_t epoch) const;
+
+    [[nodiscard]] GlobalMemoryRestorePlan plan_headroom_restore(
+        const ResidencyGovernor& residency,
+        const TextureQualityGovernor& textures,
+        std::uint64_t epoch,
+        std::uint64_t headroom_bytes) const;
 
     [[nodiscard]] const GlobalMemoryPlannerConfig& config() const noexcept { return config_; }
 
