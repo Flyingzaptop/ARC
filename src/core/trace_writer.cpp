@@ -1,6 +1,7 @@
 #include "arc/trace.hpp"
 #include "arc/clock.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <cstring>
