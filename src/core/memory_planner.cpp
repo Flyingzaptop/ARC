@@ -41,8 +41,10 @@ GlobalMemoryPlan GlobalMemoryPlanner::plan_pressure_relief(
 
     std::vector<MemoryActionCandidate> candidates;
 
-    const auto residency_actions = residency.plan_evictions(epoch);
-    candidates.reserve(residency_actions.size() + textures.config().max_demotions_per_plan);
+    const auto residency_actions = residency.eviction_candidates(epoch);
+    const auto texture_actions = textures.demotion_candidates(epoch);
+    candidates.reserve(residency_actions.size() + texture_actions.size());
+
     for (const auto& action : residency_actions) {
         const auto object = residency.find(action.object);
         if (!object || object->resource == 0) continue;
@@ -68,11 +70,10 @@ GlobalMemoryPlan GlobalMemoryPlanner::plan_pressure_relief(
         result.residency_candidate_bytes = saturating_add(result.residency_candidate_bytes, action.bytes);
     }
 
-    const auto texture_actions = textures.plan_demotions(result.requested_bytes, epoch);
-    std::unordered_map<ResourceId, std::uint32_t> demotion_sequences;
+    std::unordered_map<TextureQualityId, std::uint32_t> demotion_sequences;
     for (const auto& action : texture_actions) {
         const auto loss = action.quality_delta < 0.0 ? -action.quality_delta : 0.0;
-        const auto sequence = demotion_sequences[action.resource]++;
+        const auto sequence = demotion_sequences[action.texture]++;
         candidates.push_back(MemoryActionCandidate{
             .kind = MemoryActionKind::DemoteTexture,
             .resource = action.resource,
@@ -104,8 +105,10 @@ GlobalMemoryRestorePlan GlobalMemoryPlanner::plan_headroom_restore(
 
     std::vector<MemoryRestoreCandidate> candidates;
 
-    const auto residency_actions = residency.plan_promotions(epoch);
-    candidates.reserve(residency_actions.size() + textures.config().max_promotions_per_plan);
+    const auto residency_actions = residency.promotion_candidates(epoch);
+    const auto texture_actions = textures.promotion_candidates(epoch);
+    candidates.reserve(residency_actions.size() + texture_actions.size());
+
     for (const auto& action : residency_actions) {
         const auto object = residency.find(action.object);
         if (!object || object->resource == 0) continue;
@@ -130,10 +133,9 @@ GlobalMemoryRestorePlan GlobalMemoryPlanner::plan_headroom_restore(
         result.residency_candidate_bytes = saturating_add(result.residency_candidate_bytes, action.bytes);
     }
 
-    const auto texture_actions = textures.plan_promotions(headroom_bytes, epoch);
-    std::unordered_map<ResourceId, std::uint32_t> resource_sequences;
+    std::unordered_map<TextureQualityId, std::uint32_t> promotion_sequences;
     for (const auto& action : texture_actions) {
-        const auto sequence = resource_sequences[action.resource]++;
+        const auto sequence = promotion_sequences[action.texture]++;
         candidates.push_back(MemoryRestoreCandidate{
             .kind = MemoryRestoreKind::PromoteTexture,
             .resource = action.resource,
