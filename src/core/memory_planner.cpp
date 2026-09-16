@@ -69,13 +69,15 @@ GlobalMemoryPlan GlobalMemoryPlanner::plan_pressure_relief(
     }
 
     const auto texture_actions = textures.plan_demotions(result.requested_bytes, epoch);
+    std::unordered_map<ResourceId, std::uint32_t> demotion_sequences;
     for (const auto& action : texture_actions) {
         const auto loss = action.quality_delta < 0.0 ? -action.quality_delta : 0.0;
+        const auto sequence = demotion_sequences[action.resource]++;
         candidates.push_back(MemoryActionCandidate{
             .kind = MemoryActionKind::DemoteTexture,
             .resource = action.resource,
             .subject = action.texture,
-            .sequence = action.from_level,
+            .sequence = sequence,
             .bytes_freed = action.bytes_delta,
             .quality_loss = loss,
             .latency_risk_ms = 0.0,
