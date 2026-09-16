@@ -22,7 +22,9 @@ add_library(arc-core STATIC
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
     src/core/residency.cpp
+    src/core/residency_candidates.cpp
     src/core/texture_quality.cpp
+    src/core/texture_quality_candidates.cpp
     src/core/memory_arbiter.cpp
     src/core/memory_planner.cpp
     src/core/trace_writer.cpp
