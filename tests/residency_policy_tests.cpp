@@ -161,7 +161,23 @@ int main() {
         CHECK(governor.metrics().compulsory_misses == 0);
         governor.update_budget(1000, 900);
         CHECK(governor.plan_evictions(60).empty());
-        CHECK(!governor.plan_evictions(67).empty());
+        CHECK(!governor.plan_evictions(70).empty());
+    }
+
+    // A once-periodic object must become evictable after several predicted uses fail to occur.
+    {
+        ResidencyPolicyConfig config{};
+        config.minimum_residency_age_epochs = 2;
+        config.prediction_stale_intervals = 3;
+        ResidencyGovernor governor(config);
+        CHECK(governor.register_object({.id = 9, .state = ResidencyState::Resident, .safety = ResidencySafety::ControlledSafe, .cost = {.bytes = 100}}));
+        for (std::uint64_t epoch : {1ULL, 2ULL, 3ULL, 4ULL}) {
+            CHECK(governor.note_use(9, epoch, epoch));
+        }
+        CHECK(governor.prediction(9, 5)->confidence >= config.minimum_prefetch_confidence);
+        CHECK(governor.prediction(9, 10)->confidence == 0.0);
+        governor.update_budget(1000, 900);
+        CHECK(!governor.plan_evictions(10).empty());
     }
 
     // A demand miss with insufficient reuse history is compulsory, not a predictor failure.
