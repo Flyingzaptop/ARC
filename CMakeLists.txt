@@ -23,6 +23,7 @@ add_library(arc-core STATIC
     src/core/resource_graph.cpp
     src/core/residency.cpp
     src/core/texture_quality.cpp
+    src/core/memory_arbiter.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
@@ -99,6 +100,10 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-texture-quality-invariant-stress tests/texture_quality_invariant_stress.cpp)
     target_link_libraries(arc-texture-quality-invariant-stress PRIVATE arc::core)
     add_test(NAME arc-texture-quality-invariant-stress COMMAND arc-texture-quality-invariant-stress)
+
+    add_executable(arc-memory-arbiter-tests tests/memory_arbiter_tests.cpp)
+    target_link_libraries(arc-memory-arbiter-tests PRIVATE arc::core)
+    add_test(NAME arc-memory-arbiter-tests COMMAND arc-memory-arbiter-tests)
 
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
