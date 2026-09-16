@@ -1,5 +1,6 @@
 #include "arc/trace.hpp"
 #include "arc/resource_graph.hpp"
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <array>
