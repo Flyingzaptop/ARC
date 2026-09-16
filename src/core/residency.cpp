@@ -28,6 +28,7 @@ bool valid_config(const ResidencyPolicyConfig& config) noexcept {
         finite_ratio(config.pressure_target) && finite_ratio(config.emergency_target) &&
         finite_ratio(config.promotion_ceiling) && finite_ratio(config.minimum_prefetch_confidence) &&
         config.recovery_samples > 0 && config.minimum_prediction_samples >= 2 &&
+        config.prediction_stale_intervals > 0 &&
         config.pressure_target < config.pressure_enter && config.pressure_exit < config.pressure_enter &&
         config.emergency_target < config.emergency_enter && config.emergency_exit < config.emergency_enter &&
         config.pressure_enter < config.emergency_enter && config.promotion_ceiling <= config.pressure_enter;
@@ -187,13 +188,21 @@ bool ResidencyGovernor::eviction_fence_safe(const ResidencyObject& object) const
     return object.last_use_fence == 0 || object.last_completed_fence >= object.last_use_fence;
 }
 
-double ResidencyGovernor::prediction_confidence(const ResidencyObject& object) const noexcept {
+double ResidencyGovernor::prediction_confidence(const ResidencyObject& object, std::uint64_t epoch) const noexcept {
     if (object.use_count < config_.minimum_prediction_samples || !(object.cost.reuse_interval > 0.0) ||
         !std::isfinite(object.cost.reuse_interval) || !std::isfinite(object.cost.reuse_deviation)) {
         return 0.0;
     }
 
     const auto mean = (std::max)(1.0, object.cost.reuse_interval);
+    if (epoch > object.last_use_epoch) {
+        const auto age = static_cast<double>(epoch - object.last_use_epoch);
+        const auto stale_after = mean * static_cast<double>(config_.prediction_stale_intervals);
+        if (age > stale_after) {
+            return 0.0;
+        }
+    }
+
     const auto normalized_deviation = (std::min)(1.0, object.cost.reuse_deviation / mean);
     const auto stability = 1.0 - normalized_deviation;
     const auto sample_span = static_cast<double>((std::max<std::uint32_t>)(config_.minimum_prediction_samples, 6U));
@@ -243,7 +252,7 @@ std::optional<ResidencyPrediction> ResidencyGovernor::prediction(ResidencyId id,
     if (!predicted) {
         return std::nullopt;
     }
-    return ResidencyPrediction{*predicted, prediction_confidence(it->second)};
+    return ResidencyPrediction{*predicted, prediction_confidence(it->second, epoch)};
 }
 
 std::vector<ResidencyAction> ResidencyGovernor::plan_evictions(std::uint64_t epoch) const {
@@ -269,7 +278,7 @@ std::vector<ResidencyAction> ResidencyGovernor::plan_evictions(std::uint64_t epo
         }
 
         const auto predicted = predicted_next_use(object, epoch);
-        const auto confidence = prediction_confidence(object);
+        const auto confidence = prediction_confidence(object, epoch);
         if (predicted && confidence >= config_.minimum_prefetch_confidence &&
             *predicted <= epoch + config_.prefetch_horizon_epochs) {
             continue;
@@ -330,7 +339,7 @@ std::vector<ResidencyAction> ResidencyGovernor::plan_promotions(std::uint64_t ep
         }
 
         const auto predicted = predicted_next_use(object, epoch);
-        const auto confidence = prediction_confidence(object);
+        const auto confidence = prediction_confidence(object, epoch);
         if (!predicted || confidence < config_.minimum_prefetch_confidence ||
             *predicted > epoch + config_.prefetch_horizon_epochs) {
             continue;
@@ -445,7 +454,7 @@ void ResidencyGovernor::record_resident(ResidencyId id, bool late, std::uint64_t
     ++metrics_.late_residency;
     ++object.demand_miss_count;
     object.last_miss_epoch = epoch;
-    if (prediction_confidence(object) >= config_.minimum_prefetch_confidence) {
+    if (prediction_confidence(object, epoch) >= config_.minimum_prefetch_confidence) {
         ++metrics_.predictable_misses;
     } else {
         ++metrics_.compulsory_misses;
