@@ -83,13 +83,13 @@ int main() {
     planner_config.arbiter.uncertainty_weight = .05;
     GlobalMemoryPlanner planner(planner_config);
 
-    // Pressure: 950/1000 enters Pressure and requests 170 bytes to reach 78%.
-    residency.update_budget(1000, 950);
+    // Pressure: 900/1000 enters Pressure and requests 120 bytes to reach 78%.
+    residency.update_budget(1000, 900);
     CHECK(residency.pressure() == PressureState::Pressure);
-    CHECK(residency.bytes_to_free() == 170);
+    CHECK(residency.bytes_to_free() == 120);
     const auto relief = planner.plan_pressure_relief(residency, textures, 100);
     CHECK(!relief.arbitration.shortfall);
-    CHECK(relief.arbitration.planned_bytes >= 170);
+    CHECK(relief.arbitration.planned_bytes >= 120);
 
     std::uint64_t simulated_freed{};
     std::unordered_map<ResourceId, bool> whole_evicted;
