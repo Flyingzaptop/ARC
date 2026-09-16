@@ -35,7 +35,9 @@ struct ResidencyPolicyConfig {
     std::uint64_t minimum_headroom_bytes{};
     std::uint64_t minimum_residency_age_epochs{8};
     std::uint64_t prefetch_horizon_epochs{8};
+    std::uint64_t eviction_prediction_guard_epochs{32};
     std::uint64_t post_miss_grace_epochs{32};
+    std::uint64_t prediction_miss_tolerance_epochs{2};
     std::uint32_t minimum_prediction_samples{3};
     std::uint32_t prediction_stale_intervals{3};
     std::uint32_t recovery_samples{3};
@@ -55,6 +57,8 @@ struct ResidencyObject {
     std::uint64_t last_evicted_epoch{};
     std::uint64_t last_miss_epoch{};
     std::uint64_t demand_miss_count{};
+    std::uint64_t last_evicted_predicted_epoch{};
+    double last_evicted_prediction_confidence{};
     QueueId last_use_queue{};
 };
 
