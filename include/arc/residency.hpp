@@ -37,6 +37,7 @@ struct ResidencyPolicyConfig {
     std::uint64_t prefetch_horizon_epochs{8};
     std::uint64_t post_miss_grace_epochs{32};
     std::uint32_t minimum_prediction_samples{3};
+    std::uint32_t prediction_stale_intervals{3};
     std::uint32_t recovery_samples{3};
 };
 
@@ -135,7 +136,7 @@ public:
 
 private:
     [[nodiscard]] std::optional<std::uint64_t> predicted_next_use(const ResidencyObject& object, std::uint64_t epoch) const;
-    [[nodiscard]] double prediction_confidence(const ResidencyObject& object) const noexcept;
+    [[nodiscard]] double prediction_confidence(const ResidencyObject& object, std::uint64_t epoch) const noexcept;
     [[nodiscard]] bool eviction_fence_safe(const ResidencyObject& object) const noexcept;
     [[nodiscard]] std::uint64_t target_usage_bytes() const noexcept;
 
