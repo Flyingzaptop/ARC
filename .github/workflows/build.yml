@@ -1,4 +1,4 @@
-name: Stage 1 core validation
+name: ARC core validation
 permissions:
   contents: read
 on: [push, pull_request]
@@ -13,3 +13,11 @@ jobs:
       - run: cmake -S . -B build -A x64
       - run: cmake --build build --config ${{ matrix.configuration }}
       - run: ctest --test-dir build -C ${{ matrix.configuration }} --output-on-failure --timeout 60
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build
+      - run: ctest --test-dir build --output-on-failure --timeout 60
