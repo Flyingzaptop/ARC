@@ -24,6 +24,7 @@ add_library(arc-core STATIC
     src/core/residency.cpp
     src/core/texture_quality.cpp
     src/core/memory_arbiter.cpp
+    src/core/memory_planner.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
@@ -104,6 +105,10 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-memory-arbiter-tests tests/memory_arbiter_tests.cpp)
     target_link_libraries(arc-memory-arbiter-tests PRIVATE arc::core)
     add_test(NAME arc-memory-arbiter-tests COMMAND arc-memory-arbiter-tests)
+
+    add_executable(arc-memory-planner-tests tests/memory_planner_tests.cpp)
+    target_link_libraries(arc-memory-planner-tests PRIVATE arc::core)
+    add_test(NAME arc-memory-planner-tests COMMAND arc-memory-planner-tests)
 
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
