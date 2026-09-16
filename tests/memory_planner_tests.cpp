@@ -7,6 +7,7 @@
 int main() {
     using namespace arc;
 
+    // Pressure path: combine already-safe whole-resource eviction and mip demotion candidates.
     ResidencyPolicyConfig residency_config{};
     residency_config.minimum_residency_age_epochs = 1;
     residency_config.prefetch_horizon_epochs = 4;
@@ -44,24 +45,65 @@ int main() {
     CHECK(!plan.arbitration.shortfall);
     CHECK(plan.arbitration.planned_bytes >= 120);
 
-    bool saw_texture = false;
-    bool saw_residency = false;
     bool resource200_evicted = false;
     bool resource200_demoted = false;
     for (const auto& action : plan.arbitration.actions) {
-        saw_texture |= action.candidate.kind == MemoryActionKind::DemoteTexture;
-        saw_residency |= action.candidate.kind == MemoryActionKind::EvictResource;
         if (action.candidate.resource == 200 && action.candidate.kind == MemoryActionKind::EvictResource) resource200_evicted = true;
         if (action.candidate.resource == 200 && action.candidate.kind == MemoryActionKind::DemoteTexture) resource200_demoted = true;
     }
-    CHECK(saw_texture || saw_residency);
     CHECK(!(resource200_evicted && resource200_demoted));
 
-    // No pressure means no global action even when texture demotions are available.
+    // No pressure means no relief action even when texture demotions exist.
     residency.update_budget(1000, 500);
     const auto idle = planner.plan_pressure_relief(residency, textures, 200);
     CHECK(idle.requested_bytes == 0);
     CHECK(idle.arbitration.actions.empty());
+
+    // Headroom path: an actually evicted periodic resource competes with previously demoted texture quality.
+    ResidencyPolicyConfig restore_residency_config{};
+    restore_residency_config.prefetch_horizon_epochs = 8;
+    restore_residency_config.promotion_ceiling = .90;
+    ResidencyGovernor restore_residency(restore_residency_config);
+    CHECK(restore_residency.register_object({
+        .id=10,.resource=500,.state=ResidencyState::Resident,.safety=ResidencySafety::ControlledSafe,
+        .cost={.bytes=80,.reload_ms=2.0}}));
+    for (std::uint64_t epoch : {10ULL,20ULL,30ULL,40ULL}) CHECK(restore_residency.note_use(10, epoch, epoch));
+    CHECK(restore_residency.transition(10, ResidencyState::Resident, ResidencyState::Evicted));
+    restore_residency.record_eviction(10, false, 42);
+    restore_residency.update_budget(1000, 600);
+    CHECK(restore_residency.pressure() == PressureState::Normal);
+    CHECK(!restore_residency.plan_promotions(42).empty());
+
+    TextureQualityPolicyConfig restore_texture_config{};
+    restore_texture_config.minimum_change_age_epochs = 0;
+    TextureQualityGovernor restore_textures(restore_texture_config);
+    CHECK(restore_textures.register_texture({
+        .id=50,.resource=600,.safety=TextureQualitySafety::MipSafe,.full_resident_bytes=120,
+        .demotion_steps={{40,.10},{30,.25}},.importance=1.0}));
+    const auto demotions = restore_textures.plan_demotions(70, 1);
+    CHECK(demotions.size() == 2);
+    for (const auto& action : demotions) CHECK(restore_textures.apply(action, 1));
+    CHECK(restore_textures.find(50)->current_level == 2);
+
+    const auto restore = planner.plan_headroom_restore(restore_residency, restore_textures, 42, 100);
+    CHECK(restore.headroom_bytes == 100);
+    CHECK(restore.residency_candidate_bytes == 80);
+    CHECK(restore.texture_candidate_bytes >= 40);
+    CHECK(restore.arbitration.planned_bytes <= 100);
+    CHECK(!restore.arbitration.actions.empty());
+
+    bool saw_restore_residency = false;
+    bool saw_restore_texture = false;
+    for (const auto& action : restore.arbitration.actions) {
+        saw_restore_residency |= action.candidate.kind == MemoryRestoreKind::MakeResident;
+        saw_restore_texture |= action.candidate.kind == MemoryRestoreKind::PromoteTexture;
+    }
+    CHECK(saw_restore_residency || saw_restore_texture);
+
+    // Restoration is strictly capped; no candidate may overfill a tiny headroom window.
+    const auto tiny = planner.plan_headroom_restore(restore_residency, restore_textures, 42, 25);
+    CHECK(tiny.arbitration.planned_bytes <= 25);
+    CHECK(tiny.arbitration.actions.empty());
 
     return 0;
 }
