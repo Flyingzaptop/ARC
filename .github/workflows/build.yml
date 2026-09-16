@@ -10,6 +10,21 @@ jobs:
         configuration: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
+      - name: Parse PowerShell scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $failed = $false
+          Get-ChildItem -Path scripts -Filter *.ps1 -File -Recurse | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -ne 0) {
+              Write-Host "PowerShell parse errors in $($_.FullName)" -ForegroundColor Red
+              $errors | Format-List | Out-String | Write-Host
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
       - run: cmake -S . -B build -A x64
       - run: cmake --build build --config ${{ matrix.configuration }}
       - run: ctest --test-dir build -C ${{ matrix.configuration }} --output-on-failure --timeout 60
