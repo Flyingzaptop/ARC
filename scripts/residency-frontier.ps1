@@ -9,11 +9,12 @@ param(
 $ErrorActionPreference = 'Stop'
 $exe = './build/Release/dx12-residency-lab.exe'
 if (-not (Test-Path $exe)) { throw 'Release residency lab is missing. Build Release first.' }
+# Frontier timing must not include D3D12 debug-layer overhead.
+Remove-Item Env:ARC_D3D12_DEBUG -ErrorAction SilentlyContinue
 
 $patterns = @('mixed', 'cycle', 'phase', 'stream')
 $managedPercents = @(45, 55, 65, 75, 85)
 $results = @()
-$env:ARC_D3D12_DEBUG = '1'
 New-Item -ItemType Directory -Force traces | Out-Null
 
 function Invoke-Lab([string]$mode, [string]$pattern, [int]$managedPercent, [int]$round, [int]$position) {
@@ -38,7 +39,6 @@ for ($round = 0; $round -lt $Rounds; $round++) {
             $jobs += [pscustomobject]@{ mode='auto'; pattern=$pattern; managed=$percent }
         }
     }
-    # Deterministic rotation/reversal avoids always favoring the same mode with thermals/caches.
     if (($round % 2) -eq 1) { [array]::Reverse($jobs) }
     $offset = ($round * 7) % $jobs.Count
     if ($offset -gt 0) { $jobs = @($jobs[$offset..($jobs.Count-1)] + $jobs[0..($offset-1)]) }
@@ -114,17 +114,17 @@ foreach ($percent in $managedPercents) {
     }
 }
 
-# A conservative lab-only operating-point suggestion. Production policy remains dynamic.
 $eligible = @($aggregate | Where-Object { $_.worst_p99_delta_ms -le 0.15 -and $_.total_predictable_misses_per_1000 -le 1.0 } | Sort-Object mean_full_working_set_fraction)
 $recommended = if ($eligible.Count) { $eligible[0] } else { $null }
 
 $summary = [ordered]@{
-    schema = 1
+    schema = 2
     rounds = $Rounds
     objects = $Objects
     object_mib = $ObjectMiB
     warmup_epochs = $WarmupEpochs
     measured_epochs = $MeasuredEpochs
+    debug_layer = $false
     patterns = $patterns
     managed_percents = $managedPercents
     acceptance_guard = [ordered]@{ worst_p99_delta_ms_max = 0.15; total_predictable_misses_per_1000_max = 1.0 }
