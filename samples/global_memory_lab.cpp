@@ -446,7 +446,12 @@ int main() try {
     const bool lower_mip_preserved = verify_texture(transfers[2]);
     if (!lower_mip_preserved) throw std::runtime_error("lower mip changed during global relief");
 
+    // Recovery from Emergency is deliberately hysteretic: one safe sample moves
+    // Emergency -> Pressure, the next safe sample moves Pressure -> Normal.
     residency.update_budget(synthetic_budget, 300ull * kMiB);
+    if (residency.pressure() != arc::PressureState::Pressure) throw std::runtime_error("expected Emergency -> Pressure recovery");
+    residency.update_budget(synthetic_budget, 300ull * kMiB);
+    if (residency.pressure() != arc::PressureState::Normal) throw std::runtime_error("expected Pressure -> Normal recovery");
     const auto restore = planner.plan_headroom_restore(residency, quality, 115, expected_freed);
     if (restore.arbitration.planned_bytes > expected_freed) throw std::runtime_error("restore exceeded headroom");
 
