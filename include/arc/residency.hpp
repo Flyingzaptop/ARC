@@ -122,6 +122,10 @@ public:
     [[nodiscard]] std::uint64_t bytes_to_free() const noexcept;
     [[nodiscard]] std::vector<ResidencyAction> plan_evictions(std::uint64_t epoch) const;
     [[nodiscard]] std::vector<ResidencyAction> plan_promotions(std::uint64_t epoch) const;
+    // Full safe candidate surfaces for a higher-level arbiter. These methods
+    // preserve all local safety gates but do not truncate to a local byte target.
+    [[nodiscard]] std::vector<ResidencyAction> eviction_candidates(std::uint64_t epoch) const;
+    [[nodiscard]] std::vector<ResidencyAction> promotion_candidates(std::uint64_t epoch) const;
     [[nodiscard]] std::optional<ResidencyAction> require_resident(ResidencyId id) const;
     [[nodiscard]] std::vector<ResidencyAction> plan(std::uint64_t epoch) const;
     [[nodiscard]] ResidencyPlanSummary plan_summary(std::uint64_t epoch) const;
