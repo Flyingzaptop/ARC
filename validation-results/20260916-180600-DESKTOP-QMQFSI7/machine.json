@@ -1,0 +1,28 @@
+﻿{
+    "computer":  "DESKTOP-QMQFSI7",
+    "user":  "r3d_flzp",
+    "powershell":  "5.1.26100.5651",
+    "cpu":  {
+                "name":  "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+                "cores":  8,
+                "logical_processors":  16
+            },
+    "ram_bytes":  42569789440,
+    "gpus":  [
+                 {
+                     "name":  "NVIDIA GeForce RTX 3060 Laptop GPU",
+                     "driver_version":  "32.0.16.1664",
+                     "adapter_ram":  4293918720
+                 },
+                 {
+                     "name":  "Intel(R) UHD Graphics",
+                     "driver_version":  "30.0.101.2079",
+                     "adapter_ram":  1073741824
+                 }
+             ],
+    "os":  {
+               "caption":  "Microsoft Windows 11 Home Insider Preview",
+               "version":  "10.0.26200",
+               "build":  "26200"
+           }
+}

@@ -1,0 +1,93 @@
+﻿{
+    "schema":  1,
+    "status":  "PASS",
+    "validation_exit_code":  0,
+    "validation_error":  null,
+    "source_branch":  "dev/stage3-texture-policy",
+    "source_sha":  "c89e7f23b293d9dd492650bef236daa2308dab61",
+    "run_id":  "20260916-180600-DESKTOP-QMQFSI7",
+    "timestamp_local":  "2026-09-16T18:08:15.9795592+02:00",
+    "rounds":  6,
+    "objects":  24,
+    "object_mib":  2,
+    "machine":  {
+                    "computer":  "DESKTOP-QMQFSI7",
+                    "user":  "r3d_flzp",
+                    "powershell":  "5.1.26100.5651",
+                    "cpu":  {
+                                "name":  "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+                                "cores":  8,
+                                "logical_processors":  16
+                            },
+                    "ram_bytes":  42569789440,
+                    "gpus":  [
+                                 {
+                                     "name":  "NVIDIA GeForce RTX 3060 Laptop GPU",
+                                     "driver_version":  "32.0.16.1664",
+                                     "adapter_ram":  4293918720
+                                 },
+                                 {
+                                     "name":  "Intel(R) UHD Graphics",
+                                     "driver_version":  "30.0.101.2079",
+                                     "adapter_ram":  1073741824
+                                 }
+                             ],
+                    "os":  {
+                               "caption":  "Microsoft Windows 11 Home Insider Preview",
+                               "version":  "10.0.26200",
+                               "build":  "26200"
+                           }
+                },
+    "benchmark_summary":  {
+                              "schema":  2,
+                              "rounds":  6,
+                              "objects":  24,
+                              "object_mib":  2,
+                              "baseline":  {
+                                               "runs":  6,
+                                               "mean_p50_ms":  1.0678833333333333,
+                                               "mean_p95_ms":  1.1287833333333335,
+                                               "mean_p99_ms":  1.2343833333333332,
+                                               "mean_bytes_evicted":  0,
+                                               "mean_reloads":  0,
+                                               "mean_false_evictions":  0,
+                                               "mean_late_residency":  0,
+                                               "mean_speculative_promotions":  0,
+                                               "mean_managed_usage":  0,
+                                               "mean_managed_peak":  0
+                                           },
+                              "oracle":  {
+                                             "runs":  6,
+                                             "mean_p50_ms":  1.0670333333333333,
+                                             "mean_p95_ms":  1.1329333333333331,
+                                             "mean_p99_ms":  1.2809,
+                                             "mean_bytes_evicted":  67108864,
+                                             "mean_reloads":  32,
+                                             "mean_false_evictions":  0,
+                                             "mean_late_residency":  0,
+                                             "mean_speculative_promotions":  10,
+                                             "mean_managed_usage":  0,
+                                             "mean_managed_peak":  0
+                                         },
+                              "auto":  {
+                                           "runs":  6,
+                                           "mean_p50_ms":  1.0741,
+                                           "mean_p95_ms":  1.5393999999999999,
+                                           "mean_p99_ms":  1.6274833333333332,
+                                           "mean_bytes_evicted":  58720256,
+                                           "mean_reloads":  28,
+                                           "mean_false_evictions":  0,
+                                           "mean_late_residency":  10,
+                                           "mean_speculative_promotions":  3,
+                                           "mean_managed_usage":  19744686,
+                                           "mean_managed_peak":  50331648
+                                       },
+                              "comparison":  {
+                                                 "auto_minus_baseline_p50_ms":  0.0062166666666667592,
+                                                 "auto_minus_baseline_p95_ms":  0.41061666666666641,
+                                                 "auto_minus_baseline_p99_ms":  0.3931,
+                                                 "auto_minus_oracle_p99_ms":  0.34658333333333324,
+                                                 "auto_mean_managed_budget_fraction":  0.784583330154419
+                                             }
+                          }
+}
