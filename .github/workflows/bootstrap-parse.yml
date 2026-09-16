@@ -11,12 +11,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Parse PowerShell bootstrap
+      - name: Parse PowerShell bootstrap v2
         shell: powershell
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/stage2a1-bootstrap.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'scripts/stage2a1-bootstrap-v2.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
           if ($errors.Count -ne 0) {
             $errors | Format-List | Out-String | Write-Error
             exit 1
