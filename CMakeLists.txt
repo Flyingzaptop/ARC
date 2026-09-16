@@ -22,6 +22,7 @@ add_library(arc-core STATIC
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
     src/core/residency.cpp
+    src/core/texture_quality.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
@@ -84,6 +85,10 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-residency-invariant-stress tests/residency_invariant_stress.cpp)
     target_link_libraries(arc-residency-invariant-stress PRIVATE arc::core)
     add_test(NAME arc-residency-invariant-stress COMMAND arc-residency-invariant-stress)
+
+    add_executable(arc-texture-quality-policy-tests tests/texture_quality_policy_tests.cpp)
+    target_link_libraries(arc-texture-quality-policy-tests PRIVATE arc::core)
+    add_test(NAME arc-texture-quality-policy-tests COMMAND arc-texture-quality-policy-tests)
 
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
