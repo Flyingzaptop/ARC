@@ -47,12 +47,15 @@ int main() {
         CHECK(promotions.size() == 1 && promotions[0].object == 7 && promotions[0].predicted_use_epoch == 30);
     }
     {
-        ResidencyGovernor governor;
-        CHECK(governor.register_object({.id=1, .state=ResidencyState::Resident, .safety=ResidencySafety::ControlledSafe, .cost={.bytes=64, .reuse_interval=20}}));
-        CHECK(governor.note_use(1, 90, 1));
+        ResidencyPolicyConfig config{}; config.prefetch_horizon_epochs = 8; config.minimum_residency_age_epochs = 8;
+        ResidencyGovernor governor(config);
+        CHECK(governor.register_object({.id=1, .state=ResidencyState::Resident, .safety=ResidencySafety::ControlledSafe, .cost={.bytes=64}}));
+        CHECK(governor.note_use(1, 70, 1));
+        CHECK(governor.note_use(1, 90, 2));
         governor.update_budget(1000, 900);
-        CHECK(governor.plan_evictions(100).empty());
-        CHECK(governor.plan_evictions(140).size() == 1);
+        const auto early = governor.plan_evictions(100);
+        CHECK(early.size() == 1 && early[0].object == 1 && early[0].predicted_use_epoch == 110);
+        CHECK(governor.plan_evictions(102).empty());
     }
     {
         ResidencyGovernor governor;

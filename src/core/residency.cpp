@@ -88,10 +88,7 @@ std::vector<ResidencyAction> ResidencyGovernor::plan_evictions(std::uint64_t epo
     for (const auto& [id, object] : objects_) {
         if (object.safety != ResidencySafety::ControlledSafe || object.state != ResidencyState::Resident || !eviction_fence_safe(object)) { continue; }
         const auto age = epoch >= object.last_use_epoch ? epoch - object.last_use_epoch : 0;
-        const auto learnedCold = object.cost.reuse_interval > 0.0 ? static_cast<std::uint64_t>(std::ceil(object.cost.reuse_interval * 2.0)) : config_.minimum_residency_age_epochs;
-        const auto coldThreshold = (std::max)(config_.minimum_residency_age_epochs, learnedCold);
-        if (object.use_count && age < coldThreshold) { continue; }
-        if (!object.use_count && age < config_.minimum_residency_age_epochs) { continue; }
+        if (age < config_.minimum_residency_age_epochs) { continue; }
         const auto predicted = predicted_next_use(object);
         if (predicted && *predicted <= epoch + config_.prefetch_horizon_epochs) { continue; }
         const auto ageFactor = object.use_count && object.cost.reuse_interval > 0.0 ? static_cast<double>(age) / object.cost.reuse_interval : 4.0;
