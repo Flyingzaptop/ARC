@@ -61,7 +61,7 @@ GlobalMemoryPlan GlobalMemoryPlanner::plan_pressure_relief(
             .bytes_freed = action.bytes,
             .quality_loss = 0.0,
             .latency_risk_ms = latency_risk,
-            .confidence = prediction ? prediction->confidence : config_.unknown_prediction_confidence,
+            .confidence = prediction_confidence,
             .eligible = true,
         });
         result.residency_candidate_bytes = saturating_add(result.residency_candidate_bytes, action.bytes);
@@ -85,6 +85,66 @@ GlobalMemoryPlan GlobalMemoryPlanner::plan_pressure_relief(
     }
 
     result.arbitration = arbiter_.plan(result.requested_bytes, candidates);
+    return result;
+}
+
+GlobalMemoryRestorePlan GlobalMemoryPlanner::plan_headroom_restore(
+    const ResidencyGovernor& residency,
+    const TextureQualityGovernor& textures,
+    std::uint64_t epoch,
+    std::uint64_t headroom_bytes) const {
+    GlobalMemoryRestorePlan result{};
+    result.headroom_bytes = headroom_bytes;
+    if (!headroom_bytes) {
+        return result;
+    }
+
+    std::vector<MemoryRestoreCandidate> candidates;
+
+    const auto residency_actions = residency.plan_promotions(epoch);
+    candidates.reserve(residency_actions.size() + textures.config().max_promotions_per_plan);
+    for (const auto& action : residency_actions) {
+        const auto object = residency.find(action.object);
+        if (!object || object->resource == 0) continue;
+        const auto prediction = residency.prediction(action.object, epoch);
+        const auto confidence = prediction ? prediction->confidence : config_.unknown_prediction_confidence;
+        double latency_benefit = (std::max)(0.0, object->cost.reload_ms) * confidence;
+        if (prediction && prediction->epoch > epoch) {
+            const auto distance = static_cast<double>(prediction->epoch - epoch);
+            latency_benefit /= (1.0 + distance);
+        }
+        candidates.push_back(MemoryRestoreCandidate{
+            .kind = MemoryRestoreKind::MakeResident,
+            .resource = object->resource,
+            .subject = action.object,
+            .sequence = 0,
+            .bytes_cost = action.bytes,
+            .quality_gain = 0.0,
+            .latency_benefit_ms = latency_benefit,
+            .confidence = confidence,
+            .eligible = true,
+        });
+        result.residency_candidate_bytes = saturating_add(result.residency_candidate_bytes, action.bytes);
+    }
+
+    const auto texture_actions = textures.plan_promotions(headroom_bytes, epoch);
+    for (std::size_t index = 0; index < texture_actions.size(); ++index) {
+        const auto& action = texture_actions[index];
+        candidates.push_back(MemoryRestoreCandidate{
+            .kind = MemoryRestoreKind::PromoteTexture,
+            .resource = action.resource,
+            .subject = action.texture,
+            .sequence = static_cast<std::uint32_t>(index),
+            .bytes_cost = action.bytes_delta,
+            .quality_gain = action.quality_delta > 0.0 ? action.quality_delta : 0.0,
+            .latency_benefit_ms = 0.0,
+            .confidence = 1.0,
+            .eligible = true,
+        });
+        result.texture_candidate_bytes = saturating_add(result.texture_candidate_bytes, action.bytes_delta);
+    }
+
+    result.arbitration = arbiter_.plan_restore(headroom_bytes, candidates);
     return result;
 }
 
