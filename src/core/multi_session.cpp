@@ -1,4 +1,5 @@
 #include "arc/multi_session.hpp"
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <optional>
