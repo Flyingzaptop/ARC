@@ -4,12 +4,13 @@
 #include <iostream>
 #include <unordered_set>
 #include <vector>
-#define CHECK(condition) do { if (!(condition)) { std::cerr << "CHECK failed: " << #condition << " seed=" << seed << " epoch=" << epoch << " line=" << __LINE__ << '\n'; return 1; } } while(false)
+#define CHECK(condition) do { if (!(condition)) { std::cerr << "CHECK failed: " << #condition << " seed=" << seed << " epoch=" << currentEpoch << " line=" << __LINE__ << '\n'; return 1; } } while(false)
 int main() {
     using namespace arc;
     constexpr std::uint64_t objectBytes = 64;
     constexpr unsigned objectCount = 32;
     for (std::uint64_t seed = 1; seed <= 20; ++seed) {
+        std::uint64_t currentEpoch{};
         ResidencyPolicyConfig config{};
         config.minimum_residency_age_epochs = 2;
         config.prefetch_horizon_epochs = 5;
@@ -30,6 +31,7 @@ int main() {
             random ^= random << 13; random ^= random >> 7; random ^= random << 17; return random;
         };
         for (std::uint64_t epoch = 1; epoch <= 4000; ++epoch) {
+            currentEpoch = epoch;
             const auto budget = epoch % 997 == 0 ? 0ULL : 1152ULL + ((epoch / 137) % 4) * 128ULL;
             governor.update_budget(budget, managedUsage);
             std::unordered_set<ResidencyId> selected;
