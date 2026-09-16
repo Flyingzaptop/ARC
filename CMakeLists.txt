@@ -90,6 +90,10 @@ if(ARC_BUILD_TESTS)
     target_link_libraries(arc-texture-quality-policy-tests PRIVATE arc::core)
     add_test(NAME arc-texture-quality-policy-tests COMMAND arc-texture-quality-policy-tests)
 
+    add_executable(arc-texture-quality-invariant-stress tests/texture_quality_invariant_stress.cpp)
+    target_link_libraries(arc-texture-quality-invariant-stress PRIVATE arc::core)
+    add_test(NAME arc-texture-quality-invariant-stress COMMAND arc-texture-quality-invariant-stress)
+
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
         target_link_libraries(arc-multisession-stress PRIVATE arc::core)
