@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <unordered_map>
 #include <vector>
 
 namespace arc {
@@ -128,13 +129,14 @@ GlobalMemoryRestorePlan GlobalMemoryPlanner::plan_headroom_restore(
     }
 
     const auto texture_actions = textures.plan_promotions(headroom_bytes, epoch);
-    for (std::size_t index = 0; index < texture_actions.size(); ++index) {
-        const auto& action = texture_actions[index];
+    std::unordered_map<ResourceId, std::uint32_t> resource_sequences;
+    for (const auto& action : texture_actions) {
+        const auto sequence = resource_sequences[action.resource]++;
         candidates.push_back(MemoryRestoreCandidate{
             .kind = MemoryRestoreKind::PromoteTexture,
             .resource = action.resource,
             .subject = action.texture,
-            .sequence = static_cast<std::uint32_t>(index),
+            .sequence = sequence,
             .bytes_cost = action.bytes_delta,
             .quality_gain = action.quality_delta > 0.0 ? action.quality_delta : 0.0,
             .latency_benefit_ms = 0.0,
