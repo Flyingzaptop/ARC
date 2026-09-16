@@ -116,6 +116,10 @@ if(ARC_BUILD_TESTS)
     target_link_libraries(arc-candidate-surface-tests PRIVATE arc::core)
     add_test(NAME arc-candidate-surface-tests COMMAND arc-candidate-surface-tests)
 
+    add_executable(arc-global-memory-scenario-tests tests/global_memory_scenario_tests.cpp)
+    target_link_libraries(arc-global-memory-scenario-tests PRIVATE arc::core)
+    add_test(NAME arc-global-memory-scenario-tests COMMAND arc-global-memory-scenario-tests)
+
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
         target_link_libraries(arc-multisession-stress PRIVATE arc::core)
