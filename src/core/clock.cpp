@@ -3,6 +3,8 @@
 #include <chrono>
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <time.h>
 #endif
 
 namespace arc {
@@ -22,7 +24,9 @@ std::uint64_t current_thread_cpu_time_ns() noexcept {
     };
     return (ticks(kernel) + ticks(user)) * 100;
 #else
-    return 0;
+    timespec value{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &value) != 0) { return 0; }
+    return static_cast<std::uint64_t>(value.tv_sec) * 1'000'000'000ULL + static_cast<std::uint64_t>(value.tv_nsec);
 #endif
 }
 
