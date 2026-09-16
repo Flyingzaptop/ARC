@@ -4,7 +4,8 @@ param(
     [ValidateRange(1, 64)][int]$ObjectMiB = 2,
     [ValidateRange(1000, 1000000)][int]$ObserverIterations = 3000,
     [switch]$SkipDebugBuild,
-    [switch]$Quick
+    [switch]$Quick,
+    [switch]$PublishResults
 )
 
 $ErrorActionPreference = 'Stop'
@@ -149,7 +150,8 @@ try {
     })
     $os = Get-CimInstance Win32_OperatingSystem
     $commit = (git rev-parse HEAD).Trim()
-    $dirty = -not [string]::IsNullOrWhiteSpace((git status --porcelain | Out-String))
+    $trackedStatus = (git status --porcelain --untracked-files=no | Out-String).Trim()
+    $dirty = -not [string]::IsNullOrWhiteSpace($trackedStatus)
 
     $acceptance = [ordered]@{
         schema = 1
@@ -245,7 +247,18 @@ try {
     Write-Host $verdict
     Write-Host "Acceptance JSON: traces/stage2-final-acceptance.json"
     Write-Host "Acceptance report: traces/STAGE2_FINAL_ACCEPTANCE.md"
+
     if ($verdict -eq 'NOT_ACCEPTED') { exit 2 }
+
+    if ($PublishResults) {
+        Write-Host ''
+        Write-Host 'Publishing curated acceptance artifacts to an isolated results branch...'
+        & "$PSScriptRoot/publish-stage2-results.ps1"
+        if ($LASTEXITCODE -ne 0) { throw "Results publication failed: $LASTEXITCODE" }
+        if (Test-Path 'traces/stage2-results-url.txt') {
+            Write-Host "Results URL: $((Get-Content -Raw -LiteralPath 'traces/stage2-results-url.txt').Trim())"
+        }
+    }
 } finally {
     Remove-Item Env:ARC_D3D12_DEBUG -ErrorAction SilentlyContinue
     Pop-Location
