@@ -81,6 +81,10 @@ if(ARC_BUILD_TESTS)
     target_link_libraries(arc-residency-autonomous-sim-tests PRIVATE arc::core)
     add_test(NAME arc-residency-autonomous-sim-tests COMMAND arc-residency-autonomous-sim-tests)
 
+    add_executable(arc-residency-invariant-stress tests/residency_invariant_stress.cpp)
+    target_link_libraries(arc-residency-invariant-stress PRIVATE arc::core)
+    add_test(NAME arc-residency-invariant-stress COMMAND arc-residency-invariant-stress)
+
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
         target_link_libraries(arc-multisession-stress PRIVATE arc::core)
