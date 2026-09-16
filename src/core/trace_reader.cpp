@@ -1,5 +1,6 @@
 #include "arc/trace.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 
