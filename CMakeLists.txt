@@ -73,9 +73,15 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-core-tests tests/core_tests.cpp)
     target_link_libraries(arc-core-tests PRIVATE arc::core)
     add_test(NAME arc-core-tests COMMAND arc-core-tests)
+
     add_executable(arc-residency-policy-tests tests/residency_policy_tests.cpp)
     target_link_libraries(arc-residency-policy-tests PRIVATE arc::core)
     add_test(NAME arc-residency-policy-tests COMMAND arc-residency-policy-tests)
+
+    add_executable(arc-residency-autonomous-sim-tests tests/residency_autonomous_sim_tests.cpp)
+    target_link_libraries(arc-residency-autonomous-sim-tests PRIVATE arc::core)
+    add_test(NAME arc-residency-autonomous-sim-tests COMMAND arc-residency-autonomous-sim-tests)
+
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
         target_link_libraries(arc-multisession-stress PRIVATE arc::core)
