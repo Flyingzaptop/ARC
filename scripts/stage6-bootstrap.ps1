@@ -1,7 +1,8 @@
 param(
     [string]$RepoUrl = 'https://github.com/Flyingzaptop/ARC.git',
     [string]$Branch = 'dev/stage6-adaptive-quality-core',
-    [string]$WorkRoot = "$env:USERPROFILE\ARC-Stage6"
+    [string]$WorkRoot = "$env:USERPROFILE\ARC-Stage6",
+    [string]$ExpectedSha = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,21 +72,30 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "git switch failed: $LASTEXITCODE" }
     $sha = (& git.exe rev-parse HEAD).Trim()
     Write-Host "Source SHA: $sha"
+    if ($ExpectedSha -and $sha -ne $ExpectedSha) {
+        throw "Stage 6 SHA mismatch. Expected $ExpectedSha, got $sha"
+    }
 
     $cmake = Ensure-CMake
     $ctest = Join-Path (Split-Path -Parent $cmake) 'ctest.exe'
     if (-not (Test-Path -LiteralPath $ctest)) { throw 'ctest.exe not found next to cmake.exe.' }
     Write-Host "Using CMake: $cmake"
 
-    Step 'Building Adaptive Quality Core + benchmark'
+    Step 'Building Adaptive Quality Core + deterministic benchmark'
     $env:VSLANG = '1033'
     & $cmake -S . -B build -A x64 -DARC_BUILD_TESTS=ON -DARC_GPU_TESTS=OFF -DARC_STRESS_TESTS=OFF
     if ($LASTEXITCODE -ne 0) { throw "CMake configure failed: $LASTEXITCODE" }
-    & $cmake --build build --config Release --target arc-adaptive-quality-tests dx12-adaptive-quality-benchmark arc-stage6-benchmark-ui
+    & $cmake --build build --config Release --target `
+        arc-adaptive-quality-tests `
+        arc-action-effect-tracker-tests `
+        arc-adaptive-quality-controller-tests `
+        arc-quality-profile-tests `
+        dx12-adaptive-quality-benchmark `
+        arc-stage6-benchmark-ui
     if ($LASTEXITCODE -ne 0) { throw "Stage 6 build failed: $LASTEXITCODE" }
 
-    Step 'Running CPU policy tests'
-    & $ctest --test-dir build -C Release -R arc-adaptive-quality-tests --output-on-failure
+    Step 'Running all Stage 6 CPU policy tests'
+    & $ctest --test-dir build -C Release -R 'arc-(adaptive-quality|action-effect-tracker|quality-profile)' --output-on-failure
     if ($LASTEXITCODE -ne 0) { throw "Adaptive Quality tests failed: $LASTEXITCODE" }
 
     Step 'Launching Stage 6 benchmark UI'
@@ -93,7 +103,8 @@ try {
     Start-Process -FilePath $ui -WorkingDirectory $repo | Out-Null
     Write-Host 'ARC Stage 6 Benchmark opened.' -ForegroundColor Green
     Write-Host 'Close games / GPU-heavy apps, then click Run 60s Benchmark.' -ForegroundColor Yellow
-    Write-Host 'The benchmark publishes a results/stage6-* branch automatically.' -ForegroundColor Green
+    Write-Host 'Native 100% workload; Temporal / DLSS / FSR / Frame Generation remain OFF.' -ForegroundColor Green
+    Write-Host 'PASS or FAIL results publish to results/stage6-* automatically.' -ForegroundColor Green
 } finally {
     Pop-Location
 }
