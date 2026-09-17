@@ -124,9 +124,6 @@ bool AdaptiveQualityOptimizer::domain_matches(
         return domain == QualityDomain::Geometry ||
                domain == QualityDomain::Raster;
     case BottleneckClass::Lighting:
-        // Keep decisions bottleneck-relevant. A cheap but unrelated raster
-        // action must not displace a lighting/shadow action just because its
-        // generic utility ratio is larger.
         return domain == QualityDomain::Lighting ||
                domain == QualityDomain::Shadow;
     case BottleneckClass::UnknownGpu:
@@ -160,8 +157,12 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_degrade(
         if (!candidate.reversible) continue;
         if (candidate.confidence < config_.minimum_confidence) continue;
         if (candidate.expected_ms_gain < config_.minimum_gain_ms && candidate.memory_freed_bytes == 0) continue;
-        if ((candidate.temporal_assist || candidate.domain == QualityDomain::Temporal) && !config_.allow_temporal_assist) continue;
-        if (!memory_emergency && !domain_matches(plan.bottleneck, candidate.domain)) continue;
+        const bool is_temporal = candidate.temporal_assist || candidate.domain == QualityDomain::Temporal;
+        if (is_temporal && !config_.allow_temporal_assist) continue;
+        // Temporal assistance is an explicit user opt-in and is intentionally
+        // independent of the native-domain bottleneck routing. When enabled,
+        // it can compete by utility as a last-resort/optional action.
+        if (!memory_emergency && !is_temporal && !domain_matches(plan.bottleneck, candidate.domain)) continue;
         ranked.push_back({candidate, utility(candidate, memory_pressure)});
     }
 
