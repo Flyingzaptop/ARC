@@ -1,0 +1,63 @@
+﻿{
+    "schema":  1,
+    "rounds":  3,
+    "iterations":  3000,
+    "baseline":  {
+                     "runs":  3,
+                     "mean_p50_ms":  0.44103333333333339,
+                     "mean_p95_ms":  0.7527666666666667,
+                     "mean_p99_ms":  1.1820666666666668,
+                     "mean_cpu_ms":  609.375,
+                     "mean_wall_ms":  2627.6433333333334,
+                     "mean_private_bytes":  280767146.66666669,
+                     "mean_producer_cpu_ms":  572.91666666666663,
+                     "mean_collector_cpu_ms":  0,
+                     "mean_writer_cpu_ms":  0,
+                     "mean_offline_graph_cpu_ms":  0,
+                     "mean_trace_mb_s":  0
+                 },
+    "light":  {
+                  "runs":  3,
+                  "mean_p50_ms":  0.45743333333333336,
+                  "mean_p95_ms":  0.55793333333333328,
+                  "mean_p99_ms":  0.7354666666666666,
+                  "mean_cpu_ms":  833.33333333333337,
+                  "mean_wall_ms":  1470.0900000000001,
+                  "mean_private_bytes":  304893952,
+                  "mean_producer_cpu_ms":  708.33333333333337,
+                  "mean_collector_cpu_ms":  10.416666666666666,
+                  "mean_writer_cpu_ms":  0,
+                  "mean_offline_graph_cpu_ms":  26.041666666666668,
+                  "mean_trace_mb_s":  4.2388281519384448
+              },
+    "full":  {
+                 "runs":  3,
+                 "mean_p50_ms":  0.4332333333333333,
+                 "mean_p95_ms":  0.5211,
+                 "mean_p99_ms":  0.6278,
+                 "mean_cpu_ms":  593.75,
+                 "mean_wall_ms":  1361.3099999999997,
+                 "mean_private_bytes":  292641450.66666669,
+                 "mean_producer_cpu_ms":  531.25,
+                 "mean_collector_cpu_ms":  15.625,
+                 "mean_writer_cpu_ms":  0,
+                 "mean_offline_graph_cpu_ms":  20.833333333333332,
+                 "mean_trace_mb_s":  5.3375491765375145
+             },
+    "light_delta":  {
+                        "p50_ms":  0.01639999999999997,
+                        "p95_ms":  -0.19483333333333341,
+                        "p99_ms":  -0.44660000000000022,
+                        "cpu_percent":  36.752136752136757,
+                        "private_bytes":  24126805.333333313,
+                        "background_cpu_ms":  36.458333333333336
+                    },
+    "full_delta":  {
+                       "p50_ms":  -0.0078000000000000846,
+                       "p95_ms":  -0.23166666666666669,
+                       "p99_ms":  -0.5542666666666668,
+                       "cpu_percent":  -2.5641025641025643,
+                       "private_bytes":  11874304,
+                       "background_cpu_ms":  36.458333333333329
+                   }
+}

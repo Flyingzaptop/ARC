@@ -1,0 +1,53 @@
+﻿{
+    "schema":  2,
+    "rounds":  6,
+    "objects":  24,
+    "object_mib":  2,
+    "debug_layer":  false,
+    "baseline":  {
+                     "runs":  6,
+                     "mean_p50_ms":  0.75551666666666673,
+                     "mean_p95_ms":  0.81891666666666663,
+                     "mean_p99_ms":  0.88153333333333339,
+                     "mean_bytes_evicted":  0,
+                     "mean_reloads":  0,
+                     "mean_false_evictions":  0,
+                     "mean_late_residency":  0,
+                     "mean_speculative_promotions":  0,
+                     "mean_managed_usage":  0,
+                     "mean_managed_peak":  0
+                 },
+    "oracle":  {
+                   "runs":  6,
+                   "mean_p50_ms":  0.7553333333333333,
+                   "mean_p95_ms":  0.81411666666666671,
+                   "mean_p99_ms":  0.87715,
+                   "mean_bytes_evicted":  339738624,
+                   "mean_reloads":  162,
+                   "mean_false_evictions":  0,
+                   "mean_late_residency":  0,
+                   "mean_speculative_promotions":  140,
+                   "mean_managed_usage":  0,
+                   "mean_managed_peak":  0
+               },
+    "auto":  {
+                 "runs":  6,
+                 "mean_p50_ms":  0.7556666666666666,
+                 "mean_p95_ms":  0.81181666666666674,
+                 "mean_p99_ms":  0.86744999999999994,
+                 "mean_bytes_evicted":  50331648,
+                 "mean_reloads":  24,
+                 "mean_false_evictions":  0,
+                 "mean_late_residency":  10,
+                 "mean_speculative_promotions":  0,
+                 "mean_managed_usage":  19616759,
+                 "mean_managed_peak":  23068672
+             },
+    "comparison":  {
+                       "auto_minus_baseline_p50_ms":  0.00014999999999987246,
+                       "auto_minus_baseline_p95_ms":  -0.0070999999999998842,
+                       "auto_minus_baseline_p99_ms":  -0.014083333333333448,
+                       "auto_minus_oracle_p99_ms":  -0.0097000000000000419,
+                       "auto_mean_managed_budget_fraction":  0.77949996789296472
+                   }
+}

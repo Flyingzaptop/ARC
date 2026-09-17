@@ -1,0 +1,18 @@
+﻿{
+    "schema":  1,
+    "created_utc":  "2026-09-17T03:14:35.7682976Z",
+    "source_commit":  "46d129635492626c9484c16694307845cfbbb5d9",
+    "source_branch":  "dev/stage2a2-residency-telemetry",
+    "result_branch":  "results/stage2-final-20260917-031435",
+    "files":  [
+                  "stage2-final-acceptance.json",
+                  "STAGE2_FINAL_ACCEPTANCE.md",
+                  "benchmark-summary.json",
+                  "residency-benchmark-summary.json",
+                  "residency-frontier-summary.json",
+                  "residency-frontier.csv",
+                  "tiled-texture-lab.json",
+                  "global-memory-lab.json",
+                  "hardware-profile.json"
+              ]
+}
