@@ -27,7 +27,10 @@ try {
     & "$PSScriptRoot/stage2-final-validate.ps1" -Rounds $Stage2Rounds -ObserverIterations 3000 -SkipDebugBuild:$SkipDebugBuild -Quick:$Quick
     if ($LASTEXITCODE -ne 0) { throw "Stage 2 regression acceptance failed: $LASTEXITCODE" }
 
-    foreach ($path in @('traces/live-runtime-lab.json','traces/runtime-event-bridge-lab.json')) {
+    foreach ($path in @(
+        'traces/live-runtime-lab.json',
+        'traces/runtime-event-bridge-lab.json',
+        'traces/runtime-backend-lab.json')) {
         if (-not (Test-Path -LiteralPath $path)) { throw "Stage 4 GPU report missing: $path" }
     }
 
@@ -41,6 +44,7 @@ try {
     $stage2 = Get-Content -Raw -LiteralPath 'traces/stage2-final-acceptance.json' | ConvertFrom-Json
     $live = Get-Content -Raw -LiteralPath 'traces/live-runtime-lab.json' | ConvertFrom-Json
     $bridge = Get-Content -Raw -LiteralPath 'traces/runtime-event-bridge-lab.json' | ConvertFrom-Json
+    $backend = Get-Content -Raw -LiteralPath 'traces/runtime-backend-lab.json' | ConvertFrom-Json
     $observer = Get-Content -Raw -LiteralPath 'traces/observer-benchmark-v2.json' | ConvertFrom-Json
     $frontier = Get-Content -Raw -LiteralPath 'traces/residency-frontier-summary.json' | ConvertFrom-Json
 
@@ -52,6 +56,10 @@ try {
         [bool]$bridge.destroyed_resource_unregistered -and [bool]$bridge.unknown_resource_uncontrolled -and
         [int64]$bridge.bridge_malformed_events -eq 0 -and [int64]$bridge.bridge_controller_rejections -eq 0 -and
         [int64]$bridge.ring_dropped_events -eq 0 -and [int64]$bridge.debug_error_count -eq 0)
+    $backendCorrect = ([bool]$backend.valid -and [bool]$backend.evict_ok -and [bool]$backend.make_resident_ok -and
+        [bool]$backend.missing_binding_blocked -and [bool]$backend.texture_without_callback_blocked -and
+        [int64]$backend.texture_callback_calls -eq 2 -and [bool]$backend.resource_unbound -and
+        [bool]$backend.queue_fence_unbound -and [int64]$backend.debug_error_count -eq 0)
     $stage2Correct = [bool]$stage2.gates.hard_correctness
     $debugAvailable = [bool]$stage2.gates.debug_layer_available
     $debugClean = [bool]$stage2.gates.debug_layer_clean
@@ -59,32 +67,41 @@ try {
     $cpuMet = [bool]$observer.light.cpu_target_met
     $p99Met = [bool]$observer.light.p99_target_met
 
+    $emulatorReady = ($stage2Correct -and $liveCorrect -and $bridgeCorrect -and $backendCorrect -and
+        $debugAvailable -and $debugClean)
+    $performanceClean = ($frontierPointFound -and $cpuMet -and $p99Met)
+
     $verdict = 'ACCEPTED'
-    if (-not $stage2Correct -or -not $liveCorrect -or -not $bridgeCorrect) {
+    if (-not $stage2Correct -or -not $liveCorrect -or -not $bridgeCorrect -or -not $backendCorrect) {
         $verdict = 'NOT_ACCEPTED'
     } elseif (-not $debugAvailable) {
         $verdict = 'ACCEPTED_WITH_EXTERNAL_VALIDATION_PENDING'
-    } elseif (-not $debugClean -or -not $frontierPointFound -or -not $cpuMet -or -not $p99Met) {
+    } elseif (-not $debugClean -or -not $performanceClean) {
         $verdict = 'ACCEPTED_WITH_PERFORMANCE_WARNINGS'
     }
 
     $trackedStatus = (git status --porcelain --untracked-files=no | Out-String).Trim()
     $acceptance = [ordered]@{
-        schema = 2
+        schema = 3
         timestamp_utc = [DateTime]::UtcNow.ToString('o')
         commit = $commit
         working_tree_dirty = -not [string]::IsNullOrWhiteSpace($trackedStatus)
         verdict = $verdict
+        emulator_integration_ready = $emulatorReady
+        performance_clean = $performanceClean
         gates = [ordered]@{
             stage2_hard_correctness = $stage2Correct
             live_runtime_correctness = $liveCorrect
             runtime_event_bridge_correctness = $bridgeCorrect
+            runtime_backend_correctness = $backendCorrect
             event_bridge_blocks_before_completion = ([int64]$bridge.actions_before_completion -eq 0)
             event_bridge_allows_after_completion = ([int64]$bridge.actions_after_completion -gt 0)
             event_bridge_destroy_unregister = [bool]$bridge.destroyed_resource_unregistered
             live_runtime_unknown_resource_untouched = [bool]$live.unknown_resource_untouched
             live_runtime_transition_prefetch = [bool]$live.transition_prefetch_verified
             live_runtime_dxgi_relief_bytes = [int64]$live.dxgi_observed_relief_bytes
+            runtime_backend_missing_binding_fail_closed = [bool]$backend.missing_binding_blocked
+            runtime_backend_texture_requires_host_callback = [bool]$backend.texture_without_callback_blocked
             debug_layer_available = $debugAvailable
             debug_layer_clean = $debugClean
             frontier_operating_point_found = $frontierPointFound
@@ -97,6 +114,7 @@ try {
         }
         live_runtime = $live
         runtime_event_bridge = $bridge
+        runtime_backend = $backend
         observer_v2 = $observer
         stage2_acceptance_path = 'traces/stage2-final-acceptance.json'
         hardware_profile_path = 'traces/hardware-profile.json'
@@ -107,13 +125,16 @@ try {
 # ARC Stage 4 Acceptance
 
 - Verdict: **$verdict**
+- Emulator integration ready: **$emulatorReady**
+- Performance clean: **$performanceClean**
 - Commit: $commit
 
-## Core gates
+## Integration gates
 
-- Stage 2 regression: $stage2Correct
+- Stage 2 memory core: $stage2Correct
 - Live runtime D3D12 path: $liveCorrect
 - Observer event bridge: $bridgeCorrect
+- D3D12 runtime backend: $backendCorrect
 - Fence completion safety: before=$($bridge.actions_before_completion), after=$($bridge.actions_after_completion)
 - Destroy unregister: $([bool]$bridge.destroyed_resource_unregistered)
 - Unknown resource guard: $([bool]$live.unknown_resource_untouched)
@@ -135,8 +156,11 @@ try {
     Write-Host ''
     Write-Host '=== STAGE 4 VERDICT ==='
     Write-Host $verdict
+    Write-Host "Emulator integration ready: $emulatorReady"
+    Write-Host "Performance clean: $performanceClean"
     Write-Host "Live runtime: valid=$($live.valid) prefetch=$($live.transition_prefetch_actions) dxgiRelief=$($live.dxgi_observed_relief_bytes)"
     Write-Host "Event bridge: valid=$($bridge.valid) beforeCompletion=$($bridge.actions_before_completion) afterCompletion=$($bridge.actions_after_completion)"
+    Write-Host "Runtime backend: valid=$($backend.valid) textureCallbacks=$($backend.texture_callback_calls)"
     Write-Host "Observer v2 Light CPU median=$([Math]::Round([double]$observer.light.attributable_cpu_percent_median, 3))% p90=$([Math]::Round([double]$observer.light.attributable_cpu_percent_p90, 3))%"
 
     if ($PublishResults) {
