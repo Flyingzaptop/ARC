@@ -1,5 +1,6 @@
 #include "arc/runtime_event_bridge.hpp"
 
+#include <algorithm>
 #include <cstring>
 
 namespace arc {
@@ -57,7 +58,8 @@ bool RuntimeEventBridge::consume(const Event& event) {
     case EventType::CommandListClosed: {
         CommandListPayload payload{};
         if (!decode(event, payload) || !payload.command) { ++metrics_.malformed_events; return false; }
-        return command_uses_.contains(payload.command);
+        if (!command_uses_.contains(payload.command)) { ++metrics_.malformed_events; return false; }
+        return true;
     }
     case EventType::ResourceUse: {
         ResourceUsePayload payload{};
