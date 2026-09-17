@@ -1,0 +1,2 @@
+{
+"sample":"dx12-mixed-resources","iterations":3000,"resources":33,"expected_allocation_bytes":176750592,"contents_match":true,"valid":true,"dropped":0,"iteration_ms_p50":0.5318,"iteration_ms_p95":0.601,"iteration_ms_p99":0.7205}

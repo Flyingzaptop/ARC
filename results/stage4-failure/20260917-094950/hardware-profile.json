@@ -1,0 +1,108 @@
+﻿{
+    "schema":  2,
+    "gpu":  {
+                "name":  "NVIDIA GeForce RTX 3060 Laptop GPU",
+                "dedicated_vram_bytes":  6285164544,
+                "local_budget_bytes":  5479858176,
+                "local_usage_bytes":  0,
+                "driver_version_raw":  9007199255791232
+            },
+    "os":  "Windows",
+    "logical_processors":  16,
+    "ram_physical_bytes":  42569789440,
+    "ram_available_bytes":  29377306624,
+    "display_width":  1920,
+    "display_height":  1080,
+    "display_refresh_hz":  144,
+    "warmup_runs":  1,
+    "measured_runs":  9,
+    "benchmark_threads":  8,
+    "storage_bytes_per_sequential_run":  91136,
+    "benchmarks":  {
+                       "cpu_single":  {
+                                          "median_ms":  3.1077,
+                                          "p10_ms":  3.1046,
+                                          "p90_ms":  3.1124,
+                                          "variance_ms2":  1.49491E-05
+                                      },
+                       "cpu_multi":  {
+                                         "median_ms":  3.9637,
+                                         "p10_ms":  3.7309,
+                                         "p90_ms":  4.3665,
+                                         "variance_ms2":  0.0719824
+                                     },
+                       "xpress_huff_decompress_32MiB":  {
+                                                            "median_ms":  48.6271,
+                                                            "p10_ms":  48.1095,
+                                                            "p90_ms":  50.4455,
+                                                            "variance_ms2":  0.922522
+                                                        },
+                       "ram_copy_32MiB":  {
+                                              "median_ms":  4.1192,
+                                              "p10_ms":  3.1034,
+                                              "p90_ms":  4.3796,
+                                              "variance_ms2":  0.399549
+                                          },
+                       "ram_multi_copy_32MiB":  {
+                                                    "median_ms":  3.4778,
+                                                    "p10_ms":  3.0524,
+                                                    "p90_ms":  3.7669,
+                                                    "variance_ms2":  0.122416
+                                                },
+                       "ram_pointer_chase_2M":  {
+                                                    "median_ms":  17.0063,
+                                                    "p10_ms":  15.5487,
+                                                    "p90_ms":  17.7462,
+                                                    "variance_ms2":  364.503
+                                                },
+                       "storage_cached_sequential":  {
+                                                         "median_ms":  0.0315,
+                                                         "p10_ms":  0.0309,
+                                                         "p90_ms":  0.0327,
+                                                         "variance_ms2":  4.7284E-07
+                                                     },
+                       "storage_cached_small_reads_64":  {
+                                                             "median_ms":  0.1726,
+                                                             "p10_ms":  0.1724,
+                                                             "p90_ms":  0.1728,
+                                                             "variance_ms2":  4.06099E-06
+                                                         }
+                   },
+    "limitations":  [
+                        "storage cache warmed; not raw disk throughput",
+                        "GPU workload measurements reported separately",
+                        "multi-thread timings include thread startup"
+                    ],
+    "gpu_proxies_ms":  {
+                           "three_draws_64x64":  {
+                                                     "median":  0.002048,
+                                                     "p10":  0.001024,
+                                                     "p90":  0.002048,
+                                                     "variance":  2.03095E-07
+                                                 },
+                           "compute_16384_uints":  {
+                                                       "median":  0.002624,
+                                                       "p10":  0.002048,
+                                                       "p90":  0.003072,
+                                                       "variance":  1.25107E-07
+                                                   },
+                           "upload_1MiB":  {
+                                               "median":  0.086464,
+                                               "p10":  0.08576,
+                                               "p90":  0.08784,
+                                               "variance":  0.000134622
+                                           },
+                           "readback_64KiB":  {
+                                                  "median":  0.004448,
+                                                  "p10":  0.004,
+                                                  "p90":  0.004864,
+                                                  "variance":  1.00274E-06
+                                              }
+                       },
+    "cpu_name":  "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+    "physical_cores":  8,
+    "os_build":  "26200",
+    "timestamp_utc":  "2026-09-17T09:54:01.8167391Z",
+    "arc_commit":  "a04df01fcfb53065864da411fec5d7bbb4123b0e",
+    "storage_read_file":  "C:\\Windows\\System32\\build\\Release\\arc-calibrate.exe"
+}

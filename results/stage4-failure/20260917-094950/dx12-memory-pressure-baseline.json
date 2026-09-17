@@ -1,0 +1,2 @@
+{
+"sample":"dx12-memory-pressure","iterations":300,"resources":18,"expected_allocation_bytes":10027008,"contents_match":true,"valid":true,"dropped":0,"iteration_ms_p50":0.5355,"iteration_ms_p95":0.9446,"iteration_ms_p99":2.4706}

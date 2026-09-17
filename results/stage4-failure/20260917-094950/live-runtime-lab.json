@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "valid": true,
+  "controlled_resources": 4,
+  "uncontrolled_resources": 1,
+  "eviction_actions": 2,
+  "planned_evicted_bytes": 16777216,
+  "dxgi_observed_relief_bytes": 16777216,
+  "transition_prefetch_actions": 1,
+  "transition_prefetch_verified": true,
+  "unknown_resource_untouched": true,
+  "contents_verified": true,
+  "resolve_failures": 0,
+  "debug_error_count": 0
+}
