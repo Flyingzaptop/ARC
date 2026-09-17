@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace arc {
 
@@ -15,12 +16,9 @@ UnifiedRuntimeGovernor::UnifiedRuntimeGovernor(
       backend_(backend),
       config_(config),
       quality_(config.quality),
-      admission_(config.admission) {
-    config_.memory_pressure_enter = std::clamp(config_.memory_pressure_enter, 0.0, 1.0);
-    config_.memory_pressure_emergency = std::clamp(
-        std::max(config_.memory_pressure_enter, config_.memory_pressure_emergency), 0.0, 1.0);
-    config_.memory_restore_ceiling = std::clamp(
-        std::min(config_.memory_pressure_enter, config_.memory_restore_ceiling), 0.0, 1.0);
+      admission_(config.admission),
+      arbiter_(config.arbitration) {
+    config_.memory_restore_ceiling = std::clamp(config_.memory_restore_ceiling, 0.0, 1.0);
     config_.max_consecutive_quality_failures =
         std::max<std::uint32_t>(1, config_.max_consecutive_quality_failures);
 }
@@ -40,7 +38,6 @@ bool UnifiedRuntimeGovernor::register_quality_profile(QualityResourceProfile pro
 
 bool UnifiedRuntimeGovernor::unregister_quality_profile(std::uint64_t id) noexcept {
     if (!id) return false;
-    // Do not silently remove a profile while its action is pending measurement.
     if (pending_ && pending_->action.id == id) return false;
     for (const auto& active : quality_.active_actions()) {
         if (active.id == id) return false;
@@ -147,9 +144,7 @@ UnifiedRuntimeTickResult UnifiedRuntimeGovernor::tick(
     result.registered_quality_profiles = profiles_.size();
     result.memory_pressure = memory_pressure(frame);
 
-    // Close the feedback loop using the first observation after a successful
-    // physical mutation. This makes online effect learning causal rather than
-    // crediting the optimizer's predicted gain to itself.
+    // Resolve the previous physical mutation against a later observation.
     if (pending_) {
         quality_.note_action_applied(
             pending_->action,
@@ -162,54 +157,35 @@ UnifiedRuntimeTickResult UnifiedRuntimeGovernor::tick(
         ++metrics_.pending_effects_resolved;
     }
 
-    const bool frame_over = std::isfinite(frame.frame_ms) && std::isfinite(frame.target_frame_ms) &&
-        frame.target_frame_ms > 0.0 && frame.frame_ms > frame.target_frame_ms;
-    const bool memory_enter = result.memory_pressure >= config_.memory_pressure_enter;
-    const bool memory_emergency = result.memory_pressure >= config_.memory_pressure_emergency;
-
-    // One global loop owns memory restoration policy too. If the frame is
-    // already over budget, normal-memory MakeResident/prefetch restoration is
-    // planned but not physically executed on this tick. Capacity pressure still
-    // gets priority and may execute relief immediately.
-    if (config_.enable_memory) {
-        const auto requested = coordinator_.requested_mode();
-        const bool suppress_restore_execution =
-            requested == RuntimeMode::Controlled && frame_over && !memory_enter;
-        if (suppress_restore_execution) coordinator_.set_mode(RuntimeMode::PlanOnly);
-        result.memory = coordinator_.tick(epoch);
-        if (suppress_restore_execution) coordinator_.set_mode(requested);
-        if (memory_emergency) ++metrics_.memory_priority_ticks;
-    }
+    LiveRuntimePlan memory_plan{};
+    memory_plan.epoch = epoch;
+    if (config_.enable_memory) memory_plan = runtime_.plan(epoch);
 
     if (config_.enable_quality && !profiles_.empty()) {
         result.quality = quality_.tick(frame, candidates());
         if (result.quality.kind != QualityDecisionKind::None) ++metrics_.quality_plans;
     }
 
-    bool allow_quality_execution = config_.enable_quality;
+    result.arbitration = arbiter_.decide(memory_plan, result.quality, frame);
+    if (result.arbitration.memory_emergency) ++metrics_.memory_priority_ticks;
+
+    // Execute exactly the precomputed memory plan selected by the global
+    // arbiter. If it was not selected, pass the same plan through PlanOnly so
+    // diagnostics/metrics still describe what ARC deliberately withheld.
+    if (config_.enable_memory) {
+        const auto requested = coordinator_.requested_mode();
+        const bool suppress = requested == RuntimeMode::Controlled && !result.arbitration.execute_memory;
+        if (suppress) coordinator_.set_mode(RuntimeMode::PlanOnly);
+        result.memory = coordinator_.tick_with_plan(memory_plan);
+        if (suppress) coordinator_.set_mode(requested);
+    }
+
+    bool allow_quality = config_.enable_quality && result.arbitration.execute_quality;
     if (result.quality.kind == QualityDecisionKind::Restore &&
         result.memory_pressure > config_.memory_restore_ceiling) {
-        allow_quality_execution = false;
+        allow_quality = false;
     }
-
-    // Under capacity emergency, give physical memory relief one observation to
-    // settle before spending more visual quality. If memory cannot make
-    // progress, a generic quality action that also frees bytes may proceed.
-    if (memory_emergency && result.memory.executed_actions != 0) {
-        allow_quality_execution = false;
-    }
-    if (memory_emergency && result.memory.executed_actions == 0 &&
-        result.quality.kind == QualityDecisionKind::Degrade) {
-        const bool quality_can_relieve_memory = !result.quality.plan.actions.empty() &&
-            result.quality.plan.actions.front().memory_freed_bytes != 0;
-        allow_quality_execution = allow_quality_execution && quality_can_relieve_memory;
-    }
-
-    if (!config_.allow_combined_actions && result.memory.executed_actions != 0) {
-        allow_quality_execution = false;
-    }
-
-    if (allow_quality_execution) execute_quality(result.quality, frame, result);
+    if (allow_quality) execute_quality(result.quality, frame, result);
 
     const bool memory_work = result.memory.executed_actions != 0;
     const bool quality_work = result.quality_executed;
@@ -228,7 +204,7 @@ UnifiedRuntimeTickResult UnifiedRuntimeGovernor::tick(
             : UnifiedGovernorPath::Quality;
     } else if (memory_work) {
         result.path = UnifiedGovernorPath::Memory;
-    } else if (result.quality.kind == QualityDecisionKind::Restore) {
+    } else if (result.arbitration.choice == GlobalArbitrationChoice::Restore) {
         result.path = UnifiedGovernorPath::Restore;
     } else {
         result.path = UnifiedGovernorPath::None;
