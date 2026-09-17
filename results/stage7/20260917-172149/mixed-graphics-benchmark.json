@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "valid": true,
+  "benchmark": "mixed_graphics",
+  "adapter": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "native_width": 1920,
+  "native_height": 1080,
+  "temporal_enabled": false,
+  "temporal_used": false,
+  "bottleneck": 6,
+  "baseline": {"samples":20411,"p50_ms":1.299456,"p95_ms":1.311744,"p99_ms":1.323008,"dxgi_peak_usage":41885696,"dxgi_budget":5479858176,"knobs":{"geometry_instances":120000,"raster_layers":3,"texture_samples":12,"light_iterations":24,"shadow_passes":3,"shadow_samples":8}},
+  "adaptive": {"samples":28843,"p50_ms":0.905216,"p95_ms":0.912384,"p99_ms":0.915456,"dxgi_peak_usage":41885696,"dxgi_budget":5479858176,"knobs":{"geometry_instances":120000,"raster_layers":2,"texture_samples":12,"light_iterations":24,"shadow_passes":3,"shadow_samples":8}},
+  "delta": {"p50_ms":-0.394240,"p95_ms":-0.399360,"p99_ms":-0.407552,"planned_gain_ms":0.391680,"visual_cost":0.055000},
+  "probes": [
+    {"id":710,"domain":1,"label":"texture sampling step 12->8","probe_p50_ms":1.283584,"measured_gain_ms":0.015872,"visual_cost":0.035000},
+    {"id":720,"domain":2,"label":"raster overdraw step 3->2","probe_p50_ms":0.907776,"measured_gain_ms":0.391680,"visual_cost":0.055000},
+    {"id":730,"domain":3,"label":"distant geometry density step","probe_p50_ms":1.258496,"measured_gain_ms":0.040960,"visual_cost":0.030000},
+    {"id":740,"domain":4,"label":"far lighting iterations step","probe_p50_ms":1.008128,"measured_gain_ms":0.291328,"visual_cost":0.045000},
+    {"id":750,"domain":5,"label":"shadow update/sample step","probe_p50_ms":1.298432,"measured_gain_ms":0.001024,"visual_cost":0.040000}
+  ],
+  "actions": [
+    {"id":720,"domain":2,"label":"raster overdraw step 3->2","expected_ms_gain":0.391680,"visual_cost":0.055000}
+  ]
+}

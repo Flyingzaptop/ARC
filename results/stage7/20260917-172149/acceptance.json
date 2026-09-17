@@ -1,0 +1,34 @@
+﻿{
+    "schema":  2,
+    "verdict":  "PASS",
+    "mixed_graphics_core_valid":  true,
+    "gates":  {
+                  "json_valid":  true,
+                  "mixed_graphics":  true,
+                  "native_1080p":  true,
+                  "temporal_disabled":  true,
+                  "cross_domain_probes_valid":  true,
+                  "actions_selected":  true,
+                  "physical_p50_improved":  true,
+                  "physical_p99_not_regressed":  true
+              },
+    "metrics":  {
+                    "baseline_p50_ms":  1.299456,
+                    "adaptive_p50_ms":  0.905216,
+                    "p50_delta_ms":  -0.39423999999999992,
+                    "p50_improvement_fraction":  0.30338849487785652,
+                    "baseline_p99_ms":  1.323008,
+                    "adaptive_p99_ms":  0.915456,
+                    "p99_delta_ms":  -0.40755199999999991,
+                    "selected_actions":  1,
+                    "selected_domains":  1,
+                    "probed_domains":  5,
+                    "probes":  5,
+                    "positive_probes":  5,
+                    "planned_gain_ms":  0.39168,
+                    "visual_cost":  0.055,
+                    "baseline_dxgi_peak_usage":  41885696,
+                    "adaptive_dxgi_peak_usage":  41885696
+                },
+    "fatal_error":  null
+}
