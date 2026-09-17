@@ -89,9 +89,8 @@ $gates = [ordered]@{
     mixed_graphics=$false
     native_1080p=$false
     temporal_disabled=$false
-    micro_probes_valid=$false
+    cross_domain_probes_valid=$false
     actions_selected=$false
-    multiple_domains_selected=$false
     physical_p50_improved=$false
     physical_p99_not_regressed=$false
 }
@@ -103,22 +102,22 @@ if ($bench) {
     $baseP99=[double]$bench.baseline.p99_ms; $arcP99=[double]$bench.adaptive.p99_ms
     $improvement = if($baseP50 -gt 0){($baseP50-$arcP50)/$baseP50}else{0.0}
     $domains = @($actions | ForEach-Object { [int]$_.domain } | Sort-Object -Unique)
+    $probeDomains = @($probes | ForEach-Object { [int]$_.domain } | Sort-Object -Unique)
     $positiveProbes = @($probes | Where-Object { [double]$_.measured_gain_ms -gt 0.0 }).Count
 
     $gates.json_valid=[bool]$bench.valid
     $gates.mixed_graphics=([string]$bench.benchmark -eq 'mixed_graphics')
     $gates.native_1080p=([int]$bench.native_width -eq 1920 -and [int]$bench.native_height -eq 1080)
     $gates.temporal_disabled=(-not [bool]$bench.temporal_enabled) -and (-not [bool]$bench.temporal_used)
-    $gates.micro_probes_valid=($probes.Count -ge 5 -and $positiveProbes -ge 2)
+    $gates.cross_domain_probes_valid=($probes.Count -ge 5 -and $probeDomains.Count -ge 5 -and $positiveProbes -ge 2)
     $gates.actions_selected=($actions.Count -gt 0)
-    $gates.multiple_domains_selected=($domains.Count -ge 2)
     $gates.physical_p50_improved=($arcP50 -lt $baseP50 -and $improvement -ge 0.03)
     $gates.physical_p99_not_regressed=($arcP99 -le ($baseP99 + 0.15))
 
     $metrics=[ordered]@{
         baseline_p50_ms=$baseP50; adaptive_p50_ms=$arcP50; p50_delta_ms=$arcP50-$baseP50; p50_improvement_fraction=$improvement
         baseline_p99_ms=$baseP99; adaptive_p99_ms=$arcP99; p99_delta_ms=$arcP99-$baseP99
-        selected_actions=$actions.Count; selected_domains=$domains.Count; probes=$probes.Count; positive_probes=$positiveProbes
+        selected_actions=$actions.Count; selected_domains=$domains.Count; probed_domains=$probeDomains.Count; probes=$probes.Count; positive_probes=$positiveProbes
         planned_gain_ms=[double]$bench.delta.planned_gain_ms; visual_cost=[double]$bench.delta.visual_cost
         baseline_dxgi_peak_usage=[uint64]$bench.baseline.dxgi_peak_usage; adaptive_dxgi_peak_usage=[uint64]$bench.adaptive.dxgi_peak_usage
     }
@@ -127,7 +126,7 @@ if ($bench) {
 $passed=(-not $fatal)
 foreach($v in $gates.Values){ $passed=$passed -and [bool]$v }
 $verdict=if($passed){'PASS'}else{'FAIL'}
-$acceptance=[ordered]@{schema=1; verdict=$verdict; mixed_graphics_core_valid=[bool]$passed; gates=$gates; metrics=$metrics; fatal_error=$fatal}
+$acceptance=[ordered]@{schema=2; verdict=$verdict; mixed_graphics_core_valid=[bool]$passed; gates=$gates; metrics=$metrics; fatal_error=$fatal}
 Json-Write $acceptance $acceptanceJson
 
 $summary=@"
@@ -145,11 +144,12 @@ $summary=@"
 - Mixed graphics path: $($gates.mixed_graphics)
 - Native 1080p: $($gates.native_1080p)
 - Temporal disabled: $($gates.temporal_disabled)
-- Measured micro-probes valid: $($gates.micro_probes_valid)
+- Cross-domain measured probes valid: $($gates.cross_domain_probes_valid)
 - Actions selected: $($gates.actions_selected)
-- Multiple quality domains selected: $($gates.multiple_domains_selected)
 - Physical GPU P50 improved by >=3%: $($gates.physical_p50_improved)
 - Physical GPU P99 not regressed by >0.15 ms: $($gates.physical_p99_not_regressed)
+
+Selected domains are reported as a metric, not forced as a gate. ARC must stop once the measured frame deficit is closed; forcing an unnecessary second quality degradation would violate the optimizer's purpose.
 
 This benchmark uses real D3D12 graphics passes for geometry, raster/overdraw, texture sampling, lighting and shadow work. ARC measures each candidate action on the local GPU before planning the adaptive phase.
 "@
@@ -162,7 +162,7 @@ if($bench){
     Write-Host "Adaptive P50  : $([math]::Round([double]$metrics.adaptive_p50_ms,3)) ms"
     Write-Host "P50 delta     : $([math]::Round([double]$metrics.p50_delta_ms,3)) ms"
     Write-Host "P99 delta     : $([math]::Round([double]$metrics.p99_delta_ms,3)) ms"
-    Write-Host "Actions       : $($metrics.selected_actions) across $($metrics.selected_domains) domains"
+    Write-Host "Actions       : $($metrics.selected_actions) across $($metrics.selected_domains) selected domains; $($metrics.probed_domains) domains measured"
 }
 Write-Host "Local results : $runDir"
 
@@ -194,7 +194,7 @@ if(-not $NoPublish){
 }
 
 $summaryText = if($bench){
-    "ARC Stage 7 $verdict`r`nBaseline P50: $([math]::Round([double]$metrics.baseline_p50_ms,3)) ms`r`nAdaptive P50: $([math]::Round([double]$metrics.adaptive_p50_ms,3)) ms`r`nP50 delta: $([math]::Round([double]$metrics.p50_delta_ms,3)) ms`r`nP99 delta: $([math]::Round([double]$metrics.p99_delta_ms,3)) ms`r`nActions: $($metrics.selected_actions) across $($metrics.selected_domains) domains`r`nTemporal: OFF`r`nResults URL: $url"
+    "ARC Stage 7 $verdict`r`nBaseline P50: $([math]::Round([double]$metrics.baseline_p50_ms,3)) ms`r`nAdaptive P50: $([math]::Round([double]$metrics.adaptive_p50_ms,3)) ms`r`nP50 delta: $([math]::Round([double]$metrics.p50_delta_ms,3)) ms`r`nP99 delta: $([math]::Round([double]$metrics.p99_delta_ms,3)) ms`r`nActions: $($metrics.selected_actions) across $($metrics.selected_domains) selected domains; $($metrics.probed_domains) measured`r`nTemporal: OFF`r`nResults URL: $url"
 }else{
     "ARC Stage 7 $verdict`r`nFatal: $fatal`r`nResults URL: $url"
 }
