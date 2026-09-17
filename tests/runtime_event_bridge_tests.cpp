@@ -32,6 +32,9 @@ int main() {
 
     CHECK(bridge.consume(make_event(EventType::CommandListCreated, CommandListPayload{.command=command})));
     CHECK(bridge.consume(make_event(EventType::ResourceUse, ResourceUsePayload{.command=command,.resource=100})));
+    // Resource 999 is intentionally observed but not registered for ARC
+    // mutation/control. It remains visible to the command stream without
+    // participating in live residency epochs or producing a rejection.
     CHECK(bridge.consume(make_event(EventType::ResourceUse, ResourceUsePayload{.command=command,.resource=999})));
     CHECK(bridge.consume(make_event(EventType::CommandListClosed, CommandListPayload{.command=command})));
 
@@ -48,7 +51,7 @@ int main() {
     CHECK(object->last_use_queue == queueB);
     CHECK(object->last_use_fence == 5);
     CHECK(object->last_completed_fence == 0);
-    CHECK(bridge.logical_epoch() == 4);
+    CHECK(bridge.logical_epoch() == 2);
 
     MemoryBudgetPayload pressure{};
     pressure.local_budget = 1000;
@@ -93,7 +96,7 @@ int main() {
     CHECK(!bridge.consume(malformed));
 
     const auto metrics = bridge.metrics();
-    CHECK(metrics.resource_uses == 4);
+    CHECK(metrics.resource_uses == 2);
     CHECK(metrics.queue_submits == 2);
     CHECK(metrics.fence_signals == 2);
     CHECK(metrics.completion_updates == 2);
