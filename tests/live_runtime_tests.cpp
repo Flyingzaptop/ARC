@@ -11,6 +11,7 @@ int main() {
     LiveRuntimeConfig config{};
     config.residency.minimum_residency_age_epochs = 0;
     config.residency.recovery_samples = 1;
+    config.residency.promotion_ceiling = 0.90; // deliberately above pressure_enter; live runtime must clamp, not discard the whole config.
     config.textures.minimum_change_age_epochs = 0;
     config.transitions.minimum_context_observations = 2;
     config.transitions.max_context_samples = 64;
@@ -19,6 +20,8 @@ int main() {
     config.minimum_transition_prefetch_confidence = 0.2;
 
     LiveRuntimeController runtime(config);
+    CHECK(runtime.residency().config().recovery_samples == 1);
+    CHECK(runtime.residency().config().promotion_ceiling == runtime.residency().config().pressure_enter);
     CHECK(runtime.register_controlled_resource({
         .id=1,.resource=100,.state=ResidencyState::Resident,.safety=ResidencySafety::ControlledSafe,
         .cost={.bytes=100,.reload_ms=1.0}}));
@@ -72,6 +75,7 @@ int main() {
 
     // Transition prefetch: train A->B, evict B, then observe A under safe headroom.
     LiveRuntimeController streaming(config);
+    CHECK(streaming.residency().config().recovery_samples == 1);
     CHECK(streaming.register_controlled_resource({
         .id=11,.resource=1100,.state=ResidencyState::Resident,.safety=ResidencySafety::ControlledSafe,
         .cost={.bytes=100,.reload_ms=2.0}}));
