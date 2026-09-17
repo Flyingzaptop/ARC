@@ -98,6 +98,27 @@ try {
     & $ctest --test-dir build -C Release -R 'arc-(adaptive-quality|action-effect-tracker|quality-profile)' --output-on-failure
     if ($LASTEXITCODE -ne 0) { throw "Adaptive Quality tests failed: $LASTEXITCODE" }
 
+    Step 'Running 6-second GPU smoke gate'
+    $benchmarkExe = Join-Path $repo 'build\Release\dx12-adaptive-quality-benchmark.exe'
+    $smoke = Join-Path $repo 'traces\stage6-bootstrap-smoke.json'
+    New-Item -ItemType Directory -Force (Split-Path -Parent $smoke) | Out-Null
+    Remove-Item -LiteralPath $smoke -Force -ErrorAction SilentlyContinue
+    $previous = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $benchmarkExe --seconds 6 --headless --output $smoke 2>&1 | ForEach-Object { Write-Host $_ }
+        $smokeExit = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+    if ($smokeExit -ne 0) { throw "Stage 6 GPU smoke failed with exit code $smokeExit" }
+    if (-not (Test-Path -LiteralPath $smoke)) { throw 'Stage 6 GPU smoke did not produce JSON.' }
+    $smokeJson = Get-Content -LiteralPath $smoke -Raw | ConvertFrom-Json
+    if (-not [bool]$smokeJson.valid) { throw 'Stage 6 GPU smoke JSON is not valid.' }
+    if ([bool]$smokeJson.temporal_used) { throw 'Stage 6 GPU smoke unexpectedly used temporal assistance.' }
+    if (@($smokeJson.actions).Count -eq 0) { throw 'Stage 6 GPU smoke selected no adaptive actions.' }
+    Write-Host "GPU smoke PASS: baseline P50 $([math]::Round([double]$smokeJson.baseline.p50_ms,3)) ms -> adaptive P50 $([math]::Round([double]$smokeJson.adaptive.p50_ms,3)) ms" -ForegroundColor Green
+
     Step 'Launching Stage 6 benchmark UI'
     $ui = Join-Path $repo 'build\Release\arc-stage6-benchmark-ui.exe'
     $process = Start-Process -FilePath $ui -WorkingDirectory $repo -PassThru
@@ -112,7 +133,7 @@ try {
     }
 
     Write-Host 'ARC Stage 6 Benchmark opened.' -ForegroundColor Green
-    Write-Host 'Close games / GPU-heavy apps, then click Run 60s Benchmark.' -ForegroundColor Yellow
+    Write-Host 'GPU smoke already passed. Close games / GPU-heavy apps, then click Run 60s Benchmark.' -ForegroundColor Yellow
     Write-Host 'Native 100% workload; Temporal / DLSS / FSR / Frame Generation remain OFF.' -ForegroundColor Green
     Write-Host 'PASS or FAIL results publish to results/stage6-* automatically.' -ForegroundColor Green
 } finally {
