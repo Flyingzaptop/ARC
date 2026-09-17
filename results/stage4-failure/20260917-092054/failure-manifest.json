@@ -1,0 +1,7 @@
+﻿{
+    "schema":  1,
+    "source_commit":  "7ff4545fd649bb5c609a16fa68977c0396cd00ff",
+    "source_branch":  "dev/stage4-live-runtime",
+    "created_utc":  "2026-09-17T09:20:55.6047563Z",
+    "status":  "FAILED_BEFORE_NORMAL_PUBLICATION"
+}
