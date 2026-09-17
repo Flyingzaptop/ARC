@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <shellapi.h>
 
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -132,9 +133,13 @@ void copy_url(HWND hwnd) {
     HGLOBAL h=GlobalAlloc(GMEM_MOVEABLE,bytes);
     if (h) {
         void* p=GlobalLock(h);
-        memcpy(p,g_last_url.c_str(),bytes);
-        GlobalUnlock(h);
-        SetClipboardData(CF_UNICODETEXT,h);
+        if (p) {
+            std::memcpy(p,g_last_url.c_str(),bytes);
+            GlobalUnlock(h);
+            SetClipboardData(CF_UNICODETEXT,h);
+        } else {
+            GlobalFree(h);
+        }
     }
     CloseClipboard();
 }
