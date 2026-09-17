@@ -62,6 +62,7 @@ public:
     NativeHostAdapter& operator=(const NativeHostAdapter&) = delete;
 
     [[nodiscard]] ResourceId observe_committed_resource(ID3D12Resource* resource);
+    [[nodiscard]] ResourceId observe_external_resource(ID3D12Resource* resource);
     [[nodiscard]] ResourceId observe_reserved_resource(ID3D12Resource* resource);
     [[nodiscard]] ResourceId observe_placed_resource(
         ID3D12Resource* resource,
@@ -102,6 +103,12 @@ public:
     bool observe_command_list_reset(ID3D12CommandList* command);
     bool observe_command_list_closed(ID3D12CommandList* command);
     bool observe_resource_use(ID3D12CommandList* command, ID3D12Resource* resource, bool write = false);
+    bool observe_command_counters(
+        ID3D12CommandList* command,
+        std::uint64_t draws,
+        std::uint64_t indexed_draws,
+        std::uint64_t dispatches,
+        std::uint64_t indirect);
     bool observe_transition_barrier(
         ID3D12CommandList* command,
         ID3D12Resource* resource,
@@ -125,6 +132,7 @@ public:
 
     bool observe_present(std::uint64_t swapchain_id, std::uint32_t sync_interval, std::uint32_t flags, HRESULT result);
     bool sample_memory_budget();
+    bool observe_memory_budget(const MemoryBudgetPayload& budget);
 
     // Mutation is opt-in. Observed resources remain read-only until the host
     // explicitly marks them safe for residency control.
