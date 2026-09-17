@@ -2,6 +2,9 @@ if(WIN32)
     target_sources(arc-dx12-observer PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/host_adapter.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/host_adapter_extra.cpp)
+    # ID3D12Fence::GetCompletedValue returns UINT64_MAX on device removal, but
+    # the Windows SDK does not provide a D3D12_FENCE_VALUE_MAX symbol.
+    target_compile_definitions(arc-dx12-observer PRIVATE D3D12_FENCE_VALUE_MAX=UINT64_MAX)
 
     if(ARC_BUILD_TESTS)
         add_executable(arc-dx12-host-adapter-tests
