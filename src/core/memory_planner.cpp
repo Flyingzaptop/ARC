@@ -112,10 +112,23 @@ GlobalMemoryRestorePlan GlobalMemoryPlanner::plan_headroom_restore(
     for (const auto& action : residency_actions) {
         const auto object = residency.find(action.object);
         if (!object || object->resource == 0) continue;
-        const auto prediction = residency.prediction(action.object, epoch);
-        const auto confidence = prediction ? prediction->confidence : config_.unknown_prediction_confidence;
-        double latency_benefit = (std::max)(0.0, object->cost.reload_ms) * confidence;
-        if (prediction && prediction->epoch > epoch) {
+
+        const bool background_restore =
+            action.predicted_use_epoch == (std::numeric_limits<std::uint64_t>::max)();
+        const auto prediction = background_restore ? std::optional<ResidencyPrediction>{} : residency.prediction(action.object, epoch);
+
+        // Background restoration is a policy decision, not a reuse prediction.
+        // Treat its policy confidence as certain while preserving its deliberately
+        // tiny ResidencyAction::score as the benefit. Otherwise the generic
+        // unknown-prediction uncertainty penalty can reduce cheap reloads to
+        // exactly zero utility and leave cold resources evicted forever.
+        const double confidence = background_restore
+            ? 1.0
+            : (prediction ? prediction->confidence : config_.unknown_prediction_confidence);
+        double latency_benefit = background_restore
+            ? (std::max)(action.score, std::numeric_limits<double>::epsilon())
+            : (std::max)(0.0, object->cost.reload_ms) * confidence;
+        if (!background_restore && prediction && prediction->epoch > epoch) {
             const auto distance = static_cast<double>(prediction->epoch - epoch);
             latency_benefit /= (1.0 + distance);
         }
