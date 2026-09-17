@@ -39,21 +39,24 @@ backend.unbind_resource(resource_id);
 
 Unknown resources are never auto-promoted to `ControlledSafe`. Render targets, depth/stencil, UAV/compute data, synchronization/state objects and resources without proven semantics stay observe-only until the emulator adapter classifies them.
 
-## 3. Queue and fence binding
+## 3. Queue and completion-fence binding
 
-Every queue used by a controlled resource must expose its real completion fence to ARC:
-
-```cpp
-backend.bind_queue_fence(queue_id, queue_fence);
-```
-
-Feed normal ARC events into `RuntimeIntegration::consume`. `QueueSubmit` creates an external in-flight block; `FenceSignal` does **not** release it. Release happens only after the host has observed actual GPU completion:
+ARC requires one monotonic completion fence identity per queue used by controlled resources. Bind both the observer-side fence ID and the native D3D12 fence pointer:
 
 ```cpp
-arc_runtime.note_queue_completed(queue_id, completed_value);
+arc_runtime.bind_completion_fence(queue_id, completion_fence_id);
+backend.bind_queue_fence(queue_id, completion_fence);
 ```
 
-Fence values from different queues are never compared with each other.
+The emulator may signal other game/application fences on the same queue. ARC ignores those for residency safety even if their numeric values are larger. Only `FenceSignal` events whose `fence` field matches the explicitly bound completion-fence ID are allowed to attach a residency fence requirement to submitted resources.
+
+`QueueSubmit` creates an external in-flight block. A matching `FenceSignal` still does **not** release it. Release happens only after the host has observed actual GPU completion on that same bound fence:
+
+```cpp
+arc_runtime.note_queue_completed(queue_id, completion_fence_id, completed_value);
+```
+
+A completion update carrying a different fence ID is rejected. Fence values from different queues or different fence objects are never compared.
 
 ## 4. Memory budget
 
@@ -65,7 +68,7 @@ Recommended first integration:
 - sample on DXGI budget-change notification;
 - also sample periodically (for example every 30-60 presents) while controlled mutation is enabled.
 
-`RuntimeCoordinator` blocks mutation when its budget sample is stale. Planning/observation may continue.
+`RuntimeCoordinator` blocks mutation when its budget sample is stale. Budget age is measured in coordinator ticks, not resource-use events, so a frame with thousands of resources does not instantly stale the sample. Planning/observation may continue.
 
 ## 5. Tick point
 
@@ -163,6 +166,7 @@ The emulator adapter should **not** reimplement these:
 - whole-resource candidate scoring;
 - reuse/transition prediction;
 - eviction fence safety and external in-flight blocks;
+- explicit per-queue completion-fence identity;
 - global Evict-vs-Demote arbitration;
 - headroom restore arbitration;
 - stale-plan resolution checks;
