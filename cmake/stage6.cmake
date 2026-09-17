@@ -39,3 +39,5 @@ if(WIN32)
         set_tests_properties(dx12-adaptive-quality-benchmark-smoke PROPERTIES LABELS gpu TIMEOUT 30 RUN_SERIAL TRUE WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     endif()
 endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/stage7.cmake)
