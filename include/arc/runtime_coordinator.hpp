@@ -49,7 +49,9 @@ public:
 struct RuntimeCoordinatorConfig {
     RuntimeMode mode{RuntimeMode::ObserveOnly};
     // Zero disables age checking. Otherwise a budget sample must have been
-    // observed within this many logical runtime ticks before mutations run.
+    // observed within this many coordinator ticks before mutations run. This
+    // deliberately does not use resource-use epochs, which may advance many
+    // thousands of times per rendered frame.
     std::uint64_t max_budget_age_ticks{120};
     std::uint32_t max_consecutive_failures{3};
     std::uint32_t max_actions_per_tick{64};
@@ -105,7 +107,7 @@ public:
     [[nodiscard]] const RuntimeCoordinatorConfig& config() const noexcept { return config_; }
 
 private:
-    [[nodiscard]] bool refresh_budget_freshness(std::uint64_t epoch, RuntimeTickResult& result) noexcept;
+    [[nodiscard]] bool refresh_budget_freshness(RuntimeTickResult& result) noexcept;
     [[nodiscard]] std::optional<std::vector<LiveRuntimeResolvedAction>> resolve(const LiveRuntimePlan& plan) const;
     [[nodiscard]] bool execute_action(
         const LiveRuntimeResolvedAction& action,
@@ -119,7 +121,7 @@ private:
     RuntimeCoordinatorConfig config_{};
     RuntimeMode requested_mode_{RuntimeMode::ObserveOnly};
     std::uint64_t seen_budget_revision_{};
-    std::uint64_t last_budget_epoch_{};
+    std::uint64_t last_budget_tick_{};
     bool budget_seen_{};
     bool circuit_open_{};
     std::uint32_t consecutive_failures_{};
