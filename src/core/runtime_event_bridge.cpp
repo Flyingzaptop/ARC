@@ -73,6 +73,12 @@ bool RuntimeEventBridge::flush_signal(QueueId queue, std::uint64_t fence_value) 
 
     if (auto pending = pending_uses_by_queue_.find(queue); pending != pending_uses_by_queue_.end()) {
         for (const auto resource : pending->second) {
+            // ResourceGraph observes every resource. The live residency
+            // controller is intentionally narrower: only resources explicitly
+            // opted into mutation/control participate in fence-safe reuse
+            // tracking. Read-only observation must never become a controller
+            // rejection merely because the host did not authorize mutation.
+            if (!runtime_.controlled(resource)) continue;
             ++logical_epoch_;
             ++metrics_.resource_uses;
             if (!runtime_.note_use(resource, logical_epoch_, queue, fence_value, completed)) {
