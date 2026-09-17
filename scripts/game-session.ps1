@@ -9,20 +9,20 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 New-Item -ItemType Directory -Force $CaptureDir | Out-Null
 $meta = [ordered]@{
-    schema = 1
+    schema = 2
     mode = $Mode
     process_name = $ProcessName
     seconds = $Seconds
     delay_seconds = $DelaySeconds
     started_utc = [DateTime]::UtcNow.ToString('o')
     presentmon = $PresentMon
+    arc_external_monitor_enabled = ($Mode -eq 'arc-observe')
 }
 $meta | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $CaptureDir 'session.json') -Encoding utf8
 
-if ($MonitorExe -and (Test-Path -LiteralPath $MonitorExe)) {
+if ($Mode -eq 'arc-observe' -and $MonitorExe -and (Test-Path -LiteralPath $MonitorExe)) {
     Start-Process -FilePath $MonitorExe -ArgumentList @('--seconds',[string]($Seconds + $DelaySeconds),'--interval-ms','100','--output',(Join-Path $CaptureDir 'dxgi-monitor.json')) -WindowStyle Hidden | Out-Null
 }
 
