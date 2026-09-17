@@ -124,9 +124,11 @@ bool AdaptiveQualityOptimizer::domain_matches(
         return domain == QualityDomain::Geometry ||
                domain == QualityDomain::Raster;
     case BottleneckClass::Lighting:
+        // Keep decisions bottleneck-relevant. A cheap but unrelated raster
+        // action must not displace a lighting/shadow action just because its
+        // generic utility ratio is larger.
         return domain == QualityDomain::Lighting ||
-               domain == QualityDomain::Shadow ||
-               domain == QualityDomain::Raster;
+               domain == QualityDomain::Shadow;
     case BottleneckClass::UnknownGpu:
         return domain != QualityDomain::Temporal;
     }
@@ -169,9 +171,6 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_degrade(
         return a.candidate.id < b.candidate.id;
     });
 
-    // The supplied candidate surface may already exclude an active prefix.
-    // Start each resource at the smallest remaining sequence rather than
-    // assuming sequence zero is always still available.
     std::unordered_map<std::uint64_t, std::uint32_t> next_sequence;
     for (const auto& item : ranked) {
         const auto it = next_sequence.find(item.candidate.id);
