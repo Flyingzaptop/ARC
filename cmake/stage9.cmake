@@ -17,3 +17,27 @@ if(ARC_BUILD_TESTS)
     target_link_libraries(arc-unified-runtime-governor-tests PRIVATE arc::core)
     add_test(NAME arc-unified-runtime-governor-tests COMMAND arc-unified-runtime-governor-tests)
 endif()
+
+if(WIN32)
+    add_executable(dx12-mega-stage-a-benchmark samples/mega_stage_a_benchmark.cpp)
+    target_link_libraries(dx12-mega-stage-a-benchmark PRIVATE arc::core arc-dx12-observer d3dcompiler)
+    target_compile_features(dx12-mega-stage-a-benchmark PRIVATE cxx_std_23)
+    target_compile_definitions(dx12-mega-stage-a-benchmark PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+
+    if(ARC_GPU_TESTS)
+        add_test(
+            NAME dx12-mega-stage-a-benchmark-smoke
+            COMMAND dx12-mega-stage-a-benchmark
+                --seconds 30
+                --probe-frames 4
+                --control-frames 8
+                --output traces/mega-stage-a-smoke.json)
+        set_tests_properties(
+            dx12-mega-stage-a-benchmark-smoke
+            PROPERTIES
+                LABELS gpu
+                TIMEOUT 120
+                RUN_SERIAL TRUE
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    endif()
+endif()
