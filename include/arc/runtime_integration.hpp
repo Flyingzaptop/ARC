@@ -15,7 +15,9 @@ struct RuntimeIntegrationConfig {
 
 // Thin host-facing facade. Emulator/native integrations can feed the same ARC
 // observer events used by validation, provide real fence completions/budget
-// samples, and explicitly opt controlled resources into mutation.
+// samples, and explicitly opt controlled resources into mutation. Unlike the
+// standalone bridge test helper, this production facade requires one explicit
+// completion-fence identity per controlled queue.
 class RuntimeIntegration final {
 public:
     explicit RuntimeIntegration(
@@ -33,8 +35,14 @@ public:
     }
 
     bool consume(const Event& event) { return bridge_.consume(event); }
-    void note_queue_completed(QueueId queue, std::uint64_t completed_fence) {
-        bridge_.note_queue_completed(queue, completed_fence);
+    bool bind_completion_fence(QueueId queue, std::uint64_t fence_id) noexcept {
+        return bridge_.bind_completion_fence(queue, fence_id);
+    }
+    bool unbind_completion_fence(QueueId queue) noexcept {
+        return bridge_.unbind_completion_fence(queue);
+    }
+    bool note_queue_completed(QueueId queue, std::uint64_t fence_id, std::uint64_t completed_fence) {
+        return bridge_.note_queue_completed(queue, fence_id, completed_fence);
     }
     void update_budget(const MemoryBudgetPayload& budget) { runtime_.update_budget(budget); }
 
