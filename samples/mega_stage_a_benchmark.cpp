@@ -11,9 +11,11 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -523,7 +525,6 @@ int main(int argc, char** argv) {
     std::uint64_t epoch=100; std::uint64_t quality_domain_mask=0,memory_ticks=0,combined_ticks=0,restore_ticks=0; bool temporal_used=false; std::vector<double> control_window; control_window.reserve(static_cast<std::size_t>(args.control_frames));
     std::cout<<"Adaptive unified runtime schedule\n";
     for(std::size_t phase=0;phase<scenes.size();++phase){const auto& scene=scenes[phase];std::cout<<"  "<<scene.name<<"\n";const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(phase_seconds);while(std::chrono::steady_clock::now()<end){const double ms=harness.render(adaptive_state.knobs(),scene,frame_salt++);add_stat(adaptive,ms,target);control_window.push_back(ms);if(static_cast<int>(control_window.size())>=args.control_frames){const double observed=percentile(control_window,.50);control_window.clear();arc::FrameBudgetSample fs{};fs.frame_ms=observed;fs.target_frame_ms=target;set_pressures(fs,scene.domain,scene.easy);arc::MemoryBudgetPayload mb{};mb.local_budget=512ull<<20;if(scene.memory==SceneLoad::MemoryMode::Emergency)mb.local_usage=506ull<<20;else if(scene.memory==SceneLoad::MemoryMode::Moderate)mb.local_usage=466ull<<20;else mb.local_usage=280ull<<20;runtime.update_budget(mb);fs.local_budget_bytes=mb.local_budget;fs.local_usage_bytes=mb.local_usage;const auto tick=runtime.tick_adaptive(epoch++,fs);temporal_used=temporal_used||tick.quality.plan.temporal_used;if(tick.memory.executed_actions){++memory_ticks;ctx.wait();Sleep(25);dxgi_min_after_evict=std::min(dxgi_min_after_evict,query_dxgi(ctx).usage);}if(tick.path==arc::UnifiedGovernorPath::Combined)++combined_ticks;if(tick.path==arc::UnifiedGovernorPath::Restore)++restore_ticks;if(tick.quality_executed&&!tick.quality.plan.actions.empty()){const auto d=static_cast<unsigned>(tick.quality.plan.actions.front().domain);if(d<64)quality_domain_mask|=(1ull<<d);}}}}
-    }
 
     // Deterministic recovery tail: normal memory and easy scene until every
     // quality ladder and evicted residency object has been restored.
