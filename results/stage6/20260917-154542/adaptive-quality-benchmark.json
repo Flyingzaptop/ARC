@@ -1,0 +1,16 @@
+{
+  "schema": 2,
+  "valid": true,
+  "adapter": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "temporal_enabled": false,
+  "temporal_used": false,
+  "bottleneck": 6,
+  "baseline": {"samples": 9938, "p50_ms": 2.860864, "p95_ms": 2.885285, "p99_ms": 2.901234, "working_set_bytes": 536870912, "groups": 16384, "iterations": 24, "dxgi_peak_usage": 548823040, "dxgi_budget": 5479858176},
+  "adaptive": {"samples": 13672, "p50_ms": 2.066848, "p95_ms": 2.084448, "p99_ms": 2.097888, "working_set_bytes": 536870912, "groups": 11837, "iterations": 18, "dxgi_peak_usage": 548823040, "dxgi_budget": 5479858176},
+  "delta": {"p50_ms": -0.794016, "p95_ms": -0.800837, "p99_ms": -0.803346, "planned_gain_ms": 0.915476, "visual_cost": 0.130000, "memory_freed_bytes": 0},
+  "actions": [
+    {"id": 210, "domain": 3, "label": "distant geometry workload -15%", "expected_ms_gain": 0.286086, "visual_cost": 0.035000, "memory_freed_bytes": 0},
+    {"id": 200, "domain": 2, "label": "distant raster workload -15%", "expected_ms_gain": 0.343304, "visual_cost": 0.045000, "memory_freed_bytes": 0},
+    {"id": 300, "domain": 4, "label": "far lighting complexity step", "expected_ms_gain": 0.286086, "visual_cost": 0.050000, "memory_freed_bytes": 0}
+  ]
+}

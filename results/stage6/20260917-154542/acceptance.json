@@ -1,0 +1,28 @@
+﻿{
+    "schema":  2,
+    "verdict":  "PASS",
+    "adaptive_quality_core_valid":  true,
+    "gates":  {
+                  "json_valid":  true,
+                  "temporal_disabled":  true,
+                  "actions_selected":  true,
+                  "non_temporal_actions_only":  true,
+                  "physical_p50_improved":  true,
+                  "physical_p99_not_regressed":  true
+              },
+    "metrics":  {
+                    "baseline_p50_ms":  2.860864,
+                    "adaptive_p50_ms":  2.066848,
+                    "p50_delta_ms":  -0.794016,
+                    "p50_improvement_fraction":  0.27754412652960786,
+                    "baseline_p99_ms":  2.901234,
+                    "adaptive_p99_ms":  2.097888,
+                    "p99_delta_ms":  -0.80334599999999989,
+                    "selected_actions":  3,
+                    "planned_gain_ms":  0.915476,
+                    "planned_memory_freed_bytes":  0,
+                    "baseline_dxgi_peak_usage":  548823040,
+                    "adaptive_dxgi_peak_usage":  548823040
+                },
+    "fatal_error":  null
+}

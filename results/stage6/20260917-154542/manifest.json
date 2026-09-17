@@ -1,0 +1,16 @@
+﻿{
+    "schema":  3,
+    "source_sha":  "b9fd0780e5b0e022575eb378c6ba86305ec04e8e",
+    "started_utc":  "2026-09-17T13:45:43.8774048Z",
+    "finished_utc":  "2026-09-17T13:46:44.2468825Z",
+    "seconds":  60,
+    "temporal_enabled":  false,
+    "benchmark_exit_code":  0,
+    "adapter":  "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "os":  "Майкрософт Windows 11 Домашняя Insider Preview",
+    "os_build":  "26200",
+    "cpu":  "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+    "gpu_driver":  "32.0.16.1664",
+    "power_scheme":  "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "fatal_error":  null
+}
