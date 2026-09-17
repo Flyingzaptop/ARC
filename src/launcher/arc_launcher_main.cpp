@@ -23,6 +23,8 @@ constexpr int IDC_SECONDS = 1006;
 constexpr int IDC_INSTALL_PM = 1007;
 constexpr int IDC_STATUS = 1008;
 
+HMENU control_id(int id) { return reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)); }
+
 std::vector<arc::SteamGame> g_games;
 HWND g_list{}, g_mode{}, g_seconds{}, g_status{}, g_play{}, g_install_pm{};
 
@@ -183,17 +185,17 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     switch (msg) {
     case WM_CREATE: {
         CreateWindowW(L"STATIC", L"ARC Game Launcher", WS_CHILD|WS_VISIBLE, 18, 14, 260, 28, hwnd, nullptr, nullptr, nullptr);
-        g_list = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr, WS_CHILD|WS_VISIBLE|LBS_NOTIFY|WS_VSCROLL, 18, 48, 560, 330, hwnd, reinterpret_cast<HMENU>(IDC_GAMES), nullptr, nullptr);
-        CreateWindowW(L"BUTTON", L"Scan Steam Library", WS_CHILD|WS_VISIBLE, 18, 392, 150, 32, hwnd, reinterpret_cast<HMENU>(IDC_SCAN), nullptr, nullptr);
-        g_play = CreateWindowW(L"BUTTON", L"Play through ARC", WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, 180, 392, 150, 32, hwnd, reinterpret_cast<HMENU>(IDC_PLAY), nullptr, nullptr);
-        CreateWindowW(L"BUTTON", L"Advanced", WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX, 350, 398, 100, 24, hwnd, reinterpret_cast<HMENU>(IDC_ADVANCED), nullptr, nullptr);
-        g_mode = CreateWindowW(WC_COMBOBOXW, nullptr, WS_CHILD|CBS_DROPDOWNLIST, 18, 438, 190, 200, hwnd, reinterpret_cast<HMENU>(IDC_MODE), nullptr, nullptr);
+        g_list = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr, WS_CHILD|WS_VISIBLE|LBS_NOTIFY|WS_VSCROLL, 18, 48, 560, 330, hwnd, control_id(IDC_GAMES), nullptr, nullptr);
+        CreateWindowW(L"BUTTON", L"Scan Steam Library", WS_CHILD|WS_VISIBLE, 18, 392, 150, 32, hwnd, control_id(IDC_SCAN), nullptr, nullptr);
+        g_play = CreateWindowW(L"BUTTON", L"Play through ARC", WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, 180, 392, 150, 32, hwnd, control_id(IDC_PLAY), nullptr, nullptr);
+        CreateWindowW(L"BUTTON", L"Advanced", WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX, 350, 398, 100, 24, hwnd, control_id(IDC_ADVANCED), nullptr, nullptr);
+        g_mode = CreateWindowW(WC_COMBOBOXW, nullptr, WS_CHILD|CBS_DROPDOWNLIST, 18, 438, 190, 200, hwnd, control_id(IDC_MODE), nullptr, nullptr);
         SendMessageW(g_mode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Baseline"));
-        SendMessageW(g_mode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"ARC Observe"));
+        SendMessageW(g_mode, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"ARC External Observe"));
         SendMessageW(g_mode, CB_SETCURSEL, 1, 0);
-        g_seconds = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"120", WS_CHILD|ES_NUMBER, 220, 438, 70, 26, hwnd, reinterpret_cast<HMENU>(IDC_SECONDS), nullptr, nullptr);
-        g_install_pm = CreateWindowW(L"BUTTON", L"Install PresentMon", WS_CHILD, 305, 435, 145, 30, hwnd, reinterpret_cast<HMENU>(IDC_INSTALL_PM), nullptr, nullptr);
-        g_status = CreateWindowW(L"STATIC", L"Ready.", WS_CHILD|WS_VISIBLE, 18, 478, 560, 48, hwnd, reinterpret_cast<HMENU>(IDC_STATUS), nullptr, nullptr);
+        g_seconds = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"120", WS_CHILD|ES_NUMBER, 220, 438, 70, 26, hwnd, control_id(IDC_SECONDS), nullptr, nullptr);
+        g_install_pm = CreateWindowW(L"BUTTON", L"Install PresentMon", WS_CHILD, 305, 435, 145, 30, hwnd, control_id(IDC_INSTALL_PM), nullptr, nullptr);
+        g_status = CreateWindowW(L"STATIC", L"Ready. External observe only; game resources are not mutated.", WS_CHILD|WS_VISIBLE, 18, 478, 560, 48, hwnd, control_id(IDC_STATUS), nullptr, nullptr);
         update_advanced(hwnd); scan_games(); return 0;
     }
     case WM_COMMAND:
@@ -215,7 +217,7 @@ LRESULT CALLBACK wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     INITCOMMONCONTROLSEX icc{sizeof(icc), ICC_STANDARD_CLASSES}; InitCommonControlsEx(&icc);
-    WNDCLASSW wc{}; wc.lpfnWndProc = wndproc; wc.hInstance = instance; wc.lpszClassName = L"ARCLauncherWindow"; wc.hCursor = LoadCursorW(nullptr, IDC_ARROW); wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    WNDCLASSW wc{}; wc.lpfnWndProc = wndproc; wc.hInstance = instance; wc.lpszClassName = L"ARCLauncherWindow"; wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512)); wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     RegisterClassW(&wc);
     HWND hwnd = CreateWindowW(wc.lpszClassName, L"ARC Launcher", WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 620, 575, nullptr, nullptr, instance, nullptr);
     if (!hwnd) return 2;
