@@ -42,10 +42,10 @@ function Invoke-Mode([string]$Mode, [int]$Count) {
     $metrics = Get-Content -Raw -LiteralPath $metricsPath | ConvertFrom-Json
     $correctness = Get-Content -Raw -LiteralPath $correctnessPath | ConvertFrom-Json
     if ([int]$correctness.iterations -ne $Count) {
-        throw "Stale benchmark output for $Mode: expected $Count iterations, got $($correctness.iterations)"
+        throw "Stale benchmark output for ${Mode}: expected ${Count} iterations, got $($correctness.iterations)"
     }
     if (-not [bool]$correctness.valid -or [double]$correctness.dropped -ne 0) {
-        throw "Observer correctness failed for $Mode/$Count: valid=$($correctness.valid) dropped=$($correctness.dropped)"
+        throw "Observer correctness failed for ${Mode}/${Count}: valid=$($correctness.valid) dropped=$($correctness.dropped)"
     }
 
     [pscustomobject]@{
