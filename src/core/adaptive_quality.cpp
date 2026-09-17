@@ -211,7 +211,7 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_restore(
     plan.bottleneck = FrameBottleneckAnalyzer::classify(sample);
 
     // GPU headroom is not permission to increase quality while local VRAM is
-    // still under pressure.  Memory safety wins over visual restoration.
+    // still under pressure. Memory safety wins over visual restoration.
     if (pressure(sample) >= config_.memory_pressure_enter) return plan;
 
     const double headroom = sample.target_frame_ms - sample.frame_ms;
@@ -240,6 +240,31 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_restore(
         plan.planned_gain_ms += candidate.expected_ms_gain;
         plan.estimated_visual_cost += candidate.visual_cost;
         plan.planned_memory_freed_bytes += candidate.memory_freed_bytes;
+    }
+
+    // Learned degradation gains are deliberately conservative restore-cost
+    // estimates. They can be measured under a much heavier scene than the
+    // current one and otherwise create a permanent recovery deadlock: quality
+    // is known to be reversible, there is stable headroom, but every remaining
+    // restore step is rejected forever because its stale estimate is larger
+    // than the current budget. If the normal plan cannot restore anything,
+    // perform exactly one bounded reversible probe using the cheapest remaining
+    // action. The next frame observation closes the loop; if the probe was too
+    // expensive the ordinary overload path can immediately degrade again and
+    // update the learned effect under the current workload.
+    if (plan.actions.empty() && !candidates.empty()) {
+        const auto probe = std::min_element(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
+            if (a.expected_ms_gain != b.expected_ms_gain) return a.expected_ms_gain < b.expected_ms_gain;
+            if (a.visual_cost != b.visual_cost) return a.visual_cost > b.visual_cost;
+            if (a.id != b.id) return a.id < b.id;
+            return a.sequence > b.sequence;
+        });
+        if (probe != candidates.end()) {
+            plan.actions.push_back(*probe);
+            plan.planned_gain_ms = probe->expected_ms_gain;
+            plan.estimated_visual_cost = probe->visual_cost;
+            plan.planned_memory_freed_bytes = probe->memory_freed_bytes;
+        }
     }
     return plan;
 }
