@@ -81,8 +81,12 @@ function Publish-FailureBundle([string]$RepoDir, [string]$SourceSha, [string]$St
     try {
         $branch = "results/stage4-failure-$Stamp"
         $destination = "results/stage4-failure/$Stamp"
+        $savedPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
         $switchOutput = & git.exe switch -c $branch $SourceSha 2>&1
-        if ($LASTEXITCODE -ne 0) { throw ("Could not create failure-results branch: " + ($switchOutput -join ' ')) }
+        $switchCode = $LASTEXITCODE
+        $ErrorActionPreference = $savedPreference
+        if ($switchCode -ne 0) { throw ("Could not create failure-results branch: " + ($switchOutput -join ' ')) }
         New-Item -ItemType Directory -Force $destination | Out-Null
         if (Test-Path $LogPath) { Copy-Item -LiteralPath $LogPath -Destination (Join-Path $destination 'validation.log') -Force }
         $traces = Join-Path $RepoDir 'traces'
