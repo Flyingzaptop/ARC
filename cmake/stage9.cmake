@@ -46,3 +46,5 @@ if(WIN32)
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     endif()
 endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mega_stage_b.cmake)
