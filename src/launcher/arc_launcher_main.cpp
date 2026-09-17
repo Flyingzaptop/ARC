@@ -11,7 +11,9 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cwctype>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -49,14 +51,17 @@ std::wstring widen(std::string_view value) {
 }
 
 std::wstring lowercase(std::wstring value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](wchar_t ch) { return static_cast<wchar_t>(towlower(ch)); });
+    std::transform(value.begin(), value.end(), value.begin(), [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
     return value;
 }
 
 std::wstring window_text(HWND control) {
     const auto length = GetWindowTextLengthW(control);
-    std::wstring text(static_cast<std::size_t>(length), L'\0');
-    if (length) GetWindowTextW(control, text.data(), length + 1);
+    if (length <= 0) return {};
+    std::wstring text(static_cast<std::size_t>(length) + 1, L'\0');
+    const auto copied = GetWindowTextW(control, text.data(), length + 1);
+    if (copied <= 0) return {};
+    text.resize(static_cast<std::size_t>(copied));
     return text;
 }
 
@@ -66,7 +71,7 @@ void status(std::wstring text) {
 
 void async_status(std::wstring text) {
     auto* copy = new std::wstring(std::move(text));
-    PostMessageW(g_window, kAsyncStatus, 0, reinterpret_cast<LPARAM>(copy));
+    if (!PostMessageW(g_window, kAsyncStatus, 0, reinterpret_cast<LPARAM>(copy))) delete copy;
 }
 
 std::filesystem::path documents_arc_sessions() {
