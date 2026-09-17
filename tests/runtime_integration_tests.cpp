@@ -63,10 +63,13 @@ int main() {
     CHECK(integration.consume(make_event(EventType::MemoryBudgetSample, pressure)));
 
     // Budget is fresh, but the event bridge keeps the resource externally
-    // in-flight until the host reports actual fence completion.
+    // in-flight until the host reports actual fence completion. The local safe
+    // candidate surface filters it before resolution, so the coordinator has
+    // no executable work rather than producing a stale/unsafe action.
     const auto blocked = integration.tick(10);
     CHECK(blocked.budget_fresh);
-    CHECK(blocked.status == RuntimeTickStatus::ResolveFailed);
+    CHECK(blocked.status == RuntimeTickStatus::NoAction);
+    CHECK(blocked.resolved_actions == 0);
     CHECK(backend.evicts == 0);
 
     integration.note_queue_completed(queue, 9);
