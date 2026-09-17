@@ -71,6 +71,15 @@ struct AdaptiveQualityConfig {
     double memory_pressure_emergency{0.97};
     double restoration_headroom_ms{2.0};
     double memory_value_ms_per_gib{0.40};
+
+    // Stage 9: actions outside the diagnosed bottleneck remain possible, but
+    // their utility is discounted.  This avoids the Stage 8 failure mode where
+    // a globally-fast lighting reduction could beat a texture action during a
+    // bandwidth bottleneck merely because its calibration came from another
+    // context.
+    double minimum_domain_affinity{0.12};
+    double unknown_gpu_domain_affinity{1.0};
+
     std::uint32_t max_actions_per_plan{8};
 };
 
@@ -108,14 +117,15 @@ public:
         const std::vector<QualityActionCandidate>& active_actions) const;
 
     [[nodiscard]] const AdaptiveQualityConfig& config() const noexcept { return config_; }
+    [[nodiscard]] double domain_affinity(
+        BottleneckClass bottleneck,
+        QualityDomain domain) const noexcept;
 
 private:
     [[nodiscard]] double utility(
         const QualityActionCandidate& candidate,
-        double memory_pressure) const noexcept;
-    [[nodiscard]] bool domain_matches(
-        BottleneckClass bottleneck,
-        QualityDomain domain) const noexcept;
+        double memory_pressure,
+        BottleneckClass bottleneck) const noexcept;
 
     AdaptiveQualityConfig config_{};
 };
