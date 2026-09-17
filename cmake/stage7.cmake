@@ -1,11 +1,16 @@
 target_sources(arc-core PRIVATE
     src/core/render_quality_model.cpp
+    src/core/render_candidate_catalog.cpp
 )
 
 if(ARC_BUILD_TESTS)
     add_executable(arc-render-quality-model-tests tests/render_quality_model_tests.cpp)
     target_link_libraries(arc-render-quality-model-tests PRIVATE arc::core)
     add_test(NAME arc-render-quality-model-tests COMMAND arc-render-quality-model-tests)
+
+    add_executable(arc-render-candidate-catalog-tests tests/render_candidate_catalog_tests.cpp)
+    target_link_libraries(arc-render-candidate-catalog-tests PRIVATE arc::core)
+    add_test(NAME arc-render-candidate-catalog-tests COMMAND arc-render-candidate-catalog-tests)
 endif()
 
 if(WIN32)
