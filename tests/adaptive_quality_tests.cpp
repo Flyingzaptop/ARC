@@ -187,6 +187,29 @@ void test_restore_prefers_visible_quality() {
     assert(p.actions.front().id == 1);
 }
 
+void test_restore_probe_breaks_stale_cost_deadlock() {
+    AdaptiveQualityConfig cfg{};
+    cfg.restoration_headroom_ms = 0.08;
+    AdaptiveQualityOptimizer optimizer{cfg};
+
+    FrameBudgetSample s{};
+    s.frame_ms = 15.60;
+    s.target_frame_ms = 16.0;
+    s.local_usage_bytes = 500;
+    s.local_budget_bytes = 1000;
+
+    // Both learned costs exceed the ordinary restore budget even though there
+    // is stable headroom. ARC must still make bounded progress by probing one
+    // reversible step rather than leaving quality permanently degraded.
+    std::vector<QualityActionCandidate> active{
+        {101, QualityDomain::Raster, "stale heavy-scene estimate", 0.80, 0.20, 0.95, 0, true, false, 1},
+        {102, QualityDomain::Lighting, "cheaper reversible probe", 0.55, 0.10, 0.95, 0, true, false, 0},
+    };
+    const auto p = optimizer.plan_restore(s, active);
+    assert(p.actions.size() == 1);
+    assert(p.actions.front().id == 102);
+}
+
 void test_temporal_can_be_explicitly_enabled() {
     AdaptiveQualityConfig cfg{};
     cfg.allow_temporal_assist = true;
@@ -215,6 +238,7 @@ int main() {
     test_sequence_can_continue_after_active_prefix_removed();
     test_emergency_memory_requires_real_relief_target();
     test_restore_prefers_visible_quality();
+    test_restore_probe_breaks_stale_cost_deadlock();
     test_temporal_can_be_explicitly_enabled();
     std::cout << "adaptive-quality-tests: PASS\n";
     return 0;
