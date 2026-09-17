@@ -76,6 +76,8 @@ if(WIN32)
     target_link_libraries(dx12-tiled-texture-lab PRIVATE arc-dx12-observer)
     add_executable(dx12-global-memory-lab samples/global_memory_lab.cpp)
     target_link_libraries(dx12-global-memory-lab PRIVATE arc-dx12-observer)
+    add_executable(dx12-live-runtime-lab samples/live_runtime_lab.cpp)
+    target_link_libraries(dx12-live-runtime-lab PRIVATE arc-dx12-observer)
 endif()
 
 if(ARC_BUILD_TESTS)
@@ -167,6 +169,15 @@ if(ARC_BUILD_TESTS)
             add_test(NAME dx12-global-memory-lab COMMAND dx12-global-memory-lab)
             set_tests_properties(
                 dx12-global-memory-lab
+                PROPERTIES
+                    LABELS gpu
+                    TIMEOUT 180
+                    SKIP_RETURN_CODE 77
+                    RUN_SERIAL TRUE
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+            add_test(NAME dx12-live-runtime-lab COMMAND dx12-live-runtime-lab)
+            set_tests_properties(
+                dx12-live-runtime-lab
                 PROPERTIES
                     LABELS gpu
                     TIMEOUT 180
