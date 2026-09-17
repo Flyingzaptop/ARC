@@ -13,6 +13,12 @@ std::uint32_t bump_saturating(std::uint32_t value) noexcept {
     return value == std::numeric_limits<std::uint32_t>::max() ? value : value + 1;
 }
 
+std::uint32_t multiply_saturating(std::uint32_t value, std::uint32_t factor) noexcept {
+    if (value == 0 || factor == 0) return 0;
+    const auto max = std::numeric_limits<std::uint32_t>::max();
+    return value > max / factor ? max : value * factor;
+}
+
 } // namespace
 
 std::size_t AdaptiveQualityController::Hash::operator()(const Key& key) const noexcept {
@@ -187,6 +193,7 @@ void AdaptiveQualityController::note_action_applied(
     bool success) noexcept {
     if (!success || kind == QualityDecisionKind::None) return;
 
+    const auto previous_kind = last_applied_kind_;
     const Key key{action.id, action.sequence};
     if (kind == QualityDecisionKind::Degrade) {
         active_[key] = action;
@@ -195,14 +202,27 @@ void AdaptiveQualityController::note_action_applied(
             : 0.0;
         effects_.record(action, observed_gain);
         ++degrade_actions_applied_;
-        restore_guard_remaining_ = std::max(
-            restore_guard_remaining_, config_.minimum_hold_samples_after_degrade);
+
+        // A degrade immediately following a restore is evidence that the
+        // restore estimate was optimistic or that we are hovering near the
+        // frame target. Extend the normal hold window to prevent ping-pong.
+        const auto hold = previous_kind == QualityDecisionKind::Restore
+            ? multiply_saturating(config_.minimum_hold_samples_after_degrade, 4)
+            : config_.minimum_hold_samples_after_degrade;
+        restore_guard_remaining_ = std::max(restore_guard_remaining_, hold);
     } else if (kind == QualityDecisionKind::Restore) {
         active_.erase(key);
+        const double observed_cost = std::isfinite(before_frame_ms) && std::isfinite(after_frame_ms)
+            ? std::max(0.0, after_frame_ms - before_frame_ms)
+            : 0.0;
+        // Degrade gain and restore cost are the same physical step viewed in
+        // opposite directions. Feeding both observations back prevents a
+        // stale heavy-scene gain from causing repeated restore probes forever.
+        effects_.record(action, observed_cost);
         ++restore_actions_applied_;
     }
 
-    if (last_applied_kind_ != QualityDecisionKind::None && last_applied_kind_ != kind) {
+    if (previous_kind != QualityDecisionKind::None && previous_kind != kind) {
         ++direction_changes_;
     }
     last_applied_kind_ = kind;
