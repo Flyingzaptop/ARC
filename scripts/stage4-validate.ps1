@@ -96,32 +96,25 @@ try {
 # ARC Stage 4 Acceptance
 
 - Verdict: **$verdict**
-- Commit: `$commit`
+- Commit: $commit
 
-## What passed
+## Core gates
 
-- Stage 2 memory core regression: $stage2Correct
+- Stage 2 regression: $stage2Correct
 - Live runtime D3D12 path: $liveCorrect
-- Unknown resource mutation guard: $([bool]$live.unknown_resource_untouched)
-- Transition prefetch executed: $([bool]$live.transition_prefetch_verified)
-- Live DXGI relief observed: $([int64]$live.dxgi_observed_relief_bytes) bytes
+- Unknown resource guard: $([bool]$live.unknown_resource_untouched)
+- Transition prefetch: $([bool]$live.transition_prefetch_verified)
+- DXGI relief: $([int64]$live.dxgi_observed_relief_bytes) bytes
 - Debug layer clean: $debugClean
 
 ## Observer benchmark v2
 
-- Light CPU median overhead: $([Math]::Round([double]$observer.light.attributable_cpu_percent_median, 3)) %
-- Light CPU p90 overhead: $([Math]::Round([double]$observer.light.attributable_cpu_percent_p90, 3)) %
-- Light P99 median delta: $([Math]::Round([double]$observer.light.p99_delta_ms_median, 4)) ms
-- Light P99 p90 delta: $([Math]::Round([double]$observer.light.p99_delta_ms_p90, 4)) ms
-- CPU <= 2% target: $cpuMet
-- P99 <= 0.15 ms target: $p99Met
-
-## Artifacts
-
-- `traces/stage4-acceptance.json`
-- `traces/live-runtime-lab.json`
-- `traces/observer-benchmark-v2.json`
-- `traces/stage2-final-acceptance.json`
+- Light CPU median: $([Math]::Round([double]$observer.light.attributable_cpu_percent_median, 3)) %
+- Light CPU p90: $([Math]::Round([double]$observer.light.attributable_cpu_percent_p90, 3)) %
+- P99 median delta: $([Math]::Round([double]$observer.light.p99_delta_ms_median, 4)) ms
+- P99 p90 delta: $([Math]::Round([double]$observer.light.p99_delta_ms_p90, 4)) ms
+- CPU <= 2%: $cpuMet
+- P99 <= 0.15 ms: $p99Met
 "@
     $report | Set-Content -LiteralPath 'traces/STAGE4_ACCEPTANCE.md' -Encoding utf8
 
@@ -131,8 +124,6 @@ try {
     Write-Host "Live runtime: valid=$($live.valid) prefetch=$($live.transition_prefetch_actions) dxgiRelief=$($live.dxgi_observed_relief_bytes)"
     Write-Host "Observer v2 Light CPU median=$([Math]::Round([double]$observer.light.attributable_cpu_percent_median, 3))% p90=$([Math]::Round([double]$observer.light.attributable_cpu_percent_p90, 3))%"
 
-    if ($verdict -eq 'NOT_ACCEPTED') { exit 2 }
-
     if ($PublishResults) {
         & "$PSScriptRoot/publish-stage4-results.ps1"
         if ($LASTEXITCODE -ne 0) { throw "Stage 4 results publication failed: $LASTEXITCODE" }
@@ -140,6 +131,8 @@ try {
             Write-Host "Results URL: $((Get-Content -Raw -LiteralPath 'traces/stage4-results-url.txt').Trim())"
         }
     }
+
+    if ($verdict -eq 'NOT_ACCEPTED') { exit 2 }
 } finally {
     Pop-Location
 }
