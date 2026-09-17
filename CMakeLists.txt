@@ -27,6 +27,8 @@ add_library(arc-core STATIC
     src/core/texture_quality_candidates.cpp
     src/core/memory_arbiter.cpp
     src/core/memory_planner.cpp
+    src/core/transition_predictor.cpp
+    src/core/live_runtime.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
@@ -121,6 +123,14 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-global-memory-scenario-tests tests/global_memory_scenario_tests.cpp)
     target_link_libraries(arc-global-memory-scenario-tests PRIVATE arc::core)
     add_test(NAME arc-global-memory-scenario-tests COMMAND arc-global-memory-scenario-tests)
+
+    add_executable(arc-transition-predictor-tests tests/transition_predictor_tests.cpp)
+    target_link_libraries(arc-transition-predictor-tests PRIVATE arc::core)
+    add_test(NAME arc-transition-predictor-tests COMMAND arc-transition-predictor-tests)
+
+    add_executable(arc-live-runtime-tests tests/live_runtime_tests.cpp)
+    target_link_libraries(arc-live-runtime-tests PRIVATE arc::core)
+    add_test(NAME arc-live-runtime-tests COMMAND arc-live-runtime-tests)
 
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
