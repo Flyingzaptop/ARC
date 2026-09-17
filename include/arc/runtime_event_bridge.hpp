@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace arc {
@@ -18,15 +17,13 @@ struct RuntimeEventBridgeMetrics {
     std::uint64_t queue_submits{};
     std::uint64_t fence_signals{};
     std::uint64_t completion_updates{};
+    std::uint64_t submission_blocks{};
+    std::uint64_t completion_releases{};
     std::uint64_t budget_samples{};
     std::uint64_t resources_destroyed{};
     std::uint64_t controller_rejections{};
 };
 
-// Converts the observer's event stream into safe slow-loop runtime inputs.
-// Resource uses are held until a real FenceSignal ties them to a queue fence.
-// Actual fence completion remains backend-owned and is supplied explicitly via
-// note_queue_completed(); a submitted/signal event is never treated as completion.
 class RuntimeEventBridge final {
 public:
     explicit RuntimeEventBridge(LiveRuntimeController& runtime) noexcept : runtime_(runtime) {}
@@ -39,13 +36,20 @@ public:
     [[nodiscard]] std::uint64_t presentation_frame() const noexcept { return presentation_frame_; }
 
 private:
+    struct SignaledBatch {
+        std::uint64_t fence_value{};
+        std::vector<ResourceId> resources{}; // one entry per submission-level in-flight block
+    };
+
     void append_use(CommandId command, ResourceId resource);
+    bool queue_submission(QueueId queue, const std::vector<ResourceId>& uses);
     bool flush_signal(QueueId queue, std::uint64_t fence_value);
 
     LiveRuntimeController& runtime_;
     std::unordered_map<CommandId, std::vector<ResourceId>> command_uses_{};
-    std::unordered_map<QueueId, std::vector<ResourceId>> pending_by_queue_{};
-    std::unordered_map<QueueId, std::unordered_set<ResourceId>> seen_by_queue_{};
+    std::unordered_map<QueueId, std::vector<ResourceId>> pending_uses_by_queue_{};
+    std::unordered_map<QueueId, std::vector<std::vector<ResourceId>>> pending_blocks_by_queue_{};
+    std::unordered_map<QueueId, std::vector<SignaledBatch>> signaled_by_queue_{};
     std::unordered_map<QueueId, std::uint64_t> completed_by_queue_{};
     RuntimeEventBridgeMetrics metrics_{};
     std::uint64_t logical_epoch_{};
