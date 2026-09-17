@@ -2,6 +2,7 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include "arc/adaptive_quality.hpp"
+#include "arc/render_candidate_catalog.hpp"
 #include "arc/render_quality_model.hpp"
 
 #include <windows.h>
@@ -471,10 +472,10 @@ void write_report(const std::filesystem::path& path, const Context& c, const Ser
                   const Knobs& before, const Knobs& after, const arc::AdaptiveQualityPlan& plan) {
     if (!path.parent_path().empty()) std::filesystem::create_directories(path.parent_path());
     std::ofstream f(path); f << std::fixed << std::setprecision(6);
-    f << "{\n  \"schema\":1,\n  \"valid\":true,\n  \"adapter\":\"" << esc(c.adapter_name) << "\",\n  \"temporal_enabled\":false,\n  \"temporal_used\":" << (plan.temporal_used?"true":"false") << ",\n  \"bottleneck\":" << static_cast<int>(plan.bottleneck) << ",\n  \"baseline\":"; write_stats(f,base,before);
+    f << "{\n  \"schema\":2,\n  \"valid\":true,\n  \"adapter\":\"" << esc(c.adapter_name) << "\",\n  \"importance_aware\":true,\n  \"temporal_enabled\":false,\n  \"temporal_used\":" << (plan.temporal_used?"true":"false") << ",\n  \"bottleneck\":" << static_cast<int>(plan.bottleneck) << ",\n  \"baseline\":"; write_stats(f,base,before);
     f << ",\n  \"adaptive\":"; write_stats(f,adaptive,after);
     f << ",\n  \"delta\":{\"p50_ms\":" << (pct(adaptive.total,.5)-pct(base.total,.5)) << ",\"p99_ms\":" << (pct(adaptive.total,.99)-pct(base.total,.99)) << ",\"planned_gain_ms\":" << plan.planned_gain_ms << ",\"visual_cost\":" << plan.estimated_visual_cost << ",\"memory_freed_bytes\":" << plan.planned_memory_freed_bytes << "},\n  \"actions\":[\n";
-    for (std::size_t i=0;i<plan.actions.size();++i) { const auto& a=plan.actions[i]; f << "    {\"id\":"<<a.id<<",\"domain\":"<<static_cast<int>(a.domain)<<",\"label\":\""<<esc(a.label)<<"\",\"expected_ms_gain\":"<<a.expected_ms_gain<<",\"visual_cost\":"<<a.visual_cost<<",\"memory_freed_bytes\":"<<a.memory_freed_bytes<<"}" << (i+1==plan.actions.size()?"":",") << "\n"; }
+    for (std::size_t i=0;i<plan.actions.size();++i) { const auto& a=plan.actions[i]; f << "    {\"id\":"<<a.id<<",\"sequence\":"<<a.sequence<<",\"domain\":"<<static_cast<int>(a.domain)<<",\"label\":\""<<esc(a.label)<<"\",\"expected_ms_gain\":"<<a.expected_ms_gain<<",\"visual_cost\":"<<a.visual_cost<<",\"memory_freed_bytes\":"<<a.memory_freed_bytes<<"}" << (i+1==plan.actions.size()?"":",") << "\n"; }
     f << "  ]\n}\n";
 }
 
@@ -491,21 +492,22 @@ int main(int argc, char** argv) {
     const auto t = p50_timings(base);
     const auto b = base.peak;
     const auto sample = arc::RenderQualityModel::make_frame_sample(t, std::max(0.1, t.total_ms * 0.75), b.usage, b.budget, 0.99);
-    const std::vector<arc::RenderQualityStep> steps{
-        {1000,arc::QualityDomain::Texture,"texture admission 4096->2048",0.22,0.035,0.88,48ull<<20,true,false,0},
-        {1010,arc::QualityDomain::Bandwidth,"texture sampling 24->14",0.34,0.030,0.90,0,true,false,0},
-        {2000,arc::QualityDomain::Geometry,"distant geometry instances -30%",0.30,0.035,0.90,0,true,false,0},
-        {2100,arc::QualityDomain::Raster,"raster overdraw 7->4",0.38,0.045,0.90,0,true,false,0},
-        {3000,arc::QualityDomain::Lighting,"lighting complexity 48->30",0.36,0.050,0.91,0,true,false,0},
-        {3100,arc::QualityDomain::Shadow,"shadow 2048->1536 + geometry -30%",0.34,0.045,0.89,7ull<<20,true,false,0},
-        {9000,arc::QualityDomain::Temporal,"temporal assist (disabled)",0.55,0.005,1.0,0,true,true,0},
+
+    const std::vector<arc::RenderResourceProfile> resources{
+        {1000,arc::QualityDomain::Texture,"distant environment texture 4096->2048",arc::QualitySemanticClass::Environment,{0.16,0.86,0.10,0.22,0.82},0.90,true,false,{{0.50,0.22,48ull<<20}}},
+        {1010,arc::QualityDomain::Bandwidth,"distant texture sampling 24->14",arc::QualitySemanticClass::Environment,{0.20,0.88,0.12,0.22,0.78},0.92,true,false,{{0.58,0.34,0}}},
+        {2000,arc::QualityDomain::Geometry,"distant foliage geometry instances -30%",arc::QualitySemanticClass::Foliage,{0.12,0.82,0.20,0.15,0.88},0.92,true,false,{{0.70,0.30,0}}},
+        {2100,arc::QualityDomain::Raster,"distant environment raster overdraw 7->4",arc::QualitySemanticClass::Environment,{0.18,0.84,0.16,0.18,0.80},0.91,true,false,{{0.57,0.38,0}}},
+        {3000,arc::QualityDomain::Lighting,"far environment lighting complexity 48->30",arc::QualitySemanticClass::Environment,{0.24,0.90,0.18,0.30,0.72},0.92,true,false,{{0.62,0.36,0}}},
+        {3100,arc::QualityDomain::Shadow,"character shadow 2048->1536 + geometry -30%",arc::QualitySemanticClass::Character,{0.32,0.94,0.28,0.62,0.48},0.90,true,false,{{0.75,0.34,7ull<<20}}},
+        {9000,arc::QualityDomain::Temporal,"temporal assist (disabled)",arc::QualitySemanticClass::Generic,{0.0,0.0,0.0,0.0,1.0},1.0,true,true,{{0.50,0.55,0}}},
     };
-    const auto candidates = arc::RenderQualityModel::build_candidates(t, steps);
+    const auto candidates = arc::RenderCandidateCatalog::build(t, resources);
     arc::AdaptiveQualityOptimizer optimizer{};
     const auto plan = optimizer.plan_degrade(sample, candidates);
     Knobs adaptive_knobs = base_knobs; apply(plan, adaptive_knobs);
-    std::cout << "Selected " << plan.actions.size() << " native actions; temporal=" << (plan.temporal_used?"ON":"OFF") << "\n";
-    for (const auto& a:plan.actions) std::cout << "  - " << a.label << "\n";
+    std::cout << "Selected " << plan.actions.size() << " importance-aware native actions; temporal=" << (plan.temporal_used?"ON":"OFF") << "\n";
+    for (const auto& a:plan.actions) std::cout << "  - " << a.label << " [visual cost " << a.visual_cost << "]\n";
     std::cout << "Phase 2/2 adaptive mixed scene: " << phase_seconds << " s\n";
     auto adaptive = run_phase(c, pipelines, adaptive_knobs, phase_seconds);
     write_report(args.output,c,base,adaptive,base_knobs,adaptive_knobs,plan);
