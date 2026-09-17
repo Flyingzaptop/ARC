@@ -45,6 +45,32 @@ void test_bottleneck_classification() {
     assert(FrameBottleneckAnalyzer::classify(s) == BottleneckClass::MemoryCapacity);
 }
 
+void test_shadow_is_first_class_bottleneck() {
+    FrameBudgetSample s{};
+    s.frame_ms = 20.0;
+    s.target_frame_ms = 16.7;
+    s.gpu_busy_fraction = 0.99;
+    s.memory_bandwidth_fraction = 0.20;
+    s.raster_pressure = 0.30;
+    s.geometry_pressure = 0.30;
+    s.lighting_pressure = 0.40;
+    s.shadow_pressure = 0.98;
+    assert(FrameBottleneckAnalyzer::classify(s) == BottleneckClass::Shadow);
+
+    AdaptiveQualityConfig cfg{};
+    cfg.minimum_gain_ms = 0.01;
+    AdaptiveQualityOptimizer optimizer{cfg};
+    std::vector<QualityActionCandidate> candidates{
+        {101, QualityDomain::Lighting, "cheap but unrelated light action", 5.0, 0.001, 0.99, 0, true, false, 0},
+        {102, QualityDomain::Raster, "cheap but unrelated raster action", 5.0, 0.001, 0.99, 0, true, false, 0},
+        {103, QualityDomain::Shadow, "far shadow update", 1.0, 0.06, 0.95, 0, true, false, 0},
+    };
+    const auto plan = optimizer.plan_degrade(s, candidates);
+    assert(plan.bottleneck == BottleneckClass::Shadow);
+    assert(!plan.actions.empty());
+    for (const auto& action : plan.actions) assert(action.domain == QualityDomain::Shadow);
+}
+
 void test_temporal_default_off() {
     AdaptiveQualityOptimizer optimizer{};
     FrameBudgetSample s{};
@@ -128,7 +154,7 @@ void test_emergency_memory_requires_real_relief_target() {
     s.target_frame_ms = 16.0;
     s.gpu_busy_fraction = 0.7;
     s.local_budget_bytes = 1000;
-    s.local_usage_bytes = 980; // emergency; target at default 90% requires 80 bytes
+    s.local_usage_bytes = 980;
 
     std::vector<QualityActionCandidate> insufficient{
         {1, QualityDomain::Texture, "small relief", 0.1, 0.01, 0.99, 20, true, false, 0},
@@ -182,6 +208,7 @@ void test_temporal_can_be_explicitly_enabled() {
 int main() {
     test_importance_estimator();
     test_bottleneck_classification();
+    test_shadow_is_first_class_bottleneck();
     test_temporal_default_off();
     test_selects_low_visual_cost_mix();
     test_sequence_dependencies();
