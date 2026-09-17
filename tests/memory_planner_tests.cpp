@@ -1,6 +1,7 @@
 #include "arc/memory_planner.hpp"
 
 #include <iostream>
+#include <limits>
 
 #define CHECK(condition) do { if (!(condition)) { std::cerr << "CHECK failed: " << #condition << " at line " << __LINE__ << '\n'; return 1; } } while(false)
 
@@ -99,6 +100,30 @@ int main() {
         saw_restore_texture |= action.candidate.kind == MemoryRestoreKind::PromoteTexture;
     }
     CHECK(saw_restore_residency || saw_restore_texture);
+
+    // Cold/unknown resources must not remain evicted forever. Once pressure is
+    // normal and there is safe headroom they become low-priority background
+    // restore candidates, but never in the same epoch in which they were evicted.
+    ResidencyPolicyConfig cold_config{};
+    cold_config.promotion_ceiling = .90;
+    ResidencyGovernor cold(cold_config);
+    CHECK(cold.register_object({
+        .id=11,.resource=700,.state=ResidencyState::Resident,.safety=ResidencySafety::ControlledSafe,
+        .cost={.bytes=80,.reload_ms=1.0}}));
+    CHECK(cold.transition(11, ResidencyState::Resident, ResidencyState::Evicted));
+    cold.record_eviction(11, false, 50);
+    cold.update_budget(1000, 600);
+    CHECK(cold.promotion_candidates(50).empty());
+    const auto background = cold.promotion_candidates(51);
+    CHECK(background.size() == 1);
+    CHECK(background.front().type == ResidencyAction::Type::MakeResident);
+    CHECK(background.front().object == 11);
+    CHECK(background.front().predicted_use_epoch == (std::numeric_limits<std::uint64_t>::max)());
+    TextureQualityGovernor no_restore_textures(restore_texture_config);
+    const auto cold_restore = planner.plan_headroom_restore(cold, no_restore_textures, 51, 100);
+    CHECK(cold_restore.residency_candidate_bytes == 80);
+    CHECK(!cold_restore.arbitration.actions.empty());
+    CHECK(cold_restore.arbitration.actions.front().candidate.kind == MemoryRestoreKind::MakeResident);
 
     // Restoration is strictly capped; no candidate may overfill a tiny headroom window.
     const auto tiny = planner.plan_headroom_restore(restore_residency, restore_textures, 42, 25);
