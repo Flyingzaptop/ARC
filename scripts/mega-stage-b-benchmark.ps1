@@ -12,6 +12,24 @@ $ProgressPreference='SilentlyContinue'
 function Step([string]$Text){Write-Host "`n=== $Text ===" -ForegroundColor Cyan}
 function Json-Write($Object,[string]$Path){$Object|ConvertTo-Json -Depth 30|Set-Content -LiteralPath $Path -Encoding utf8}
 function Pct([double]$v){[math]::Round(100*$v,1)}
+function Invoke-Logged {
+    param(
+        [Parameter(Mandatory=$true)][string]$FilePath,
+        [string[]]$Arguments=@(),
+        [Parameter(Mandatory=$true)][string]$LogPath
+    )
+    $previous=$ErrorActionPreference
+    try {
+        $ErrorActionPreference='Continue'
+        $output=& $FilePath @Arguments 2>&1
+        $code=$LASTEXITCODE
+    } finally {
+        $ErrorActionPreference=$previous
+    }
+    foreach($line in @($output)){Write-Host $line}
+    @($output)|Out-File -LiteralPath $LogPath -Encoding utf8 -Append
+    return [int]$code
+}
 
 $RepoRoot=(Resolve-Path -LiteralPath $RepoRoot).Path
 $sourceSha=(& git.exe -C $RepoRoot rev-parse HEAD).Trim()
@@ -29,6 +47,7 @@ $summaryMd=Join-Path $runDir 'SUMMARY.md'
 $lastSummary=Join-Path $localRoot 'last-summary.txt'
 $lastUrl=Join-Path $localRoot 'last-result-url.txt'
 Remove-Item -LiteralPath $lastSummary,$lastUrl -Force -ErrorAction SilentlyContinue
+Set-Content -LiteralPath $log -Value '' -Encoding utf8
 
 $exe=Join-Path $RepoRoot 'build\Release\dx12-mega-stage-b-host-renderer.exe'
 $hostTest=Join-Path $RepoRoot 'build\Release\arc-dx12-host-adapter-tests.exe'
@@ -43,16 +62,9 @@ try{$cpuName=[string](Get-CimInstance Win32_Processor -ErrorAction Stop|Select-O
 try{$driver=[string](Get-CimInstance Win32_VideoController -ErrorAction Stop|Where-Object{$_.Name -match 'NVIDIA|AMD|Intel'}|Select-Object -First 1 -ExpandProperty DriverVersion)}catch{}
 
 Step 'Mega Stage B deterministic integration gates'
-$previous=$ErrorActionPreference
-try{
-    $ErrorActionPreference='Continue'
-    & $hostTest 2>&1|Tee-Object -FilePath $log
-    $hostTestExit=$LASTEXITCODE
-    & $arbiterTest 2>&1|Tee-Object -FilePath $log -Append
-    $arbiterExit=$LASTEXITCODE
-    & $governorTest 2>&1|Tee-Object -FilePath $log -Append
-    $governorExit=$LASTEXITCODE
-}finally{$ErrorActionPreference=$previous}
+$hostTestExit=Invoke-Logged -FilePath $hostTest -LogPath $log
+$arbiterExit=Invoke-Logged -FilePath $arbiterTest -LogPath $log
+$governorExit=Invoke-Logged -FilePath $governorTest -LogPath $log
 $policyPassed=($hostTestExit-eq 0 -and $arbiterExit-eq 0 -and $governorExit-eq 0)
 if(-not$policyPassed){Write-Host "Deterministic gates failed: host=$hostTestExit arbiter=$arbiterExit governor=$governorExit" -ForegroundColor Red}
 
@@ -64,15 +76,13 @@ Write-Host 'Stage 14: Win32/DXGI reference renderer integration'
 Write-Host 'Native 1920x1080. Temporal / DLSS / FSR / Frame Generation / dynamic resolution: OFF'
 Write-Host 'Leave other GPU-heavy applications idle until the run finishes.' -ForegroundColor Yellow
 $started=[DateTime]::UtcNow.ToString('o');$exit=-1;$fatal=$null
-try{
-    $ErrorActionPreference='Continue'
-    & $exe --seconds $Seconds --probe-frames $ProbeFrames --control-frames $ControlFrames --output $benchmarkJson 2>&1|Tee-Object -FilePath $log -Append
-    $exit=$LASTEXITCODE
+try {
+    $exit=Invoke-Logged -FilePath $exe -Arguments @('--seconds',[string]$Seconds,'--probe-frames',[string]$ProbeFrames,'--control-frames',[string]$ControlFrames,'--output',$benchmarkJson) -LogPath $log
     if($exit-ne 0){$fatal="Benchmark executable exit code $exit"}
 } catch {
     $fatal=$_.Exception.Message
-    ($_|Out-String)|Add-Content -LiteralPath $log
-} finally {$ErrorActionPreference='Stop'}
+    ($_|Out-String)|Out-File -LiteralPath $log -Encoding utf8 -Append
+}
 $finished=[DateTime]::UtcNow.ToString('o')
 
 $bench=$null
@@ -91,29 +101,11 @@ $manifest=[ordered]@{
 Json-Write $manifest $manifestJson
 
 $gates=[ordered]@{
-    json_valid=$false
-    mega_stage_b_schema=$false
-    native_cooperative_host=$false
-    native_1080p=$false
-    temporal_disabled=$false
-    deterministic_host_contract=$false
-    resource_lifecycle_observed=$false
-    descriptor_path_observed=$false
-    command_submission_observed=$false
-    fence_completion_observed=$false
-    presentation_observed=$false
-    resource_graph_clean=$false
-    observation_control_separation_clean=$false
-    physical_quality_actuation=$false
-    online_effect_learning=$false
-    multi_domain_quality=$false
-    global_memory_path=$false
-    combined_arbitration=$false
-    restore_path=$false
-    target_tracking_improved=$false
-    full_quality_recovered=$false
-    residency_recovered=$false
-    backend_clean=$false
+    json_valid=$false;mega_stage_b_schema=$false;native_cooperative_host=$false;native_1080p=$false;temporal_disabled=$false
+    deterministic_host_contract=$false;resource_lifecycle_observed=$false;descriptor_path_observed=$false;command_submission_observed=$false
+    fence_completion_observed=$false;presentation_observed=$false;resource_graph_clean=$false;observation_control_separation_clean=$false
+    physical_quality_actuation=$false;online_effect_learning=$false;multi_domain_quality=$false;global_memory_path=$false
+    combined_arbitration=$false;restore_path=$false;target_tracking_improved=$false;full_quality_recovered=$false;residency_recovered=$false;backend_clean=$false
 }
 $metrics=[ordered]@{}
 if($bench){
@@ -145,27 +137,20 @@ if($bench){
     $gates.residency_recovered=[bool]$bench.residency_restored
     $gates.backend_clean=([int]$bench.governor.quality_backend_failures-eq 0)
     $metrics=[ordered]@{
-        target_frame_ms=[double]$bench.target_frame_ms
-        baseline_p50_ms=[double]$bench.baseline.p50_ms;adaptive_p50_ms=[double]$bench.adaptive.p50_ms
+        target_frame_ms=[double]$bench.target_frame_ms;baseline_p50_ms=[double]$bench.baseline.p50_ms;adaptive_p50_ms=[double]$bench.adaptive.p50_ms
         baseline_p99_ms=[double]$bench.baseline.p99_ms;adaptive_p99_ms=[double]$bench.adaptive.p99_ms
         baseline_miss_ratio=$bmiss;adaptive_miss_ratio=$amiss;miss_reduction_fraction=$missReduction
         baseline_mean_overshoot_ms=$bo;adaptive_mean_overshoot_ms=$ao;overshoot_reduction_fraction=$overReduction
-        host_resources=[int]$bench.host.resources;descriptor_writes=[int]$bench.host.descriptor_writes
-        resource_uses=[int]$bench.host.resource_uses;queue_submits=[int]$bench.host.queue_submits
-        fence_signals=[int]$bench.host.fence_signals;completion_updates=[int]$bench.host.completion_updates
-        presents=[int]$bench.host.presents;events_drained=[int64]$bench.host.events_drained
-        quality_actions=[int]$bench.governor.quality_actions_executed;quality_domains=[int]$bench.governor.quality_domains
-        learned_effects=[int]$bench.governor.learned_effects;memory_actions=[int]$bench.governor.memory_executed_actions
+        host_resources=[int]$bench.host.resources;descriptor_writes=[int]$bench.host.descriptor_writes;resource_uses=[int]$bench.host.resource_uses
+        queue_submits=[int]$bench.host.queue_submits;fence_signals=[int]$bench.host.fence_signals;completion_updates=[int]$bench.host.completion_updates
+        presents=[int]$bench.host.presents;events_drained=[int64]$bench.host.events_drained;quality_actions=[int]$bench.governor.quality_actions_executed
+        quality_domains=[int]$bench.governor.quality_domains;learned_effects=[int]$bench.governor.learned_effects;memory_actions=[int]$bench.governor.memory_executed_actions
         combined_ticks=[int]$bench.governor.combined_ticks;restore_ticks=[int]$bench.governor.restore_ticks
     }
 }
 
-$passed=(-not$fatal)-and($exit-eq 0)
-foreach($v in $gates.Values){$passed=$passed-and[bool]$v}
-$verdict=if($passed){'PASS'}else{'FAIL'}
-$acceptance=[ordered]@{schema=1;verdict=$verdict;mega_stage_b_valid=[bool]$passed;gates=$gates;metrics=$metrics;fatal_error=$fatal}
-Json-Write $acceptance $acceptanceJson
-
+$passed=(-not$fatal)-and($exit-eq 0);foreach($v in $gates.Values){$passed=$passed-and[bool]$v};$verdict=if($passed){'PASS'}else{'FAIL'}
+$acceptance=[ordered]@{schema=1;verdict=$verdict;mega_stage_b_valid=[bool]$passed;gates=$gates;metrics=$metrics;fatal_error=$fatal};Json-Write $acceptance $acceptanceJson
 $summary=@"
 # ARC Mega Stage B - Stages 13-14
 
@@ -215,13 +200,9 @@ $summaryText="ARC Mega Stage B $verdict`r`nStages 13-14 integrated`r`nResults UR
 Set-Content -LiteralPath $lastSummary -Value $summaryText -Encoding utf8
 $url='';$publishFailed=$false
 if(-not$NoPublish){
-    Step 'Publishing results'
-    $publisher=Join-Path $PSScriptRoot 'mega-stage-b-publish-existing.ps1'
-    try{
-        & $publisher -RepoRoot $RepoRoot -RunStamp $stamp
-        if($LASTEXITCODE-ne 0){throw "Publisher exit code $LASTEXITCODE"}
-        if(Test-Path -LiteralPath $lastUrl){$url=(Get-Content -LiteralPath $lastUrl -Raw).Trim()}
-    }catch{$publishFailed=$true;Write-Host "Publishing failed: $($_.Exception.Message)" -ForegroundColor Red}
+    Step 'Publishing results';$publisher=Join-Path $PSScriptRoot 'mega-stage-b-publish-existing.ps1'
+    try{& $publisher -RepoRoot $RepoRoot -RunStamp $stamp;if($LASTEXITCODE-ne 0){throw "Publisher exit code $LASTEXITCODE"};if(Test-Path -LiteralPath $lastUrl){$url=(Get-Content -LiteralPath $lastUrl -Raw).Trim()}}
+    catch{$publishFailed=$true;Write-Host "Publishing failed: $($_.Exception.Message)" -ForegroundColor Red}
 }
 $summaryText="ARC Mega Stage B $verdict`r`nBudget misses: $(if($bench){"$(Pct([double]$metrics.baseline_miss_ratio))% -> $(Pct([double]$metrics.adaptive_miss_ratio))%"}else{'n/a'})`r`nNative host clean: $($gates.observation_control_separation_clean)`r`nRenderer command path: $($gates.command_submission_observed)`r`nQuality domains: $(if($bench){$metrics.quality_domains}else{'n/a'})`r`nFull recovery: $($gates.full_quality_recovered)`r`nTemporal: OFF`r`nResults URL: $url"
 Set-Content -LiteralPath $lastSummary -Value $summaryText -Encoding utf8
