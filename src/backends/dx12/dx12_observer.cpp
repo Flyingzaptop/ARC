@@ -24,15 +24,12 @@ std::uint64_t logical_bytes(const D3D12_RESOURCE_DESC& desc) noexcept {
     if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return desc.Width;
     }
-    // The allocation query below is the authoritative host estimate. This is
-    // deliberately just a conservative logical placeholder until format/mip
-    // footprint accounting is added in the descriptor and subresource work.
     arc::TexelLayout layout{};
     switch (desc.Format) {
     case DXGI_FORMAT_R8G8B8A8_UNORM: case DXGI_FORMAT_D32_FLOAT: case DXGI_FORMAT_R32_FLOAT: break;
     case DXGI_FORMAT_BC1_UNORM: case DXGI_FORMAT_BC4_UNORM: layout = {4, 4, 8}; break;
     case DXGI_FORMAT_BC2_UNORM: case DXGI_FORMAT_BC3_UNORM: case DXGI_FORMAT_BC5_UNORM: case DXGI_FORMAT_BC7_UNORM: layout = {4, 4, 16}; break;
-    default: return 0; // Unsupported logical format is explicitly unknown.
+    default: return 0;
     }
     auto mips = desc.MipLevels;
     if (!mips) { auto size = (std::max)(desc.Width, static_cast<UINT64>(desc.Height)); do { ++mips; size >>= 1; } while (size); }
@@ -54,6 +51,11 @@ Observer::Observer(EventRing& events, IdAllocator& ids, std::atomic<std::uint64_
 ResourceId Observer::observe_committed_resource(
     ID3D12Device* device, const D3D12_RESOURCE_DESC& description, ID3D12Resource* resource) noexcept {
     return observe_resource(device, 0, 0, ResourceAllocationKind::Committed, description, resource);
+}
+
+ResourceId Observer::observe_external_resource(ID3D12Device* device, ID3D12Resource* resource) noexcept {
+    if (!resource) return 0;
+    return observe_resource(device, 0, 0, ResourceAllocationKind::External, resource->GetDesc(), resource);
 }
 
 HeapId Observer::observe_heap(const D3D12_HEAP_DESC& description, ID3D12Heap* heap) noexcept {
@@ -89,7 +91,7 @@ ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, c
         return 0;
     }
     (void)requested;
-    const auto description = resource->GetDesc(); // resolves requested MipLevels=0
+    const auto description = resource->GetDesc();
     const auto allocation = device == nullptr ? D3D12_RESOURCE_ALLOCATION_INFO{} :
         device->GetResourceAllocationInfo(0, 1, &description);
     const ResourceId id = ids_.next();
@@ -102,7 +104,7 @@ ResourceId Observer::observe_resource(ID3D12Device* device, const HeapId heap, c
         .resource = id,
         .heap = heap,
         .virtual_bytes = logical_bytes(description),
-        .allocation_bytes = kind == ResourceAllocationKind::Reserved ? 0 : allocation.SizeInBytes,
+        .allocation_bytes = (kind == ResourceAllocationKind::Reserved || kind == ResourceAllocationKind::External) ? 0 : allocation.SizeInBytes,
         .heap_offset = offset,
         .width = description.Width,
         .height = description.Height,
