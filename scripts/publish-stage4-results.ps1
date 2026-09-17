@@ -14,6 +14,7 @@ try {
         'observer-benchmark-v2-raw.json',
         'live-runtime-lab.json',
         'runtime-event-bridge-lab.json',
+        'runtime-backend-lab.json',
         'stage2-final-acceptance.json',
         'residency-benchmark-summary.json',
         'residency-frontier-summary.json',
@@ -47,7 +48,7 @@ try {
             Copy-Item -LiteralPath (Join-Path $SourceDirectory $name) -Destination (Join-Path $destination $name) -Force
         }
         $manifest = [ordered]@{
-            schema = 1
+            schema = 2
             created_utc = [DateTime]::UtcNow.ToString('o')
             source_commit = $baseCommit
             source_branch = $originalBranch
