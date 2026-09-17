@@ -126,7 +126,7 @@ int main() {
     CHECK(cold_restore.residency_candidate_bytes == 80);
     CHECK(!cold_restore.arbitration.actions.empty());
     CHECK(cold_restore.arbitration.actions.front().candidate.kind == MemoryRestoreKind::MakeResident);
-    CHECK(cold_restore.arbitration.actions.front().benefit > 0.0);
+    CHECK(cold_restore.arbitration.actions.front().total_benefit > 0.0);
 
     // Restoration is strictly capped; no candidate may overfill a tiny headroom window.
     const auto tiny = planner.plan_headroom_restore(restore_residency, restore_textures, 42, 25);
