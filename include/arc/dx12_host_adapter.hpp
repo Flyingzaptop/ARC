@@ -32,9 +32,12 @@ struct NativeHostAdapterMetrics {
     std::uint64_t heaps_observed{};
     std::uint64_t descriptor_heaps_observed{};
     std::uint64_t descriptor_writes{};
+    std::uint64_t descriptor_copies{};
     std::uint64_t queues_observed{};
     std::uint64_t command_lists_observed{};
     std::uint64_t resource_uses{};
+    std::uint64_t barriers_observed{};
+    std::uint64_t copies_observed{};
     std::uint64_t queue_submits{};
     std::uint64_t fence_signals{};
     std::uint64_t completion_updates{};
@@ -76,6 +79,12 @@ public:
     [[nodiscard]] std::uint64_t observe_descriptor_heap(ID3D12DescriptorHeap* heap);
     bool observe_descriptor_heap_destroyed(ID3D12DescriptorHeap* heap);
     [[nodiscard]] DescriptorId descriptor_id(ID3D12DescriptorHeap* heap, std::uint32_t index) const noexcept;
+    bool observe_cbv(
+        ID3D12DescriptorHeap* heap,
+        std::uint32_t index,
+        ID3D12Resource* resource,
+        std::uint64_t resource_offset,
+        std::uint32_t bytes);
     bool observe_srv(
         ID3D12DescriptorHeap* heap,
         std::uint32_t index,
@@ -97,6 +106,11 @@ public:
         ID3D12Resource* resource,
         const D3D12_DEPTH_STENCIL_VIEW_DESC& view);
     bool observe_sampler(ID3D12DescriptorHeap* heap, std::uint32_t index);
+    bool observe_descriptor_copy(
+        ID3D12DescriptorHeap* source_heap,
+        std::uint32_t source_index,
+        ID3D12DescriptorHeap* destination_heap,
+        std::uint32_t destination_index);
 
     [[nodiscard]] QueueId observe_queue(ID3D12CommandQueue* queue, D3D12_COMMAND_LIST_TYPE type);
     [[nodiscard]] CommandId observe_command_list(ID3D12CommandList* command, D3D12_COMMAND_LIST_TYPE type);
@@ -113,7 +127,28 @@ public:
         ID3D12CommandList* command,
         ID3D12Resource* resource,
         const D3D12_RESOURCE_BARRIER& barrier);
+    bool observe_global_barrier(
+        ID3D12CommandList* command,
+        const D3D12_GLOBAL_BARRIER& barrier);
+    bool observe_buffer_barrier(
+        ID3D12CommandList* command,
+        ID3D12Resource* resource,
+        const D3D12_BUFFER_BARRIER& barrier);
+    bool observe_texture_barrier(
+        ID3D12CommandList* command,
+        ID3D12Resource* resource,
+        const D3D12_TEXTURE_BARRIER& barrier);
     bool observe_copy_resource(
+        ID3D12CommandList* command,
+        ID3D12Resource* source,
+        ID3D12Resource* destination,
+        std::uint64_t approximate_bytes = 0);
+    bool observe_copy_buffer(
+        ID3D12CommandList* command,
+        ID3D12Resource* source,
+        ID3D12Resource* destination,
+        std::uint64_t approximate_bytes = 0);
+    bool observe_copy_texture(
         ID3D12CommandList* command,
         ID3D12Resource* source,
         ID3D12Resource* destination,
@@ -197,6 +232,12 @@ private:
     [[nodiscard]] static QueueClass queue_class(D3D12_COMMAND_LIST_TYPE type) noexcept;
     [[nodiscard]] bool emit_locked(EventType type, const void* payload, std::uint32_t bytes) noexcept;
     [[nodiscard]] DescriptorId descriptor_id_locked(ID3D12DescriptorHeap* heap, std::uint32_t index, bool create);
+    [[nodiscard]] bool observe_copy_locked(
+        EventType type,
+        ID3D12CommandList* command,
+        ID3D12Resource* source,
+        ID3D12Resource* destination,
+        std::uint64_t approximate_bytes);
     [[nodiscard]] std::size_t drain_locked();
     [[nodiscard]] bool note_failure() noexcept;
 
