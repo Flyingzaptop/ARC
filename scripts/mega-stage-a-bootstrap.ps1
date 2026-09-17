@@ -112,7 +112,7 @@ try{
     if([int]$j.governor.memory_executed_actions-lt 1){throw 'Unified governor made no physical memory mutation.'}
     if(-not[bool]$j.physical_memory.residency_restored){throw 'Residency did not recover after smoke.'}
     if(-not[bool]$j.final_quality_full){throw 'Full quality was not recovered after smoke.'}
-    Write-Host "Mega A smoke PASS: misses $([math]::Round(100*[double]$j.baseline.miss_ratio,1))% -> $([math]::Round(100*[double]$j.adaptive.miss_ratio,1))%; admission 4096 -> $([int]$j.admission.admitted_width" -ForegroundColor Green
+    Write-Host "Mega A smoke PASS: misses $([math]::Round(100*[double]$j.baseline.miss_ratio,1))% -> $([math]::Round(100*[double]$j.adaptive.miss_ratio,1))%; admission 4096 -> $([int]$j.admission.admitted_width)" -ForegroundColor Green
 
     Step 'Launching Mega Stage A Benchmark Center'
     $ui=Join-Path $repo 'build\Release\arc-mega-stage-a-benchmark-ui.exe'
