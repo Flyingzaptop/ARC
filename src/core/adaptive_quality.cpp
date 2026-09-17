@@ -22,6 +22,18 @@ double pressure(const FrameBudgetSample& sample) noexcept {
         0.0,
         4.0);
 }
+
+std::uint64_t required_memory_relief(
+    const FrameBudgetSample& sample,
+    double target_fraction) noexcept {
+    if (sample.local_budget_bytes == 0) return 0;
+    const long double target =
+        static_cast<long double>(sample.local_budget_bytes) *
+        static_cast<long double>(std::clamp(target_fraction, 0.0, 1.0));
+    if (static_cast<long double>(sample.local_usage_bytes) <= target) return 0;
+    const long double relief = static_cast<long double>(sample.local_usage_bytes) - target;
+    return static_cast<std::uint64_t>(std::ceil(relief));
+}
 } // namespace
 
 double ResourceImportanceEstimator::score(const ResourceImportanceSample& sample) noexcept {
@@ -31,8 +43,6 @@ double ResourceImportanceEstimator::score(const ResourceImportanceSample& sample
     const double semantic = clamp01(sample.semantic_importance);
     const double near_factor = 1.0 - clamp01(sample.normalized_distance);
 
-    // Semantic importance deliberately dominates so UI, player weapons and faces
-    // stay expensive to degrade even when they occupy few pixels.
     const double weighted =
         0.30 * screen +
         0.24 * visibility +
@@ -132,6 +142,9 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_degrade(
 
     const double memory_pressure = pressure(sample);
     const bool memory_emergency = memory_pressure >= config_.memory_pressure_emergency;
+    const std::uint64_t memory_relief_target = memory_emergency
+        ? required_memory_relief(sample, config_.memory_pressure_enter)
+        : 0;
     if (plan.bottleneck == BottleneckClass::Balanced && !memory_emergency) return plan;
 
     struct Ranked {
@@ -156,29 +169,38 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_degrade(
         return a.candidate.id < b.candidate.id;
     });
 
+    // The supplied candidate surface may already exclude an active prefix.
+    // Start each resource at the smallest remaining sequence rather than
+    // assuming sequence zero is always still available.
     std::unordered_map<std::uint64_t, std::uint32_t> next_sequence;
-    const double target_gain = std::max(0.0, plan.frame_deficit_ms);
+    for (const auto& item : ranked) {
+        const auto it = next_sequence.find(item.candidate.id);
+        if (it == next_sequence.end()) next_sequence.emplace(item.candidate.id, item.candidate.sequence);
+        else it->second = std::min(it->second, item.candidate.sequence);
+    }
 
+    const double target_gain = plan.frame_deficit_ms;
     for (const auto& item : ranked) {
         if (plan.actions.size() >= config_.max_actions_per_plan) break;
 
-        auto& expected_sequence = next_sequence[item.candidate.id];
-        if (item.candidate.sequence != expected_sequence) continue;
+        auto expected = next_sequence.find(item.candidate.id);
+        if (expected == next_sequence.end() || item.candidate.sequence != expected->second) continue;
 
         plan.actions.push_back(item.candidate);
-        ++expected_sequence;
+        ++expected->second;
         plan.planned_gain_ms += item.candidate.expected_ms_gain;
         plan.estimated_visual_cost += item.candidate.visual_cost;
         plan.planned_memory_freed_bytes += item.candidate.memory_freed_bytes;
         plan.temporal_used = plan.temporal_used || item.candidate.temporal_assist || item.candidate.domain == QualityDomain::Temporal;
 
         const bool frame_satisfied = target_gain <= 0.0 || plan.planned_gain_ms >= target_gain;
-        const bool memory_satisfied = !memory_emergency ||
-            (plan.planned_memory_freed_bytes > 0 && memory_pressure < 1.25);
+        const bool memory_satisfied = !memory_emergency || plan.planned_memory_freed_bytes >= memory_relief_target;
         if (frame_satisfied && memory_satisfied) break;
     }
 
-    plan.shortfall = target_gain > 0.0 && plan.planned_gain_ms + 1e-9 < target_gain;
+    const bool frame_shortfall = target_gain > 0.0 && plan.planned_gain_ms + 1e-9 < target_gain;
+    const bool memory_shortfall = memory_emergency && plan.planned_memory_freed_bytes < memory_relief_target;
+    plan.shortfall = frame_shortfall || memory_shortfall;
     return plan;
 }
 
