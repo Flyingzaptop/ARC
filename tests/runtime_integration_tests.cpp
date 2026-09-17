@@ -51,28 +51,41 @@ int main() {
 
     constexpr CommandId command = 10;
     constexpr QueueId queue = 7;
+    constexpr std::uint64_t completion_fence = 55;
+    CHECK(integration.bind_completion_fence(queue, completion_fence));
     CHECK(integration.consume(make_event(EventType::CommandListCreated, CommandListPayload{.command=command})));
     CHECK(integration.consume(make_event(EventType::ResourceUse, ResourceUsePayload{.command=command,.resource=100})));
     CHECK(integration.consume(make_event(EventType::CommandListClosed, CommandListPayload{.command=command})));
     CHECK(integration.consume(make_event(EventType::QueueSubmit, QueueSubmitPayload{.queue=queue,.command=command,.submission=1})));
-    CHECK(integration.consume(make_event(EventType::FenceSignal, FencePayload{.queue=queue,.fence=55,.value=9})));
+
+    // An unrelated fence on the same queue has a completely unrelated value.
+    // It must not flush the submission or make the resource evictable.
+    CHECK(integration.consume(make_event(EventType::FenceSignal, FencePayload{.queue=queue,.fence=99,.value=1000000})));
 
     MemoryBudgetPayload pressure{};
     pressure.local_budget = 1000;
     pressure.local_usage = 900;
     CHECK(integration.consume(make_event(EventType::MemoryBudgetSample, pressure)));
+    const auto wrong_fence_blocked = integration.tick(9);
+    CHECK(wrong_fence_blocked.budget_fresh);
+    CHECK(wrong_fence_blocked.status == RuntimeTickStatus::ResolveFailed);
+    CHECK(backend.evicts == 0);
+    CHECK(integration.bridge().metrics().ignored_fence_signals == 1);
 
-    // Budget is fresh, but the event bridge keeps the resource externally
-    // in-flight until the host reports actual fence completion. The local safe
-    // candidate surface filters it before resolution, so the coordinator has
-    // no executable work rather than producing a stale/unsafe action.
+    // Only the explicitly bound completion fence turns pending command uses into
+    // a residency fence requirement.
+    CHECK(integration.consume(make_event(EventType::FenceSignal, FencePayload{
+        .queue=queue,.fence=completion_fence,.value=9})));
     const auto blocked = integration.tick(10);
     CHECK(blocked.budget_fresh);
     CHECK(blocked.status == RuntimeTickStatus::NoAction);
     CHECK(blocked.resolved_actions == 0);
     CHECK(backend.evicts == 0);
 
-    integration.note_queue_completed(queue, 9);
+    // A completion update for a different fence identity is rejected.
+    CHECK(!integration.note_queue_completed(queue, 99, 1000000));
+    CHECK(backend.evicts == 0);
+    CHECK(integration.note_queue_completed(queue, completion_fence, 9));
     const auto executed = integration.tick(11);
     CHECK(executed.status == RuntimeTickStatus::Executed);
     CHECK(executed.executed_actions == 1);
@@ -81,6 +94,7 @@ int main() {
 
     CHECK(integration.consume(make_event(EventType::ResourceDestroyed, ResourceDestroyPayload{.resource=100})));
     CHECK(!integration.runtime().controlled(100));
+    CHECK(integration.unbind_completion_fence(queue));
 
     // Default integration is observe-only even if a backend is supplied.
     MockBackend observe_backend;
