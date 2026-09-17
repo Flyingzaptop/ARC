@@ -15,10 +15,8 @@
 #include <iomanip>
 #include <iostream>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <string_view>
-#include <thread>
 #include <vector>
 
 using Microsoft::WRL::ComPtr;
@@ -58,7 +56,6 @@ std::uint64_t filetime_u64(const FILETIME& value) {
 
 struct AdapterMemoryProbe {
     ComPtr<IDXGIAdapter3> adapter{};
-    std::wstring name{};
     bool initialize() {
         ComPtr<IDXGIFactory1> factory;
         if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) return false;
@@ -70,7 +67,7 @@ struct AdapterMemoryProbe {
             if (FAILED(candidate->GetDesc1(&desc)) || (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)) continue;
             ComPtr<IDXGIAdapter3> adapter3;
             if (FAILED(candidate.As(&adapter3))) continue;
-            if (!adapter || desc.DedicatedVideoMemory > best_memory) { adapter = adapter3; best_memory = desc.DedicatedVideoMemory; name = desc.Description; }
+            if (!adapter || desc.DedicatedVideoMemory > best_memory) { adapter = adapter3; best_memory = desc.DedicatedVideoMemory; }
         }
         return adapter != nullptr;
     }
@@ -85,8 +82,14 @@ struct AdapterMemoryProbe {
 PROCESS_INFORMATION launch_presentmon(const std::filesystem::path& exe, DWORD pid, const std::filesystem::path& output) {
     PROCESS_INFORMATION pi{};
     if (exe.empty() || !std::filesystem::exists(exe)) return pi;
-    std::wstring command = quote(exe.wstring()) + L" --process_id " + std::to_wstring(pid) +
-        L" --output_file " + quote(output.wstring()) + L" --terminate_on_proc_exit --no_console_stats --qpc_time_ms";
+    // restart_as_admin only elevates PresentMon when required. Its parent waits for
+    // the elevated child and propagates the final exit code, so ARC never elevates
+    // Steam or the game itself.
+    std::wstring command = quote(exe.wstring()) +
+        L" --restart_as_admin --session_name ARC_" + std::to_wstring(pid) +
+        L" --process_id " + std::to_wstring(pid) +
+        L" --output_file " + quote(output.wstring()) +
+        L" --terminate_on_proc_exit --no_console_stats --qpc_time_ms";
     std::vector<wchar_t> mutable_command(command.begin(), command.end()); mutable_command.push_back(L'\0');
     STARTUPINFOW si{}; si.cb = sizeof(si);
     if (!CreateProcessW(nullptr, mutable_command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
@@ -177,7 +180,10 @@ int wmain(int argc, wchar_t** argv) {
     if (!args) { std::wcerr << L"Usage: arc-game-monitor --pid N --name NAME --out DIR [--presentmon EXE] [--mode MODE] [--protected 0|1]\n"; return 2; }
 
     std::error_code ec; std::filesystem::create_directories(args->out_dir, ec);
-    const auto telemetry_path = args->out_dir / "system-telemetry.csv"; const auto frames_path = args->out_dir / "frames.csv"; const auto summary_path = args->out_dir / "summary.json";
+    const auto telemetry_path = args->out_dir / "system-telemetry.csv";
+    const auto frames_path = args->out_dir / "frames.csv";
+    const auto summary_path = args->out_dir / "summary.json";
+    const auto diagnostics_path = args->out_dir / "diagnostics.txt";
 
     HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, args->pid);
     if (!process) { std::wcerr << L"OpenProcess failed: " << GetLastError() << L"\n"; return 3; }
@@ -211,15 +217,34 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     const auto end_time = std::chrono::steady_clock::now();
-    if (presentmon.hProcess) { WaitForSingleObject(presentmon.hProcess, 10000); CloseHandle(presentmon.hThread); CloseHandle(presentmon.hProcess); }
+    DWORD presentmon_exit_code = ERROR_FILE_NOT_FOUND;
+    if (presentmon.hProcess) {
+        (void)WaitForSingleObject(presentmon.hProcess, 15000);
+        if (!GetExitCodeProcess(presentmon.hProcess, &presentmon_exit_code)) presentmon_exit_code = GetLastError();
+        CloseHandle(presentmon.hThread); CloseHandle(presentmon.hProcess);
+    }
     if (memory_process) CloseHandle(memory_process); CloseHandle(process);
 
-    const auto frames = summarize_frames(frames_path); std::ofstream summary(summary_path);
-    summary << "{\n" << "  \"schema\": 1,\n" << "  \"mode\": \"" << json_escape(utf8(args->mode)) << "\",\n"
+    const auto frames = summarize_frames(frames_path);
+    const bool presentmon_available = std::filesystem::exists(args->presentmon);
+    const bool capture_ok = frames.frames > 0;
+    if (!capture_ok) {
+        std::ofstream diagnostics(diagnostics_path);
+        diagnostics << "PresentMon capture produced no frame rows.\n"
+                    << "presentmon_available=" << presentmon_available << "\n"
+                    << "presentmon_exit_code=" << presentmon_exit_code << "\n"
+                    << "pid=" << args->pid << "\n"
+                    << "protected_process=" << args->protected_process << "\n";
+    }
+
+    std::ofstream summary(summary_path);
+    summary << "{\n" << "  \"schema\": 2,\n" << "  \"mode\": \"" << json_escape(utf8(args->mode)) << "\",\n"
             << "  \"protected_process\": " << (args->protected_process ? "true" : "false") << ",\n"
             << "  \"game_name\": \"" << json_escape(utf8(args->game_name)) << "\",\n" << "  \"pid\": " << args->pid << ",\n"
             << "  \"duration_seconds\": " << std::fixed << std::setprecision(3) << std::chrono::duration<double>(end_time - start_time).count() << ",\n"
-            << "  \"presentmon_available\": " << (std::filesystem::exists(args->presentmon) ? "true" : "false") << ",\n"
+            << "  \"presentmon_available\": " << (presentmon_available ? "true" : "false") << ",\n"
+            << "  \"presentmon_exit_code\": " << presentmon_exit_code << ",\n"
+            << "  \"capture_ok\": " << (capture_ok ? "true" : "false") << ",\n"
             << "  \"frames\": " << frames.frames << ",\n" << "  \"average_fps\": " << frames.average_fps << ",\n"
             << "  \"one_percent_low_fps\": " << frames.one_percent_low_fps << ",\n" << "  \"point_one_percent_low_fps\": " << frames.point_one_percent_low_fps << ",\n"
             << "  \"p95_frame_ms\": " << frames.p95_frame_ms << ",\n" << "  \"p99_frame_ms\": " << frames.p99_frame_ms << ",\n" << "  \"p999_frame_ms\": " << frames.p999_frame_ms << ",\n"
@@ -227,7 +252,8 @@ int wmain(int argc, wchar_t** argv) {
             << "  \"mean_process_cpu_total_percent\": " << (cpu_samples ? cpu_sum / static_cast<double>(cpu_samples) : 0.0) << ",\n" << "  \"peak_process_cpu_total_percent\": " << cpu_peak << ",\n"
             << "  \"peak_working_set_bytes\": " << working_peak << ",\n" << "  \"peak_private_bytes\": " << private_peak << ",\n" << "  \"peak_dxgi_local_usage_bytes\": " << vram_peak << ",\n"
             << "  \"minimum_dxgi_local_budget_bytes\": " << (vram_budget_min == UINT64_MAX ? 0 : vram_budget_min) << "\n" << "}\n";
-    std::wcout << L"ARC session complete: " << summary_path.wstring() << L"\n"; return 0;
+    std::wcout << L"ARC session complete: " << summary_path.wstring() << L"\n";
+    return capture_ok ? 0 : 4;
 }
 
 #else
