@@ -80,4 +80,22 @@ RuntimeBackendStatus LiveRuntimeBackend::promote_texture(ResourceId resource, co
     }
 }
 
+RuntimeBackendStatus LiveRuntimeBackend::apply_quality(const QualityActionCandidate& action) noexcept {
+    if (!quality_mutator_) return RuntimeBackendStatus::Unsupported;
+    try {
+        return quality_mutator_(action, false);
+    } catch (...) {
+        return RuntimeBackendStatus::Failure;
+    }
+}
+
+RuntimeBackendStatus LiveRuntimeBackend::restore_quality(const QualityActionCandidate& action) noexcept {
+    if (!quality_mutator_) return RuntimeBackendStatus::Unsupported;
+    try {
+        return quality_mutator_(action, true);
+    } catch (...) {
+        return RuntimeBackendStatus::Failure;
+    }
+}
+
 }  // namespace arc::dx12
