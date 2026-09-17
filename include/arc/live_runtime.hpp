@@ -5,6 +5,7 @@
 #include "arc/transition_predictor.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -67,6 +68,12 @@ public:
     void reset_sequence_context() noexcept { transitions_.reset_context(); }
 
     [[nodiscard]] LiveRuntimePlan plan(std::uint64_t epoch);
+
+    // Resolve backend-neutral arbiter candidates back to specialized actions.
+    [[nodiscard]] std::optional<ResidencyAction> resolve_residency_action(const MemoryActionCandidate& candidate) const;
+    [[nodiscard]] std::optional<TextureQualityAction> resolve_texture_action(const MemoryActionCandidate& candidate) const;
+    [[nodiscard]] std::optional<ResidencyAction> resolve_residency_restore(const MemoryRestoreCandidate& candidate) const;
+    [[nodiscard]] std::optional<TextureQualityAction> resolve_texture_restore(const MemoryRestoreCandidate& candidate) const;
 
     // Apply bookkeeping only after the backend successfully performs the matching action.
     bool begin_residency_action(const ResidencyAction& action, std::uint64_t epoch, bool demand_miss = false);
