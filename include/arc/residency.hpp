@@ -108,6 +108,7 @@ public:
     explicit ResidencyGovernor(ResidencyPolicyConfig config = {});
 
     bool register_object(ResidencyObject object);
+    bool unregister_object(ResidencyId id) noexcept { return objects_.erase(id) != 0; }
     bool note_use(ResidencyId id, std::uint64_t epoch, QueueId queue, std::uint64_t submitted_fence, std::uint64_t completed_fence);
     bool note_use(ResidencyId id, std::uint64_t epoch, std::uint64_t submitted_fence, std::uint64_t completed_fence) {
         return note_use(id, epoch, 0, submitted_fence, completed_fence);
@@ -122,8 +123,6 @@ public:
     [[nodiscard]] std::uint64_t bytes_to_free() const noexcept;
     [[nodiscard]] std::vector<ResidencyAction> plan_evictions(std::uint64_t epoch) const;
     [[nodiscard]] std::vector<ResidencyAction> plan_promotions(std::uint64_t epoch) const;
-    // Full safe candidate surfaces for a higher-level arbiter. These methods
-    // preserve all local safety gates but do not truncate to a local byte target.
     [[nodiscard]] std::vector<ResidencyAction> eviction_candidates(std::uint64_t epoch) const;
     [[nodiscard]] std::vector<ResidencyAction> promotion_candidates(std::uint64_t epoch) const;
     [[nodiscard]] std::optional<ResidencyAction> require_resident(ResidencyId id) const;
