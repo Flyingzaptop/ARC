@@ -104,6 +104,48 @@ void test_sequence_dependencies() {
     }
 }
 
+void test_sequence_can_continue_after_active_prefix_removed() {
+    AdaptiveQualityOptimizer optimizer{};
+    FrameBudgetSample s{};
+    s.frame_ms = 22.0;
+    s.target_frame_ms = 16.0;
+    s.gpu_busy_fraction = 0.99;
+    s.memory_bandwidth_fraction = 0.99;
+
+    std::vector<QualityActionCandidate> remaining{
+        {77, QualityDomain::Texture, "4k->2k", 1.0, 0.03, 0.95, 32ull << 20, true, false, 1},
+        {77, QualityDomain::Texture, "2k->1k", 1.0, 0.05, 0.95, 8ull << 20, true, false, 2},
+    };
+    const auto p = optimizer.plan_degrade(s, remaining);
+    assert(!p.actions.empty());
+    assert(p.actions.front().sequence == 1);
+}
+
+void test_emergency_memory_requires_real_relief_target() {
+    AdaptiveQualityOptimizer optimizer{};
+    FrameBudgetSample s{};
+    s.frame_ms = 16.0;
+    s.target_frame_ms = 16.0;
+    s.gpu_busy_fraction = 0.7;
+    s.local_budget_bytes = 1000;
+    s.local_usage_bytes = 980; // emergency; target at default 90% requires 80 bytes
+
+    std::vector<QualityActionCandidate> insufficient{
+        {1, QualityDomain::Texture, "small relief", 0.1, 0.01, 0.99, 20, true, false, 0},
+    };
+    auto p = optimizer.plan_degrade(s, insufficient);
+    assert(p.shortfall);
+    assert(p.planned_memory_freed_bytes == 20);
+
+    std::vector<QualityActionCandidate> sufficient{
+        {1, QualityDomain::Texture, "first relief", 0.1, 0.01, 0.99, 50, true, false, 0},
+        {2, QualityDomain::Shadow, "second relief", 0.1, 0.02, 0.99, 40, true, false, 0},
+    };
+    p = optimizer.plan_degrade(s, sufficient);
+    assert(!p.shortfall);
+    assert(p.planned_memory_freed_bytes >= 80);
+}
+
 void test_restore_prefers_visible_quality() {
     AdaptiveQualityOptimizer optimizer{};
     FrameBudgetSample s{};
@@ -143,6 +185,8 @@ int main() {
     test_temporal_default_off();
     test_selects_low_visual_cost_mix();
     test_sequence_dependencies();
+    test_sequence_can_continue_after_active_prefix_removed();
+    test_emergency_memory_requires_real_relief_target();
     test_restore_prefers_visible_quality();
     test_temporal_can_be_explicitly_enabled();
     std::cout << "adaptive-quality-tests: PASS\n";
