@@ -30,6 +30,8 @@ add_library(arc-core STATIC
     src/core/transition_predictor.cpp
     src/core/live_runtime.cpp
     src/core/runtime_event_bridge.cpp
+    src/core/runtime_coordinator.cpp
+    src/core/runtime_integration.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
@@ -140,6 +142,14 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-runtime-event-bridge-tests tests/runtime_event_bridge_tests.cpp)
     target_link_libraries(arc-runtime-event-bridge-tests PRIVATE arc::core)
     add_test(NAME arc-runtime-event-bridge-tests COMMAND arc-runtime-event-bridge-tests)
+
+    add_executable(arc-runtime-coordinator-tests tests/runtime_coordinator_tests.cpp)
+    target_link_libraries(arc-runtime-coordinator-tests PRIVATE arc::core)
+    add_test(NAME arc-runtime-coordinator-tests COMMAND arc-runtime-coordinator-tests)
+
+    add_executable(arc-runtime-integration-tests tests/runtime_integration_tests.cpp)
+    target_link_libraries(arc-runtime-integration-tests PRIVATE arc::core)
+    add_test(NAME arc-runtime-integration-tests COMMAND arc-runtime-integration-tests)
 
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
