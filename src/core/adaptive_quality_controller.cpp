@@ -84,6 +84,7 @@ void AdaptiveQualityController::limit_plan(AdaptiveQualityPlan& plan) const noex
     if (plan.actions.size() <= config_.max_actions_per_decision) return;
 
     const bool prior_shortfall = plan.shortfall;
+    const bool intentionally_truncated = true;
     plan.actions.resize(config_.max_actions_per_decision);
     plan.planned_gain_ms = 0.0;
     plan.estimated_visual_cost = 0.0;
@@ -97,7 +98,10 @@ void AdaptiveQualityController::limit_plan(AdaptiveQualityPlan& plan) const noex
     }
     const bool frame_shortfall = plan.frame_deficit_ms > 0.0 &&
         plan.planned_gain_ms + 1e-9 < plan.frame_deficit_ms;
-    plan.shortfall = prior_shortfall || frame_shortfall;
+    // A multi-action plan deliberately throttled to one/few live changes is
+    // still incomplete. In particular, memory-emergency callers must not read
+    // the truncated iteration as if the complete relief target was satisfied.
+    plan.shortfall = prior_shortfall || intentionally_truncated || frame_shortfall;
 }
 
 QualityDecision AdaptiveQualityController::tick(
@@ -120,9 +124,6 @@ QualityDecision AdaptiveQualityController::tick(
 
     if (restore_guard_remaining_ > 0) --restore_guard_remaining_;
 
-    // Settling frames are deliberately observed by the EWMA but are not counted
-    // toward the next decision.  This prevents an action from immediately
-    // triggering its opposite while the GPU pipeline catches up.
     if (settle_remaining_ > 0) {
         --settle_remaining_;
         overload_samples_ = 0;
