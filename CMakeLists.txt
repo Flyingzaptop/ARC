@@ -225,3 +225,31 @@ if(ARC_BUILD_TESTS)
         endif()
     endif()
 endif()
+
+# Stage 5: Steam launcher and external real-game telemetry. Kept separate from
+# arc-core so UI/Steam integration cannot perturb the accepted Stage 4 core.
+add_library(arc-steam-library STATIC src/launcher/steam_library.cpp)
+target_include_directories(arc-steam-library PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_compile_features(arc-steam-library PUBLIC cxx_std_23)
+if(MSVC)
+    target_compile_options(arc-steam-library PRIVATE /W4 /permissive- /EHsc)
+    target_link_libraries(arc-steam-library PRIVATE advapi32)
+else()
+    target_compile_options(arc-steam-library PRIVATE -Wall -Wextra -Wpedantic -Wconversion)
+endif()
+
+if(ARC_BUILD_TESTS)
+    add_executable(arc-steam-library-tests tests/steam_library_tests.cpp)
+    target_link_libraries(arc-steam-library-tests PRIVATE arc-steam-library)
+    add_test(NAME arc-steam-library-tests COMMAND arc-steam-library-tests)
+endif()
+
+if(WIN32)
+    add_executable(arc-launcher WIN32 src/launcher/arc_launcher_main.cpp)
+    target_link_libraries(arc-launcher PRIVATE arc-steam-library comctl32 shell32 ole32 advapi32)
+    target_compile_features(arc-launcher PRIVATE cxx_std_23)
+
+    add_executable(arc-game-monitor src/launcher/game_monitor_main.cpp)
+    target_link_libraries(arc-game-monitor PRIVATE dxgi psapi)
+    target_compile_features(arc-game-monitor PRIVATE cxx_std_23)
+endif()
