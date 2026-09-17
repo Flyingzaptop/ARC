@@ -29,6 +29,7 @@ add_library(arc-core STATIC
     src/core/memory_planner.cpp
     src/core/transition_predictor.cpp
     src/core/live_runtime.cpp
+    src/core/runtime_event_bridge.cpp
     src/core/trace_writer.cpp
     src/core/trace_reader.cpp
 )
@@ -133,6 +134,10 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-live-runtime-tests tests/live_runtime_tests.cpp)
     target_link_libraries(arc-live-runtime-tests PRIVATE arc::core)
     add_test(NAME arc-live-runtime-tests COMMAND arc-live-runtime-tests)
+
+    add_executable(arc-runtime-event-bridge-tests tests/runtime_event_bridge_tests.cpp)
+    target_link_libraries(arc-runtime-event-bridge-tests PRIVATE arc::core)
+    add_test(NAME arc-runtime-event-bridge-tests COMMAND arc-runtime-event-bridge-tests)
 
     if(ARC_STRESS_TESTS)
         add_executable(arc-multisession-stress tests/multisession_stress.cpp)
