@@ -25,6 +25,7 @@ enum class BottleneckClass : std::uint8_t {
     Geometry,
     Lighting,
     UnknownGpu,
+    Shadow,
 };
 
 struct FrameBudgetSample {
@@ -35,6 +36,7 @@ struct FrameBudgetSample {
     double raster_pressure{};
     double geometry_pressure{};
     double lighting_pressure{};
+    double shadow_pressure{};
     std::uint64_t local_usage_bytes{};
     std::uint64_t local_budget_bytes{};
 };
