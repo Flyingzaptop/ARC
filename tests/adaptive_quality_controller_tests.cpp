@@ -80,7 +80,8 @@ int main() {
 
         auto stats = controller.effects().find(action);
         assert(stats.has_value());
-        assert(stats->mean_gain_ms > 2.9 && stats->mean_gain_ms < 3.1);
+        assert(stats->samples == 2);
+        assert(stats->mean_gain_ms > 2.4 && stats->mean_gain_ms < 2.6);
 
         const auto state = controller.state();
         assert(state.degrade_actions_applied == 1);
@@ -89,7 +90,7 @@ int main() {
     }
 
     // A quality ladder must degrade in ascending sequence and restore in the
-    // exact reverse order.  A later step is not allowed to jump ahead merely
+    // exact reverse order. A later step is not allowed to jump ahead merely
     // because its utility score is better.
     {
         AdaptiveQualityController controller{immediate_config()};
@@ -138,7 +139,7 @@ int main() {
         assert(controller.active_actions().empty());
     }
 
-    // Noise around the target must not chatter quality.  After a real overload,
+    // Noise around the target must not chatter quality. After a real overload,
     // settling + hold time prevent an immediate reversal.
     {
         AdaptiveQualityControllerConfig cfg{};
@@ -183,6 +184,32 @@ int main() {
         assert(restore.kind == QualityDecisionKind::Restore);
         controller.note_action_applied(restore.plan.actions.front(), restore.kind, 10.0, 12.0, true);
         assert(controller.state().direction_changes == 1);
+    }
+
+    // If a restore is immediately followed by a degrade, the next restore must
+    // receive a stronger hold window so target noise cannot create ping-pong.
+    {
+        auto cfg = immediate_config();
+        cfg.minimum_hold_samples_after_degrade = 2;
+        AdaptiveQualityController controller{cfg};
+        std::vector<QualityActionCandidate> candidates{
+            {17, QualityDomain::Lighting, "reversal step", 1.0, 0.05, 0.95, 0, true, false, 0},
+        };
+
+        auto d0 = controller.tick(lighting_sample(20.0), candidates);
+        assert(d0.kind == QualityDecisionKind::Degrade);
+        controller.note_action_applied(d0.plan.actions.front(), d0.kind, 20.0, 18.0, true);
+
+        // Drain the normal hold, then restore.
+        for (int i = 0; i < 2; ++i) (void)controller.tick(lighting_sample(10.0), candidates);
+        auto r0 = controller.tick(lighting_sample(10.0), candidates);
+        assert(r0.kind == QualityDecisionKind::Restore);
+        controller.note_action_applied(r0.plan.actions.front(), r0.kind, 10.0, 12.0, true);
+
+        auto d1 = controller.tick(lighting_sample(20.0), candidates);
+        assert(d1.kind == QualityDecisionKind::Degrade);
+        controller.note_action_applied(d1.plan.actions.front(), d1.kind, 20.0, 18.0, true);
+        assert(controller.state().restore_guard_remaining >= 8);
     }
 
     std::cout << "adaptive-quality-controller-tests: PASS\n";
