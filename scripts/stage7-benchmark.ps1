@@ -11,16 +11,6 @@ $ProgressPreference = 'SilentlyContinue'
 
 function Step([string]$Text) { Write-Host "`n=== $Text ===" -ForegroundColor Cyan }
 function Json-Write($Object, [string]$Path) { $Object | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Path -Encoding utf8 }
-function Invoke-GitChecked([string[]]$Args, [string]$WorkingDir) {
-    $previous = $ErrorActionPreference
-    try {
-        $ErrorActionPreference = 'Continue'
-        $output = & git.exe -C $WorkingDir @Args 2>&1
-        $code = $LASTEXITCODE
-    } finally { $ErrorActionPreference = $previous }
-    if ($code -ne 0) { throw "git $($Args -join ' ') failed ($code): $($output -join ' ')" }
-    return $output
-}
 
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 $sourceSha = (& git.exe -C $RepoRoot rev-parse HEAD).Trim()
@@ -168,35 +158,32 @@ Write-Host "Local results : $runDir"
 
 $url=''
 $publishFailed=$false
+
+$summaryText = if($bench){
+    "ARC Stage 7 $verdict`r`nBaseline P50: $([math]::Round([double]$metrics.baseline_p50_ms,3)) ms`r`nAdaptive P50: $([math]::Round([double]$metrics.adaptive_p50_ms,3)) ms`r`nP50 delta: $([math]::Round([double]$metrics.p50_delta_ms,3)) ms`r`nP99 delta: $([math]::Round([double]$metrics.p99_delta_ms,3)) ms`r`nActions: $($metrics.selected_actions) across $($metrics.selected_domains) selected domains; $($metrics.probed_domains) measured`r`nTemporal: OFF`r`nResults URL:"
+}else{
+    "ARC Stage 7 $verdict`r`nFatal: $fatal`r`nResults URL:"
+}
+Set-Content -LiteralPath $lastSummary -Value $summaryText -Encoding utf8
+
 if(-not $NoPublish){
     Step 'Publishing results'
-    $branch="results/stage7-$stamp"
-    $publishRoot=Join-Path $env:TEMP "arc-stage7-publish-$stamp"
-    if(Test-Path -LiteralPath $publishRoot){ Remove-Item -LiteralPath $publishRoot -Recurse -Force }
+    $publisher = Join-Path $PSScriptRoot 'stage7-publish-existing.ps1'
     try {
-        Invoke-GitChecked @('branch',$branch,$sourceSha) $RepoRoot | Out-Null
-        Invoke-GitChecked @('worktree','add','--force',$publishRoot,$branch) $RepoRoot | Out-Null
-        $dest=Join-Path $publishRoot ("results\stage7\"+$stamp)
-        New-Item -ItemType Directory -Force $dest | Out-Null
-        Copy-Item -Path (Join-Path $runDir '*') -Destination $dest -Recurse -Force
-        Invoke-GitChecked @('add','--',"results/stage7/$stamp") $publishRoot | Out-Null
-        Invoke-GitChecked @('commit','-m',"Publish Stage 7 mixed graphics benchmark $stamp") $publishRoot | Out-Null
-        Invoke-GitChecked @('push','-u','origin',$branch) $publishRoot | Out-Null
-        $url="https://github.com/Flyingzaptop/ARC/tree/$branch/results/stage7/$stamp"
-        Set-Content -LiteralPath $lastUrl -Value $url -Encoding ascii
-        Write-Host "`nResults URL: $url" -ForegroundColor Green
+        if (-not (Test-Path -LiteralPath $publisher)) { throw "Publisher script not found: $publisher" }
+        & $publisher -RepoRoot $RepoRoot -RunStamp $stamp
+        if ($LASTEXITCODE -ne 0) { throw "Publisher exit code $LASTEXITCODE" }
+        if (Test-Path -LiteralPath $lastUrl) { $url=(Get-Content -LiteralPath $lastUrl -Raw).Trim() }
     } catch {
         $publishFailed=$true
         Write-Host "Publishing failed: $($_.Exception.Message)" -ForegroundColor Red
-    } finally {
-        try { $previous=$ErrorActionPreference; $ErrorActionPreference='Continue'; & git.exe -C $RepoRoot worktree remove --force $publishRoot 2>$null | Out-Null; $ErrorActionPreference=$previous } catch {}
     }
 }
 
-$summaryText = if($bench){
-    "ARC Stage 7 $verdict`r`nBaseline P50: $([math]::Round([double]$metrics.baseline_p50_ms,3)) ms`r`nAdaptive P50: $([math]::Round([double]$metrics.adaptive_p50_ms,3)) ms`r`nP50 delta: $([math]::Round([double]$metrics.p50_delta_ms,3)) ms`r`nP99 delta: $([math]::Round([double]$metrics.p99_delta_ms,3)) ms`r`nActions: $($metrics.selected_actions) across $($metrics.selected_domains) selected domains; $($metrics.probed_domains) measured`r`nTemporal: OFF`r`nResults URL: $url"
-}else{
-    "ARC Stage 7 $verdict`r`nFatal: $fatal`r`nResults URL: $url"
+if($bench){
+    $summaryText = "ARC Stage 7 $verdict`r`nBaseline P50: $([math]::Round([double]$metrics.baseline_p50_ms,3)) ms`r`nAdaptive P50: $([math]::Round([double]$metrics.adaptive_p50_ms,3)) ms`r`nP50 delta: $([math]::Round([double]$metrics.p50_delta_ms,3)) ms`r`nP99 delta: $([math]::Round([double]$metrics.p99_delta_ms,3)) ms`r`nActions: $($metrics.selected_actions) across $($metrics.selected_domains) selected domains; $($metrics.probed_domains) measured`r`nTemporal: OFF`r`nResults URL: $url"
+} else {
+    $summaryText = "ARC Stage 7 $verdict`r`nFatal: $fatal`r`nResults URL: $url"
 }
 Set-Content -LiteralPath $lastSummary -Value $summaryText -Encoding utf8
 
