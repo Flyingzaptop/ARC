@@ -24,6 +24,12 @@ public:
         ID3D12Device* device,
         const D3D12_RESOURCE_DESC& description,
         ID3D12Resource* resource) noexcept;
+    // Swapchain buffers and other resources whose allocation is owned outside
+    // the integrating renderer are tracked as External. They remain observable
+    // but are not implicitly safe mutation targets.
+    [[nodiscard]] ResourceId observe_external_resource(
+        ID3D12Device* device,
+        ID3D12Resource* resource) noexcept;
     [[nodiscard]] HeapId observe_heap(const D3D12_HEAP_DESC& description, ID3D12Heap* heap) noexcept;
     void observe_heap_destroyed(HeapId heap) noexcept;
     [[nodiscard]] ResourceId observe_placed_resource(
