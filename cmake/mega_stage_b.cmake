@@ -28,6 +28,9 @@ if(WIN32)
         target_compile_definitions(arc-dx12-host-adapter-surface-tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
         add_test(NAME arc-dx12-host-adapter-surface-tests COMMAND arc-dx12-host-adapter-surface-tests)
         set_tests_properties(arc-dx12-host-adapter-surface-tests PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
+        # The one-click bootstrap explicitly builds the main host-adapter test
+        # target; make the modern-surface regression part of that build graph.
+        add_dependencies(arc-dx12-host-adapter-tests arc-dx12-host-adapter-surface-tests)
 
         if(ARC_GPU_TESTS)
             add_test(
