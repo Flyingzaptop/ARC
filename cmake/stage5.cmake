@@ -15,3 +15,5 @@ if(WIN32)
     target_link_libraries(arc-launcher PRIVATE arc::core comctl32 shell32 advapi32)
     target_compile_features(arc-launcher PRIVATE cxx_std_23)
 endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/stage6.cmake)
