@@ -34,6 +34,8 @@ struct LiveRuntimeMetrics {
     std::uint64_t resources_registered{};
     std::uint64_t resources_unregistered{};
     std::uint64_t plan_resolve_failures{};
+    std::uint64_t inflight_blocks_started{};
+    std::uint64_t inflight_blocks_completed{};
 };
 
 struct LiveRuntimePlan {
@@ -49,8 +51,6 @@ struct LiveRuntimePlan {
 
 using LiveRuntimeResolvedAction = std::variant<ResidencyAction, TextureQualityAction>;
 
-// Backend-neutral slow-loop integration surface. Observation is unrestricted;
-// mutation candidates only exist for resources explicitly registered as safe.
 class LiveRuntimeController final {
 public:
     explicit LiveRuntimeController(LiveRuntimeConfig config = {});
@@ -59,8 +59,6 @@ public:
     bool register_controlled_texture(TextureQualityObject object);
     bool unregister_resource(ResourceId resource) noexcept;
 
-    // All observed resource uses train the sequence model. Controlled resources
-    // additionally require real queue/fence evidence before they become evictable.
     bool note_use(
         ResourceId resource,
         std::uint64_t epoch,
@@ -68,13 +66,20 @@ public:
         std::uint64_t submitted_fence,
         std::uint64_t completed_fence);
     bool note_completed(ResourceId resource, std::uint64_t completed_fence);
+
+    // Event-stream adapters call mark_inflight() at QueueSubmit and release it
+    // only after the associated signaled fence is actually completed. Counts
+    // compose across multiple submissions and queues, so any outstanding GPU
+    // use makes pressure/restore resolution fail closed for that resource.
+    bool mark_inflight(ResourceId resource) noexcept;
+    bool release_inflight(ResourceId resource, std::uint64_t completed_fence) noexcept;
+    [[nodiscard]] std::uint32_t inflight_count(ResourceId resource) const noexcept;
+
     void update_budget(const MemoryBudgetPayload& budget);
     void reset_sequence_context() noexcept { transitions_.reset_context(); }
 
     [[nodiscard]] LiveRuntimePlan plan(std::uint64_t epoch);
 
-    // Resolve one immutable planner snapshot before execution. Any stale or
-    // mismatched candidate rejects the whole snapshot so the caller replans.
     [[nodiscard]] std::optional<std::vector<LiveRuntimeResolvedAction>> resolve_pressure_actions(
         const GlobalMemoryPlan& plan,
         std::uint64_t epoch) const;
@@ -82,7 +87,6 @@ public:
         const GlobalMemoryRestorePlan& plan,
         std::uint64_t epoch) const;
 
-    // Apply bookkeeping only after the backend successfully performs the matching action.
     bool begin_residency_action(const ResidencyAction& action, std::uint64_t epoch, bool demand_miss = false);
     bool complete_make_resident(ResidencyId object);
     bool apply_texture_action(const TextureQualityAction& action, std::uint64_t epoch);
@@ -98,6 +102,7 @@ public:
 private:
     [[nodiscard]] std::uint64_t restore_headroom() const noexcept;
     [[nodiscard]] std::vector<ResidencyAction> transition_prefetch(std::uint64_t epoch, std::uint64_t headroom);
+    [[nodiscard]] bool externally_inflight(ResourceId resource) const noexcept;
 
     LiveRuntimeConfig config_{};
     ResidencyGovernor residency_{};
@@ -108,6 +113,7 @@ private:
     std::unordered_map<ResidencyId, ResourceId> resource_by_residency_{};
     std::unordered_map<ResourceId, TextureQualityId> texture_by_resource_{};
     std::unordered_map<TextureQualityId, ResourceId> resource_by_texture_{};
+    std::unordered_map<ResourceId, std::uint32_t> inflight_counts_{};
     LiveRuntimeMetrics metrics_{};
 };
 
