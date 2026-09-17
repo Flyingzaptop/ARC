@@ -107,11 +107,26 @@ int main() {
     CHECK(controlled.executed_actions > 0);
     CHECK(backend.calls() > 0);
 
-    const auto calls_after_controlled = backend.calls();
-    const auto stale = coordinator.tick(10);
+    // Budget age is measured in coordinator ticks, not resource-use epochs.
+    // Age a separate runtime while observe-only, then enable mutation after the
+    // configured tick window and verify no backend operation can occur.
+    LiveRuntimeController stale_runtime(runtime_config());
+    CHECK(register_fixture(stale_runtime));
+    make_fence_safe(stale_runtime);
+    stale_runtime.update_budget(pressure_budget());
+    MockBackend stale_backend;
+    RuntimeCoordinator stale_coordinator(
+        stale_runtime, &stale_backend,
+        {.mode=RuntimeMode::ObserveOnly,.max_budget_age_ticks=2,.max_consecutive_failures=2,.max_actions_per_tick=64});
+    CHECK(stale_coordinator.tick(1000).budget_age_ticks == 0);
+    CHECK(stale_coordinator.tick(1000000).budget_age_ticks == 1);
+    CHECK(stale_coordinator.tick(999999999).budget_age_ticks == 2);
+    stale_coordinator.set_mode(RuntimeMode::Controlled);
+    const auto stale = stale_coordinator.tick(1000000000);
     CHECK(stale.status == RuntimeTickStatus::BudgetStale);
-    CHECK(backend.calls() == calls_after_controlled);
-    CHECK(coordinator.metrics().stale_budget_blocks == 1);
+    CHECK(stale.budget_age_ticks == 3);
+    CHECK(stale_backend.calls() == 0);
+    CHECK(stale_coordinator.metrics().stale_budget_blocks == 1);
 
     // Controlled with no backend automatically degrades to PlanOnly.
     LiveRuntimeController no_backend_runtime(runtime_config());
