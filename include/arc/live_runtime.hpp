@@ -93,6 +93,9 @@ public:
     void record_resolve_failure() noexcept { ++metrics_.plan_resolve_failures; }
 
     [[nodiscard]] bool controlled(ResourceId resource) const noexcept;
+    [[nodiscard]] std::optional<ResourceId> residency_resource(ResidencyId object) const noexcept;
+    [[nodiscard]] std::optional<ResourceId> texture_resource(TextureQualityId texture) const noexcept;
+    [[nodiscard]] std::uint64_t budget_revision() const noexcept { return budget_revision_; }
     [[nodiscard]] LiveRuntimeMetrics metrics() const noexcept { return metrics_; }
     [[nodiscard]] const ResourceTransitionPredictor& transitions() const noexcept { return transitions_; }
     [[nodiscard]] const ResidencyGovernor& residency() const noexcept { return residency_; }
@@ -114,6 +117,7 @@ private:
     std::unordered_map<ResourceId, TextureQualityId> texture_by_resource_{};
     std::unordered_map<TextureQualityId, ResourceId> resource_by_texture_{};
     std::unordered_map<ResourceId, std::uint32_t> inflight_counts_{};
+    std::uint64_t budget_revision_{};
     LiveRuntimeMetrics metrics_{};
 };
 
