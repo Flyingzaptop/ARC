@@ -24,6 +24,11 @@ if(WIN32)
     target_compile_features(dx12-mega-stage-a-benchmark PRIVATE cxx_std_23)
     target_compile_definitions(dx12-mega-stage-a-benchmark PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 
+    add_executable(arc-mega-stage-a-benchmark-ui WIN32 src/launcher/mega_stage_a_benchmark_ui.cpp)
+    target_link_libraries(arc-mega-stage-a-benchmark-ui PRIVATE shell32)
+    target_compile_features(arc-mega-stage-a-benchmark-ui PRIVATE cxx_std_23)
+    target_compile_definitions(arc-mega-stage-a-benchmark-ui PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+
     if(ARC_GPU_TESTS)
         add_test(
             NAME dx12-mega-stage-a-benchmark-smoke
