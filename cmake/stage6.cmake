@@ -1,9 +1,16 @@
-target_sources(arc-core PRIVATE src/core/adaptive_quality.cpp)
+target_sources(arc-core PRIVATE
+    src/core/adaptive_quality.cpp
+    src/core/action_effect_tracker.cpp
+)
 
 if(ARC_BUILD_TESTS)
     add_executable(arc-adaptive-quality-tests tests/adaptive_quality_tests.cpp)
     target_link_libraries(arc-adaptive-quality-tests PRIVATE arc::core)
     add_test(NAME arc-adaptive-quality-tests COMMAND arc-adaptive-quality-tests)
+
+    add_executable(arc-action-effect-tracker-tests tests/action_effect_tracker_tests.cpp)
+    target_link_libraries(arc-action-effect-tracker-tests PRIVATE arc::core)
+    add_test(NAME arc-action-effect-tracker-tests COMMAND arc-action-effect-tracker-tests)
 endif()
 
 if(WIN32)
