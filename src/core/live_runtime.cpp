@@ -29,6 +29,11 @@ std::uint64_t ratio_bytes(std::uint64_t bytes, double ratio) noexcept {
     return static_cast<std::uint64_t>(std::floor(scaled));
 }
 
+bool nearly_equal(double left, double right) noexcept {
+    const auto scale = (std::max)({1.0, std::abs(left), std::abs(right)});
+    return std::abs(left - right) <= scale * 1e-9;
+}
+
 }  // namespace
 
 LiveRuntimeController::LiveRuntimeController(LiveRuntimeConfig config)
@@ -176,12 +181,104 @@ LiveRuntimePlan LiveRuntimeController::plan(std::uint64_t epoch) {
     if (!result.transition_prefetch.empty()) {
         ++metrics_.transition_prefetch_plans;
         metrics_.transition_prefetch_actions += result.transition_prefetch.size();
-        return result; // Apply high-confidence immediate-next prefetch first; restore quality on the next tick.
+        return result;
     }
 
     if (result.restore_headroom) {
         result.restore = planner_.plan_headroom_restore(residency_, textures_, epoch, result.restore_headroom);
         if (!result.restore.arbitration.actions.empty()) ++metrics_.restore_plans;
+    }
+    return result;
+}
+
+std::optional<std::vector<LiveRuntimeResolvedAction>> LiveRuntimeController::resolve_pressure_actions(
+    const GlobalMemoryPlan& plan_snapshot,
+    std::uint64_t epoch) const {
+    std::vector<LiveRuntimeResolvedAction> result;
+    result.reserve(plan_snapshot.arbitration.actions.size());
+    const auto residency_candidates = residency_.eviction_candidates(epoch);
+    const auto texture_candidates = textures_.demotion_candidates(epoch);
+
+    for (const auto& planned : plan_snapshot.arbitration.actions) {
+        const auto& candidate = planned.candidate;
+        if (candidate.kind == MemoryActionKind::EvictResource) {
+            if (candidate.sequence != 0) return std::nullopt;
+            const auto binding = resource_by_residency_.find(candidate.subject);
+            if (binding == resource_by_residency_.end() || binding->second != candidate.resource) return std::nullopt;
+            const auto found = std::find_if(residency_candidates.begin(), residency_candidates.end(), [&](const auto& action) {
+                return action.object == candidate.subject && action.bytes == candidate.bytes_freed;
+            });
+            if (found == residency_candidates.end()) return std::nullopt;
+            result.emplace_back(*found);
+            continue;
+        }
+
+        if (candidate.kind == MemoryActionKind::DemoteTexture) {
+            const auto binding = resource_by_texture_.find(candidate.subject);
+            if (binding == resource_by_texture_.end() || binding->second != candidate.resource) return std::nullopt;
+            std::uint32_t sequence{};
+            const TextureQualityAction* selected{};
+            for (const auto& action : texture_candidates) {
+                if (action.texture != candidate.subject) continue;
+                if (sequence++ == candidate.sequence) {
+                    selected = &action;
+                    break;
+                }
+            }
+            if (!selected || selected->resource != candidate.resource || selected->bytes_delta != candidate.bytes_freed ||
+                !nearly_equal(selected->quality_delta < 0.0 ? -selected->quality_delta : 0.0, candidate.quality_loss)) {
+                return std::nullopt;
+            }
+            result.emplace_back(*selected);
+            continue;
+        }
+        return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<std::vector<LiveRuntimeResolvedAction>> LiveRuntimeController::resolve_restore_actions(
+    const GlobalMemoryRestorePlan& plan_snapshot,
+    std::uint64_t epoch) const {
+    std::vector<LiveRuntimeResolvedAction> result;
+    result.reserve(plan_snapshot.arbitration.actions.size());
+    const auto residency_candidates = residency_.promotion_candidates(epoch);
+    const auto texture_candidates = textures_.promotion_candidates(epoch);
+
+    for (const auto& planned : plan_snapshot.arbitration.actions) {
+        const auto& candidate = planned.candidate;
+        if (candidate.kind == MemoryRestoreKind::MakeResident) {
+            if (candidate.sequence != 0) return std::nullopt;
+            const auto binding = resource_by_residency_.find(candidate.subject);
+            if (binding == resource_by_residency_.end() || binding->second != candidate.resource) return std::nullopt;
+            const auto found = std::find_if(residency_candidates.begin(), residency_candidates.end(), [&](const auto& action) {
+                return action.object == candidate.subject && action.bytes == candidate.bytes_cost;
+            });
+            if (found == residency_candidates.end()) return std::nullopt;
+            result.emplace_back(*found);
+            continue;
+        }
+
+        if (candidate.kind == MemoryRestoreKind::PromoteTexture) {
+            const auto binding = resource_by_texture_.find(candidate.subject);
+            if (binding == resource_by_texture_.end() || binding->second != candidate.resource) return std::nullopt;
+            std::uint32_t sequence{};
+            const TextureQualityAction* selected{};
+            for (const auto& action : texture_candidates) {
+                if (action.texture != candidate.subject) continue;
+                if (sequence++ == candidate.sequence) {
+                    selected = &action;
+                    break;
+                }
+            }
+            if (!selected || selected->resource != candidate.resource || selected->bytes_delta != candidate.bytes_cost ||
+                !nearly_equal(selected->quality_delta > 0.0 ? selected->quality_delta : 0.0, candidate.quality_gain)) {
+                return std::nullopt;
+            }
+            result.emplace_back(*selected);
+            continue;
+        }
+        return std::nullopt;
     }
     return result;
 }
