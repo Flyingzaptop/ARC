@@ -1,5 +1,6 @@
 #ifdef _WIN32
 #include <windows.h>
+#include <shellapi.h>
 
 #include <filesystem>
 #include <string>
