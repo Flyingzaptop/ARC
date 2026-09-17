@@ -13,6 +13,13 @@ LiveRuntimeConfig normalize_config(LiveRuntimeConfig config) {
         config.minimum_transition_prefetch_confidence > 1.0) {
         config.minimum_transition_prefetch_confidence = 0.40;
     }
+    if (!std::isfinite(config.residency.promotion_ceiling) || config.residency.promotion_ceiling < 0.0) {
+        config.residency.promotion_ceiling = 0.78;
+    }
+    if (std::isfinite(config.residency.pressure_enter) && config.residency.pressure_enter >= 0.0 &&
+        config.residency.promotion_ceiling > config.residency.pressure_enter) {
+        config.residency.promotion_ceiling = config.residency.pressure_enter;
+    }
     if (!config.max_transition_prefetch_actions) config.max_transition_prefetch_actions = 4;
     if (!config.max_restore_bytes_per_tick) config.max_restore_bytes_per_tick = 256ull * 1024ull * 1024ull;
     return config;
