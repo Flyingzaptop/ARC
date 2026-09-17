@@ -12,9 +12,33 @@ function Json-Write($Object, [string]$Path) {
     $Object | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $Path -Encoding utf8
 }
 
+function Invoke-GitChecked {
+    param(
+        [Parameter(Mandatory=$true)][string]$WorkingDirectory,
+        [Parameter(Mandatory=$true)][string[]]$Arguments,
+        [switch]$ReturnOutput
+    )
+    $previous = $ErrorActionPreference
+    try {
+        # Windows PowerShell 5.1 wraps native stderr as ErrorRecord objects.
+        # Git writes normal progress (for example "Preparing worktree") to stderr,
+        # so rely on the native exit code rather than PowerShell's error stream.
+        $ErrorActionPreference = 'Continue'
+        $output = @(& git.exe -C $WorkingDirectory @Arguments 2>&1)
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+    if ($code -ne 0) {
+        $text = ($output | Out-String).Trim()
+        throw "git $($Arguments -join ' ') failed with exit code $code`n$text"
+    }
+    if ($ReturnOutput) { return (($output | Out-String).Trim()) }
+}
+
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
-$sourceSha = (& git.exe -C $RepoRoot rev-parse HEAD).Trim()
-$dirty = (& git.exe -C $RepoRoot status --porcelain --untracked-files=no)
+$sourceSha = Invoke-GitChecked -WorkingDirectory $RepoRoot -Arguments @('rev-parse','HEAD') -ReturnOutput
+$dirty = Invoke-GitChecked -WorkingDirectory $RepoRoot -Arguments @('status','--porcelain','--untracked-files=no') -ReturnOutput
 if ($dirty) { throw 'Tracked source tree is dirty; refusing benchmark publication.' }
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -58,8 +82,14 @@ $startedUtc = [DateTime]::UtcNow.ToString('o')
 $exitCode = -1
 $fatal = $null
 try {
-    & $benchmarkExe --seconds $Seconds --output $benchmarkJson 2>&1 | Tee-Object -FilePath $log
-    $exitCode = $LASTEXITCODE
+    $previous = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $benchmarkExe --seconds $Seconds --output $benchmarkJson 2>&1 | Tee-Object -FilePath $log
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previous
+    }
     if ($exitCode -ne 0) { $fatal = "Benchmark executable exit code $exitCode" }
 } catch {
     $fatal = $_.Exception.Message
@@ -75,7 +105,7 @@ if (Test-Path -LiteralPath $benchmarkJson) {
 }
 
 $manifest = [ordered]@{
-    schema = 2
+    schema = 3
     source_sha = $sourceSha
     started_utc = $startedUtc
     finished_utc = $finishedUtc
@@ -129,6 +159,8 @@ if ($bench) {
         selected_actions = $actions.Count
         planned_gain_ms = [double]$bench.delta.planned_gain_ms
         planned_memory_freed_bytes = [uint64]$bench.delta.memory_freed_bytes
+        baseline_dxgi_peak_usage = [uint64]$bench.baseline.dxgi_peak_usage
+        adaptive_dxgi_peak_usage = [uint64]$bench.adaptive.dxgi_peak_usage
     }
 }
 
@@ -136,7 +168,7 @@ $passed = (-not $fatal)
 foreach ($value in $gates.Values) { $passed = $passed -and [bool]$value }
 $verdict = if ($passed) { 'PASS' } else { 'FAIL' }
 $acceptance = [ordered]@{
-    schema = 1
+    schema = 2
     verdict = $verdict
     adaptive_quality_core_valid = [bool]$passed
     gates = $gates
@@ -176,6 +208,7 @@ if ($bench) {
     Write-Host "P99 delta     : $([math]::Round([double]$metrics.p99_delta_ms,3)) ms"
     Write-Host "Actions       : $($metrics.selected_actions)"
 }
+if ($fatal) { Write-Host "Fatal         : $fatal" -ForegroundColor Red }
 Write-Host "Local results : $runDir"
 
 if ($NoPublish) {
@@ -188,20 +221,15 @@ $publishRoot = Join-Path $env:TEMP "arc-stage6-publish-$stamp"
 if (Test-Path -LiteralPath $publishRoot) { Remove-Item -LiteralPath $publishRoot -Recurse -Force }
 $publishError = $null
 try {
-    & git.exe -C $RepoRoot branch $branch $sourceSha 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "git branch failed: $LASTEXITCODE" }
-    & git.exe -C $RepoRoot worktree add --force $publishRoot $branch 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "git worktree add failed: $LASTEXITCODE" }
+    Invoke-GitChecked -WorkingDirectory $RepoRoot -Arguments @('branch',$branch,$sourceSha)
+    Invoke-GitChecked -WorkingDirectory $RepoRoot -Arguments @('worktree','add','--force',$publishRoot,$branch)
 
     $dest = Join-Path $publishRoot ("results\stage6\" + $stamp)
     New-Item -ItemType Directory -Force $dest | Out-Null
     Copy-Item -Path (Join-Path $runDir '*') -Destination $dest -Recurse -Force -ErrorAction Stop
-    & git.exe -C $publishRoot add -- "results/stage6/$stamp"
-    if ($LASTEXITCODE -ne 0) { throw "git add failed: $LASTEXITCODE" }
-    & git.exe -C $publishRoot commit -m "Publish Stage 6 benchmark $stamp" 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "git commit failed: $LASTEXITCODE" }
-    & git.exe -C $publishRoot push -u origin $branch 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "git push failed: $LASTEXITCODE" }
+    Invoke-GitChecked -WorkingDirectory $publishRoot -Arguments @('add','--',"results/stage6/$stamp")
+    Invoke-GitChecked -WorkingDirectory $publishRoot -Arguments @('commit','-m',"Publish Stage 6 benchmark $stamp")
+    Invoke-GitChecked -WorkingDirectory $publishRoot -Arguments @('push','-u','origin',$branch)
 
     $url = "https://github.com/Flyingzaptop/ARC/tree/$branch/results/stage6/$stamp"
     Set-Content -LiteralPath (Join-Path $localRoot 'last-result-url.txt') -Value $url -Encoding ascii
@@ -210,7 +238,9 @@ try {
     $publishError = $_.Exception.Message
     Write-Host "Publishing failed: $publishError" -ForegroundColor Red
 } finally {
-    try { & git.exe -C $RepoRoot worktree remove --force $publishRoot 2>$null | Out-Null } catch {}
+    if (Test-Path -LiteralPath $publishRoot) {
+        try { Invoke-GitChecked -WorkingDirectory $RepoRoot -Arguments @('worktree','remove','--force',$publishRoot) } catch {}
+    }
 }
 
 if ($publishError) { exit 3 }
