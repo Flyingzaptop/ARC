@@ -225,3 +225,5 @@ if(ARC_BUILD_TESTS)
         endif()
     endif()
 endif()
+
+include(cmake/stage5.cmake)
