@@ -1,0 +1,17 @@
+{
+  "schema":1,
+  "valid":true,
+  "benchmark":"mega_stage_a",
+  "adapter":"NVIDIA GeForce RTX 3060 Laptop GPU",
+  "native_width":1920,
+  "native_height":1080,
+  "temporal_used":false,
+  "target_frame_ms":3.732521,
+  "baseline":{"samples":21697,"p50_ms":3.569664,"p99_ms":5.105664,"miss_ratio":0.343965,"mean_overshoot_ms":0.742079},
+  "adaptive":{"samples":29014,"p50_ms":3.202048,"p99_ms":4.056064,"miss_ratio":0.094506,"mean_overshoot_ms":0.290529},
+  "admission":{"reduced":true,"ui_protected":true,"level":3,"requested_width":4096,"admitted_width":512,"full_bytes":67108864,"admitted_bytes":1048576},
+  "quality_probe_gains":[[0.101888,0.160768,0.081920],[0.759808,0.758272,0.760832],[0.120832,0.089088,0.000000],[0.873984,0.585728,0.617472],[0.028672,0.055808,0.036864]],
+  "governor":{"quality_actions_executed":15,"pending_effects_resolved":15,"quality_backend_failures":0,"memory_executed_actions":8,"quality_domains":3,"memory_ticks":8,"combined_ticks":1,"restore_ticks":6,"learned_effects":5},
+  "physical_memory":{"dxgi_before":177152000,"dxgi_min_after_evict":177152000,"dxgi_final":177152000,"residency_restored":true},
+  "final_quality_full":false
+}
