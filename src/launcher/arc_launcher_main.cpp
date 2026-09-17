@@ -2,10 +2,11 @@
 #include "arc/steam_library.hpp"
 
 #include <windows.h>
+#include <commctrl.h>
 #include <shellapi.h>
 
 #include <algorithm>
-#include <chrono>
+#include <cwctype>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -82,7 +83,7 @@ std::optional<std::filesystem::path> guess_game_exe(const arc::SteamGame& game) 
         if (!it->is_regular_file(ec) || it->path().extension() != L".exe") continue;
         const auto filename = it->path().filename().wstring();
         std::wstring lower = filename;
-        std::transform(lower.begin(), lower.end(), lower.begin(), towlower);
+        std::transform(lower.begin(), lower.end(), lower.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
         if (lower.ends_with(L"-win64-shipping.exe")) return it->path();
         const auto size = it->file_size(ec);
         if (!ec && size > fallback_size) { fallback = it->path(); fallback_size = size; }
@@ -155,7 +156,7 @@ void play_selected(HWND hwnd) {
     auto out = capture_dir(game);
     std::error_code ec; std::filesystem::create_directories(out, ec);
 
-    int mode_index = static_cast<int>(SendMessageW(g_mode, CB_GETCURSEL, 0, 0));
+    const int mode_index = static_cast<int>(SendMessageW(g_mode, CB_GETCURSEL, 0, 0));
     const std::wstring mode = mode_index == 0 ? L"baseline" : L"arc-observe";
 
     if (pm && game_exe && !session_script.empty()) {
