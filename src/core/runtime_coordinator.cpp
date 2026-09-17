@@ -36,23 +36,23 @@ void RuntimeCoordinator::record_failure(bool immediate_trip) noexcept {
     if (immediate_trip || consecutive_failures_ >= config_.max_consecutive_failures) trip_circuit();
 }
 
-bool RuntimeCoordinator::refresh_budget_freshness(std::uint64_t epoch, RuntimeTickResult& result) noexcept {
+bool RuntimeCoordinator::refresh_budget_freshness(RuntimeTickResult& result) noexcept {
     const auto revision = runtime_.budget_revision();
     if (revision != seen_budget_revision_) {
         seen_budget_revision_ = revision;
         if (revision != 0) {
             budget_seen_ = true;
-            last_budget_epoch_ = epoch;
+            last_budget_tick_ = metrics_.ticks;
         }
     }
 
-    if (!budget_seen_ || epoch < last_budget_epoch_) {
+    if (!budget_seen_ || metrics_.ticks < last_budget_tick_) {
         result.budget_age_ticks = (std::numeric_limits<std::uint64_t>::max)();
         result.budget_fresh = false;
         return false;
     }
 
-    result.budget_age_ticks = epoch - last_budget_epoch_;
+    result.budget_age_ticks = metrics_.ticks - last_budget_tick_;
     result.budget_fresh = config_.max_budget_age_ticks == 0 || result.budget_age_ticks <= config_.max_budget_age_ticks;
     return result.budget_fresh;
 }
@@ -115,8 +115,6 @@ bool RuntimeCoordinator::execute_action(
 
             if (typed.type == ResidencyAction::Type::Evict) {
                 if (!runtime_.begin_residency_action(typed, epoch)) {
-                    // Physical eviction succeeded but the core state changed unexpectedly.
-                    // Restore physical residency immediately before opening the circuit.
                     ResidencyAction rollback = typed;
                     rollback.type = ResidencyAction::Type::MakeResident;
                     ++metrics_.rollback_attempts;
@@ -133,7 +131,6 @@ bool RuntimeCoordinator::execute_action(
 
             if (!runtime_.begin_residency_action(typed, epoch, false) ||
                 !runtime_.complete_make_resident(typed.object)) {
-                // Leaving the object physically resident is the safe failure direction.
                 result.status = RuntimeTickStatus::CommitFailed;
                 ++metrics_.commit_failures;
                 record_failure(true);
@@ -162,8 +159,6 @@ bool RuntimeCoordinator::execute_action(
 
             if (!runtime_.apply_texture_action(typed, epoch)) {
                 if (typed.type == TextureQualityAction::Type::Demote) {
-                    // A failed bookkeeping commit after a physical quality drop is not
-                    // allowed to leave ARC believing full quality is still resident.
                     TextureQualityAction rollback = typed;
                     rollback.type = TextureQualityAction::Type::Promote;
                     rollback.from_level = typed.to_level;
@@ -174,8 +169,6 @@ bool RuntimeCoordinator::execute_action(
                         ++metrics_.rollback_failures;
                     }
                 }
-                // A failed promotion commit is safe in the physical direction: more
-                // quality/memory is resident than ARC believes. Observe-only takes over.
                 result.status = RuntimeTickStatus::CommitFailed;
                 ++metrics_.commit_failures;
                 record_failure(true);
@@ -192,7 +185,7 @@ RuntimeTickResult RuntimeCoordinator::tick(std::uint64_t epoch) {
     result.requested_mode = requested_mode_;
     result.effective_mode = effective_mode();
     result.circuit_open = circuit_open_;
-    refresh_budget_freshness(epoch, result);
+    (void)refresh_budget_freshness(result);
     result.plan = runtime_.plan(epoch);
 
     if (circuit_open_) {
