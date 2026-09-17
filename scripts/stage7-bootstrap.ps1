@@ -80,12 +80,13 @@ try {
         arc-adaptive-quality-controller-tests `
         arc-quality-profile-tests `
         arc-render-quality-model-tests `
+        arc-render-candidate-catalog-tests `
         dx12-mixed-graphics-benchmark `
         arc-stage7-benchmark-ui
     if ($LASTEXITCODE -ne 0) { throw "Stage 7 build failed: $LASTEXITCODE" }
 
     Step 'Running Stage 6 + Stage 7 policy tests'
-    & $ctest --test-dir build -C Release -R 'arc-(adaptive-quality|action-effect-tracker|quality-profile|render-quality-model)' --output-on-failure
+    & $ctest --test-dir build -C Release -R 'arc-(adaptive-quality|action-effect-tracker|quality-profile|render-quality-model|render-candidate-catalog)' --output-on-failure
     if ($LASTEXITCODE -ne 0) { throw "Adaptive/Render Quality tests failed: $LASTEXITCODE" }
 
     Step 'Running 6-second GPU smoke'
