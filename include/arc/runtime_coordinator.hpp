@@ -1,6 +1,7 @@
 #pragma once
 
 #include "arc/live_runtime.hpp"
+#include "arc/adaptive_quality.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +45,18 @@ public:
     virtual RuntimeBackendStatus make_resident(ResourceId resource, const ResidencyAction& action) noexcept = 0;
     virtual RuntimeBackendStatus demote_texture(ResourceId resource, const TextureQualityAction& action) noexcept = 0;
     virtual RuntimeBackendStatus promote_texture(ResourceId resource, const TextureQualityAction& action) noexcept = 0;
+
+    // Generic physical quality actuation used by the Adaptive Quality runtime.
+    // Backends that only support residency/textures remain source-compatible:
+    // generic domains fail closed as Unsupported until a host explicitly binds
+    // an actuator.  Temporal actions are still governed by the optimizer's
+    // explicit opt-in and are not special-cased here.
+    virtual RuntimeBackendStatus apply_quality(const QualityActionCandidate&) noexcept {
+        return RuntimeBackendStatus::Unsupported;
+    }
+    virtual RuntimeBackendStatus restore_quality(const QualityActionCandidate&) noexcept {
+        return RuntimeBackendStatus::Unsupported;
+    }
 };
 
 struct RuntimeCoordinatorConfig {
