@@ -179,14 +179,14 @@ bool RuntimeCoordinator::execute_action(
     }, action);
 }
 
-RuntimeTickResult RuntimeCoordinator::tick(std::uint64_t epoch) {
+RuntimeTickResult RuntimeCoordinator::execute_plan(const LiveRuntimePlan& plan) {
     RuntimeTickResult result{};
     ++metrics_.ticks;
     result.requested_mode = requested_mode_;
     result.effective_mode = effective_mode();
     result.circuit_open = circuit_open_;
     (void)refresh_budget_freshness(result);
-    result.plan = runtime_.plan(epoch);
+    result.plan = plan;
 
     if (circuit_open_) {
         ++metrics_.observe_only_ticks;
@@ -234,7 +234,7 @@ RuntimeTickResult RuntimeCoordinator::tick(std::uint64_t epoch) {
     ++metrics_.controlled_ticks;
     const auto action_limit = (std::min<std::size_t>)(resolved->size(), config_.max_actions_per_tick);
     for (std::size_t index = 0; index < action_limit; ++index) {
-        if (!execute_action((*resolved)[index], epoch, result)) {
+        if (!execute_action((*resolved)[index], plan.epoch, result)) {
             result.circuit_open = circuit_open_;
             result.effective_mode = effective_mode();
             return result;
@@ -248,6 +248,14 @@ RuntimeTickResult RuntimeCoordinator::tick(std::uint64_t epoch) {
     result.circuit_open = circuit_open_;
     result.effective_mode = effective_mode();
     return result;
+}
+
+RuntimeTickResult RuntimeCoordinator::tick(std::uint64_t epoch) {
+    return execute_plan(runtime_.plan(epoch));
+}
+
+RuntimeTickResult RuntimeCoordinator::tick_with_plan(const LiveRuntimePlan& plan) {
+    return execute_plan(plan);
 }
 
 }  // namespace arc
