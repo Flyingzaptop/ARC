@@ -31,7 +31,7 @@ function Has-GraphicsTools {
     } catch { return $false }
 }
 function Relaunch-Admin {
-    $args = @(
+    $launchArgs = @(
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $PSCommandPath + '"'),
         '-SourceBranch', ('"' + $SourceBranch + '"'),
         '-RepoUrl', ('"' + $RepoUrl + '"'),
@@ -40,9 +40,9 @@ function Relaunch-Admin {
         '-ObserverIterations', $ObserverIterations,
         '-ObserverPairs', $ObserverPairs
     )
-    if ($Quick) { $args += '-Quick' }
+    if ($Quick) { $launchArgs += '-Quick' }
     Write-Host 'ARC needs one UAC prompt to install missing Windows prerequisites.' -ForegroundColor Yellow
-    $proc = Start-Process powershell.exe -Verb RunAs -ArgumentList $args -Wait -PassThru
+    $proc = Start-Process powershell.exe -Verb RunAs -ArgumentList $launchArgs -Wait -PassThru
     exit $proc.ExitCode
 }
 function Ensure-Prereqs {
@@ -81,8 +81,8 @@ function Publish-FailureBundle([string]$RepoDir, [string]$SourceSha, [string]$St
     try {
         $branch = "results/stage4-failure-$Stamp"
         $destination = "results/stage4-failure/$Stamp"
-        & git.exe switch -c $branch $SourceSha
-        if ($LASTEXITCODE -ne 0) { throw 'Could not create failure-results branch.' }
+        $switchOutput = & git.exe switch -c $branch $SourceSha 2>&1
+        if ($LASTEXITCODE -ne 0) { throw ("Could not create failure-results branch: " + ($switchOutput -join ' ')) }
         New-Item -ItemType Directory -Force $destination | Out-Null
         if (Test-Path $LogPath) { Copy-Item -LiteralPath $LogPath -Destination (Join-Path $destination 'validation.log') -Force }
         $traces = Join-Path $RepoDir 'traces'
@@ -99,16 +99,21 @@ function Publish-FailureBundle([string]$RepoDir, [string]$SourceSha, [string]$St
             status = 'FAILED_BEFORE_NORMAL_PUBLICATION'
         } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $destination 'failure-manifest.json') -Encoding utf8
         & git.exe add -- $destination
+        if ($LASTEXITCODE -ne 0) { throw 'Could not stage failure diagnostics.' }
         & git.exe commit -m "Publish Stage 4 failure diagnostics $Stamp" | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Could not commit failure diagnostics.' }
         & git.exe push -u origin $branch | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Could not push failure diagnostics.' }
-        $repoUrl = (& git.exe remote get-url origin).Trim()
-        if ($repoUrl -match '^git@github.com:(.+)\.git$') { $repoUrl = "https://github.com/$($Matches[1])" }
-        elseif ($repoUrl -match '^https://github.com/(.+)\.git$') { $repoUrl = "https://github.com/$($Matches[1])" }
-        return "$repoUrl/tree/$branch/$destination"
+        $remoteUrl = (& git.exe remote get-url origin).Trim()
+        if ($remoteUrl -match '^git@github.com:(.+)\.git$') { $remoteUrl = "https://github.com/$($Matches[1])" }
+        elseif ($remoteUrl -match '^https://github.com/(.+)\.git$') { $remoteUrl = "https://github.com/$($Matches[1])" }
+        $resultUrl = "$remoteUrl/tree/$branch/$destination"
+        return $resultUrl
     } finally {
-        & git.exe switch $SourceBranch 2>$null | Out-Null
+        $savedPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        & git.exe switch $SourceBranch *> $null
+        $ErrorActionPreference = $savedPreference
         Pop-Location
     }
 }
@@ -144,9 +149,14 @@ try {
     $sourceSha = (& git.exe rev-parse HEAD).Trim()
 
     Step ("Running complete Stage 4 validation on " + $sourceSha)
-    $args = @('-Stage2Rounds', $Stage2Rounds, '-ObserverIterations', $ObserverIterations, '-ObserverPairs', $ObserverPairs, '-PublishResults')
-    if ($Quick) { $args += '-Quick' }
-    & (Join-Path $repoDir 'scripts\stage4-validate.ps1') @args *>&1 | Tee-Object -FilePath $logPath -Append | Out-Host
+    $validateParams = @{
+        Stage2Rounds = $Stage2Rounds
+        ObserverIterations = $ObserverIterations
+        ObserverPairs = $ObserverPairs
+        PublishResults = $true
+    }
+    if ($Quick) { $validateParams.Quick = $true }
+    & (Join-Path $repoDir 'scripts\stage4-validate.ps1') @validateParams *>&1 | Tee-Object -FilePath $logPath -Append | Out-Host
     $exitCode = $LASTEXITCODE
     $urlFile = Join-Path $repoDir 'traces\stage4-results-url.txt'
     if (Test-Path $urlFile) { $normalResultsUrl = (Get-Content -Raw -LiteralPath $urlFile).Trim() }
