@@ -27,21 +27,28 @@ int main() {
 
     RuntimeEventBridge bridge(runtime);
     constexpr CommandId command = 10;
-    constexpr QueueId queue = 7;
+    constexpr QueueId queueA = 7;
+    constexpr QueueId queueB = 8;
 
     CHECK(bridge.consume(make_event(EventType::CommandListCreated, CommandListPayload{.command=command})));
     CHECK(bridge.consume(make_event(EventType::ResourceUse, ResourceUsePayload{.command=command,.resource=100})));
     CHECK(bridge.consume(make_event(EventType::ResourceUse, ResourceUsePayload{.command=command,.resource=999})));
     CHECK(bridge.consume(make_event(EventType::CommandListClosed, CommandListPayload{.command=command})));
-    CHECK(bridge.consume(make_event(EventType::QueueSubmit, QueueSubmitPayload{.queue=queue,.command=command,.submission=1})));
-    CHECK(bridge.consume(make_event(EventType::FenceSignal, FencePayload{.queue=queue,.fence=77,.value=10})));
+
+    // Same controlled resource is submitted on two independent queues. Fence
+    // values are intentionally non-comparable across queues (10 vs 5).
+    CHECK(bridge.consume(make_event(EventType::QueueSubmit, QueueSubmitPayload{.queue=queueA,.command=command,.submission=1})));
+    CHECK(bridge.consume(make_event(EventType::QueueSubmit, QueueSubmitPayload{.queue=queueB,.command=command,.submission=2})));
+    CHECK(runtime.inflight_count(100) == 2);
+    CHECK(bridge.consume(make_event(EventType::FenceSignal, FencePayload{.queue=queueA,.fence=77,.value=10})));
+    CHECK(bridge.consume(make_event(EventType::FenceSignal, FencePayload{.queue=queueB,.fence=88,.value=5})));
 
     auto object = runtime.residency().find(1);
     CHECK(object.has_value());
-    CHECK(object->last_use_queue == queue);
-    CHECK(object->last_use_fence == 10);
+    CHECK(object->last_use_queue == queueB);
+    CHECK(object->last_use_fence == 5);
     CHECK(object->last_completed_fence == 0);
-    CHECK(bridge.logical_epoch() == 2); // controlled + observed-only resource
+    CHECK(bridge.logical_epoch() == 4);
 
     MemoryBudgetPayload pressure{};
     pressure.local_budget = 1000;
@@ -49,15 +56,24 @@ int main() {
     CHECK(bridge.consume(make_event(EventType::MemoryBudgetSample, pressure)));
     CHECK(runtime.residency().pressure() == PressureState::Pressure);
 
-    // Signal alone must not make the object evictable because the real GPU fence has not completed.
+    // Queue B completes first. The scalar last fence now looks safe, but queue A
+    // is still outstanding; external in-flight accounting must reject resolve.
+    bridge.note_queue_completed(queueB, 5);
+    CHECK(runtime.inflight_count(100) == 1);
     auto plan = runtime.plan(100);
-    CHECK(plan.pressure_relief.arbitration.actions.empty());
+    CHECK(!plan.pressure_relief.arbitration.actions.empty());
+    CHECK(!runtime.resolve_pressure_actions(plan.pressure_relief, 100).has_value());
 
-    bridge.note_queue_completed(queue, 10);
+    // Only after queue A also completes may the plan resolve to an executable action.
+    bridge.note_queue_completed(queueA, 10);
+    CHECK(runtime.inflight_count(100) == 0);
     object = runtime.residency().find(1);
-    CHECK(object->last_completed_fence == 10);
+    CHECK(object->last_completed_fence >= 10);
     plan = runtime.plan(101);
     CHECK(!plan.pressure_relief.arbitration.actions.empty());
+    const auto resolved = runtime.resolve_pressure_actions(plan.pressure_relief, 101);
+    CHECK(resolved.has_value());
+    CHECK(!resolved->empty());
     CHECK(plan.pressure_relief.arbitration.actions.front().candidate.resource == 100);
 
     PresentPayload present{};
@@ -65,24 +81,24 @@ int main() {
     CHECK(bridge.consume(make_event(EventType::Present, present)));
     CHECK(bridge.presentation_frame() == 42);
 
-    // Destroy removes the resource from the mutation surface immediately.
     CHECK(bridge.consume(make_event(EventType::ResourceDestroyed, ResourceDestroyPayload{.resource=100})));
     CHECK(!runtime.controlled(100));
     CHECK(runtime.residency().find(1) == std::nullopt);
     plan = runtime.plan(102);
     CHECK(plan.pressure_relief.arbitration.actions.empty());
 
-    // Malformed events fail closed and are counted.
     Event malformed{};
     malformed.header.type = EventType::ResourceUse;
     malformed.header.payload_bytes = 1;
     CHECK(!bridge.consume(malformed));
 
     const auto metrics = bridge.metrics();
-    CHECK(metrics.resource_uses == 2);
-    CHECK(metrics.queue_submits == 1);
-    CHECK(metrics.fence_signals == 1);
-    CHECK(metrics.completion_updates == 1);
+    CHECK(metrics.resource_uses == 4);
+    CHECK(metrics.queue_submits == 2);
+    CHECK(metrics.fence_signals == 2);
+    CHECK(metrics.completion_updates == 2);
+    CHECK(metrics.submission_blocks == 2);
+    CHECK(metrics.completion_releases == 2);
     CHECK(metrics.budget_samples == 1);
     CHECK(metrics.resources_destroyed == 1);
     CHECK(metrics.malformed_events == 1);
