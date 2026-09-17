@@ -136,6 +136,7 @@ bool LiveRuntimeController::externally_inflight(ResourceId resource) const noexc
 
 void LiveRuntimeController::update_budget(const MemoryBudgetPayload& budget) {
     residency_.update_budget(budget.local_budget, budget.local_usage);
+    if (budget_revision_ != (std::numeric_limits<std::uint64_t>::max)()) ++budget_revision_;
 }
 
 std::uint64_t LiveRuntimeController::restore_headroom() const noexcept {
@@ -302,6 +303,16 @@ bool LiveRuntimeController::apply_texture_action(const TextureQualityAction& act
 
 bool LiveRuntimeController::controlled(ResourceId resource) const noexcept {
     return residency_by_resource_.contains(resource) || texture_by_resource_.contains(resource);
+}
+
+std::optional<ResourceId> LiveRuntimeController::residency_resource(ResidencyId object) const noexcept {
+    const auto it = resource_by_residency_.find(object);
+    return it == resource_by_residency_.end() ? std::nullopt : std::optional<ResourceId>{it->second};
+}
+
+std::optional<ResourceId> LiveRuntimeController::texture_resource(TextureQualityId texture) const noexcept {
+    const auto it = resource_by_texture_.find(texture);
+    return it == resource_by_texture_.end() ? std::nullopt : std::optional<ResourceId>{it->second};
 }
 
 }  // namespace arc
