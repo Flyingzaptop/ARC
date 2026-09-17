@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace arc {
 
@@ -76,15 +77,38 @@ std::vector<ResidencyAction> ResidencyGovernor::promotion_candidates(std::uint64
 
         const auto predicted = predicted_next_use(object, epoch);
         const auto confidence = prediction_confidence(object, epoch);
-        if (!predicted || confidence < config_.minimum_prefetch_confidence ||
-            *predicted > epoch + config_.prefetch_horizon_epochs) {
+        const bool actionable_prediction = predicted &&
+            confidence >= config_.minimum_prefetch_confidence &&
+            *predicted <= epoch + config_.prefetch_horizon_epochs;
+
+        if (actionable_prediction) {
+            const auto distance = *predicted > epoch ? *predicted - epoch : 0;
+            const auto score = confidence * (1.0 + (std::max)(0.0, object.cost.reload_ms)) /
+                (1.0 + static_cast<double>(distance));
+            candidates.push_back({ResidencyAction::Type::MakeResident, id, object.cost.bytes, *predicted, score});
             continue;
         }
 
-        const auto distance = *predicted > epoch ? *predicted - epoch : 0;
-        const auto score = confidence * (1.0 + (std::max)(0.0, object.cost.reload_ms)) /
-            (1.0 + static_cast<double>(distance));
-        candidates.push_back({ResidencyAction::Type::MakeResident, id, object.cost.bytes, *predicted, score});
+        // A resource with no current actionable reuse forecast must not remain
+        // evicted forever once memory pressure has fully recovered. Admit it as
+        // a deliberately low-priority background restore candidate. Known
+        // imminent reuse always sorts ahead of this path, and the global
+        // headroom planner still enforces promotion_ceiling/reserve limits.
+        // Waiting at least one epoch after eviction prevents same-tick churn.
+        if (object.last_evicted_epoch && epoch <= object.last_evicted_epoch) {
+            continue;
+        }
+        const double reload = 1.0 + (std::max)(0.0, object.cost.reload_ms);
+        const double age = object.last_evicted_epoch && epoch > object.last_evicted_epoch
+            ? static_cast<double>(epoch - object.last_evicted_epoch)
+            : 1.0;
+        const double background_score = (0.01 + (std::min)(0.04, age * 0.0005)) * reload;
+        candidates.push_back({
+            ResidencyAction::Type::MakeResident,
+            id,
+            object.cost.bytes,
+            (std::numeric_limits<std::uint64_t>::max)(),
+            background_score});
     }
 
     std::ranges::sort(candidates, [](const auto& left, const auto& right) {
