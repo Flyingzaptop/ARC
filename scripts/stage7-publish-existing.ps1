@@ -16,7 +16,10 @@ function Run-Git {
     $previous = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        $output = & git.exe -C $WorkingDir @GitArgs 2>&1
+        # Windows PowerShell 5.1 can mishandle array splatting to native executables
+        # in some invocation contexts. Passing the array as a normal native-command
+        # argument reliably expands it into individual argv entries.
+        $output = & git.exe -C $WorkingDir $GitArgs 2>&1
         $code = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $previous
