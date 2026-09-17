@@ -27,8 +27,8 @@ try {
     & "$PSScriptRoot/stage2-final-validate.ps1" -Rounds $Stage2Rounds -ObserverIterations 3000 -SkipDebugBuild:$SkipDebugBuild -Quick:$Quick
     if ($LASTEXITCODE -ne 0) { throw "Stage 2 regression acceptance failed: $LASTEXITCODE" }
 
-    if (-not (Test-Path -LiteralPath 'traces/live-runtime-lab.json')) {
-        throw 'Live runtime GPU report missing after Stage 2 regression run.'
+    foreach ($path in @('traces/live-runtime-lab.json','traces/runtime-event-bridge-lab.json')) {
+        if (-not (Test-Path -LiteralPath $path)) { throw "Stage 4 GPU report missing: $path" }
     }
 
     Write-Host ''
@@ -40,12 +40,18 @@ try {
     Write-Host '[3/3] Integrated Stage 4 verdict'
     $stage2 = Get-Content -Raw -LiteralPath 'traces/stage2-final-acceptance.json' | ConvertFrom-Json
     $live = Get-Content -Raw -LiteralPath 'traces/live-runtime-lab.json' | ConvertFrom-Json
+    $bridge = Get-Content -Raw -LiteralPath 'traces/runtime-event-bridge-lab.json' | ConvertFrom-Json
     $observer = Get-Content -Raw -LiteralPath 'traces/observer-benchmark-v2.json' | ConvertFrom-Json
     $frontier = Get-Content -Raw -LiteralPath 'traces/residency-frontier-summary.json' | ConvertFrom-Json
 
     $liveCorrect = ([bool]$live.valid -and [bool]$live.contents_verified -and
         [bool]$live.unknown_resource_untouched -and [bool]$live.transition_prefetch_verified -and
         [int64]$live.eviction_actions -gt 0 -and [int64]$live.debug_error_count -eq 0)
+    $bridgeCorrect = ([bool]$bridge.valid -and [bool]$bridge.contents_verified -and
+        [int64]$bridge.actions_before_completion -eq 0 -and [int64]$bridge.actions_after_completion -gt 0 -and
+        [bool]$bridge.destroyed_resource_unregistered -and [bool]$bridge.unknown_resource_uncontrolled -and
+        [int64]$bridge.bridge_malformed_events -eq 0 -and [int64]$bridge.bridge_controller_rejections -eq 0 -and
+        [int64]$bridge.ring_dropped_events -eq 0 -and [int64]$bridge.debug_error_count -eq 0)
     $stage2Correct = [bool]$stage2.gates.hard_correctness
     $debugAvailable = [bool]$stage2.gates.debug_layer_available
     $debugClean = [bool]$stage2.gates.debug_layer_clean
@@ -54,7 +60,7 @@ try {
     $p99Met = [bool]$observer.light.p99_target_met
 
     $verdict = 'ACCEPTED'
-    if (-not $stage2Correct -or -not $liveCorrect) {
+    if (-not $stage2Correct -or -not $liveCorrect -or -not $bridgeCorrect) {
         $verdict = 'NOT_ACCEPTED'
     } elseif (-not $debugAvailable) {
         $verdict = 'ACCEPTED_WITH_EXTERNAL_VALIDATION_PENDING'
@@ -64,7 +70,7 @@ try {
 
     $trackedStatus = (git status --porcelain --untracked-files=no | Out-String).Trim()
     $acceptance = [ordered]@{
-        schema = 1
+        schema = 2
         timestamp_utc = [DateTime]::UtcNow.ToString('o')
         commit = $commit
         working_tree_dirty = -not [string]::IsNullOrWhiteSpace($trackedStatus)
@@ -72,6 +78,10 @@ try {
         gates = [ordered]@{
             stage2_hard_correctness = $stage2Correct
             live_runtime_correctness = $liveCorrect
+            runtime_event_bridge_correctness = $bridgeCorrect
+            event_bridge_blocks_before_completion = ([int64]$bridge.actions_before_completion -eq 0)
+            event_bridge_allows_after_completion = ([int64]$bridge.actions_after_completion -gt 0)
+            event_bridge_destroy_unregister = [bool]$bridge.destroyed_resource_unregistered
             live_runtime_unknown_resource_untouched = [bool]$live.unknown_resource_untouched
             live_runtime_transition_prefetch = [bool]$live.transition_prefetch_verified
             live_runtime_dxgi_relief_bytes = [int64]$live.dxgi_observed_relief_bytes
@@ -86,6 +96,7 @@ try {
             observer_v2_light_p99_delta_p90_ms = [double]$observer.light.p99_delta_ms_p90
         }
         live_runtime = $live
+        runtime_event_bridge = $bridge
         observer_v2 = $observer
         stage2_acceptance_path = 'traces/stage2-final-acceptance.json'
         hardware_profile_path = 'traces/hardware-profile.json'
@@ -102,6 +113,9 @@ try {
 
 - Stage 2 regression: $stage2Correct
 - Live runtime D3D12 path: $liveCorrect
+- Observer event bridge: $bridgeCorrect
+- Fence completion safety: before=$($bridge.actions_before_completion), after=$($bridge.actions_after_completion)
+- Destroy unregister: $([bool]$bridge.destroyed_resource_unregistered)
 - Unknown resource guard: $([bool]$live.unknown_resource_untouched)
 - Transition prefetch: $([bool]$live.transition_prefetch_verified)
 - DXGI relief: $([int64]$live.dxgi_observed_relief_bytes) bytes
@@ -122,6 +136,7 @@ try {
     Write-Host '=== STAGE 4 VERDICT ==='
     Write-Host $verdict
     Write-Host "Live runtime: valid=$($live.valid) prefetch=$($live.transition_prefetch_actions) dxgiRelief=$($live.dxgi_observed_relief_bytes)"
+    Write-Host "Event bridge: valid=$($bridge.valid) beforeCompletion=$($bridge.actions_before_completion) afterCompletion=$($bridge.actions_after_completion)"
     Write-Host "Observer v2 Light CPU median=$([Math]::Round([double]$observer.light.attributable_cpu_percent_median, 3))% p90=$([Math]::Round([double]$observer.light.attributable_cpu_percent_p90, 3))%"
 
     if ($PublishResults) {
