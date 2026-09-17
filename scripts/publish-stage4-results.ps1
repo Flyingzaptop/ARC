@@ -13,6 +13,7 @@ try {
         'observer-benchmark-v2.json',
         'observer-benchmark-v2-raw.json',
         'live-runtime-lab.json',
+        'runtime-event-bridge-lab.json',
         'stage2-final-acceptance.json',
         'residency-benchmark-summary.json',
         'residency-frontier-summary.json',
