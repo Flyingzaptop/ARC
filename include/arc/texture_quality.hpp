@@ -73,6 +73,7 @@ public:
     explicit TextureQualityGovernor(TextureQualityPolicyConfig config = {});
 
     bool register_texture(TextureQualityObject object);
+    bool unregister_texture(TextureQualityId id) noexcept { return textures_.erase(id) != 0; }
     bool set_importance(TextureQualityId id, double importance);
     bool apply(const TextureQualityAction& action, std::uint64_t epoch);
 
