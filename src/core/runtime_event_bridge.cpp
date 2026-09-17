@@ -21,6 +21,24 @@ void erase_resource(std::vector<ResourceId>& resources, ResourceId resource) {
 
 }  // namespace
 
+bool RuntimeEventBridge::bind_completion_fence(QueueId queue, std::uint64_t fence_id) noexcept {
+    if (!queue || !fence_id) return false;
+    const auto it = completion_fence_by_queue_.find(queue);
+    if (it != completion_fence_by_queue_.end()) return it->second == fence_id;
+    completion_fence_by_queue_.emplace(queue, fence_id);
+    return true;
+}
+
+bool RuntimeEventBridge::unbind_completion_fence(QueueId queue) noexcept {
+    completed_by_queue_.erase(queue);
+    return completion_fence_by_queue_.erase(queue) != 0;
+}
+
+std::uint64_t RuntimeEventBridge::completion_fence(QueueId queue) const noexcept {
+    const auto it = completion_fence_by_queue_.find(queue);
+    return it == completion_fence_by_queue_.end() ? 0 : it->second;
+}
+
 void RuntimeEventBridge::append_use(CommandId command, ResourceId resource) {
     if (!command || !resource) return;
     auto& uses = command_uses_[command];
@@ -145,8 +163,22 @@ bool RuntimeEventBridge::consume(const Event& event) {
     }
     case EventType::FenceSignal: {
         FencePayload payload{};
-        if (!decode(event, payload) || !payload.queue || !payload.value) { ++metrics_.malformed_events; return false; }
+        if (!decode(event, payload) || !payload.queue || !payload.fence || !payload.value) {
+            ++metrics_.malformed_events;
+            return false;
+        }
         ++metrics_.fence_signals;
+        if (require_explicit_completion_fence_) {
+            const auto bound = completion_fence_by_queue_.find(payload.queue);
+            if (bound == completion_fence_by_queue_.end()) {
+                ++metrics_.unbound_completion_signals;
+                return true;
+            }
+            if (bound->second != payload.fence) {
+                ++metrics_.ignored_fence_signals;
+                return true;
+            }
+        }
         return flush_signal(payload.queue, payload.value);
     }
     case EventType::MemoryBudgetSample: {
@@ -184,7 +216,7 @@ bool RuntimeEventBridge::consume(const Event& event) {
     }
 }
 
-void RuntimeEventBridge::note_queue_completed(QueueId queue, std::uint64_t completed_fence) {
+void RuntimeEventBridge::apply_completion(QueueId queue, std::uint64_t completed_fence) {
     if (!queue) return;
     auto& known = completed_by_queue_[queue];
     if (completed_fence <= known) return;
@@ -208,6 +240,24 @@ void RuntimeEventBridge::note_queue_completed(QueueId queue, std::uint64_t compl
         values.erase(keep, values.end());
     }
     ++metrics_.completion_updates;
+}
+
+void RuntimeEventBridge::note_queue_completed(QueueId queue, std::uint64_t completed_fence) {
+    if (require_explicit_completion_fence_) return;
+    apply_completion(queue, completed_fence);
+}
+
+bool RuntimeEventBridge::note_queue_completed(
+    QueueId queue,
+    std::uint64_t fence_id,
+    std::uint64_t completed_fence) {
+    if (!queue || !fence_id) return false;
+    if (require_explicit_completion_fence_) {
+        const auto bound = completion_fence_by_queue_.find(queue);
+        if (bound == completion_fence_by_queue_.end() || bound->second != fence_id) return false;
+    }
+    apply_completion(queue, completed_fence);
+    return true;
 }
 
 }  // namespace arc
