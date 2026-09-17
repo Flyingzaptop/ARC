@@ -87,52 +87,103 @@ AdaptiveQualityOptimizer::AdaptiveQualityOptimizer(AdaptiveQualityConfig config)
         std::max(config_.memory_pressure_enter, config_.memory_pressure_emergency), 0.0, 1.0);
     config_.restoration_headroom_ms = std::max(0.0, config_.restoration_headroom_ms);
     config_.memory_value_ms_per_gib = std::max(0.0, config_.memory_value_ms_per_gib);
+    config_.minimum_domain_affinity = std::clamp(config_.minimum_domain_affinity, 0.0, 1.0);
+    config_.unknown_gpu_domain_affinity = std::clamp(config_.unknown_gpu_domain_affinity, 0.0, 1.0);
     config_.max_actions_per_plan = std::max<std::uint32_t>(1, config_.max_actions_per_plan);
+}
+
+double AdaptiveQualityOptimizer::domain_affinity(
+    BottleneckClass bottleneck,
+    QualityDomain domain) const noexcept {
+    if (domain == QualityDomain::Temporal) return 1.0;
+
+    switch (bottleneck) {
+    case BottleneckClass::Balanced:
+        return 0.0;
+    case BottleneckClass::MemoryCapacity:
+        switch (domain) {
+        case QualityDomain::Texture: return 1.00;
+        case QualityDomain::Bandwidth: return 0.95;
+        case QualityDomain::Shadow: return 0.65;
+        case QualityDomain::Lighting: return 0.16;
+        case QualityDomain::Raster: return 0.12;
+        case QualityDomain::Geometry: return 0.12;
+        case QualityDomain::Temporal: return 1.0;
+        }
+        break;
+    case BottleneckClass::MemoryBandwidth:
+        switch (domain) {
+        case QualityDomain::Bandwidth: return 1.00;
+        case QualityDomain::Texture: return 0.95;
+        case QualityDomain::Shadow: return 0.35;
+        case QualityDomain::Lighting: return 0.16;
+        case QualityDomain::Raster: return 0.12;
+        case QualityDomain::Geometry: return 0.12;
+        case QualityDomain::Temporal: return 1.0;
+        }
+        break;
+    case BottleneckClass::Raster:
+        switch (domain) {
+        case QualityDomain::Raster: return 1.00;
+        case QualityDomain::Geometry: return 0.35;
+        case QualityDomain::Shadow: return 0.25;
+        case QualityDomain::Lighting: return 0.14;
+        case QualityDomain::Bandwidth: return 0.12;
+        case QualityDomain::Texture: return 0.12;
+        case QualityDomain::Temporal: return 1.0;
+        }
+        break;
+    case BottleneckClass::Geometry:
+        switch (domain) {
+        case QualityDomain::Geometry: return 1.00;
+        case QualityDomain::Raster: return 0.30;
+        case QualityDomain::Shadow: return 0.14;
+        case QualityDomain::Lighting: return 0.12;
+        case QualityDomain::Bandwidth: return 0.12;
+        case QualityDomain::Texture: return 0.12;
+        case QualityDomain::Temporal: return 1.0;
+        }
+        break;
+    case BottleneckClass::Lighting:
+        switch (domain) {
+        case QualityDomain::Lighting: return 1.00;
+        case QualityDomain::Shadow: return 0.45;
+        case QualityDomain::Raster: return 0.14;
+        case QualityDomain::Geometry: return 0.12;
+        case QualityDomain::Bandwidth: return 0.12;
+        case QualityDomain::Texture: return 0.12;
+        case QualityDomain::Temporal: return 1.0;
+        }
+        break;
+    case BottleneckClass::Shadow:
+        switch (domain) {
+        case QualityDomain::Shadow: return 1.00;
+        case QualityDomain::Lighting: return 0.25;
+        case QualityDomain::Raster: return 0.14;
+        case QualityDomain::Geometry: return 0.12;
+        case QualityDomain::Bandwidth: return 0.12;
+        case QualityDomain::Texture: return 0.12;
+        case QualityDomain::Temporal: return 1.0;
+        }
+        break;
+    case BottleneckClass::UnknownGpu:
+        return config_.unknown_gpu_domain_affinity;
+    }
+    return 0.0;
 }
 
 double AdaptiveQualityOptimizer::utility(
     const QualityActionCandidate& candidate,
-    double memory_pressure) const noexcept {
+    double memory_pressure,
+    BottleneckClass bottleneck) const noexcept {
     const double visual = std::max(config_.visual_cost_floor, candidate.visual_cost);
     const double memory_gib = static_cast<double>(candidate.memory_freed_bytes) / kGiB;
     const double memory_weight = memory_pressure >= config_.memory_pressure_enter
         ? config_.memory_value_ms_per_gib * (1.0 + 3.0 * (memory_pressure - config_.memory_pressure_enter))
         : 0.0;
     const double benefit = candidate.expected_ms_gain + memory_gib * memory_weight;
-    return candidate.confidence * benefit / visual;
-}
-
-bool AdaptiveQualityOptimizer::domain_matches(
-    BottleneckClass bottleneck,
-    QualityDomain domain) const noexcept {
-    switch (bottleneck) {
-    case BottleneckClass::Balanced:
-        return false;
-    case BottleneckClass::MemoryCapacity:
-        return domain == QualityDomain::Texture ||
-               domain == QualityDomain::Bandwidth ||
-               domain == QualityDomain::Shadow;
-    case BottleneckClass::MemoryBandwidth:
-        return domain == QualityDomain::Texture ||
-               domain == QualityDomain::Bandwidth ||
-               domain == QualityDomain::Shadow ||
-               domain == QualityDomain::Lighting;
-    case BottleneckClass::Raster:
-        return domain == QualityDomain::Raster ||
-               domain == QualityDomain::Geometry ||
-               domain == QualityDomain::Shadow;
-    case BottleneckClass::Geometry:
-        return domain == QualityDomain::Geometry ||
-               domain == QualityDomain::Raster;
-    case BottleneckClass::Lighting:
-        return domain == QualityDomain::Lighting ||
-               domain == QualityDomain::Shadow;
-    case BottleneckClass::Shadow:
-        return domain == QualityDomain::Shadow;
-    case BottleneckClass::UnknownGpu:
-        return domain != QualityDomain::Temporal;
-    }
-    return false;
+    const double affinity = domain_affinity(bottleneck, candidate.domain);
+    return candidate.confidence * benefit * affinity / visual;
 }
 
 AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_degrade(
@@ -162,8 +213,10 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_degrade(
         if (candidate.expected_ms_gain < config_.minimum_gain_ms && candidate.memory_freed_bytes == 0) continue;
         const bool is_temporal = candidate.temporal_assist || candidate.domain == QualityDomain::Temporal;
         if (is_temporal && !config_.allow_temporal_assist) continue;
-        if (!memory_emergency && !is_temporal && !domain_matches(plan.bottleneck, candidate.domain)) continue;
-        ranked.push_back({candidate, utility(candidate, memory_pressure)});
+
+        const double affinity = is_temporal ? 1.0 : domain_affinity(plan.bottleneck, candidate.domain);
+        if (!memory_emergency && !is_temporal && affinity + 1e-12 < config_.minimum_domain_affinity) continue;
+        ranked.push_back({candidate, utility(candidate, memory_pressure, plan.bottleneck)});
     }
 
     std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked& a, const Ranked& b) {
