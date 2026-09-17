@@ -104,12 +104,14 @@ int main() {
     // Cold/unknown resources must not remain evicted forever. Once pressure is
     // normal and there is safe headroom they become low-priority background
     // restore candidates, but never in the same epoch in which they were evicted.
+    // Use the same cheap reload cost as the GPU smoke; this used to be reduced
+    // to zero utility by the generic unknown-prediction uncertainty penalty.
     ResidencyPolicyConfig cold_config{};
     cold_config.promotion_ceiling = .90;
     ResidencyGovernor cold(cold_config);
     CHECK(cold.register_object({
         .id=11,.resource=700,.state=ResidencyState::Resident,.safety=ResidencySafety::ControlledSafe,
-        .cost={.bytes=80,.reload_ms=1.0}}));
+        .cost={.bytes=80,.reload_ms=.15}}));
     CHECK(cold.transition(11, ResidencyState::Resident, ResidencyState::Evicted));
     cold.record_eviction(11, false, 50);
     cold.update_budget(1000, 600);
@@ -124,6 +126,7 @@ int main() {
     CHECK(cold_restore.residency_candidate_bytes == 80);
     CHECK(!cold_restore.arbitration.actions.empty());
     CHECK(cold_restore.arbitration.actions.front().candidate.kind == MemoryRestoreKind::MakeResident);
+    CHECK(cold_restore.arbitration.actions.front().benefit > 0.0);
 
     // Restoration is strictly capped; no candidate may overfill a tiny headroom window.
     const auto tiny = planner.plan_headroom_restore(restore_residency, restore_textures, 42, 25);
