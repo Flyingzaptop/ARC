@@ -60,6 +60,7 @@ if(WIN32)
         src/backends/dx12/views.cpp
         src/backends/dx12/barriers.cpp
         src/backends/dx12/residency.cpp
+        src/backends/dx12/runtime_backend.cpp
     )
     target_include_directories(arc-dx12-observer PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     target_link_libraries(arc-dx12-observer PUBLIC arc::core d3d12 dxgi)
@@ -83,6 +84,8 @@ if(WIN32)
     target_link_libraries(dx12-live-runtime-lab PRIVATE arc-dx12-observer)
     add_executable(dx12-runtime-event-bridge-lab samples/runtime_event_bridge_lab.cpp)
     target_link_libraries(dx12-runtime-event-bridge-lab PRIVATE arc-dx12-observer)
+    add_executable(dx12-runtime-backend-lab samples/runtime_backend_lab.cpp)
+    target_link_libraries(dx12-runtime-backend-lab PRIVATE arc-dx12-observer)
 endif()
 
 if(ARC_BUILD_TESTS)
@@ -204,6 +207,15 @@ if(ARC_BUILD_TESTS)
             add_test(NAME dx12-runtime-event-bridge-lab COMMAND dx12-runtime-event-bridge-lab)
             set_tests_properties(
                 dx12-runtime-event-bridge-lab
+                PROPERTIES
+                    LABELS gpu
+                    TIMEOUT 120
+                    SKIP_RETURN_CODE 77
+                    RUN_SERIAL TRUE
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+            add_test(NAME dx12-runtime-backend-lab COMMAND dx12-runtime-backend-lab)
+            set_tests_properties(
+                dx12-runtime-backend-lab
                 PROPERTIES
                     LABELS gpu
                     TIMEOUT 120
