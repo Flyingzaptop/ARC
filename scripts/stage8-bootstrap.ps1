@@ -80,13 +80,14 @@ try {
         arc-adaptive-quality-controller-tests `
         arc-quality-profile-tests `
         arc-closed-loop-quality-sim-tests `
+        arc-quality-restore-memory-pressure-tests `
         dx12-mixed-graphics-benchmark `
         dx12-closed-loop-mixed-graphics-benchmark `
         arc-stage8-benchmark-ui
     if ($LASTEXITCODE -ne 0) { throw "Stage 8 build failed: $LASTEXITCODE" }
 
     Step 'Running Adaptive Quality + closed-loop CPU tests'
-    & $ctest --test-dir build -C Release -R 'arc-(adaptive-quality|action-effect-tracker|quality-profile|closed-loop-quality)' --output-on-failure
+    & $ctest --test-dir build -C Release -R 'arc-(adaptive-quality|action-effect-tracker|quality-profile|closed-loop-quality|quality-restore-memory-pressure)' --output-on-failure
     if ($LASTEXITCODE -ne 0) { throw "Stage 8 CPU tests failed: $LASTEXITCODE" }
 
     Step 'Running short Stage 8 closed-loop GPU smoke gate'
