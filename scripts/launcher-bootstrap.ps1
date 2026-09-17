@@ -25,6 +25,12 @@ function Find-CMake {
 
 if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { throw 'git.exe was not found.' }
 $cmake = Find-CMake
+$ctest = Join-Path (Split-Path -Parent $cmake) 'ctest.exe'
+if (-not (Test-Path $ctest)) {
+    $ctestCommand = Get-Command ctest.exe -ErrorAction SilentlyContinue
+    if (-not $ctestCommand) { throw 'ctest.exe was not found next to cmake.exe or on PATH.' }
+    $ctest = $ctestCommand.Source
+}
 $repo = Join-Path $WorkRoot 'repo'
 New-Item -ItemType Directory -Force $WorkRoot | Out-Null
 
@@ -51,7 +57,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "CMake configure failed: $LASTEXITCODE" }
     & $cmake --build build --config Release --target arc-launcher arc-game-monitor arc-steam-library-tests
     if ($LASTEXITCODE -ne 0) { throw "Launcher build failed: $LASTEXITCODE" }
-    & ctest.exe --test-dir build -C Release -R arc-steam-library-tests --output-on-failure
+    & $ctest --test-dir build -C Release -R arc-steam-library-tests --output-on-failure
     if ($LASTEXITCODE -ne 0) { throw "Steam scanner tests failed: $LASTEXITCODE" }
 
     Step 'Preparing official PresentMon 2.5.1'
