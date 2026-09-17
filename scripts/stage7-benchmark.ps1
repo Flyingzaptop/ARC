@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory=$true)][string]$RepoRoot,
     [ValidateRange(8,600)][int]$Seconds = 60,
     [ValidateRange(4,120)][int]$ProbeFrames = 18,
-    [switch]$NoPublish
+    [switch]$NoPublish,
+    [switch]$KeepOpen
 )
 
 $ErrorActionPreference = 'Stop'
@@ -166,6 +167,7 @@ if($bench){
 Write-Host "Local results : $runDir"
 
 $url=''
+$publishFailed=$false
 if(-not $NoPublish){
     Step 'Publishing results'
     $branch="results/stage7-$stamp"
@@ -184,8 +186,8 @@ if(-not $NoPublish){
         Set-Content -LiteralPath $lastUrl -Value $url -Encoding ascii
         Write-Host "`nResults URL: $url" -ForegroundColor Green
     } catch {
-        $fatalPublish=$_.Exception.Message
-        Write-Host "Publishing failed: $fatalPublish" -ForegroundColor Red
+        $publishFailed=$true
+        Write-Host "Publishing failed: $($_.Exception.Message)" -ForegroundColor Red
     } finally {
         try { $previous=$ErrorActionPreference; $ErrorActionPreference='Continue'; & git.exe -C $RepoRoot worktree remove --force $publishRoot 2>$null | Out-Null; $ErrorActionPreference=$previous } catch {}
     }
@@ -198,5 +200,9 @@ $summaryText = if($bench){
 }
 Set-Content -LiteralPath $lastSummary -Value $summaryText -Encoding utf8
 
-if($NoPublish){ if($passed){exit 0}else{exit 2} }
-if($passed){exit 0}else{exit 2}
+$finalCode = if($publishFailed){3}elseif($passed){0}else{2}
+if($KeepOpen){
+    Write-Host "`nBenchmark window will remain open." -ForegroundColor Cyan
+    Read-Host 'Press Enter to close' | Out-Null
+}
+exit $finalCode
