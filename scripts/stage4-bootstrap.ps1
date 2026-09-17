@@ -111,8 +111,7 @@ function Publish-FailureBundle([string]$RepoDir, [string]$SourceSha, [string]$St
         $remoteUrl = (& git.exe remote get-url origin).Trim()
         if ($remoteUrl -match '^git@github.com:(.+)\.git$') { $remoteUrl = "https://github.com/$($Matches[1])" }
         elseif ($remoteUrl -match '^https://github.com/(.+)\.git$') { $remoteUrl = "https://github.com/$($Matches[1])" }
-        $resultUrl = "$remoteUrl/tree/$branch/$destination"
-        return $resultUrl
+        return "$remoteUrl/tree/$branch/$destination"
     } finally {
         $savedPreference = $ErrorActionPreference
         $ErrorActionPreference = 'SilentlyContinue'
@@ -140,6 +139,7 @@ $exitCode = 1
 $sourceSha = $null
 $normalResultsUrl = $null
 $fallbackResultsUrl = $null
+$transcriptStarted = $false
 
 Push-Location $repoDir
 try {
@@ -153,19 +153,40 @@ try {
     $sourceSha = (& git.exe rev-parse HEAD).Trim()
 
     Step ("Running complete Stage 4 validation on " + $sourceSha)
-    $validateParams = @{
-        Stage2Rounds = $Stage2Rounds
-        ObserverIterations = $ObserverIterations
-        ObserverPairs = $ObserverPairs
-        PublishResults = $true
+    $childArgs = @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $repoDir 'scripts\stage4-validate.ps1'),
+        '-Stage2Rounds', [string]$Stage2Rounds,
+        '-ObserverIterations', [string]$ObserverIterations,
+        '-ObserverPairs', [string]$ObserverPairs,
+        '-PublishResults'
+    )
+    if ($Quick) { $childArgs += '-Quick' }
+
+    Start-Transcript -LiteralPath $logPath -Force | Out-Null
+    $transcriptStarted = $true
+    try {
+        & powershell.exe @childArgs
+        $exitCode = $LASTEXITCODE
+    } finally {
+        if ($transcriptStarted) {
+            Stop-Transcript | Out-Null
+            $transcriptStarted = $false
+        }
     }
-    if ($Quick) { $validateParams.Quick = $true }
-    & (Join-Path $repoDir 'scripts\stage4-validate.ps1') @validateParams *>&1 | Tee-Object -FilePath $logPath -Append | Out-Host
-    $exitCode = $LASTEXITCODE
+
     $urlFile = Join-Path $repoDir 'traces\stage4-results-url.txt'
     if (Test-Path $urlFile) { $normalResultsUrl = (Get-Content -Raw -LiteralPath $urlFile).Trim() }
+    if ($exitCode -ne 0 -and -not $normalResultsUrl) {
+        throw "Stage 4 validation process exited with code $exitCode"
+    }
 } catch {
-    ('STAGE4 BOOTSTRAP ERROR: ' + $_.Exception.Message) | Tee-Object -FilePath $logPath -Append | Write-Host
+    if ($transcriptStarted) {
+        try { Stop-Transcript | Out-Null } catch {}
+        $transcriptStarted = $false
+    }
+    $errorLine = 'STAGE4 BOOTSTRAP ERROR: ' + $_.Exception.Message
+    $errorLine | Add-Content -LiteralPath $logPath -Encoding utf8
+    Write-Host $errorLine -ForegroundColor Red
     $exitCode = 1
 } finally {
     Pop-Location
