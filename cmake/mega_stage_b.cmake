@@ -1,6 +1,7 @@
 if(WIN32)
     target_sources(arc-dx12-observer PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/host_adapter.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/host_adapter.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/host_adapter_extra.cpp)
 
     if(ARC_BUILD_TESTS)
         add_executable(arc-dx12-host-adapter-tests
