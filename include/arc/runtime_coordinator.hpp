@@ -49,8 +49,7 @@ public:
     // Generic physical quality actuation used by the Adaptive Quality runtime.
     // Backends that only support residency/textures remain source-compatible:
     // generic domains fail closed as Unsupported until a host explicitly binds
-    // an actuator.  Temporal actions are still governed by the optimizer's
-    // explicit opt-in and are not special-cased here.
+    // an actuator. Temporal actions are still governed by explicit opt-in.
     virtual RuntimeBackendStatus apply_quality(const QualityActionCandidate&) noexcept {
         return RuntimeBackendStatus::Unsupported;
     }
@@ -116,6 +115,10 @@ public:
     [[nodiscard]] std::uint32_t consecutive_failures() const noexcept { return consecutive_failures_; }
 
     [[nodiscard]] RuntimeTickResult tick(std::uint64_t epoch);
+    // Executes exactly the supplied plan. This lets a higher-level global
+    // governor arbitrate memory vs graphics quality without asking the runtime
+    // planner to run twice against changing state.
+    [[nodiscard]] RuntimeTickResult tick_with_plan(const LiveRuntimePlan& plan);
     [[nodiscard]] RuntimeCoordinatorMetrics metrics() const noexcept { return metrics_; }
     [[nodiscard]] const RuntimeCoordinatorConfig& config() const noexcept { return config_; }
 
@@ -126,6 +129,7 @@ private:
         const LiveRuntimeResolvedAction& action,
         std::uint64_t epoch,
         RuntimeTickResult& result);
+    [[nodiscard]] RuntimeTickResult execute_plan(const LiveRuntimePlan& plan);
     void record_failure(bool immediate_trip) noexcept;
     void trip_circuit() noexcept;
 
