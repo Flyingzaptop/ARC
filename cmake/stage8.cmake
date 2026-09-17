@@ -2,6 +2,10 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-closed-loop-quality-sim-tests tests/closed_loop_quality_sim_tests.cpp)
     target_link_libraries(arc-closed-loop-quality-sim-tests PRIVATE arc::core)
     add_test(NAME arc-closed-loop-quality-sim-tests COMMAND arc-closed-loop-quality-sim-tests)
+
+    add_executable(arc-quality-restore-memory-pressure-tests tests/quality_restore_memory_pressure_tests.cpp)
+    target_link_libraries(arc-quality-restore-memory-pressure-tests PRIVATE arc::core)
+    add_test(NAME arc-quality-restore-memory-pressure-tests COMMAND arc-quality-restore-memory-pressure-tests)
 endif()
 
 if(WIN32)
