@@ -1,6 +1,7 @@
 #pragma once
 
 #include "arc/adaptive_quality_controller.hpp"
+#include "arc/global_action_arbiter.hpp"
 #include "arc/quality_admission.hpp"
 #include "arc/runtime_coordinator.hpp"
 
@@ -25,13 +26,11 @@ enum class UnifiedGovernorPath : std::uint8_t {
 struct UnifiedRuntimeGovernorConfig {
     AdaptiveQualityControllerConfig quality{};
     QualityAdmissionConfig admission{};
-    double memory_pressure_enter{0.90};
-    double memory_pressure_emergency{0.97};
+    GlobalActionArbiterConfig arbitration{};
     double memory_restore_ceiling{0.86};
     std::uint32_t max_consecutive_quality_failures{3};
     bool enable_memory{true};
     bool enable_quality{true};
-    bool allow_combined_actions{true};
 };
 
 struct UnifiedRuntimeGovernorMetrics {
@@ -52,6 +51,7 @@ struct UnifiedRuntimeTickResult {
     UnifiedGovernorPath path{UnifiedGovernorPath::None};
     RuntimeTickResult memory{};
     QualityDecision quality{};
+    GlobalArbitrationDecision arbitration{};
     RuntimeBackendStatus quality_backend_status{RuntimeBackendStatus::Success};
     bool quality_attempted{};
     bool quality_executed{};
@@ -62,8 +62,8 @@ struct UnifiedRuntimeTickResult {
 };
 
 // Production closed-loop governor. Memory/residency and graphics quality are
-// observed through one tick, with explicit ordering under capacity emergency.
-// The class does not inspect private game state: a host registers safe quality
+// planned together and passed through a global arbiter before mutation. The
+// class does not inspect private game state: a host registers safe quality
 // profiles and binds physical mutations through RuntimeMutationBackend.
 class UnifiedRuntimeGovernor final {
 public:
@@ -92,6 +92,7 @@ public:
     [[nodiscard]] AdaptiveQualityController& quality() noexcept { return quality_; }
     [[nodiscard]] const AdaptiveQualityController& quality() const noexcept { return quality_; }
     [[nodiscard]] const QualityAdmissionController& admission() const noexcept { return admission_; }
+    [[nodiscard]] const GlobalActionArbiter& arbiter() const noexcept { return arbiter_; }
     [[nodiscard]] UnifiedRuntimeGovernorMetrics metrics() const noexcept { return metrics_; }
     [[nodiscard]] bool quality_circuit_open() const noexcept { return quality_circuit_open_; }
     [[nodiscard]] std::size_t registered_quality_profiles() const noexcept { return profiles_.size(); }
@@ -117,6 +118,7 @@ private:
     UnifiedRuntimeGovernorConfig config_{};
     AdaptiveQualityController quality_{};
     QualityAdmissionController admission_{};
+    GlobalActionArbiter arbiter_{};
     std::unordered_map<std::uint64_t, QualityResourceProfile> profiles_{};
     std::optional<PendingEffect> pending_{};
     std::uint32_t consecutive_quality_failures_{};
