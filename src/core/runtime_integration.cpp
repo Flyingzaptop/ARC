@@ -6,7 +6,7 @@
 namespace arc {
 
 RuntimeIntegration::RuntimeIntegration(RuntimeMutationBackend* backend, RuntimeIntegrationConfig config)
-    : runtime_(config.runtime), bridge_(runtime_), coordinator_(runtime_, backend, config.coordinator) {}
+    : runtime_(config.runtime), bridge_(runtime_, true), coordinator_(runtime_, backend, config.coordinator) {}
 
 RuntimeTickResult RuntimeIntegration::tick() {
     if (fallback_epoch_ != (std::numeric_limits<std::uint64_t>::max)()) ++fallback_epoch_;
