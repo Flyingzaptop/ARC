@@ -100,7 +100,17 @@ try {
 
     Step 'Launching Stage 6 benchmark UI'
     $ui = Join-Path $repo 'build\Release\arc-stage6-benchmark-ui.exe'
-    Start-Process -FilePath $ui -WorkingDirectory $repo | Out-Null
+    $process = Start-Process -FilePath $ui -WorkingDirectory $repo -PassThru
+    Start-Sleep -Milliseconds 750
+    $process.Refresh()
+    if ($process.HasExited) {
+        $direct = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$repo\scripts\stage6-benchmark.ps1`" -RepoRoot `"$repo`" -Seconds 60"
+        Write-Host "Benchmark UI exited immediately with code $($process.ExitCode)." -ForegroundColor Red
+        Write-Host 'You can still run the benchmark directly with:' -ForegroundColor Yellow
+        Write-Host $direct -ForegroundColor Yellow
+        throw "Stage 6 benchmark UI failed to stay open (exit code $($process.ExitCode))."
+    }
+
     Write-Host 'ARC Stage 6 Benchmark opened.' -ForegroundColor Green
     Write-Host 'Close games / GPU-heavy apps, then click Run 60s Benchmark.' -ForegroundColor Yellow
     Write-Host 'Native 100% workload; Temporal / DLSS / FSR / Frame Generation remain OFF.' -ForegroundColor Green
