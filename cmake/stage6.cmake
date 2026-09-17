@@ -24,7 +24,7 @@ if(ARC_BUILD_TESTS)
 endif()
 
 if(WIN32)
-    add_executable(dx12-adaptive-quality-benchmark samples/adaptive_quality_benchmark.cpp)
+    add_executable(dx12-adaptive-quality-benchmark samples/adaptive_quality_benchmark_v2.cpp)
     target_link_libraries(dx12-adaptive-quality-benchmark PRIVATE arc::core d3d12 dxgi d3dcompiler)
     target_compile_features(dx12-adaptive-quality-benchmark PRIVATE cxx_std_23)
     target_compile_definitions(dx12-adaptive-quality-benchmark PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
