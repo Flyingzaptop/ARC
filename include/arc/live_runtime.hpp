@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace arc {
@@ -32,6 +33,7 @@ struct LiveRuntimeMetrics {
     std::uint64_t transition_prefetch_actions{};
     std::uint64_t resources_registered{};
     std::uint64_t resources_unregistered{};
+    std::uint64_t plan_resolve_failures{};
 };
 
 struct LiveRuntimePlan {
@@ -44,6 +46,8 @@ struct LiveRuntimePlan {
     std::vector<ResidencyAction> transition_prefetch{};
     GlobalMemoryRestorePlan restore{};
 };
+
+using LiveRuntimeResolvedAction = std::variant<ResidencyAction, TextureQualityAction>;
 
 // Backend-neutral slow-loop integration surface. Observation is unrestricted;
 // mutation candidates only exist for resources explicitly registered as safe.
@@ -69,16 +73,20 @@ public:
 
     [[nodiscard]] LiveRuntimePlan plan(std::uint64_t epoch);
 
-    // Resolve backend-neutral arbiter candidates back to specialized actions.
-    [[nodiscard]] std::optional<ResidencyAction> resolve_residency_action(const MemoryActionCandidate& candidate) const;
-    [[nodiscard]] std::optional<TextureQualityAction> resolve_texture_action(const MemoryActionCandidate& candidate) const;
-    [[nodiscard]] std::optional<ResidencyAction> resolve_residency_restore(const MemoryRestoreCandidate& candidate) const;
-    [[nodiscard]] std::optional<TextureQualityAction> resolve_texture_restore(const MemoryRestoreCandidate& candidate) const;
+    // Resolve one immutable planner snapshot before execution. Any stale or
+    // mismatched candidate rejects the whole snapshot so the caller replans.
+    [[nodiscard]] std::optional<std::vector<LiveRuntimeResolvedAction>> resolve_pressure_actions(
+        const GlobalMemoryPlan& plan,
+        std::uint64_t epoch) const;
+    [[nodiscard]] std::optional<std::vector<LiveRuntimeResolvedAction>> resolve_restore_actions(
+        const GlobalMemoryRestorePlan& plan,
+        std::uint64_t epoch) const;
 
     // Apply bookkeeping only after the backend successfully performs the matching action.
     bool begin_residency_action(const ResidencyAction& action, std::uint64_t epoch, bool demand_miss = false);
     bool complete_make_resident(ResidencyId object);
     bool apply_texture_action(const TextureQualityAction& action, std::uint64_t epoch);
+    void record_resolve_failure() noexcept { ++metrics_.plan_resolve_failures; }
 
     [[nodiscard]] bool controlled(ResourceId resource) const noexcept;
     [[nodiscard]] LiveRuntimeMetrics metrics() const noexcept { return metrics_; }
