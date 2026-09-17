@@ -60,6 +60,7 @@ BottleneckClass FrameBottleneckAnalyzer::classify(const FrameBudgetSample& sampl
     const Candidate candidates[] = {
         {BottleneckClass::MemoryBandwidth, clamp01(sample.memory_bandwidth_fraction)},
         {BottleneckClass::Lighting, clamp01(sample.lighting_pressure)},
+        {BottleneckClass::Shadow, clamp01(sample.shadow_pressure)},
         {BottleneckClass::Raster, clamp01(sample.raster_pressure)},
         {BottleneckClass::Geometry, clamp01(sample.geometry_pressure)},
     };
@@ -126,6 +127,8 @@ bool AdaptiveQualityOptimizer::domain_matches(
     case BottleneckClass::Lighting:
         return domain == QualityDomain::Lighting ||
                domain == QualityDomain::Shadow;
+    case BottleneckClass::Shadow:
+        return domain == QualityDomain::Shadow;
     case BottleneckClass::UnknownGpu:
         return domain != QualityDomain::Temporal;
     }
