@@ -34,11 +34,12 @@ The publishing script records PASS/FAIL plus the raw benchmark JSON. Acceptance 
 - valid mixed-graphics output;
 - native 1920x1080 target;
 - temporal assistance unused;
-- all quality-domain probes present, with measurable gains in at least two domains;
+- all five quality domains physically probed, with measurable gains in at least two domains;
 - at least one adaptive action selected;
-- actions spanning at least two quality domains;
 - physical P50 GPU time improvement of at least 3%;
 - P99 GPU time not regressing by more than 0.15 ms.
+
+The number of domains actually selected is reported, but it is deliberately **not** a hard gate. If one measured action closes the frame deficit with the lowest visual cost, ARC must stop there rather than degrade a second domain purely to satisfy a benchmark. This keeps acceptance aligned with the optimizer's real objective: minimum visible quality loss for the required performance gain.
 
 These gates validate the ARC-owned mixed graphics path. They do not imply the same percentage gain in arbitrary commercial games.
 
