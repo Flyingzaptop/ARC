@@ -1,6 +1,7 @@
 #include "arc/render_candidate_catalog.hpp"
 
 #include <algorithm>
+#include <iterator>
 
 namespace arc {
 
