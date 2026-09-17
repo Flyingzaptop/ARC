@@ -88,7 +88,6 @@ function SummarizePairs($Items) {
     }
 }
 
-# Equal warm-up, discarded.
 $warm = [math]::Min(3000, $Iterations)
 foreach ($mode in @('baseline','light','full')) { $null = Invoke-Mode $mode $warm }
 
@@ -103,7 +102,7 @@ for ($pair = 0; $pair -lt $Pairs; $pair++) {
         Start-Sleep -Milliseconds 150
     }
     $d = PairDelta $baseLight $modeLight
-    $d | Add-Member pair $pair
+    $d | Add-Member -NotePropertyName pair -NotePropertyValue $pair
     $lightPairs += $d
 
     foreach ($mode in $(if (($pair % 2) -eq 0) { @('full','baseline') } else { @('baseline','full') })) {
@@ -113,7 +112,7 @@ for ($pair = 0; $pair -lt $Pairs; $pair++) {
         Start-Sleep -Milliseconds 150
     }
     $d = PairDelta $baseFull $modeFull
-    $d | Add-Member pair $pair
+    $d | Add-Member -NotePropertyName pair -NotePropertyValue $pair
     $fullPairs += $d
 }
 
