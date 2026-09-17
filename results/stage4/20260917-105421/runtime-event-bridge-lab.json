@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "valid": true,
+  "actions_before_completion": 0,
+  "actions_after_completion": 1,
+  "contents_verified": true,
+  "destroyed_resource_unregistered": true,
+  "unknown_resource_uncontrolled": true,
+  "bridge_resource_uses": 2,
+  "bridge_malformed_events": 0,
+  "bridge_controller_rejections": 0,
+  "ring_dropped_events": 0,
+  "debug_error_count": 0
+}

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "valid": true,
+  "evict_ok": true,
+  "make_resident_ok": true,
+  "missing_binding_blocked": true,
+  "texture_without_callback_blocked": true,
+  "texture_callback_calls": 2,
+  "resource_unbound": true,
+  "queue_fence_unbound": true,
+  "debug_error_count": 0
+}

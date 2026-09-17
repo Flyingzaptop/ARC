@@ -1,0 +1,422 @@
+﻿[
+    {
+        "pair":  0,
+        "comparison":  "light",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5775 p99_ms=2.5296",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5775,
+                                "p95_ms":  1.2172,
+                                "p99_ms":  2.5296,
+                                "process_cpu_ms":  5750,
+                                "wall_ms":  10153.1,
+                                "producer_cpu_ms":  4640.62,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318361600,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  0,
+        "comparison":  "light",
+        "order":  "light",
+        "measurement":  [
+                            "dx12-mixed-resources-light: valid=1 resources=33 iterations=15000 p50_ms=0.5763 p99_ms=2.7355",
+                            {
+                                "mode":  "light",
+                                "iterations":  15000,
+                                "p50_ms":  0.5763,
+                                "p95_ms":  0.8919,
+                                "p99_ms":  2.7355,
+                                "process_cpu_ms":  5562.5,
+                                "wall_ms":  10086.7,
+                                "producer_cpu_ms":  4593.75,
+                                "background_cpu_ms":  250,
+                                "private_bytes":  330244096,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  0,
+        "comparison":  "full",
+        "order":  "full",
+        "measurement":  [
+                            "dx12-mixed-resources-full: valid=1 resources=33 iterations=15000 p50_ms=0.5443 p99_ms=0.8173",
+                            {
+                                "mode":  "full",
+                                "iterations":  15000,
+                                "p50_ms":  0.5443,
+                                "p95_ms":  0.6643,
+                                "p99_ms":  0.8173,
+                                "process_cpu_ms":  5578.12,
+                                "wall_ms":  8559.73,
+                                "producer_cpu_ms":  4437.5,
+                                "background_cpu_ms":  234.375,
+                                "private_bytes":  331137024,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  0,
+        "comparison":  "full",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5537 p99_ms=0.9302",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5537,
+                                "p95_ms":  0.6828,
+                                "p99_ms":  0.9302,
+                                "process_cpu_ms":  5234.38,
+                                "wall_ms":  8715.24,
+                                "producer_cpu_ms":  4281.25,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  316862464,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  1,
+        "comparison":  "light",
+        "order":  "light",
+        "measurement":  [
+                            "dx12-mixed-resources-light: valid=1 resources=33 iterations=15000 p50_ms=0.5593 p99_ms=2.7666",
+                            {
+                                "mode":  "light",
+                                "iterations":  15000,
+                                "p50_ms":  0.5593,
+                                "p95_ms":  0.8689,
+                                "p99_ms":  2.7666,
+                                "process_cpu_ms":  5734.38,
+                                "wall_ms":  9787.86,
+                                "producer_cpu_ms":  4578.12,
+                                "background_cpu_ms":  234.375,
+                                "private_bytes":  329424896,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  1,
+        "comparison":  "light",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5992 p99_ms=3.058",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5992,
+                                "p95_ms":  1.2679,
+                                "p99_ms":  3.058,
+                                "process_cpu_ms":  5828.12,
+                                "wall_ms":  10720.5,
+                                "producer_cpu_ms":  4921.88,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318865408,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  1,
+        "comparison":  "full",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5696 p99_ms=2.1118",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5696,
+                                "p95_ms":  0.8046,
+                                "p99_ms":  2.1118,
+                                "process_cpu_ms":  5453.12,
+                                "wall_ms":  9458.26,
+                                "producer_cpu_ms":  4406.25,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318029824,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  1,
+        "comparison":  "full",
+        "order":  "full",
+        "measurement":  [
+                            "dx12-mixed-resources-full: valid=1 resources=33 iterations=15000 p50_ms=0.5369 p99_ms=2.0268",
+                            {
+                                "mode":  "full",
+                                "iterations":  15000,
+                                "p50_ms":  0.5369,
+                                "p95_ms":  0.7147,
+                                "p99_ms":  2.0268,
+                                "process_cpu_ms":  6062.5,
+                                "wall_ms":  8843.12,
+                                "producer_cpu_ms":  4796.88,
+                                "background_cpu_ms":  312.5,
+                                "private_bytes":  329969664,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  2,
+        "comparison":  "light",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.579 p99_ms=2.2785",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.579,
+                                "p95_ms":  1.8134,
+                                "p99_ms":  2.2785,
+                                "process_cpu_ms":  5625,
+                                "wall_ms":  10625.8,
+                                "producer_cpu_ms":  4703.12,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  317108224,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  2,
+        "comparison":  "light",
+        "order":  "light",
+        "measurement":  [
+                            "dx12-mixed-resources-light: valid=1 resources=33 iterations=15000 p50_ms=0.5656 p99_ms=2.126",
+                            {
+                                "mode":  "light",
+                                "iterations":  15000,
+                                "p50_ms":  0.5656,
+                                "p95_ms":  0.728,
+                                "p99_ms":  2.126,
+                                "process_cpu_ms":  6203.12,
+                                "wall_ms":  9234.33,
+                                "producer_cpu_ms":  4906.25,
+                                "background_cpu_ms":  359.375,
+                                "private_bytes":  330485760,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  2,
+        "comparison":  "full",
+        "order":  "full",
+        "measurement":  [
+                            "dx12-mixed-resources-full: valid=1 resources=33 iterations=15000 p50_ms=0.5624 p99_ms=2.2804",
+                            {
+                                "mode":  "full",
+                                "iterations":  15000,
+                                "p50_ms":  0.5624,
+                                "p95_ms":  1.08,
+                                "p99_ms":  2.2804,
+                                "process_cpu_ms":  6078.12,
+                                "wall_ms":  9834.96,
+                                "producer_cpu_ms":  4828.12,
+                                "background_cpu_ms":  421.875,
+                                "private_bytes":  330006528,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  2,
+        "comparison":  "full",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5898 p99_ms=2.3402",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5898,
+                                "p95_ms":  1.261,
+                                "p99_ms":  2.3402,
+                                "process_cpu_ms":  5812.5,
+                                "wall_ms":  10177.1,
+                                "producer_cpu_ms":  4625,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  317030400,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  3,
+        "comparison":  "light",
+        "order":  "light",
+        "measurement":  [
+                            "dx12-mixed-resources-light: valid=1 resources=33 iterations=15000 p50_ms=0.562 p99_ms=2.2917",
+                            {
+                                "mode":  "light",
+                                "iterations":  15000,
+                                "p50_ms":  0.562,
+                                "p95_ms":  1.8282,
+                                "p99_ms":  2.2917,
+                                "process_cpu_ms":  5921.88,
+                                "wall_ms":  10357.4,
+                                "producer_cpu_ms":  4609.38,
+                                "background_cpu_ms":  281.25,
+                                "private_bytes":  329486336,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  3,
+        "comparison":  "light",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5853 p99_ms=2.32",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5853,
+                                "p95_ms":  1.9573,
+                                "p99_ms":  2.32,
+                                "process_cpu_ms":  5843.75,
+                                "wall_ms":  11255.4,
+                                "producer_cpu_ms":  4750,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318009344,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  3,
+        "comparison":  "full",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5879 p99_ms=2.4443",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5879,
+                                "p95_ms":  1.443,
+                                "p99_ms":  2.4443,
+                                "process_cpu_ms":  5937.5,
+                                "wall_ms":  10231.6,
+                                "producer_cpu_ms":  4921.88,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318255104,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  3,
+        "comparison":  "full",
+        "order":  "full",
+        "measurement":  [
+                            "dx12-mixed-resources-full: valid=1 resources=33 iterations=15000 p50_ms=0.5538 p99_ms=0.9106",
+                            {
+                                "mode":  "full",
+                                "iterations":  15000,
+                                "p50_ms":  0.5538,
+                                "p95_ms":  0.6876,
+                                "p99_ms":  0.9106,
+                                "process_cpu_ms":  5218.75,
+                                "wall_ms":  8779.52,
+                                "producer_cpu_ms":  4296.88,
+                                "background_cpu_ms":  281.25,
+                                "private_bytes":  328552448,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  4,
+        "comparison":  "light",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5399 p99_ms=0.8961",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5399,
+                                "p95_ms":  0.6646,
+                                "p99_ms":  0.8961,
+                                "process_cpu_ms":  5171.88,
+                                "wall_ms":  8482.36,
+                                "producer_cpu_ms":  4390.62,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318148608,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  4,
+        "comparison":  "light",
+        "order":  "light",
+        "measurement":  [
+                            "dx12-mixed-resources-light: valid=1 resources=33 iterations=15000 p50_ms=0.5351 p99_ms=0.7605",
+                            {
+                                "mode":  "light",
+                                "iterations":  15000,
+                                "p50_ms":  0.5351,
+                                "p95_ms":  0.6547,
+                                "p99_ms":  0.7605,
+                                "process_cpu_ms":  5093.75,
+                                "wall_ms":  8357.44,
+                                "producer_cpu_ms":  4218.75,
+                                "background_cpu_ms":  203.125,
+                                "private_bytes":  330903552,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  4,
+        "comparison":  "full",
+        "order":  "full",
+        "measurement":  [
+                            "dx12-mixed-resources-full: valid=1 resources=33 iterations=15000 p50_ms=0.5359 p99_ms=0.7701",
+                            {
+                                "mode":  "full",
+                                "iterations":  15000,
+                                "p50_ms":  0.5359,
+                                "p95_ms":  0.6694,
+                                "p99_ms":  0.7701,
+                                "process_cpu_ms":  5484.38,
+                                "wall_ms":  8382.12,
+                                "producer_cpu_ms":  4421.88,
+                                "background_cpu_ms":  250,
+                                "private_bytes":  329314304,
+                                "dropped":  0
+                            }
+                        ]
+    },
+    {
+        "pair":  4,
+        "comparison":  "full",
+        "order":  "baseline",
+        "measurement":  [
+                            "dx12-mixed-resources-baseline: valid=1 resources=33 iterations=15000 p50_ms=0.5455 p99_ms=0.9251",
+                            {
+                                "mode":  "baseline",
+                                "iterations":  15000,
+                                "p50_ms":  0.5455,
+                                "p95_ms":  0.6809,
+                                "p99_ms":  0.9251,
+                                "process_cpu_ms":  5218.75,
+                                "wall_ms":  8655.46,
+                                "producer_cpu_ms":  4234.38,
+                                "background_cpu_ms":  0,
+                                "private_bytes":  318410752,
+                                "dropped":  0
+                            }
+                        ]
+    }
+]

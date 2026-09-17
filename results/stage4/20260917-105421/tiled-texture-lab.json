@@ -1,0 +1,23 @@
+{
+  "tiled_resources_tier": 3,
+  "texture_width": 4096,
+  "texture_height": 4096,
+  "mip_levels": 13,
+  "standard_mips": 6,
+  "packed_mips": 7,
+  "total_tiles": 1366,
+  "total_tile_heap_bytes": 89522176,
+  "demoted_mip0_bytes": 67108864,
+  "demoted_mip1_bytes": 16777216,
+  "expected_drop_bytes": 83886080,
+  "dxgi_budget_bytes": 5479858176,
+  "dxgi_usage_before_bytes": 12988416,
+  "dxgi_usage_fully_mapped_bytes": 102510592,
+  "dxgi_usage_after_drop_min_bytes": 18624512,
+  "dxgi_observed_drop_bytes": 83886080,
+  "dxgi_usage_restored_bytes": 102510592,
+  "initial_contents_verified": true,
+  "lower_mip_preserved": true,
+  "promotion_contents_verified": true,
+  "debug_error_count": 0
+}

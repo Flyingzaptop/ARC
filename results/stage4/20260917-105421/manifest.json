@@ -1,0 +1,23 @@
+﻿{
+    "schema":  2,
+    "created_utc":  "2026-09-17T10:54:22.0470097Z",
+    "source_commit":  "a0c9398fbbdc009eff206907c5bf8b3e9ab273d7",
+    "source_branch":  "dev/stage4-live-runtime",
+    "result_branch":  "results/stage4-20260917-105421",
+    "files":  [
+                  "stage4-acceptance.json",
+                  "STAGE4_ACCEPTANCE.md",
+                  "observer-benchmark-v2.json",
+                  "observer-benchmark-v2-raw.json",
+                  "live-runtime-lab.json",
+                  "runtime-event-bridge-lab.json",
+                  "runtime-backend-lab.json",
+                  "stage2-final-acceptance.json",
+                  "residency-benchmark-summary.json",
+                  "residency-frontier-summary.json",
+                  "residency-frontier.csv",
+                  "tiled-texture-lab.json",
+                  "global-memory-lab.json",
+                  "hardware-profile.json"
+              ]
+}

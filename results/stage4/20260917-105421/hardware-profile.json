@@ -1,0 +1,108 @@
+﻿{
+    "schema":  2,
+    "gpu":  {
+                "name":  "NVIDIA GeForce RTX 3060 Laptop GPU",
+                "dedicated_vram_bytes":  6285164544,
+                "local_budget_bytes":  5479858176,
+                "local_usage_bytes":  0,
+                "driver_version_raw":  9007199255791232
+            },
+    "os":  "Windows",
+    "logical_processors":  16,
+    "ram_physical_bytes":  42569789440,
+    "ram_available_bytes":  27215949824,
+    "display_width":  1920,
+    "display_height":  1080,
+    "display_refresh_hz":  144,
+    "warmup_runs":  1,
+    "measured_runs":  9,
+    "benchmark_threads":  8,
+    "storage_bytes_per_sequential_run":  91136,
+    "benchmarks":  {
+                       "cpu_single":  {
+                                          "median_ms":  2.9277,
+                                          "p10_ms":  2.894,
+                                          "p90_ms":  2.9659,
+                                          "variance_ms2":  0.000959764
+                                      },
+                       "cpu_multi":  {
+                                         "median_ms":  4.4876,
+                                         "p10_ms":  3.9762,
+                                         "p90_ms":  4.8581,
+                                         "variance_ms2":  0.0804797
+                                     },
+                       "xpress_huff_decompress_32MiB":  {
+                                                            "median_ms":  48.6433,
+                                                            "p10_ms":  47.4204,
+                                                            "p90_ms":  49.2266,
+                                                            "variance_ms2":  0.303729
+                                                        },
+                       "ram_copy_32MiB":  {
+                                              "median_ms":  2.2501,
+                                              "p10_ms":  1.892,
+                                              "p90_ms":  2.788,
+                                              "variance_ms2":  0.103268
+                                          },
+                       "ram_multi_copy_32MiB":  {
+                                                    "median_ms":  2.4552,
+                                                    "p10_ms":  2.3376,
+                                                    "p90_ms":  2.5547,
+                                                    "variance_ms2":  0.00869263
+                                                },
+                       "ram_pointer_chase_2M":  {
+                                                    "median_ms":  17.9236,
+                                                    "p10_ms":  16.8771,
+                                                    "p90_ms":  18.8794,
+                                                    "variance_ms2":  2.20159
+                                                },
+                       "storage_cached_sequential":  {
+                                                         "median_ms":  0.0355,
+                                                         "p10_ms":  0.034,
+                                                         "p90_ms":  0.037,
+                                                         "variance_ms2":  1.90491E-05
+                                                     },
+                       "storage_cached_small_reads_64":  {
+                                                             "median_ms":  0.1902,
+                                                             "p10_ms":  0.1885,
+                                                             "p90_ms":  0.1913,
+                                                             "variance_ms2":  2.0758E-06
+                                                         }
+                   },
+    "limitations":  [
+                        "storage cache warmed; not raw disk throughput",
+                        "GPU workload measurements reported separately",
+                        "multi-thread timings include thread startup"
+                    ],
+    "gpu_proxies_ms":  {
+                           "three_draws_64x64":  {
+                                                     "median":  0.002048,
+                                                     "p10":  0.001024,
+                                                     "p90":  0.002048,
+                                                     "variance":  1.68583E-07
+                                                 },
+                           "compute_16384_uints":  {
+                                                       "median":  0.002656,
+                                                       "p10":  0.002048,
+                                                       "p90":  0.00304,
+                                                       "variance":  1.22382E-07
+                                                   },
+                           "upload_1MiB":  {
+                                               "median":  0.087488,
+                                               "p10":  0.086336,
+                                               "p90":  0.090656,
+                                               "variance":  0.000185135
+                                           },
+                           "readback_64KiB":  {
+                                                  "median":  0.00448,
+                                                  "p10":  0.004064,
+                                                  "p90":  0.004896,
+                                                  "variance":  9.44672E-08
+                                              }
+                       },
+    "cpu_name":  "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+    "physical_cores":  8,
+    "os_build":  "26200",
+    "timestamp_utc":  "2026-09-17T10:50:49.9467555Z",
+    "arc_commit":  "a0c9398fbbdc009eff206907c5bf8b3e9ab273d7",
+    "storage_read_file":  "C:\\Users\\r3d_flzp\\ARC-Stage4Validation\\repo\\build\\Release\\arc-calibrate.exe"
+}
