@@ -261,6 +261,7 @@ public:
     {
         arc::dx12::NativeHostAdapterConfig cfg{};
         cfg.event_capacity = 1u << 20;
+        cfg.enforce_compatibility_guard = true;
         cfg.runtime.coordinator.mode = arc::RuntimeMode::ObserveOnly;
         cfg.runtime.coordinator.max_actions_per_tick = 1;
         cfg.runtime.coordinator.max_budget_age_ticks = 240;
