@@ -78,7 +78,12 @@ $loadOld = 'void TestsRenderer::Load()'+$LF+'{'+$LF+$T+'setSSREnabled(false);'
 $loadNew = 'void TestsRenderer::Load()'+$LF+'{'+$LF+$T+'arc_wicked::ForceFullQuality();'+$LF+$T+'setSSREnabled(false);'
 $tt = Replace-Once $tt $loadOld $loadNew 'Tests Load quality reset'
 $updateOld = 'void TestsRenderer::Update(float dt)'+$LF+'{'+$LF+$T+'int selected = testSelector.GetSelected();'
-$updateNew = 'void TestsRenderer::Update(float dt)'+$LF+'{'+$LF+$T+'arc_wicked::HarnessUpdate(testSelector, GetPhysicalWidth(), GetPhysicalHeight());'+$LF+$T+'int selected = testSelector.GetSelected();'
+$updateNew = 'void TestsRenderer::Update(float dt)'+$LF+'{'+$LF+
+    $T+'setResolutionScale(1.0f);'+$LF+
+    $T+'setFSREnabled(false);'+$LF+
+    $T+'setFSR2Enabled(false);'+$LF+
+    $T+'arc_wicked::HarnessUpdate(testSelector, GetPhysicalWidth(), GetPhysicalHeight());'+$LF+
+    $T+'int selected = testSelector.GetSelected();'
 $tt = Replace-Once $tt $updateOld $updateNew 'Tests Update harness'
 Write-Utf8Lf $testsPath $tt
 
