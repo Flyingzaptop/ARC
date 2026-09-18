@@ -464,9 +464,19 @@ public:
         HRESULT result) noexcept
     {
         if (!host_) return;
+        const auto arc_begin = std::chrono::steady_clock::now();
+        if (FAILED(result))
+        {
+            ++present_failures_;
+            last_present_failure_ = result;
+            device_removed_reason_ = device_ ? device_->GetDeviceRemovedReason() : result;
+        }
         (void)host_->observe_present(swapchain_id, sync_interval, flags, result);
         (void)host_->poll_all_completions();
         (void)host_->drain();
+        const auto arc_end = std::chrono::steady_clock::now();
+        arc_present_cost_ms_.push_back(
+            std::chrono::duration<double, std::milli>(arc_end - arc_begin).count());
     }
 
     void HarnessUpdate(wi::gui::ComboBox& selector, std::uint32_t width, std::uint32_t height) noexcept
@@ -482,6 +492,13 @@ public:
         wi::profiler::SetEnabled(true);
 
         const auto now = std::chrono::steady_clock::now();
+        if (have_last_harness_update_)
+        {
+            cpu_frame_intervals_ms_.push_back(
+                std::chrono::duration<double, std::milli>(now - last_harness_update_).count());
+        }
+        last_harness_update_ = now;
+        have_last_harness_update_ = true;
         if (phase_ == Phase::Dormant)
         {
             ForceFullQuality();
@@ -807,7 +824,11 @@ private:
             0.70, std::clamp(draw_pressure * 0.55 + use_pressure * 0.45, 0.0, 1.0));
 
         control_window_.clear();
+        const auto arc_tick_begin = std::chrono::steady_clock::now();
         (void)host_->frame_tick(frame, false);
+        const auto arc_tick_end = std::chrono::steady_clock::now();
+        arc_tick_cost_ms_.push_back(
+            std::chrono::duration<double, std::milli>(arc_tick_end - arc_tick_begin).count());
     }
 
     arc::RuntimeBackendStatus Mutate(
@@ -988,6 +1009,22 @@ private:
             physical_quality && learning && performance && bounded_churn &&
             full_recovery && native_1080 && profiles_registered_;
 
+        const double cpu_frame_p50 = Percentile(cpu_frame_intervals_ms_, 0.50);
+        const double cpu_frame_p99 = Percentile(cpu_frame_intervals_ms_, 0.99);
+        const double cpu_frame_max = Percentile(cpu_frame_intervals_ms_, 1.00);
+        const double arc_present_p50 = Percentile(arc_present_cost_ms_, 0.50);
+        const double arc_present_p99 = Percentile(arc_present_cost_ms_, 0.99);
+        const double arc_present_max = Percentile(arc_present_cost_ms_, 1.00);
+        const double arc_tick_p50 = Percentile(arc_tick_cost_ms_, 0.50);
+        const double arc_tick_p99 = Percentile(arc_tick_cost_ms_, 0.99);
+        const double arc_tick_max = Percentile(arc_tick_cost_ms_, 1.00);
+        const auto cpu_hitches_50ms = static_cast<std::uint64_t>(std::count_if(
+            cpu_frame_intervals_ms_.begin(), cpu_frame_intervals_ms_.end(),
+            [](double ms) { return ms >= 50.0; }));
+        const auto cpu_hitches_100ms = static_cast<std::uint64_t>(std::count_if(
+            cpu_frame_intervals_ms_.begin(), cpu_frame_intervals_ms_.end(),
+            [](double ms) { return ms >= 100.0; }));
+
         arc::ResourceSemanticInferencer semantic_inferencer{};
         const auto semantic_predictions = semantic_inferencer.classify_all(host_->graph(), true);
         std::array<std::uint64_t, arc::kInferredResourceSemanticCount> semantic_counts{};
@@ -1068,6 +1105,8 @@ private:
           << ",\"indexed_draws\":" << hm.indexed_draws_observed
           << ",\"dispatches\":" << hm.dispatches_observed
           << ",\"indirect\":" << hm.indirect_observed
+          << ",\"draw_items\":" << hm.draw_items_observed
+          << ",\"dispatch_groups\":" << hm.dispatch_groups_observed
           << ",\"barriers\":" << hm.barriers_observed
           << ",\"copies\":" << hm.copies_observed
           << ",\"queue_submits\":" << hm.queue_submits
@@ -1141,6 +1180,20 @@ private:
           << ",\"restore_backoffs\":" << adaptive_restore_backoffs_
           << ",\"recovery_ticks\":" << recovery_ticks_
           << ",\"quality_backend_failures\":" << gm.quality_backend_failures << "},\n"
+          << "  \"diagnostics\":{\"cpu_frame_p50_ms\":" << cpu_frame_p50
+          << ",\"cpu_frame_p99_ms\":" << cpu_frame_p99
+          << ",\"cpu_frame_max_ms\":" << cpu_frame_max
+          << ",\"cpu_hitches_50ms\":" << cpu_hitches_50ms
+          << ",\"cpu_hitches_100ms\":" << cpu_hitches_100ms
+          << ",\"arc_present_p50_ms\":" << arc_present_p50
+          << ",\"arc_present_p99_ms\":" << arc_present_p99
+          << ",\"arc_present_max_ms\":" << arc_present_max
+          << ",\"arc_tick_p50_ms\":" << arc_tick_p50
+          << ",\"arc_tick_p99_ms\":" << arc_tick_p99
+          << ",\"arc_tick_max_ms\":" << arc_tick_max
+          << ",\"present_failures\":" << present_failures_
+          << ",\"last_present_hresult\":" << static_cast<std::int64_t>(last_present_failure_)
+          << ",\"device_removed_reason\":" << static_cast<std::int64_t>(device_removed_reason_) << "},\n"
           << "  \"performance_win\":" << (performance ? "true" : "false") << ",\n"
           << "  \"bounded_churn\":" << (bounded_churn ? "true" : "false") << ",\n"
           << "  \"final_quality_full\":" << (full_recovery ? "true" : "false") << "\n"
@@ -1179,6 +1232,14 @@ private:
     std::array<Stats, kScenes.size()> baseline_scenes_{};
     std::array<Stats, kScenes.size()> adaptive_scenes_{};
     std::vector<double> control_window_;
+    std::vector<double> cpu_frame_intervals_ms_;
+    std::vector<double> arc_present_cost_ms_;
+    std::vector<double> arc_tick_cost_ms_;
+    std::chrono::steady_clock::time_point last_harness_update_{};
+    bool have_last_harness_update_ = false;
+    std::uint64_t present_failures_ = 0;
+    HRESULT last_present_failure_ = S_OK;
+    HRESULT device_removed_reason_ = S_OK;
 
     arc::SceneUnderstandingInferencer scene_understanding_{};
     arc::SceneSemanticClusterer scene_clusters_{};
