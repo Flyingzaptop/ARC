@@ -929,6 +929,84 @@ private:
         std::uint64_t domains = 0;
         for (const bool x : quality_domains_) if (x) ++domains;
 
+        const auto semantics = host_->semantic_snapshot();
+        const double semantic_coverage =
+            arc::SceneUnderstandingModel::semantic_coverage(semantics, 0.55);
+        std::array<std::uint64_t, 10> semantic_counts{};
+        std::uint64_t confident_semantics = 0;
+        for (const auto& estimate : semantics)
+        {
+            const auto index = static_cast<std::size_t>(estimate.semantic);
+            if (index < semantic_counts.size()) ++semantic_counts[index];
+            if (estimate.semantic != arc::ResourceSemantic::Unknown &&
+                estimate.confidence >= 0.55)
+                ++confident_semantics;
+        }
+
+        const auto compatibility = host_->compatibility_snapshot();
+        const auto& contextual =
+            host_->runtime().governor().quality().contextual_effects();
+        const auto& contextual_restore =
+            host_->runtime().governor().quality().contextual_restore_effects();
+        const auto contextual_models =
+            contextual.model_count() + contextual_restore.model_count();
+        const auto contextual_samples =
+            contextual.total_samples() + contextual_restore.total_samples();
+
+        std::array<arc::WorkloadSignature, kScenes.size()> inferred_workloads{};
+        std::array<bool, 8> seen_workload_classes{};
+        std::uint64_t workload_scene_coverage = 0;
+        std::uint64_t truth_alignment = 0;
+        for (std::size_t i = 0; i < kScenes.size(); ++i)
+        {
+            inferred_workloads[i] = scene_workloads_[i].average();
+            if (scene_workloads_[i].samples > 0)
+            {
+                ++workload_scene_coverage;
+                const auto cls = inferred_workloads[i].dominant;
+                const auto class_index = static_cast<std::size_t>(cls);
+                if (class_index < seen_workload_classes.size())
+                    seen_workload_classes[class_index] = true;
+
+                bool aligned = false;
+                switch (i)
+                {
+                case 0: // model
+                    aligned = cls == arc::WorkloadClass::RasterHeavy ||
+                        cls == arc::WorkloadClass::GeometryHeavy ||
+                        cls == arc::WorkloadClass::BandwidthHeavy ||
+                        cls == arc::WorkloadClass::Mixed;
+                    break;
+                case 1: // shadows
+                    aligned = cls == arc::WorkloadClass::ShadowHeavy ||
+                        cls == arc::WorkloadClass::RasterHeavy ||
+                        cls == arc::WorkloadClass::Mixed;
+                    break;
+                case 2: // water
+                    aligned = cls == arc::WorkloadClass::BandwidthHeavy ||
+                        cls == arc::WorkloadClass::RasterHeavy ||
+                        cls == arc::WorkloadClass::Mixed;
+                    break;
+                case 3: // volumetric
+                    aligned = cls == arc::WorkloadClass::ComputeHeavy ||
+                        cls == arc::WorkloadClass::BandwidthHeavy ||
+                        cls == arc::WorkloadClass::Mixed;
+                    break;
+                case 4: // instances
+                    aligned = cls == arc::WorkloadClass::GeometryHeavy ||
+                        cls == arc::WorkloadClass::RasterHeavy ||
+                        cls == arc::WorkloadClass::Mixed;
+                    break;
+                default:
+                    break;
+                }
+                if (aligned) ++truth_alignment;
+            }
+        }
+        std::uint64_t distinct_workload_classes = 0;
+        for (std::size_t i = 1; i < seen_workload_classes.size(); ++i)
+            if (seen_workload_classes[i]) ++distinct_workload_classes;
+
         const double action_rate = adaptive_ticks_ ?
             static_cast<double>(adaptive_quality_actions_) / static_cast<double>(adaptive_ticks_) : 0.0;
         const double direction_rate = adaptive_ticks_ ?
@@ -964,11 +1042,27 @@ private:
             direction_rate <= 0.030;
         const bool full_recovery = FullQuality() && qs.active_actions == 0;
         const bool native_1080 = width_ == 1920 && height_ == 1080;
+        const bool stage15_scene_understanding =
+            semantic_coverage >= 0.20 &&
+            confident_semantics >= 24 &&
+            workload_scene_coverage >= 4 &&
+            distinct_workload_classes >= 2 &&
+            truth_alignment >= 3;
+        const bool stage16_contextual_learning =
+            contextual_models >= 2 &&
+            contextual_samples >= 2;
+        const bool stage17_fail_closed =
+            compatibility.mode == arc::CompatibilityMode::QualityOnly &&
+            compatibility.allow_quality &&
+            !compatibility.allow_residency;
 
         const bool valid =
             host_clean && timing_valid && complex_renderer && scene_coverage &&
             physical_quality && learning && performance && bounded_churn &&
-            full_recovery && native_1080 && profiles_registered_;
+            full_recovery && native_1080 && profiles_registered_ &&
+            stage15_scene_understanding &&
+            stage16_contextual_learning &&
+            stage17_fail_closed;
 
         std::error_code ec;
         if (const auto parent = output_path_.parent_path(); !parent.empty())
@@ -978,9 +1072,9 @@ private:
         if (!f) return;
         f << std::fixed << std::setprecision(6)
           << "{\n"
-          << "  \"schema\":1,\n"
+          << "  \"schema\":2,\n"
           << "  \"valid\":" << (valid ? "true" : "false") << ",\n"
-          << "  \"benchmark\":\"stage14_5_wicked_engine\",\n"
+          << "  \"benchmark\":\"mega_stage_c_wicked_engine\",\n"
           << "  \"integration\":\"wicked_engine_tests_dx12\",\n"
           << "  \"wicked_upstream_sha\":\"" << kWickedUpstreamSha << "\",\n"
           << "  \"arc_source_sha\":\"" << arc_source_sha_ << "\",\n"
@@ -1013,7 +1107,10 @@ private:
               << ",\"baseline_p50_ms\":" << Percentile(b.frames, 0.50)
               << ",\"adaptive_p50_ms\":" << Percentile(a.frames, 0.50)
               << ",\"baseline_miss_ratio\":" << MissRatio(b)
-              << ",\"adaptive_miss_ratio\":" << MissRatio(a) << "}"
+              << ",\"adaptive_miss_ratio\":" << MissRatio(a)
+              << ",\"inferred_workload\":\"" << WorkloadName(inferred_workloads[i].dominant)
+              << "\",\"workload_confidence\":" << inferred_workloads[i].confidence
+              << ",\"workload_samples\":" << scene_workloads_[i].samples << "}"
               << (i + 1 == kScenes.size() ? "\n" : ",\n");
         }
 
@@ -1037,6 +1134,29 @@ private:
           << ",\"bridge_rejections\":" << hm.bridge_rejections << "},\n"
           << "  \"graph\":{\"resources\":" << host_->graph().resource_count()
           << ",\"errors\":" << host_->graph().errors() << "},\n"
+          << "  \"stage15\":{\"semantic_coverage\":" << semantic_coverage
+          << ",\"confident_resources\":" << confident_semantics
+          << ",\"unknown\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::Unknown)]
+          << ",\"material_textures\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::MaterialTexture)]
+          << ",\"shadow_maps\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::ShadowMap)]
+          << ",\"depth_targets\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::DepthTarget)]
+          << ",\"color_targets\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::ColorTarget)]
+          << ",\"storage_textures\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::StorageTexture)]
+          << ",\"geometry_buffers\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::GeometryBuffer)]
+          << ",\"constant_buffers\":" << semantic_counts[static_cast<std::size_t>(arc::ResourceSemantic::ConstantBuffer)]
+          << ",\"workload_scene_coverage\":" << workload_scene_coverage
+          << ",\"distinct_workload_classes\":" << distinct_workload_classes
+          << ",\"truth_alignment\":" << truth_alignment
+          << ",\"pass\":" << (stage15_scene_understanding ? "true" : "false") << "},\n"
+          << "  \"stage16\":{\"contextual_models\":" << contextual_models
+          << ",\"contextual_samples\":" << contextual_samples
+          << ",\"pass\":" << (stage16_contextual_learning ? "true" : "false") << "},\n"
+          << "  \"stage17\":{\"compatibility_mode\":\"" << CompatibilityName(compatibility.mode)
+          << "\",\"semantic_coverage\":" << compatibility.semantic_coverage
+          << ",\"allow_quality\":" << (compatibility.allow_quality ? "true" : "false")
+          << ",\"allow_residency\":" << (compatibility.allow_residency ? "true" : "false")
+          << ",\"reasons\":" << compatibility.reasons
+          << ",\"pass\":" << (stage17_fail_closed ? "true" : "false") << "},\n"
           << "  \"governor\":{\"quality_actions_executed\":" << gm.quality_actions_executed
           << ",\"learned_effects\":" << learned
           << ",\"quality_domains_executed\":" << domains
