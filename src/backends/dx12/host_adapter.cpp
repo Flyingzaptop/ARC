@@ -584,4 +584,22 @@ NativeHostAdapterMetrics NativeHostAdapter::metrics() const noexcept {
     return metrics_;
 }
 
+std::vector<ResourceSemanticEstimate> NativeHostAdapter::semantic_snapshot() const {
+    std::scoped_lock lock(mutex_);
+    return SceneUnderstandingModel::infer_all(graph_);
+}
+
+CompatibilityDecision NativeHostAdapter::compatibility_snapshot() const {
+    std::scoped_lock lock(mutex_);
+    const auto semantics = SceneUnderstandingModel::infer_all(graph_);
+    const auto bridge = runtime_.bridge().metrics();
+    const auto governor = runtime_.governor().metrics();
+    CompatibilityTelemetry telemetry{};
+    telemetry.observation_failures = metrics_.failed_observations;
+    telemetry.bridge_rejections = metrics_.bridge_rejections + bridge.controller_rejections;
+    telemetry.malformed_events = bridge.malformed_events;
+    telemetry.backend_failures = governor.quality_backend_failures;
+    return CompatibilityGuard::evaluate(graph_, semantics, telemetry);
+}
+
 }  // namespace arc::dx12
