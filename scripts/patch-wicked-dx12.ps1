@@ -135,9 +135,16 @@ $new = @'
 $dx = Replace-Once $dx $old $new 'queue submit'
 
 $present = $T+$T+$T+$T+$T+'HRESULT hr = dx12_check(swapchain_internal->swapChain->Present(swapchain->desc.vsync, presentFlags));'
-$dx = Replace-Once $dx $present ($present + $LF + $T+$T+$T+$T+$T+'ARCWickedPresent((uint64_t)swapchain_internal->swapChain.Get(), swapchain->desc.vsync, presentFlags, hr);') 'present'
+$dx = Replace-Once $dx $present ($T+$T+$T+$T+$T+'auto* arc_present_buffer = swapchain_internal->textures[swapchain_internal->GetBufferIndex()]->resource.Get();'+$LF+$present + $LF+$T+$T+$T+$T+$T+'ARCWickedAttributionPresent(queues[QUEUE_GRAPHICS].queue.Get(), arc_present_buffer, SUCCEEDED(hr));'+$LF+$T+$T+$T+$T+$T+'ARCWickedPresent((uint64_t)swapchain_internal->swapChain.Get(), swapchain->desc.vsync, presentFlags, hr);') 'present'
 
 $anchor = $T+$T+'CommandList_DX12& commandlist = GetCommandList(cmd);'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindViewports(' $anchor ($LF+$T+$T+'if (NumViewports == 1) ARCWickedAttributionRegion(commandlist.GetCommandList(), 0, pViewports[0].top_left_x, pViewports[0].top_left_y, pViewports[0].width, pViewports[0].height); else ARCWickedAttributionRegion(commandlist.GetCommandList(), 4, 0, 0, 0, 0);') 'attribution viewport'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindScissorRects(' $anchor ($LF+$T+$T+'if (numRects == 1) ARCWickedAttributionRegion(commandlist.GetCommandList(), 1, rects[0].left, rects[0].top, double(rects[0].right)-rects[0].left, double(rects[0].bottom)-rects[0].top); else ARCWickedAttributionRegion(commandlist.GetCommandList(), 5, 0, 0, 0, 0);') 'attribution scissor'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::RenderPassBegin(const RenderPassImage*' $anchor ($LF+$T+$T+'ARCWickedAttributionRegion(commandlist.GetCommandList(), 3, 0, 0, 0, 0);') 'attribution target reset'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::RenderPassEnd(' $anchor ($LF+$T+$T+'ARCWickedAttributionRegion(commandlist.GetCommandList(), 3, 0, 0, 0, 0);') 'attribution target end'
+$swapAnchor=$T+$T+'auto internal_state = to_internal(swapchain);'
+$swapHook=$LF+$T+$T+'auto* arc_target = internal_state->textures[internal_state->GetBufferIndex()]->resource.Get();'+$LF+$T+$T+'ARCWickedAttributionRegion(commandlist.GetCommandList(), 2, 0, 0, double(arc_target->GetDesc().Width), double(arc_target->GetDesc().Height));'+$LF+$T+$T+'ARCWickedAttributionTarget(commandlist.GetCommandList(), arc_target);'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::RenderPassBegin(const SwapChain*' $swapAnchor $swapHook 'attribution swapchain target'
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindResource(' $anchor ($LF+$T+$T+'if (resource != nullptr && resource->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), false);') 'BindResource'
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindUAV(' $anchor ($LF+$T+$T+'if (resource != nullptr && resource->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), true);') 'BindUAV'
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindConstantBuffer(' $anchor ($LF+$T+$T+'if (buffer != nullptr && buffer->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(buffer)->resource.Get(), false);') 'BindConstantBuffer'
@@ -156,6 +163,7 @@ $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindIndexBuffer(
 $renderPassMarker = 'void GraphicsDevice_DX12::RenderPassBegin(const RenderPassImage* images, uint32_t image_count, CommandList cmd, RenderPassFlags flags)'
 $renderPassAnchor = $T+$T+$T+'auto internal_state = to_internal(texture);'
 $renderPassUse = $LF+
+    $T+$T+$T+'if (image_count == 1 && image.subresource < 0) ARCWickedAttributionRegion(commandlist.GetCommandList(), 2, 0, 0, desc.width, desc.height);'+$LF+
     $T+$T+$T+'const bool arc_write = image.type != RenderPassImage::Type::SHADING_RATE_SOURCE;'+$LF+
     $T+$T+$T+'ARCWickedResourceUse(commandlist.GetCommandList(), internal_state->resource.Get(), arc_write);'
 $dx = Insert-AfterFunctionAnchor $dx $renderPassMarker $renderPassAnchor $renderPassUse 'RenderPass attachments'
@@ -175,6 +183,20 @@ $counterHooks = @(
 foreach ($entry in $counterHooks) {
     $dx = Insert-AfterFunctionAnchor $dx $entry[0] $anchor ($LF+$T+$T+"ARCWickedCountCommand(commandlist.GetCommandList(), $($entry[1]), $($entry[2]));") $entry[0]
 }
+
+# Sparse timing ends immediately after the native operation; no CPU timer or
+# whole-frame proportional attribution substitutes for these queue timestamps.
+$queryEnds=@(
+    'commandlist.GetGraphicsCommandList()->DrawInstanced(vertexCount, 1, startVertexLocation, 0);',
+    'commandlist.GetGraphicsCommandList()->DrawIndexedInstanced(indexCount, 1, startIndexLocation, baseVertexLocation, 0);',
+    'commandlist.GetGraphicsCommandList()->DrawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);',
+    'commandlist.GetGraphicsCommandList()->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);',
+    'commandlist.GetGraphicsCommandList()->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);',
+    'commandlist.GetGraphicsCommandListLatest()->DispatchMesh(threadGroupCountX, threadGroupCountY, threadGroupCountZ);'
+)
+foreach($line in $queryEnds){$dx=Replace-Once $dx $line ($line+$LF+$T+$T+'ARCWickedAttributionQuery(commandlist.GetGraphicsCommandList(), false);') ('timestamp '+$line)}
+$close='dx12_check(commandlist.GetGraphicsCommandList()->Close());'
+$dx=Replace-Once $dx $close ('ARCWickedAttributionQuery(commandlist.GetGraphicsCommandList(), true);'+$LF+$T+$T+$T+$T+$T+$close) 'timestamp resolve before close'
 
 $copyAnchor = $T+$T+'auto internal_state_dst = to_internal(pDst);'
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::CopyResource(' $copyAnchor ($LF+$T+$T+'ARCWickedCopy(commandlist.GetCommandList(), internal_state_src->resource.Get(), internal_state_dst->resource.Get(), 0, 0);') 'CopyResource'

@@ -3,6 +3,7 @@
 #include "ArcWickedHooks.h"
 #include "ArcWickedTelemetry.h"
 #include "ArcWickedSemanticAudit.h"
+#include "ArcWickedAttribution.h"
 
 #include "arc/dx12_host_adapter.hpp"
 #include "arc/quality_profile.hpp"
@@ -317,6 +318,7 @@ public:
         settle_milliseconds_ = EnvInt(L"ARC_WICKED_SCENE_SETTLE_MS", 1500, 500, 5000);
         control_frames_ = EnvInt(L"ARC_WICKED_CONTROL_FRAMES", 16, 4, 120);
         arc_source_sha_ = Narrow(EnvString(L"ARC_SOURCE_SHA"));
+        attribution_.configure(device,EnvString(L"ARC_WICKED_ATTRIBUTION_OUTPUT"),arc_source_sha_);
         const auto output = EnvString(L"ARC_WICKED_OUTPUT");
         if (!output.empty()) output_path_ = output;
         experiment_mode_ = Narrow(EnvString(L"ARC_WICKED_EXPERIMENT_MODE"));
@@ -422,6 +424,7 @@ public:
         if (!host_ || !command) return;
         (void)host_->observe_command_list(command, type);
         (void)host_->observe_command_list_reset(command);
+        if(attribution_.active())attribution_.begin(host_->command_id(command));
         std::scoped_lock lock(pending_mutex_);
         pending_[command] = {};
     }
@@ -454,6 +457,7 @@ public:
         std::scoped_lock lock(pending_mutex_);
         auto& current = pending_[command].uses[resource];
         current.observe(write);
+        if(attribution_.active())attribution_.use(host_->command_id(command),host_->resource_id(resource),write);
     }
 
     void Transition(
@@ -487,11 +491,13 @@ public:
         if (kind == 1) (void)host_->observe_copy_buffer(command, source, destination, bytes);
         else if (kind == 2) (void)host_->observe_copy_texture(command, source, destination, bytes);
         else (void)host_->observe_copy_resource(command, source, destination, bytes);
+        if(attribution_.active())attribution_.copy(host_->command_id(command),host_->resource_id(source),host_->resource_id(destination),bytes);
     }
 
     void Count(ID3D12CommandList* command, std::uint32_t kind, std::uint64_t work_items) noexcept
     {
         if (!command) return;
+        if(host_&&attribution_.active())attribution_.count(host_->command_id(command),command,kind,work_items);
         std::scoped_lock lock(pending_mutex_);
         auto& counters = pending_[command].counters;
         switch (kind)
@@ -549,6 +555,7 @@ public:
                     c.draw_items, c.dispatch_groups);
 
             (void)host_->observe_command_list_closed(command);
+            if(attribution_.active())attribution_.submit(host_->queue_id(queue),queue,host_->command_id(command));
         }
 
         (void)host_->observe_execute_command_lists(
@@ -585,6 +592,21 @@ public:
         }
     }
 
+    void AttributionRegion(ID3D12CommandList* command,unsigned kind,double x,double y,double w,double h) {
+        if(host_&&attribution_.active())attribution_.region(host_->command_id(command),kind,x,y,w,h);
+    }
+    void AttributionTarget(ID3D12CommandList* command,ID3D12Resource* resource) {
+        if(host_&&attribution_.active())attribution_.use(host_->command_id(command),host_->resource_id(resource),true);
+    }
+    void AttributionQuery(ID3D12GraphicsCommandList* command,bool resolve) {
+        if(host_&&attribution_.active()){
+            if(resolve)attribution_.resolve(host_->command_id(command),command);
+            else attribution_.end_work(host_->command_id(command),command);
+        }
+    }
+    void AttributionPresent(ID3D12CommandQueue* queue,ID3D12Resource* resource,bool success) {
+        if(host_&&attribution_.enabled())attribution_.presented(host_->queue_id(queue),host_->resource_id(resource),success);
+    }
     void Present(
         std::uint64_t swapchain_id,
         std::uint32_t sync_interval,
@@ -1588,6 +1610,7 @@ private:
     std::unique_ptr<arc::dx12::NativeHostAdapter> host_;
 
     std::mutex pending_mutex_;
+    arc_wicked::AttributionCapture attribution_;
     std::unordered_map<ID3D12CommandList*, CommandPending> pending_;
     std::mutex queue_mutex_;
     std::unordered_map<ID3D12CommandQueue*, QueueState> queues_;
@@ -1871,6 +1894,19 @@ extern "C" void ARCWickedPresent(
 extern "C" void ARCWickedCpuSample(const char* name, double milliseconds) noexcept
 {
     if (auto* b = GetBridge()) b->CpuSample(name, milliseconds);
+}
+
+extern "C" void ARCWickedAttributionRegion(ID3D12CommandList* command,unsigned kind,double x,double y,double w,double h) noexcept {
+    if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionRegion(command,kind,x,y,w,h);
+}
+extern "C" void ARCWickedAttributionPresent(ID3D12CommandQueue* queue,ID3D12Resource* resource,bool success) noexcept {
+    if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionPresent(queue,resource,success);
+}
+extern "C" void ARCWickedAttributionTarget(ID3D12CommandList* command,ID3D12Resource* resource) noexcept {
+    if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionTarget(command,resource);
+}
+extern "C" void ARCWickedAttributionQuery(ID3D12GraphicsCommandList* command,bool resolve) noexcept {
+    if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionQuery(command,resolve);
 }
 
 namespace arc_wicked {

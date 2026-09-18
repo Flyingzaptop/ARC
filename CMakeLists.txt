@@ -23,6 +23,7 @@ add_library(arc-core STATIC
     src/core/resource_graph.cpp
     src/core/resource_semantics.cpp
     src/core/scene_understanding.cpp
+    src/core/gpu_attribution.cpp
     src/core/residency.cpp
     src/core/residency_candidates.cpp
     src/core/texture_quality.cpp
@@ -92,6 +93,9 @@ endif()
 
 if(ARC_BUILD_TESTS)
     enable_testing()
+    add_executable(arc-gpu-attribution-tests tests/gpu_attribution_tests.cpp)
+    target_link_libraries(arc-gpu-attribution-tests PRIVATE arc::core)
+    add_test(NAME arc-gpu-attribution-tests COMMAND arc-gpu-attribution-tests)
     add_executable(arc-core-tests tests/core_tests.cpp)
     target_link_libraries(arc-core-tests PRIVATE arc::core)
     add_test(NAME arc-core-tests COMMAND arc-core-tests)
@@ -175,6 +179,10 @@ if(ARC_BUILD_TESTS)
         target_link_libraries(arc-dx12-view-tests PRIVATE arc-dx12-observer)
         add_test(NAME arc-dx12-view-tests COMMAND arc-dx12-view-tests)
         if(ARC_GPU_TESTS)
+            add_executable(arc-gpu-attribution-native tests/gpu_attribution_native.cpp)
+            target_link_libraries(arc-gpu-attribution-native PRIVATE arc::core d3d12 dxgi)
+            add_test(NAME arc-gpu-attribution-native COMMAND arc-gpu-attribution-native)
+            set_tests_properties(arc-gpu-attribution-native PROPERTIES LABELS gpu TIMEOUT 60 SKIP_RETURN_CODE 77 RUN_SERIAL TRUE)
             add_executable(arc-dx12-enhanced-tests tests/dx12_enhanced_tests.cpp)
             target_link_libraries(arc-dx12-enhanced-tests PRIVATE arc-dx12-observer)
             add_test(NAME arc-dx12-enhanced-tests COMMAND arc-dx12-enhanced-tests)

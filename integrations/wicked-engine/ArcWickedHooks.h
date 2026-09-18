@@ -6,6 +6,10 @@
 #include <cstdint>
 
 extern "C" {
+void ARCWickedAttributionRegion(ID3D12CommandList*,unsigned,double,double,double,double) noexcept;
+void ARCWickedAttributionPresent(ID3D12CommandQueue*,ID3D12Resource*,bool) noexcept;
+void ARCWickedAttributionTarget(ID3D12CommandList*,ID3D12Resource*) noexcept;
+void ARCWickedAttributionQuery(ID3D12GraphicsCommandList*,bool) noexcept;
 
 void ARCWickedDeviceReady(
     ID3D12Device* device,

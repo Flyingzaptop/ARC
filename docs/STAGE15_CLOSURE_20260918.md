@@ -3,6 +3,11 @@
 **Status: lifecycle and independent family validation complete; Stage 15 acceptance
 remains FAIL on workload complexity alone. Stage 16 is not started.**
 
+Subsequent user decision (2026-09-18): defer the 81/128 complexity gate and proceed
+with Mega D (Stages 16, 17 and 20). The statement above records closure-run status;
+its formal FAIL and original artifacts remain unchanged. Larger-workload validation
+is open technical debt, not a passing gate.
+
 ## Lifetime protocol
 
 Implemented explicit command-list and queue retirement across the event protocol,
