@@ -997,6 +997,46 @@ private:
 
 Bridge* g_bridge = nullptr;
 std::mutex g_bridge_mutex;
+std::atomic<std::uint32_t> g_arc_last_hook{0};
+std::atomic<std::uint32_t> g_arc_last_scene{0};
+std::atomic<std::uint32_t> g_arc_last_phase{0};
+
+void ArcBreadcrumb(std::uint32_t hook) noexcept
+{
+    g_arc_last_hook.store(hook, std::memory_order_relaxed);
+}
+
+LONG WINAPI ArcUnhandledException(EXCEPTION_POINTERS* info) noexcept
+{
+    const auto path = EnvString(L"ARC_WICKED_CRASH_OUTPUT");
+    if (!path.empty())
+    {
+        HANDLE file = CreateFileW(
+            path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file != INVALID_HANDLE_VALUE)
+        {
+            char buffer[512]{};
+            const DWORD code = info && info->ExceptionRecord ? info->ExceptionRecord->ExceptionCode : 0;
+            const void* address = info && info->ExceptionRecord ? info->ExceptionRecord->ExceptionAddress : nullptr;
+            const int n = sprintf_s(
+                buffer, sizeof(buffer),
+                "exception=0x%08lX\r\naddress=%p\r\nlast_hook=%u\r\nscene_index=%u\r\nphase=%u\r\n",
+                static_cast<unsigned long>(code),
+                address,
+                g_arc_last_hook.load(std::memory_order_relaxed),
+                g_arc_last_scene.load(std::memory_order_relaxed),
+                g_arc_last_phase.load(std::memory_order_relaxed));
+            if (n > 0)
+            {
+                DWORD written = 0;
+                WriteFile(file, buffer, static_cast<DWORD>(n), &written, nullptr);
+            }
+            CloseHandle(file);
+        }
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
 
 Bridge* GetBridge() noexcept
 {
@@ -1012,16 +1052,22 @@ extern "C" void ARCWickedDeviceReady(
 {
     if (!device) return;
     std::scoped_lock lock(g_bridge_mutex);
-    if (!g_bridge) g_bridge = new Bridge(device, resource_heap, sampler_heap);
+    if (!g_bridge)
+    {
+        SetUnhandledExceptionFilter(ArcUnhandledException);
+        g_bridge = new Bridge(device, resource_heap, sampler_heap);
+    }
 }
 
 extern "C" void ARCWickedResourceCreated(ID3D12Resource* resource) noexcept
 {
+    ArcBreadcrumb(10);
     if (auto* b = GetBridge()) b->ResourceCreated(resource);
 }
 
 extern "C" void ARCWickedResourceDestroyed(ID3D12Resource* resource) noexcept
 {
+    ArcBreadcrumb(11);
     if (auto* b = GetBridge()) b->ResourceDestroyed(resource);
 }
 
@@ -1031,6 +1077,7 @@ extern "C" void ARCWickedObserveSRV(
     ID3D12Resource* resource,
     const D3D12_SHADER_RESOURCE_VIEW_DESC* view) noexcept
 {
+    ArcBreadcrumb(20);
     if (auto* b = GetBridge()) b->ObserveSRV(heap, index, resource, view);
 }
 
@@ -1040,6 +1087,7 @@ extern "C" void ARCWickedObserveUAV(
     ID3D12Resource* resource,
     const D3D12_UNORDERED_ACCESS_VIEW_DESC* view) noexcept
 {
+    ArcBreadcrumb(21);
     if (auto* b = GetBridge()) b->ObserveUAV(heap, index, resource, view);
 }
 
@@ -1047,6 +1095,7 @@ extern "C" void ARCWickedObserveSampler(
     ID3D12DescriptorHeap* heap,
     std::uint32_t index) noexcept
 {
+    ArcBreadcrumb(22);
     if (auto* b = GetBridge()) b->ObserveSampler(heap, index);
 }
 
@@ -1054,6 +1103,7 @@ extern "C" void ARCWickedCommandBegin(
     ID3D12CommandList* command,
     D3D12_COMMAND_LIST_TYPE type) noexcept
 {
+    ArcBreadcrumb(30);
     if (auto* b = GetBridge()) b->CommandBegin(command, type);
 }
 
@@ -1062,6 +1112,7 @@ extern "C" void ARCWickedResourceUse(
     ID3D12Resource* resource,
     bool write) noexcept
 {
+    ArcBreadcrumb(31);
     if (auto* b = GetBridge()) b->ResourceUse(command, resource, write);
 }
 
@@ -1072,6 +1123,7 @@ extern "C" void ARCWickedTransition(
     D3D12_RESOURCE_STATES after_state,
     std::uint32_t subresource) noexcept
 {
+    ArcBreadcrumb(32);
     if (auto* b = GetBridge())
         b->Transition(command, resource, before_state, after_state, subresource);
 }
@@ -1083,6 +1135,7 @@ extern "C" void ARCWickedCopy(
     std::uint64_t approximate_bytes,
     std::uint32_t kind) noexcept
 {
+    ArcBreadcrumb(33);
     if (auto* b = GetBridge()) b->Copy(command, source, destination, approximate_bytes, kind);
 }
 
@@ -1090,6 +1143,7 @@ extern "C" void ARCWickedCountCommand(
     ID3D12CommandList* command,
     std::uint32_t kind) noexcept
 {
+    ArcBreadcrumb(34);
     if (auto* b = GetBridge()) b->Count(command, kind);
 }
 
@@ -1099,6 +1153,7 @@ extern "C" void ARCWickedSubmit(
     std::size_t count,
     D3D12_COMMAND_LIST_TYPE type) noexcept
 {
+    ArcBreadcrumb(40);
     if (auto* b = GetBridge()) b->Submit(queue, commands, count, type);
 }
 
@@ -1108,6 +1163,7 @@ extern "C" void ARCWickedPresent(
     std::uint32_t flags,
     HRESULT result) noexcept
 {
+    ArcBreadcrumb(50);
     if (auto* b = GetBridge()) b->Present(swapchain_id, sync_interval, flags, result);
 }
 
@@ -1118,6 +1174,7 @@ void HarnessUpdate(
     std::uint32_t width,
     std::uint32_t height) noexcept
 {
+    ArcBreadcrumb(60);
     if (auto* b = GetBridge()) b->HarnessUpdate(test_selector, width, height);
 }
 
