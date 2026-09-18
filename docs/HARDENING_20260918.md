@@ -148,7 +148,7 @@ renderer/harness problem. Experiment scene/phase breadcrumbs currently retain
 default values, so their zero values must not be used to identify the crash scene.
 
 No test processes remain active and no further GPU runs were started. Incomplete
-comparison files, failure log, and relevant System GPU events were preserved in
+comparison files and failure log were preserved in
 the runtime-hardening evidence branch. Resume from the `ARC-hardening` worktree
 on `codex_den/runtime-hardening`, without subagents. Do not freeze Stage 15 or
 start Stage 16 until the remaining acceptance issue is addressed.
