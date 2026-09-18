@@ -50,7 +50,9 @@ void blend_signature(SceneSemanticSignature& dst, const SceneSemanticSignature& 
     blend(dst.multi_queue_fraction, src.multi_queue_fraction, alpha);
     blend(dst.resource_accesses_per_frame, src.resource_accesses_per_frame, alpha);
     blend(dst.draw_calls_per_frame, src.draw_calls_per_frame, alpha);
+    blend(dst.draw_items_per_frame, src.draw_items_per_frame, alpha);
     blend(dst.dispatches_per_frame, src.dispatches_per_frame, alpha);
+    blend(dst.dispatch_groups_per_frame, src.dispatch_groups_per_frame, alpha);
     blend(dst.indirect_per_frame, src.indirect_per_frame, alpha);
     blend(dst.submissions_per_frame, src.submissions_per_frame, alpha);
     blend(dst.copies_per_frame, src.copies_per_frame, alpha);
@@ -69,6 +71,8 @@ void blend_signature(SceneSemanticSignature& dst, const SceneSemanticSignature& 
     dst.indexed_draws = blend_count(dst.indexed_draws, src.indexed_draws);
     dst.dispatches = blend_count(dst.dispatches, src.dispatches);
     dst.indirect = blend_count(dst.indirect, src.indirect);
+    dst.draw_items = blend_count(dst.draw_items, src.draw_items);
+    dst.dispatch_groups = blend_count(dst.dispatch_groups, src.dispatch_groups);
     dst.copies = blend_count(dst.copies, src.copies);
 
     for (std::size_t i = 0; i < dst.resource_fractions.size(); ++i) {
@@ -233,6 +237,8 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
         out.indexed_draws += submission.counters.indexed_draws;
         out.dispatches += submission.counters.dispatches;
         out.indirect += submission.counters.indirect;
+        out.draw_items += submission.counters.draw_items;
+        out.dispatch_groups += submission.counters.dispatch_groups;
     }
 
     const auto& copies = graph.copies();
@@ -249,7 +255,9 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
     out.multi_queue_fraction = safe_ratio(multi_queue, out.active_resources);
     out.resource_accesses_per_frame = safe_rate(accesses, out.window_frames);
     out.draw_calls_per_frame = safe_rate(out.draws + out.indexed_draws, out.window_frames);
+    out.draw_items_per_frame = safe_rate(out.draw_items, out.window_frames);
     out.dispatches_per_frame = safe_rate(out.dispatches, out.window_frames);
+    out.dispatch_groups_per_frame = safe_rate(out.dispatch_groups, out.window_frames);
     out.indirect_per_frame = safe_rate(out.indirect, out.window_frames);
     out.submissions_per_frame = safe_rate(out.submissions, out.window_frames);
     out.copies_per_frame = safe_rate(out.copies, out.window_frames);
@@ -286,10 +294,12 @@ SceneSemanticComparison SceneUnderstandingInferencer::compare(
             static_cast<double>(a.active_resources), static_cast<double>(b.active_resources), 4.0) +
         0.45F * normalized_log_distance(
             static_cast<double>(a.active_bytes), static_cast<double>(b.active_bytes), 12.0);
-    const std::array<float, 6> workload_axes{
+    const std::array<float, 8> workload_axes{
         normalized_log_distance(a.resource_accesses_per_frame, b.resource_accesses_per_frame, 5.0),
         normalized_log_distance(a.draw_calls_per_frame, b.draw_calls_per_frame, 5.0),
+        normalized_log_distance(a.draw_items_per_frame, b.draw_items_per_frame, 5.0),
         normalized_log_distance(a.dispatches_per_frame, b.dispatches_per_frame, 5.0),
+        normalized_log_distance(a.dispatch_groups_per_frame, b.dispatch_groups_per_frame, 5.0),
         normalized_log_distance(a.indirect_per_frame, b.indirect_per_frame, 4.0),
         normalized_log_distance(a.submissions_per_frame, b.submissions_per_frame, 4.0),
         normalized_log_distance(a.copies_per_frame, b.copies_per_frame, 5.0),
