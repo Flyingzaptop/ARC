@@ -1,0 +1,42 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-hardening/build-hardening
+      Start 21: arc-dx12-enhanced-tests
+ 1/17 Test #21: arc-dx12-enhanced-tests ...........................   Passed    0.67 sec
+      Start 22: dx12-memory-pressure
+ 2/17 Test #22: dx12-memory-pressure ..............................   Passed    0.67 sec
+      Start 23: dx12-texture-pressure
+ 3/17 Test #23: dx12-texture-pressure .............................   Passed    0.63 sec
+      Start 24: dx12-mixed-resources
+ 4/17 Test #24: dx12-mixed-resources ..............................   Passed    0.61 sec
+      Start 25: dx12-residency-lab-baseline
+ 5/17 Test #25: dx12-residency-lab-baseline .......................   Passed    3.17 sec
+      Start 26: dx12-residency-lab-arc
+ 6/17 Test #26: dx12-residency-lab-arc ............................   Passed    3.57 sec
+      Start 27: dx12-residency-lab-auto
+ 7/17 Test #27: dx12-residency-lab-auto ...........................   Passed    3.33 sec
+      Start 28: dx12-tiled-texture-lab
+ 8/17 Test #28: dx12-tiled-texture-lab ............................   Passed    0.93 sec
+      Start 29: dx12-global-memory-lab
+ 9/17 Test #29: dx12-global-memory-lab ............................   Passed    1.02 sec
+      Start 30: dx12-live-runtime-lab
+10/17 Test #30: dx12-live-runtime-lab .............................   Passed    0.75 sec
+      Start 31: dx12-runtime-event-bridge-lab
+11/17 Test #31: dx12-runtime-event-bridge-lab .....................   Passed    0.45 sec
+      Start 32: dx12-runtime-backend-lab
+12/17 Test #32: dx12-runtime-backend-lab ..........................   Passed    0.40 sec
+      Start 38: dx12-adaptive-quality-benchmark-smoke
+13/17 Test #38: dx12-adaptive-quality-benchmark-smoke .............   Passed    6.46 sec
+      Start 39: dx12-mixed-graphics-benchmark-smoke
+14/17 Test #39: dx12-mixed-graphics-benchmark-smoke ...............   Passed    8.48 sec
+      Start 42: dx12-closed-loop-mixed-graphics-benchmark-smoke
+15/17 Test #42: dx12-closed-loop-mixed-graphics-benchmark-smoke ...   Passed   13.17 sec
+      Start 46: dx12-mega-stage-a-benchmark-smoke
+16/17 Test #46: dx12-mega-stage-a-benchmark-smoke .................   Passed   61.19 sec
+      Start 49: dx12-mega-stage-b-host-renderer-smoke
+17/17 Test #49: dx12-mega-stage-b-host-renderer-smoke .............   Passed   54.67 sec
+
+100% tests passed, 0 tests failed out of 17
+
+Label Time Summary:
+gpu    = 160.18 sec*proc (17 tests)
+
+Total Test time (real) = 160.65 sec

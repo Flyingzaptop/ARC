@@ -1,0 +1,167 @@
+﻿[
+    {
+        "repeat":  0,
+        "scene":  "model",
+        "order":  "off,observe,adaptive",
+        "scene_offset":  0,
+        "observer_cpu_ratio":  1.0424537711961943,
+        "adaptive_cpu_ratio":  1.0291414102662473,
+        "observer_gpu_ratio":  0.996627296834877,
+        "adaptive_gpu_ratio":  0.99887576744142237,
+        "adaptive_vs_observer_gpu_ratio":  1.0022560796936688
+    },
+    {
+        "repeat":  0,
+        "scene":  "shadows",
+        "order":  "off,observe,adaptive",
+        "scene_offset":  0,
+        "observer_cpu_ratio":  0.99108043719285066,
+        "adaptive_cpu_ratio":  0.99846545156006039,
+        "observer_gpu_ratio":  0.97397285869822747,
+        "adaptive_gpu_ratio":  0.98313965546932225,
+        "adaptive_vs_observer_gpu_ratio":  1.0094117579244937
+    },
+    {
+        "repeat":  0,
+        "scene":  "water",
+        "order":  "off,observe,adaptive",
+        "scene_offset":  0,
+        "observer_cpu_ratio":  1.0492709350297609,
+        "adaptive_cpu_ratio":  1.0299263061757944,
+        "observer_gpu_ratio":  1.035114485611452,
+        "adaptive_gpu_ratio":  1.0629007419230014,
+        "adaptive_vs_observer_gpu_ratio":  1.0268436551683806
+    },
+    {
+        "repeat":  0,
+        "scene":  "volumetric",
+        "order":  "off,observe,adaptive",
+        "scene_offset":  0,
+        "observer_cpu_ratio":  1.0341261471139165,
+        "adaptive_cpu_ratio":  1.1692612822490516,
+        "observer_gpu_ratio":  1.0369894431235287,
+        "adaptive_gpu_ratio":  0.869733086395673,
+        "adaptive_vs_observer_gpu_ratio":  0.83870968230490306
+    },
+    {
+        "repeat":  0,
+        "scene":  "instances_65k",
+        "order":  "off,observe,adaptive",
+        "scene_offset":  0,
+        "observer_cpu_ratio":  1.3783650793875233,
+        "adaptive_cpu_ratio":  1.1119626371730718,
+        "observer_gpu_ratio":  3.0087456337231937,
+        "adaptive_gpu_ratio":  1.3475500132907032,
+        "adaptive_vs_observer_gpu_ratio":  0.44787767971703468
+    },
+    {
+        "repeat":  1,
+        "scene":  "model",
+        "order":  "observe,adaptive,off",
+        "scene_offset":  1,
+        "observer_cpu_ratio":  1.0574401126149815,
+        "adaptive_cpu_ratio":  1.0309367592450267,
+        "observer_gpu_ratio":  0.983186098189245,
+        "adaptive_gpu_ratio":  1.0128242000395891,
+        "adaptive_vs_observer_gpu_ratio":  1.0301449561837064
+    },
+    {
+        "repeat":  1,
+        "scene":  "shadows",
+        "order":  "observe,adaptive,off",
+        "scene_offset":  1,
+        "observer_cpu_ratio":  1.0435843520015065,
+        "adaptive_cpu_ratio":  1.0852542878214886,
+        "observer_gpu_ratio":  1.0906904526558332,
+        "adaptive_gpu_ratio":  1.1920302504235307,
+        "adaptive_vs_observer_gpu_ratio":  1.0929134361824979
+    },
+    {
+        "repeat":  1,
+        "scene":  "water",
+        "order":  "observe,adaptive,off",
+        "scene_offset":  1,
+        "observer_cpu_ratio":  1.0475313633343208,
+        "adaptive_cpu_ratio":  1.0275124692771422,
+        "observer_gpu_ratio":  1.0450820173050204,
+        "adaptive_gpu_ratio":  0.991960920110801,
+        "adaptive_vs_observer_gpu_ratio":  0.94917040355243676
+    },
+    {
+        "repeat":  1,
+        "scene":  "volumetric",
+        "order":  "observe,adaptive,off",
+        "scene_offset":  1,
+        "observer_cpu_ratio":  1.1976624825211566,
+        "adaptive_cpu_ratio":  1.048415386231925,
+        "observer_gpu_ratio":  1.313686429151633,
+        "adaptive_gpu_ratio":  1.0323630363378238,
+        "adaptive_vs_observer_gpu_ratio":  0.78585194566142758
+    },
+    {
+        "repeat":  1,
+        "scene":  "instances_65k",
+        "order":  "observe,adaptive,off",
+        "scene_offset":  1,
+        "observer_cpu_ratio":  1.023627127461531,
+        "adaptive_cpu_ratio":  1.3409242758852842,
+        "observer_gpu_ratio":  0.98909883898358009,
+        "adaptive_gpu_ratio":  2.8928051793298053,
+        "adaptive_vs_observer_gpu_ratio":  2.9246876705492
+    },
+    {
+        "repeat":  2,
+        "scene":  "model",
+        "order":  "adaptive,off,observe",
+        "scene_offset":  2,
+        "observer_cpu_ratio":  0.97262001429432077,
+        "adaptive_cpu_ratio":  0.91756816931660423,
+        "observer_gpu_ratio":  0.97247711249124946,
+        "adaptive_gpu_ratio":  0.99249375005416307,
+        "adaptive_vs_observer_gpu_ratio":  1.0205831451514944
+    },
+    {
+        "repeat":  2,
+        "scene":  "shadows",
+        "order":  "adaptive,off,observe",
+        "scene_offset":  2,
+        "observer_cpu_ratio":  1.0206918514390351,
+        "adaptive_cpu_ratio":  1.0379363878826482,
+        "observer_gpu_ratio":  1.1014837932166823,
+        "adaptive_gpu_ratio":  1.0751053039897138,
+        "adaptive_vs_observer_gpu_ratio":  0.97605185896568225
+    },
+    {
+        "repeat":  2,
+        "scene":  "water",
+        "order":  "adaptive,off,observe",
+        "scene_offset":  2,
+        "observer_cpu_ratio":  1.028539922964415,
+        "adaptive_cpu_ratio":  1.00328511589797,
+        "observer_gpu_ratio":  1.0300116459628876,
+        "adaptive_gpu_ratio":  0.944784368999757,
+        "adaptive_vs_observer_gpu_ratio":  0.9172560064760652
+    },
+    {
+        "repeat":  2,
+        "scene":  "volumetric",
+        "order":  "adaptive,off,observe",
+        "scene_offset":  2,
+        "observer_cpu_ratio":  0.98261654204922744,
+        "adaptive_cpu_ratio":  1.0002390803888526,
+        "observer_gpu_ratio":  0.87928164999683944,
+        "adaptive_gpu_ratio":  0.90954440850140261,
+        "adaptive_vs_observer_gpu_ratio":  1.0344175936170987
+    },
+    {
+        "repeat":  2,
+        "scene":  "instances_65k",
+        "order":  "adaptive,off,observe",
+        "scene_offset":  2,
+        "observer_cpu_ratio":  1.0098077951703714,
+        "adaptive_cpu_ratio":  0.96748191731446254,
+        "observer_gpu_ratio":  1.0525411014565229,
+        "adaptive_gpu_ratio":  0.98559102390291931,
+        "adaptive_vs_observer_gpu_ratio":  0.93639195898292527
+    }
+]

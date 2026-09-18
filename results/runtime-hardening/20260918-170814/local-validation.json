@@ -1,0 +1,14 @@
+{
+  "source_sha": "b92c5acb23ac9b52ca8d24eed41ef5dcc42c3109",
+  "core_implementation_sha": "fcab25d781daf1be0e991ceff8bb5dcba82fbafd",
+  "release_tests": 35,
+  "debug_tests": 35,
+  "gpu_smoke_tests": 17,
+  "release": "PASS",
+  "debug": "PASS",
+  "gpu_smoke": "PASS",
+  "assertion_disabled_reproduction": "FAIL before fix, PASS after",
+  "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "compiler": "MSVC 19.50",
+  "timestamp": "2026-09-18T17:08:14.8893082+02:00"
+}

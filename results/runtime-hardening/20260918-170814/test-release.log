@@ -1,0 +1,78 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-hardening/build-hardening
+      Start  1: arc-core-tests
+ 1/35 Test  #1: arc-core-tests ..............................   Passed    0.13 sec
+      Start  2: arc-resource-semantics-tests
+ 2/35 Test  #2: arc-resource-semantics-tests ................   Passed    0.04 sec
+      Start  3: arc-scene-understanding-tests
+ 3/35 Test  #3: arc-scene-understanding-tests ...............   Passed    0.04 sec
+      Start  4: arc-residency-policy-tests
+ 4/35 Test  #4: arc-residency-policy-tests ..................   Passed    0.03 sec
+      Start  5: arc-residency-autonomous-sim-tests
+ 5/35 Test  #5: arc-residency-autonomous-sim-tests ..........   Passed    0.03 sec
+      Start  6: arc-residency-invariant-stress
+ 6/35 Test  #6: arc-residency-invariant-stress ..............   Passed    0.11 sec
+      Start  7: arc-residency-workload-matrix-tests
+ 7/35 Test  #7: arc-residency-workload-matrix-tests .........   Passed    0.03 sec
+      Start  8: arc-texture-quality-policy-tests
+ 8/35 Test  #8: arc-texture-quality-policy-tests ............   Passed    0.03 sec
+      Start  9: arc-texture-quality-invariant-stress
+ 9/35 Test  #9: arc-texture-quality-invariant-stress ........   Passed    0.36 sec
+      Start 10: arc-memory-arbiter-tests
+10/35 Test #10: arc-memory-arbiter-tests ....................   Passed    0.03 sec
+      Start 11: arc-memory-planner-tests
+11/35 Test #11: arc-memory-planner-tests ....................   Passed    0.03 sec
+      Start 12: arc-candidate-surface-tests
+12/35 Test #12: arc-candidate-surface-tests .................   Passed    0.03 sec
+      Start 13: arc-global-memory-scenario-tests
+13/35 Test #13: arc-global-memory-scenario-tests ............   Passed    0.03 sec
+      Start 14: arc-transition-predictor-tests
+14/35 Test #14: arc-transition-predictor-tests ..............   Passed    0.03 sec
+      Start 15: arc-live-runtime-tests
+15/35 Test #15: arc-live-runtime-tests ......................   Passed    0.03 sec
+      Start 16: arc-runtime-event-bridge-tests
+16/35 Test #16: arc-runtime-event-bridge-tests ..............   Passed    0.03 sec
+      Start 17: arc-runtime-coordinator-tests
+17/35 Test #17: arc-runtime-coordinator-tests ...............   Passed    0.03 sec
+      Start 18: arc-runtime-integration-tests
+18/35 Test #18: arc-runtime-integration-tests ...............   Passed    0.03 sec
+      Start 19: arc-multisession-stress
+19/35 Test #19: arc-multisession-stress .....................   Passed    5.48 sec
+      Start 20: arc-dx12-view-tests
+20/35 Test #20: arc-dx12-view-tests .........................   Passed    0.03 sec
+      Start 33: arc-steam-library-tests
+21/35 Test #33: arc-steam-library-tests .....................   Passed    0.04 sec
+      Start 34: arc-adaptive-quality-tests
+22/35 Test #34: arc-adaptive-quality-tests ..................   Passed    0.03 sec
+      Start 35: arc-action-effect-tracker-tests
+23/35 Test #35: arc-action-effect-tracker-tests .............   Passed    0.03 sec
+      Start 36: arc-adaptive-quality-controller-tests
+24/35 Test #36: arc-adaptive-quality-controller-tests .......   Passed    0.03 sec
+      Start 37: arc-quality-profile-tests
+25/35 Test #37: arc-quality-profile-tests ...................   Passed    0.03 sec
+      Start 40: arc-closed-loop-quality-sim-tests
+26/35 Test #40: arc-closed-loop-quality-sim-tests ...........   Passed    0.03 sec
+      Start 41: arc-quality-restore-memory-pressure-tests
+27/35 Test #41: arc-quality-restore-memory-pressure-tests ...   Passed    0.03 sec
+      Start 43: arc-quality-admission-tests
+28/35 Test #43: arc-quality-admission-tests .................   Passed    0.03 sec
+      Start 44: arc-global-action-arbiter-tests
+29/35 Test #44: arc-global-action-arbiter-tests .............   Passed    0.03 sec
+      Start 45: arc-unified-runtime-governor-tests
+30/35 Test #45: arc-unified-runtime-governor-tests ..........   Passed    0.03 sec
+      Start 47: arc-dx12-host-adapter-tests
+31/35 Test #47: arc-dx12-host-adapter-tests .................   Passed    0.07 sec
+      Start 48: arc-dx12-host-adapter-surface-tests
+32/35 Test #48: arc-dx12-host-adapter-surface-tests .........   Passed    0.07 sec
+      Start 50: arc-test-assertions-tests
+33/35 Test #50: arc-test-assertions-tests ...................   Passed    0.01 sec
+      Start 51: arc-wicked-telemetry-tests
+34/35 Test #51: arc-wicked-telemetry-tests ..................   Passed    0.03 sec
+      Start 52: arc-stage15-validation-tests
+35/35 Test #52: arc-stage15-validation-tests ................   Passed    0.65 sec
+
+100% tests passed, 0 tests failed out of 35
+
+Label Time Summary:
+stress    =   5.48 sec*proc (1 test)
+
+Total Test time (real) =   8.32 sec

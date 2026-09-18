@@ -1,0 +1,357 @@
+Cloning into 'C:\Users\r3d_flzp\ARC-Hardening-GPU\arc'...
+HEAD is now at a4ebef0 Publish Stage 1.1 hardening and Stage 2A residency evidence
+From https://github.com/Flyingzaptop/ARC
+ * branch            codex_den/runtime-hardening -> FETCH_HEAD
+Switched to a new branch 'codex_den/runtime-hardening'
+branch 'codex_den/runtime-hardening' set up to track 'origin/codex_den/runtime-hardening'.
+
+=== Preparing exact ARC source ===
+HEAD is now at fcab25d Harden live observation, test assertions and Wicked measurement integrity
+From https://github.com/Flyingzaptop/ARC
+ * branch            codex_den/runtime-hardening -> FETCH_HEAD
+Reset branch 'codex_den/runtime-hardening'
+branch 'codex_den/runtime-hardening' set up to track 'origin/codex_den/runtime-hardening'.
+Your branch is up to date with 'origin/codex_den/runtime-hardening'.
+ARC source: fcab25d781daf1be0e991ceff8bb5dcba82fbafd
+MSBuild: 18.5.4.18101 / v145
+
+=== Building ARC with Wicked-compatible static CRT ===
+-- Building for: Visual Studio 18 2026
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- The CXX compiler identification is MSVC 19.50.35729.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Configuring done (4.1s)
+-- Generating done (0.7s)
+-- Build files have been written to: C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/build-wicked
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  clock.cpp
+  session.cpp
+  multi_session.cpp
+  event_ring.cpp
+  resource_graph.cpp
+  resource_semantics.cpp
+  scene_understanding.cpp
+  residency.cpp
+  residency_candidates.cpp
+  texture_quality.cpp
+  texture_quality_candidates.cpp
+  memory_arbiter.cpp
+  memory_planner.cpp
+  transition_predictor.cpp
+  live_runtime.cpp
+  runtime_event_bridge.cpp
+  runtime_coordinator.cpp
+  runtime_integration.cpp
+  trace_writer.cpp
+  trace_reader.cpp
+  Создание кода...
+  Компиляция...
+  steam_library.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\steam_library.cpp(96,50): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning. [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\steam_library.cpp(116,66): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning. [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core.vcxproj]
+  adaptive_quality.cpp
+  action_effect_tracker.cpp
+  adaptive_quality_controller.cpp
+  quality_profile.cpp
+  quality_admission.cpp
+  global_action_arbiter.cpp
+  unified_runtime_governor.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\unified_runtime_governor.cpp(188,39): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core.vcxproj]
+  Создание кода...
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-action-effect-tracker-tests.vcxproj]
+  action_effect_tracker_tests.cpp
+  arc-action-effect-tracker-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-action-effect-tracker-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-adaptive-quality-controller-tests.vcxproj]
+  adaptive_quality_controller_tests.cpp
+  arc-adaptive-quality-controller-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-adaptive-quality-controller-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-adaptive-quality-tests.vcxproj]
+  adaptive_quality_tests.cpp
+  arc-adaptive-quality-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-adaptive-quality-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  dx12_observer.cpp
+  views.cpp
+  barriers.cpp
+  residency.cpp
+  runtime_backend.cpp
+  host_adapter.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(62,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(73,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(92,33): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(97,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(125,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(148,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(349,63): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(367,45): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(376,21): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(427,59): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(432,25): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+  host_adapter_extra.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter_extra.cpp(10,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+  Создание кода...
+  arc-dx12-observer.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-dx12-observer.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  arc_calibrate_main.cpp
+  arc-calibrate.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-calibrate.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-candidate-surface-tests.vcxproj]
+  candidate_surface_tests.cpp
+  arc-candidate-surface-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-candidate-surface-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-closed-loop-quality-sim-tests.vcxproj]
+  closed_loop_quality_sim_tests.cpp
+  arc-closed-loop-quality-sim-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-closed-loop-quality-sim-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core-tests.vcxproj]
+  core_tests.cpp
+  arc-core-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-core-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-host-adapter-surface-tests.vcxproj]
+  dx12_host_adapter_surface_tests.cpp
+  arc-dx12-host-adapter-surface-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-dx12-host-adapter-surface-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-host-adapter-tests.vcxproj]
+  dx12_host_adapter_tests.cpp
+  arc-dx12-host-adapter-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-dx12-host-adapter-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-view-tests.vcxproj]
+  dx12_view_tests.cpp
+  arc-dx12-view-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-dx12-view-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  arc_game_monitor.cpp
+  arc-game-monitor.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-game-monitor.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-global-action-arbiter-tests.vcxproj]
+  global_action_arbiter_tests.cpp
+  arc-global-action-arbiter-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-global-action-arbiter-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-global-memory-scenario-tests.vcxproj]
+  global_memory_scenario_tests.cpp
+  arc-global-memory-scenario-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-global-memory-scenario-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  arc_launcher_main.cpp
+  arc-launcher.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-launcher.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-live-runtime-tests.vcxproj]
+  live_runtime_tests.cpp
+  arc-live-runtime-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-live-runtime-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  mega_stage_a_benchmark_ui.cpp
+  arc-mega-stage-a-benchmark-ui.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-mega-stage-a-benchmark-ui.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-memory-arbiter-tests.vcxproj]
+  memory_arbiter_tests.cpp
+  arc-memory-arbiter-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-memory-arbiter-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-memory-planner-tests.vcxproj]
+  memory_planner_tests.cpp
+  arc-memory-planner-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-memory-planner-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-quality-admission-tests.vcxproj]
+  quality_admission_tests.cpp
+  arc-quality-admission-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-quality-admission-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-quality-profile-tests.vcxproj]
+  quality_profile_tests.cpp
+  arc-quality-profile-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-quality-profile-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-quality-restore-memory-pressure-tests.vcxproj]
+  quality_restore_memory_pressure_tests.cpp
+  arc-quality-restore-memory-pressure-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-quality-restore-memory-pressure-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-residency-autonomous-sim-tests.vcxproj]
+  residency_autonomous_sim_tests.cpp
+  arc-residency-autonomous-sim-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-residency-autonomous-sim-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-residency-invariant-stress.vcxproj]
+  residency_invariant_stress.cpp
+  arc-residency-invariant-stress.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-residency-invariant-stress.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-residency-policy-tests.vcxproj]
+  residency_policy_tests.cpp
+  arc-residency-policy-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-residency-policy-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-residency-workload-matrix-tests.vcxproj]
+  residency_workload_matrix_tests.cpp
+  arc-residency-workload-matrix-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-residency-workload-matrix-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-resource-semantics-tests.vcxproj]
+  resource_semantics_tests.cpp
+  arc-resource-semantics-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-resource-semantics-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-runtime-coordinator-tests.vcxproj]
+  runtime_coordinator_tests.cpp
+  arc-runtime-coordinator-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-runtime-coordinator-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-runtime-event-bridge-tests.vcxproj]
+  runtime_event_bridge_tests.cpp
+  arc-runtime-event-bridge-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-runtime-event-bridge-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-runtime-integration-tests.vcxproj]
+  runtime_integration_tests.cpp
+  arc-runtime-integration-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-runtime-integration-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-scene-understanding-tests.vcxproj]
+  scene_understanding_tests.cpp
+  arc-scene-understanding-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-scene-understanding-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  stage6_benchmark_ui.cpp
+  arc-stage6-benchmark-ui.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-stage6-benchmark-ui.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  stage7_benchmark_ui.cpp
+  arc-stage7-benchmark-ui.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-stage7-benchmark-ui.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  stage8_benchmark_ui.cpp
+  arc-stage8-benchmark-ui.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-stage8-benchmark-ui.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-steam-library-tests.vcxproj]
+  steam_library_tests.cpp
+  arc-steam-library-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-steam-library-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-test-assertions-tests.vcxproj]
+  test_assertions_tests.cpp
+  arc-test-assertions-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-test-assertions-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-texture-quality-invariant-stress.vcxproj]
+  texture_quality_invariant_stress.cpp
+  arc-texture-quality-invariant-stress.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-texture-quality-invariant-stress.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-texture-quality-policy-tests.vcxproj]
+  texture_quality_policy_tests.cpp
+  arc-texture-quality-policy-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-texture-quality-policy-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  arc_trace_main.cpp
+  arc-trace.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-trace.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  trace_viewer.cpp
+  arc-trace-viewer.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-trace-viewer.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-transition-predictor-tests.vcxproj]
+  transition_predictor_tests.cpp
+  arc-transition-predictor-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-transition-predictor-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-unified-runtime-governor-tests.vcxproj]
+  unified_runtime_governor_tests.cpp
+  arc-unified-runtime-governor-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-unified-runtime-governor-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-wicked-telemetry-tests.vcxproj]
+  wicked_telemetry_tests.cpp
+  arc-wicked-telemetry-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-wicked-telemetry-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  adaptive_quality_benchmark_v2.cpp
+  dx12-adaptive-quality-benchmark.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-adaptive-quality-benchmark.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  closed_loop_mixed_graphics_benchmark.cpp
+  dx12-closed-loop-mixed-graphics-benchmark.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-closed-loop-mixed-graphics-benchmark.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  global_memory_lab.cpp
+  dx12-global-memory-lab.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-global-memory-lab.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  live_runtime_lab.cpp
+  dx12-live-runtime-lab.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-live-runtime-lab.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  mega_stage_a_benchmark.cpp
+  dx12-mega-stage-a-benchmark.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-mega-stage-a-benchmark.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  mega_stage_b_host_renderer.cpp
+  dx12-mega-stage-b-host-renderer.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-mega-stage-b-host-renderer.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  observer_validation.cpp
+  dx12-memory-pressure.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-memory-pressure.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  mixed_graphics_benchmark.cpp
+  dx12-mixed-graphics-benchmark.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-mixed-graphics-benchmark.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  observer_validation.cpp
+  dx12-mixed-resources.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-mixed-resources.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  residency_lab.cpp
+  dx12-residency-lab.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-residency-lab.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  runtime_backend_lab.cpp
+  dx12-runtime-backend-lab.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-runtime-backend-lab.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  runtime_event_bridge_lab.cpp
+  dx12-runtime-event-bridge-lab.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-runtime-event-bridge-lab.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  observer_validation.cpp
+  dx12-texture-pressure.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-texture-pressure.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  tiled_texture_lab.cpp
+  dx12-tiled-texture-lab.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\dx12-tiled-texture-lab.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+
+=== Running ARC deterministic regressions ===
+Test project C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/build-wicked
+      Start  2: arc-resource-semantics-tests
+ 1/14 Test  #2: arc-resource-semantics-tests ............   Passed    0.05 sec
+      Start  3: arc-scene-understanding-tests
+ 2/14 Test  #3: arc-scene-understanding-tests ...........   Passed    0.06 sec
+      Start 16: arc-runtime-event-bridge-tests
+ 3/14 Test #16: arc-runtime-event-bridge-tests ..........   Passed    0.05 sec
+      Start 18: arc-runtime-integration-tests
+ 4/14 Test #18: arc-runtime-integration-tests ...........   Passed    0.05 sec
+      Start 21: arc-adaptive-quality-tests
+Process not started
+ C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/build-wicked/Release/arc-adaptive-quality-tests.exe
+[unknown error]
+ 5/14 Test #21: arc-adaptive-quality-tests ..............***Not Run   0.00 sec
+      Start 23: arc-adaptive-quality-controller-tests
+ 6/14 Test #23: arc-adaptive-quality-controller-tests ...   Passed    0.05 sec
+      Start 25: arc-closed-loop-quality-sim-tests
+ 7/14 Test #25: arc-closed-loop-quality-sim-tests .......   Passed    0.05 sec
+      Start 28: arc-global-action-arbiter-tests
+ 8/14 Test #28: arc-global-action-arbiter-tests .........   Passed    0.06 sec
+      Start 29: arc-unified-runtime-governor-tests
+ 9/14 Test #29: arc-unified-runtime-governor-tests ......   Passed    0.06 sec
+      Start 30: arc-dx12-host-adapter-tests
+10/14 Test #30: arc-dx12-host-adapter-tests .............   Passed    0.08 sec
+      Start 31: arc-dx12-host-adapter-surface-tests
+11/14 Test #31: arc-dx12-host-adapter-surface-tests .....   Passed    0.08 sec
+      Start 32: arc-test-assertions-tests
+12/14 Test #32: arc-test-assertions-tests ...............   Passed    0.03 sec
+      Start 33: arc-wicked-telemetry-tests
+13/14 Test #33: arc-wicked-telemetry-tests ..............   Passed    0.04 sec
+      Start 34: arc-stage15-validation-tests
+14/14 Test #34: arc-stage15-validation-tests ............   Passed    0.73 sec
+
+93% tests passed, 1 tests failed out of 14
+
+Total Test time (real) =   1.92 sec
+
+The following tests FAILED:
+	 21 - arc-adaptive-quality-tests (BAD_COMMAND)
+Errors while running CTest
+ARC deterministic regressions failed: 8
+At C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\scripts\stage14_5-wicked-bootstrap.ps1:115 char:28
++ ... DE -ne 0) { throw "ARC deterministic regressions failed: $LASTEXITCOD ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (ARC deterministic regressions failed: 8:String) [], RuntimeException
+    + FullyQualifiedErrorId : ARC deterministic regressions failed: 8
+ 
+Get-ChildItem : Cannot find path 'C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\results\stage14_5-wicked-local' because it 
+does not exist.
+At C:\Users\r3d_flzp\Desktop\ARC-hardening\scripts\stage15-wicked-bootstrap.ps1:59 char:8
++ $run = Get-ChildItem -LiteralPath $localRoot -Directory |
++        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\Users\r3d_fl..._5-wicked-local:String) [Get-ChildItem], ItemNotFound 
+   Exception
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetChildItemCommand
+ 

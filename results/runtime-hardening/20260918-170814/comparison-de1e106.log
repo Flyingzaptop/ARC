@@ -1,0 +1,7 @@
+Comparison failed: run-00-off, exit -1073741819
+At C:\Users\r3d_flzp\Desktop\ARC-hardening\scripts\compare-wicked-arms.ps1:35 char:36
++ ... de -ne 0) { throw "Comparison failed: $Name, exit $($process.ExitCode ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Comparison fail...xit -1073741819:String) [], RuntimeException
+    + FullyQualifiedErrorId : Comparison failed: run-00-off, exit -1073741819
+ 

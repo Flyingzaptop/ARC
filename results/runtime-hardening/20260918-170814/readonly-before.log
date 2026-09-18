@@ -1,0 +1,13 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-hardening/build-hardening
+    Start 16: arc-runtime-event-bridge-tests
+1/1 Test #16: arc-runtime-event-bridge-tests ...***Failed    0.05 sec
+CHECK failed: observed_bridge.pending_submission_count() == 0 at line 120
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.09 sec
+
+The following tests FAILED:
+	 16 - arc-runtime-event-bridge-tests (Failed)
+Errors while running CTest

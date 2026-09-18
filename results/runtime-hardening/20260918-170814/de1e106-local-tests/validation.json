@@ -1,0 +1,10 @@
+{
+  "source_sha": "de1e1061f35246c0bb52720a6679fc6f20a223b5",
+  "release_tests": 52,
+  "release_gpu_tests_included": 17,
+  "debug_core_stress_tests": 35,
+  "release": "PASS",
+  "debug": "PASS",
+  "readonly_submission_regression": "failed before fix, passed after",
+  "timestamp": "2026-09-18T17:26:39.7867193+02:00"
+}
