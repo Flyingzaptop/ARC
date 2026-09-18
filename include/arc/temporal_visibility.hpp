@@ -123,6 +123,7 @@ private:
         TemporalVisibilityState state{};
         std::uint64_t last_observed_frame{};
         std::uint64_t last_visible_frame{};
+        std::uint64_t last_state_frame{};
         double smoothed_coverage{};
         double smoothed_velocity{};
     };
