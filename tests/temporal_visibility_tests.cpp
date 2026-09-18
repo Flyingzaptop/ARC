@@ -53,6 +53,18 @@ int main() {
     check(fp_a.id != 0 && fp_a.id == fp_b.id, "stable Stage D work fingerprint");
     check(fp_a.confidence > .5, "fingerprint confidence");
 
+    auto sibling_work = fingerprint_work;
+    sibling_work.accesses.insert(
+        sibling_work.accesses.begin(),
+        {99, false, AccessEvidence::Possible, false});
+    const auto fp_sibling = make_visual_track_fingerprint(sibling_work);
+    check(fp_sibling.id != fp_a.id, "distinct inputs must not collapse on shared output");
+
+    auto magnitude_work = fingerprint_work;
+    magnitude_work.items = 65000;
+    const auto fp_magnitude = make_visual_track_fingerprint(magnitude_work);
+    check(fp_magnitude.id != fp_a.id, "work magnitude participates in visual identity");
+
     AttributionNode node{};
     node.id = 1;
     node.work = fingerprint_work;
