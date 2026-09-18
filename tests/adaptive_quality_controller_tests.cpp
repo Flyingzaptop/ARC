@@ -78,10 +78,15 @@ int main() {
         controller.note_action_applied(h2.plan.actions.front(), QualityDecisionKind::Restore, 10.0, 12.0, true);
         assert(controller.active_actions().empty());
 
-        auto stats = controller.effects().find(action);
-        assert(stats.has_value());
-        assert(stats->samples == 2);
-        assert(stats->mean_gain_ms > 2.4 && stats->mean_gain_ms < 2.6);
+        auto degrade_stats = controller.effects().find(action);
+        assert(degrade_stats.has_value());
+        assert(degrade_stats->samples == 1);
+        assert(degrade_stats->mean_gain_ms > 2.9 && degrade_stats->mean_gain_ms < 3.1);
+
+        auto restore_stats = controller.restore_effects().find(action);
+        assert(restore_stats.has_value());
+        assert(restore_stats->samples == 1);
+        assert(restore_stats->mean_gain_ms > 1.9 && restore_stats->mean_gain_ms < 2.1);
 
         const auto state = controller.state();
         assert(state.degrade_actions_applied == 1);
