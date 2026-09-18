@@ -202,7 +202,17 @@ QualityDecision AdaptiveQualityController::tick(
         auto restorable = next_restore_candidates();
         std::vector<QualityActionCandidate> calibrated;
         calibrated.reserve(restorable.size());
-        for (const auto& action : restorable) calibrated.push_back(effects_.calibrate(action));
+        for (const auto& action : restorable) {
+            auto estimate = effects_.calibrate(action);
+            if (const auto restore = restore_effects_.find(action)) {
+                const double sigma = std::sqrt(std::max(0.0, restore->variance_ms2));
+                const double conservative_restore_cost =
+                    std::max(0.0, restore->mean_gain_ms + sigma);
+                estimate.expected_ms_gain =
+                    std::max(estimate.expected_ms_gain, conservative_restore_cost);
+            }
+            calibrated.push_back(estimate);
+        }
 
         out.plan = optimizer_.plan_restore(filtered, calibrated);
         limit_plan(out.plan);
@@ -290,10 +300,12 @@ void AdaptiveQualityController::note_action_applied(
         const double observed_cost = std::isfinite(before_frame_ms) && std::isfinite(after_frame_ms)
             ? std::max(0.0, after_frame_ms - before_frame_ms)
             : 0.0;
-        // Degrade gain and restore cost are the same physical step viewed in
-        // opposite directions. Feeding both observations back prevents a
-        // stale heavy-scene gain from causing repeated restore probes forever.
-        effects_.record(action, observed_cost);
+        // Keep restore cost independent from degradation gain. They are
+        // directionally related, but scene/frequency/scheduling noise can make
+        // their measured distributions asymmetric. Restore planning uses the
+        // conservative upper estimate of this cost instead of contaminating
+        // the degradation-benefit model.
+        restore_effects_.record(action, observed_cost);
         recent_restores_[key] = 0;
         ++restore_actions_applied_;
     }
@@ -312,6 +324,7 @@ void AdaptiveQualityController::reset() noexcept {
     restore_penalties_.clear();
     recent_restores_.clear();
     effects_.clear();
+    restore_effects_.clear();
     filter_initialized_ = false;
     filtered_frame_ms_ = 0.0;
     overload_samples_ = 0;
