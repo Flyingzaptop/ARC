@@ -4,6 +4,7 @@
 #include "arc/ids.hpp"
 
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <unordered_set>
 #include <unordered_map>
@@ -94,7 +95,7 @@ struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
 struct ViewRecord final { DescriptorWrittenPayload description{}; bool alive{true}; };
 struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; };
 struct SubmissionRecord { QueueSubmitPayload description{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; CountersPayload counters{}; };
-struct CopyRecord { CopyPayload description{}; QueueId queue{}; std::uint64_t timestamp_ns{}; };
+struct CopyRecord { CopyPayload description{}; QueueId queue{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; };
 struct CommandRecord { bool closed{}; std::vector<CopyPayload> copies; std::vector<ResourceUsePayload> uses; std::vector<BarrierPayload> barriers; std::vector<ExtendedBarrierPayload> extended_barriers; CountersPayload counters{}; };
 
 struct ResourceRecord final {
@@ -123,8 +124,26 @@ struct ResourceRecord final {
 
 // A slow-path backend-neutral view of resource life. It deliberately receives
 // copied events from the collector instead of being touched by render threads.
+struct ResourceGraphRetention {
+    // Zero preserves full offline history. Live limits bound historical records,
+    // never live resources or reusable command lists.
+    std::size_t submissions{}, copies{}, dead_resources{};
+    static constexpr ResourceGraphRetention live() noexcept { return {65536, 65536, 16384}; }
+};
+
+struct GraphWorkloadTotals {
+    std::uint64_t submissions{}, copies{};
+    CountersPayload counters{};
+};
+
 class ResourceGraph final {
 public:
+    explicit ResourceGraph(ResourceGraphRetention retention = {}) : retention_(retention) {}
+    [[nodiscard]] const GraphWorkloadTotals& workload_totals() const noexcept { return totals_; }
+    [[nodiscard]] std::uint64_t resource_history_generation() const noexcept { return resource_history_generation_; }
+    [[nodiscard]] FrameId last_pruned_resource_usage_frame() const noexcept { return last_pruned_resource_usage_frame_; }
+    [[nodiscard]] FrameId last_pruned_submission_frame() const noexcept { return last_pruned_submission_frame_; }
+    [[nodiscard]] FrameId last_pruned_copy_frame() const noexcept { return last_pruned_copy_frame_; }
     void consume(const Event& event);
     [[nodiscard]] std::optional<ResourceRecord> find(ResourceId id) const;
     [[nodiscard]] std::optional<HeapRecord> find_heap(HeapId id) const;
@@ -137,6 +156,7 @@ public:
     [[nodiscard]] FrameId presentation_frame() const noexcept;
     [[nodiscard]] std::optional<MemoryBudgetPayload> latest_budget() const noexcept;
     void analyze();
+    // In live mode historical queries cover retained records only.
     [[nodiscard]] std::vector<ResourceId> alive_at(std::uint64_t timestamp_ns) const;
     [[nodiscard]] std::vector<ResourceId> with_view(ViewType type) const;
     [[nodiscard]] std::vector<ResourceId> unused_for(FrameId presentations) const;
@@ -152,6 +172,7 @@ private:
     std::unordered_map<ResourceId, ResourceRecord> resources_;
     std::unordered_map<HeapId, HeapRecord> heaps_;
     std::unordered_map<DescriptorId, ViewRecord> views_;
+    std::unordered_map<ResourceId, std::unordered_set<DescriptorId>> resource_views_;
     std::unordered_map<std::uint64_t, DescriptorHeapPayload> descriptor_heaps_;
     std::unordered_map<DescriptorId, DescriptorLocationPayload> descriptor_locations_;
     std::unordered_map<QueueId, QueueRecord> queues_;
@@ -160,10 +181,18 @@ private:
     FrameId presentation_frame_{};
     std::optional<MemoryBudgetPayload> latest_budget_;
     std::unordered_map<CommandId, CommandRecord> commands_;
-    std::vector<SubmissionRecord> submissions_;
-    std::vector<CopyRecord> copies_;
+    std::deque<SubmissionRecord> submissions_;
+    std::deque<CopyRecord> copies_;
+    ResourceGraphRetention retention_{};
+    GraphWorkloadTotals totals_{};
+    std::deque<ResourceId> dead_resources_;
+    std::uint64_t resource_history_generation_{};
+    FrameId last_pruned_resource_usage_frame_{};
+    FrameId last_pruned_submission_frame_{}, last_pruned_copy_frame_{};
     std::uint64_t errors_{};
     void use(ResourceId resource, QueueId queue, std::uint64_t timestamp, bool write);
+    void assign_view(DescriptorId id, ViewRecord view);
+    void erase_view(DescriptorId id);
 };
 
 }  // namespace arc

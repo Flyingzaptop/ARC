@@ -312,7 +312,89 @@ int main() {
     assert(dense_reuse_window.active_resources == 1);
     assert(dense_reuse_window.known_resources == 1);
     assert(dense_reuse_window.resource_fractions[
-        static_cast<std::size_t>(arc::InferredResourceSemantic::PersistentHistory)] > 0.99F);
+        static_cast<std::size_t>(arc::InferredResourceSemantic::TransientIntermediate)] > 0.99F);
+
+    // Pruning detailed command history must not change checkpoint deltas.
+    arc::ResourceGraph bounded({2, 2, 2});
+    arc::ResourceGraph archive;
+    for (auto* graph : {&bounded, &archive}) {
+        queue(*graph, 1);
+        create(*graph, 50, arc::ResourceKind::Texture2D, 1024, 1024, 8);
+        view(*graph, 50, 501, arc::ViewType::Srv);
+    }
+    const auto bounded_start = infer.checkpoint(bounded);
+    const auto archive_start = infer.checkpoint(archive);
+    for (arc::FrameId frame = 1; frame <= 20; ++frame) {
+        for (auto* graph : {&bounded, &archive}) {
+            present(*graph, frame);
+            use(*graph, 4000 + frame, 1, 50, false, 40000 + frame * 10, 3, 2, 4, 1, 900, 64);
+            // Submit a reusable copy command as well.
+            arc::CommandListPayload list{};
+            list.command = 5000 + frame;
+            graph->consume(event(arc::EventType::CommandListCreated, list));
+            graph->consume(event(arc::EventType::CopyResource, arc::CopyPayload{50, 50, list.command, 4096}));
+            graph->consume(event(arc::EventType::CommandListClosed, list));
+            graph->consume(event(arc::EventType::QueueSubmit, arc::QueueSubmitPayload{1, list.command, frame}));
+        }
+    }
+    const auto retained = infer.summarize(bounded, bounded_start);
+    const auto full = infer.summarize(archive, archive_start);
+    assert(bounded.submissions().size() == 2 && bounded.copies().size() == 2);
+    assert(archive.submissions().size() == 40 && archive.copies().size() == 20);
+    assert(retained.history_complete && retained.submissions == 40 && retained.copies == 20);
+    assert(retained.draws == full.draws && retained.draws == 60);
+    assert(retained.indexed_draws == 40 && retained.dispatches == 80 && retained.indirect == 20);
+    assert(retained.draw_items == 18000 && retained.dispatch_groups == 1280);
+    assert(retained.resource_accesses_per_frame == full.resource_accesses_per_frame);
+    assert(!infer.summarize(bounded).history_complete);
+
+    // A used resource destroyed during a window still contributes to it.
+    const auto before_destroy = infer.checkpoint(bounded);
+    use(bounded, 6000, 1, 50, false, 60000, 5);
+    bounded.consume(event(arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{50}));
+    const auto destroyed_window = infer.summarize(bounded, before_destroy);
+    assert(destroyed_window.history_complete && destroyed_window.active_resources == 1);
+    assert(destroyed_window.draws == 5);
+    const auto after_destroy = infer.checkpoint(bounded);
+    assert(infer.summarize(bounded, after_destroy).active_resources == 0);
+    for (arc::ResourceId id : {51ull, 52ull}) {
+        create(bounded, id, arc::ResourceKind::Buffer, 1024, 1);
+        bounded.consume(event(arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{id}));
+    }
+    assert(bounded.resource_count() == 2 && !bounded.find(50));
+    assert(bounded.live_allocation_bytes() == 0);
+    const auto expired_window = infer.summarize(bounded, before_destroy);
+    assert(!expired_window.history_complete && expired_window.draws == 5);
+    assert(!infer.compare(expired_window, full).same_scene);
+    assert(clusters.observe(expired_window).cluster == 0);
+    // Resource churn must plateau, and reused descriptor slots must survive
+    // eviction of the resource they described earlier.
+    create(bounded, 53, arc::ResourceKind::Buffer, 1024, 1);
+    view(bounded, 53, 700, arc::ViewType::Srv);
+    bounded.consume(event(arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{53}));
+    create(bounded, 54, arc::ResourceKind::Buffer, 1024, 1);
+    view(bounded, 54, 700, arc::ViewType::Srv);
+    for (arc::ResourceId id = 100; id < 10100; ++id) {
+        create(bounded, id, arc::ResourceKind::Buffer, 1024, 1);
+        view(bounded, id, 10000 + id, arc::ViewType::Srv);
+        bounded.consume(event(arc::EventType::ResourceDestroyed, arc::ResourceDestroyPayload{id}));
+        assert(bounded.resource_count() == 3);
+    }
+    assert(!bounded.find(53) && !bounded.find_view(10100));
+    assert(bounded.find_view(700)->description.resource == 54);
+    assert(bounded.live_allocation_bytes() == 4096);
+    // Rolling observations recover when all pruned activity ages out; an
+    // all-history observation and an expired checkpoint remain incomplete.
+    present(bounded, 100);
+    use(bounded, 20000, 1, 54, false, 200000, 7);
+    const auto recovered_window = infer.summarize(bounded);
+    assert(recovered_window.history_complete && recovered_window.active_resources == 1);
+    assert(recovered_window.draws == 7 && recovered_window.copies == 0);
+    auto all_history_config = config;
+    all_history_config.active_window_frames = 0;
+    assert(!arc::SceneUnderstandingInferencer(all_history_config).summarize(bounded).history_complete);
+    assert(!infer.summarize(bounded, before_destroy).history_complete);
+    assert(bounded.errors() == 0 && archive.errors() == 0);
 
     std::cout << "scene-understanding-tests: PASS\n";
 }

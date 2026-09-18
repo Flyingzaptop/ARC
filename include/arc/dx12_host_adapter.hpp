@@ -24,6 +24,7 @@ struct NativeHostAdapterConfig {
     std::size_t event_capacity{16384};
     RuntimeIntegrationConfig runtime{};
     double default_reload_ms{0.25};
+    ResourceGraphRetention graph_retention{ResourceGraphRetention::live()};
 };
 
 struct NativeHostAdapterMetrics {

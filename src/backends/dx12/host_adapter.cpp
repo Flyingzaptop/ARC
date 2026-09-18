@@ -17,6 +17,7 @@ NativeHostAdapter::NativeHostAdapter(
       config_(std::move(config)),
       events_((std::max<std::size_t>)(64, config_.event_capacity)),
       observer_(events_, ids_, &global_sequence_),
+      graph_(config_.graph_retention),
       backend_(device),
       runtime_(&backend_, config_.runtime) {
     config_.default_reload_ms = (std::max)(0.0, config_.default_reload_ms);

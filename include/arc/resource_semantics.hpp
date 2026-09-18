@@ -25,6 +25,9 @@ enum class InferredResourceSemantic : std::uint8_t {
 
 inline constexpr std::size_t kInferredResourceSemanticCount = 12;
 
+// Scores rank heuristic support; they are not calibrated correctness probabilities.
+enum class SemanticConfidenceBasis : std::uint8_t { HeuristicScore };
+
 struct ResourceSemanticFeatures {
     ResourceId resource{};
     ResourceKind kind{ResourceKind::Unknown};
@@ -58,6 +61,7 @@ struct ResourceSemanticPrediction {
     ResourceId resource{};
     InferredResourceSemantic semantic{InferredResourceSemantic::Unknown};
     float confidence{};
+    SemanticConfidenceBasis confidence_basis{SemanticConfidenceBasis::HeuristicScore};
     std::uint64_t evidence_mask{};
     ResourceSemanticFeatures features{};
 };

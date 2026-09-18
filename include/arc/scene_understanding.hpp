@@ -24,10 +24,15 @@ struct SceneObservationCheckpoint {
     std::size_t submission_count{};
     std::size_t copy_count{};
     bool valid{};
+    GraphWorkloadTotals workload{};
+    std::uint64_t resource_history_generation{};
     std::unordered_map<ResourceId, SceneResourceUsageCheckpoint> resources;
 };
 
 struct SceneSemanticSignature {
+    // False means retained resource/command history cannot cover this window.
+    // Workload checkpoint deltas remain exact even after command-history pruning.
+    bool history_complete{true};
     FrameId frame{};
     FrameId window_frames{};
     std::uint64_t active_resources{};

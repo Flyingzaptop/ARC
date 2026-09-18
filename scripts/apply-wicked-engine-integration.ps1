@@ -38,6 +38,7 @@ if ([string]::IsNullOrWhiteSpace($ArcBuildRoot)) {
 }
 
 Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedHooks.h') (Join-Path $WickedRoot 'WickedEngine\ArcWickedHooks.h') -Force
+Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedTelemetry.h') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedTelemetry.h') -Force
 Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedBridge.h') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedBridge.h') -Force
 Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedBridge.cpp') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedBridge.cpp') -Force
 

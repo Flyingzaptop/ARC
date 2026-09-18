@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <algorithm>
+#include <utility>
 
 namespace arc {
 namespace {
@@ -16,6 +17,26 @@ bool decode(const Event& event, T& output) noexcept {
 }
 
 }  // namespace
+
+void ResourceGraph::erase_view(DescriptorId id) {
+    const auto view = views_.find(id);
+    if (view == views_.end()) return;
+    if (retention_.dead_resources) {
+        const auto index = resource_views_.find(view->second.description.resource);
+        if (index != resource_views_.end()) {
+            index->second.erase(id);
+            if (index->second.empty()) resource_views_.erase(index);
+        }
+    }
+    views_.erase(view);
+}
+
+void ResourceGraph::assign_view(DescriptorId id, ViewRecord view) {
+    erase_view(id);
+    if (retention_.dead_resources)
+        resource_views_[view.description.resource].insert(id);
+    views_.emplace(id, std::move(view));
+}
 
 void ResourceGraph::consume(const Event& event) {
     if (event.header.type == EventType::TraceOverflow || event.header.type == EventType::DiagnosticError) { ++errors_; return; }
@@ -50,6 +71,13 @@ void ResourceGraph::consume(const Event& event) {
         DescriptorHeapPayload p{}; decode(event, p);
         if (!descriptor_heaps_.erase(p.heap)) { ++errors_; }
         for (const auto& [id, location] : descriptor_locations_) { if (location.heap == p.heap) { if (auto v = views_.find(id); v != views_.end()) { v->second.alive = false; } } }
+        if (retention_.dead_resources) {
+            std::erase_if(descriptor_locations_, [&](const auto& entry) {
+                if (entry.second.heap != p.heap) return false;
+                erase_view(entry.first);
+                return true;
+            });
+        }
         return;
     }
     if (event.header.type == EventType::DescriptorLocation) {
@@ -63,7 +91,7 @@ void ResourceGraph::consume(const Event& event) {
         const auto source = views_.find(p.source);
         if (source == views_.end() || !source->second.alive) { ++errors_; return; }
         auto view = source->second; view.description.descriptor = p.destination;
-        views_[p.destination] = view; return;
+        assign_view(p.destination, view); return;
     }
     if (event.header.type == EventType::HeapCreated) {
         HeapCreatePayload payload{};
@@ -80,6 +108,7 @@ void ResourceGraph::consume(const Event& event) {
         if (it != heaps_.end() && it->second.alive) {
             it->second.alive = false;
             live_heap_bytes_ -= it->second.description.size;
+            if (retention_.dead_resources) heaps_.erase(it);
         } else { ++errors_; }
         return;
     }
@@ -109,6 +138,21 @@ void ResourceGraph::consume(const Event& event) {
             it->second.destroy_timestamp_ns = event.header.timestamp_ns;
             it->second.destroy_sequence = event.header.sequence;
             live_allocation_bytes_ -= it->second.description.allocation_bytes;
+            if (retention_.dead_resources) {
+                dead_resources_.push_back(payload.resource);
+                while (dead_resources_.size() > retention_.dead_resources) {
+                    const auto expired = dead_resources_.front();
+                    dead_resources_.pop_front();
+                    last_pruned_resource_usage_frame_ = std::max(
+                        last_pruned_resource_usage_frame_, resources_.at(expired).last_used_frame);
+                    resources_.erase(expired);
+                    if (const auto index = resource_views_.find(expired); index != resource_views_.end()) {
+                        for (const auto descriptor : index->second) views_.erase(descriptor);
+                        resource_views_.erase(index);
+                    }
+                    ++resource_history_generation_;
+                }
+            }
         } else { ++errors_; }
         return;
     }
@@ -117,7 +161,7 @@ void ResourceGraph::consume(const Event& event) {
         if (decode(event, payload)) {
             if (payload.type != ViewType::Sampler && (!payload.resource || !resources_.contains(payload.resource))) { ++errors_; return; }
             if (payload.type == ViewType::Sampler && payload.resource) { ++errors_; return; }
-            views_.insert_or_assign(payload.descriptor, ViewRecord{.description = payload});
+            assign_view(payload.descriptor, ViewRecord{.description = payload});
             if (auto r = resources_.find(payload.resource); r != resources_.end()) {
                 r->second.evidence |= 1U << static_cast<unsigned>(payload.type);
             }
@@ -138,10 +182,27 @@ void ResourceGraph::consume(const Event& event) {
             auto command = commands_.find(payload.command);
             if (command == commands_.end() || !command->second.closed) { ++errors_; return; }
             submissions_.push_back({payload, event.header.timestamp_ns, presentation_frame_, command->second.counters});
+            ++totals_.submissions;
+            const auto& counters = command->second.counters;
+            totals_.counters.draws += counters.draws;
+            totals_.counters.indexed_draws += counters.indexed_draws;
+            totals_.counters.dispatches += counters.dispatches;
+            totals_.counters.indirect += counters.indirect;
+            totals_.counters.draw_items += counters.draw_items;
+            totals_.counters.dispatch_groups += counters.dispatch_groups;
+            if (retention_.submissions && submissions_.size() > retention_.submissions) {
+                last_pruned_submission_frame_ = submissions_.front().presentation;
+                submissions_.pop_front();
+            }
             for (const auto& copy : command->second.copies) {
                 use(copy.source, payload.queue, event.header.timestamp_ns, false);
                 use(copy.destination, payload.queue, event.header.timestamp_ns, true);
-                copies_.push_back({copy, payload.queue, event.header.timestamp_ns});
+                copies_.push_back({copy, payload.queue, event.header.timestamp_ns, presentation_frame_});
+                ++totals_.copies;
+                if (retention_.copies && copies_.size() > retention_.copies) {
+                    last_pruned_copy_frame_ = copies_.front().presentation;
+                    copies_.pop_front();
+                }
             }
             for (const auto& u : command->second.uses) { use(u.resource, payload.queue, event.header.timestamp_ns, u.write != 0); }
         }

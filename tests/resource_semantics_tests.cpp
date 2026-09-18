@@ -55,6 +55,7 @@ int main() {
     view(g,4,41,arc::ViewType::Rtv);
     auto rt=infer.classify(g,4);
     assert(rt.semantic==arc::InferredResourceSemantic::RenderTarget);
+    assert(rt.confidence_basis==arc::SemanticConfidenceBasis::HeuristicScore);
 
     create(g,5,arc::ResourceKind::Texture2D,512,512,1,1);
     view(g,5,51,arc::ViewType::Uav);
@@ -138,6 +139,30 @@ int main() {
     native_rt.usage_count = 20;
     assert(infer.classify(native_rt).semantic ==
         arc::InferredResourceSemantic::RenderTarget);
+
+    // A target overwritten and sampled every frame is recurrent, but its
+    // aggregate accesses provide no proof of a temporal dependency.
+    auto recurrent_target = native_rt;
+    recurrent_target.srv = true;
+    recurrent_target.rtv = true;
+    recurrent_target.usage_bursts = 20;
+    recurrent_target.reuse_interval_frames = 1.0;
+    const auto recurrent_prediction = infer.classify(recurrent_target);
+    assert(recurrent_prediction.semantic == arc::InferredResourceSemantic::RenderTarget);
+    assert((recurrent_prediction.evidence_mask & (1ull << 12)) != 0);
+    recurrent_target.write_fraction = 0.75;
+    recurrent_target.read_fraction = 0.25;
+    assert(infer.classify(recurrent_target).semantic ==
+        arc::InferredResourceSemantic::TransientIntermediate);
+
+    // Repeatedly sampling a single-mip static SRV is equally insufficient.
+    auto recurrent_srv = recurrent_target;
+    recurrent_srv.rtv = false;
+    recurrent_srv.resource_flags = 0;
+    recurrent_srv.mip_levels = 1;
+    recurrent_srv.read_fraction = 1.0;
+    recurrent_srv.write_fraction = 0.0;
+    assert(infer.classify(recurrent_srv).semantic == arc::InferredResourceSemantic::Unknown);
 
     const auto all=infer.classify_all(g);
     assert(all.size()==6);

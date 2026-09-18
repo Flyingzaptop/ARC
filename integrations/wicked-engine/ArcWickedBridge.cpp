@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ArcWickedBridge.h"
 #include "ArcWickedHooks.h"
+#include "ArcWickedTelemetry.h"
 
 #include "arc/dx12_host_adapter.hpp"
 #include "arc/quality_profile.hpp"
@@ -51,7 +52,7 @@ struct CommandCounters
 
 struct CommandPending
 {
-    std::unordered_map<ID3D12Resource*, bool> uses;
+    std::unordered_map<ID3D12Resource*, arc_wicked::AccessMask> uses;
     CommandCounters counters;
 };
 
@@ -91,6 +92,49 @@ enum class Phase
     Adaptive,
     Recovery,
     Done,
+};
+
+// Timed scopes include host/bridge mutex waits and work on recording threads.
+// Sum is thread-time, not critical-path frame time; recording cost is excluded.
+std::array<arc_wicked::HookTiming, 64> g_hook_timings{};
+std::atomic<bool> g_hooks_enabled{true};
+std::atomic<bool> g_hook_timing_enabled{true};
+std::atomic<std::uint64_t> g_present_failures{0};
+
+void WriteHookTimings(std::ostream& out)
+{
+    out << "{\"enabled\":" << (g_hook_timing_enabled ? "true" : "false")
+        << ",\"scope\":\"inclusive_thread_time_mutex_wait_included\",\"hooks\":{";
+    bool first = true;
+    for (std::size_t i = 0; i < g_hook_timings.size(); ++i)
+    {
+        if (!g_hook_timings[i].calls.load(std::memory_order_relaxed)) continue;
+        if (!first) out << ',';
+        first = false;
+        out << '\"' << i << "\":";
+        g_hook_timings[i].write_json(out);
+    }
+    out << "}}";
+}
+
+// Optional timing lets comparative runs avoid instrumentation perturbation.
+class OptionalHookTimer {
+public:
+    explicit OptionalHookTimer(unsigned hook) noexcept
+        : hook_(hook), enabled_(g_hook_timing_enabled.load(std::memory_order_relaxed)) {
+        if (enabled_) start_ = std::chrono::steady_clock::now();
+    }
+    ~OptionalHookTimer() {
+        if (enabled_) {
+            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - start_).count();
+            g_hook_timings[hook_].record(ns > 0 ? static_cast<std::uint64_t>(ns) : 0);
+        }
+    }
+private:
+    unsigned hook_;
+    bool enabled_;
+    std::chrono::steady_clock::time_point start_{};
 };
 
 std::atomic<std::uint32_t> g_arc_last_hook{0};
@@ -193,6 +237,7 @@ void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& ca
 {
     const auto& signature = capture.signature;
     out << "{\"captured\":" << (capture.captured ? "true" : "false")
+        << ",\"history_complete\":" << (signature.history_complete ? "true" : "false")
         << ",\"cluster\":" << capture.cluster.cluster
         << ",\"cluster_distance\":" << capture.cluster.distance
         << ",\"cluster_confidence\":" << capture.cluster.confidence
@@ -259,6 +304,24 @@ public:
         ID3D12DescriptorHeap* sampler_heap)
         : device_(device)
     {
+        seconds_ = EnvInt(L"ARC_WICKED_SECONDS", 30, 10, 120);
+        warmup_seconds_ = EnvInt(L"ARC_WICKED_WARMUP_SECONDS", 5, 2, 20);
+        recovery_seconds_ = EnvInt(L"ARC_WICKED_RECOVERY_SECONDS", 20, 5, 60);
+        settle_milliseconds_ = EnvInt(L"ARC_WICKED_SCENE_SETTLE_MS", 1500, 500, 5000);
+        control_frames_ = EnvInt(L"ARC_WICKED_CONTROL_FRAMES", 16, 4, 120);
+        arc_source_sha_ = Narrow(EnvString(L"ARC_SOURCE_SHA"));
+        const auto output = EnvString(L"ARC_WICKED_OUTPUT");
+        if (!output.empty()) output_path_ = output;
+        experiment_mode_ = Narrow(EnvString(L"ARC_WICKED_EXPERIMENT_MODE"));
+        if (!experiment_mode_.empty() && experiment_mode_ != "off" &&
+            experiment_mode_ != "observe" && experiment_mode_ != "adaptive")
+        {
+            phase_ = Phase::Done;
+            PostQuitMessage(2);
+            return;
+        }
+        scene_offset_ = static_cast<std::size_t>(EnvInt(L"ARC_WICKED_SCENE_OFFSET", 0, 0, 4));
+        if (experiment_mode_ == "off") return;
         arc::dx12::NativeHostAdapterConfig cfg{};
         cfg.event_capacity = 1u << 20;
         cfg.runtime.coordinator.mode = arc::RuntimeMode::ObserveOnly;
@@ -294,14 +357,7 @@ public:
         if (resource_heap_) (void)host_->observe_descriptor_heap(resource_heap_);
         if (sampler_heap_) (void)host_->observe_descriptor_heap(sampler_heap_);
 
-        seconds_ = EnvInt(L"ARC_WICKED_SECONDS", 30, 10, 120);
-        warmup_seconds_ = EnvInt(L"ARC_WICKED_WARMUP_SECONDS", 5, 2, 20);
-        recovery_seconds_ = EnvInt(L"ARC_WICKED_RECOVERY_SECONDS", 20, 5, 60);
-        settle_milliseconds_ = EnvInt(L"ARC_WICKED_SCENE_SETTLE_MS", 1500, 500, 5000);
-        control_frames_ = EnvInt(L"ARC_WICKED_CONTROL_FRAMES", 16, 4, 120);
-        arc_source_sha_ = Narrow(EnvString(L"ARC_SOURCE_SHA"));
-        const auto output = EnvString(L"ARC_WICKED_OUTPUT");
-        if (!output.empty()) output_path_ = output;
+
     }
 
     void ResourceCreated(ID3D12Resource* resource) noexcept
@@ -359,7 +415,7 @@ public:
         if (!host_->resource_id(resource)) (void)host_->observe_external_resource(resource);
         std::scoped_lock lock(pending_mutex_);
         auto& current = pending_[command].uses[resource];
-        current = current || write;
+        current.observe(write);
     }
 
     void Transition(
@@ -442,8 +498,11 @@ public:
                 }
             }
 
-            for (const auto& [resource, write] : state.uses)
-                (void)host_->observe_resource_use(command, resource, write);
+            for (const auto& [resource, access] : state.uses)
+            {
+                if (access.read) (void)host_->observe_resource_use(command, resource, false);
+                if (access.write) (void)host_->observe_resource_use(command, resource, true);
+            }
 
             const auto& c = state.counters;
             if (c.draws || c.indexed_draws || c.dispatches || c.indirect)
@@ -508,7 +567,13 @@ public:
 
     void HarnessUpdate(wi::gui::ComboBox& selector, std::uint32_t width, std::uint32_t height) noexcept
     {
-        if (!host_ || phase_ == Phase::Done) return;
+        if (phase_ == Phase::Done) return;
+        if (experiment_mode_ == "off" || experiment_mode_ == "observe" || experiment_mode_ == "adaptive")
+        {
+            ExperimentUpdate(selector, width, height);
+            return;
+        }
+        if (!host_) return;
 
         g_arc_last_phase.store(static_cast<std::uint32_t>(phase_), std::memory_order_relaxed);
         g_arc_last_scene.store(static_cast<std::uint32_t>(current_scene_), std::memory_order_relaxed);
@@ -652,6 +717,131 @@ public:
     }
 
 private:
+    // Independent OFF/observer/controlled experiment with a shared calibration.
+    // Does not produce stage acceptance or validate recovery/image quality.
+    void ExperimentUpdate(wi::gui::ComboBox& selector, std::uint32_t width, std::uint32_t height)
+    {
+        const auto now = std::chrono::steady_clock::now();
+        width_ = width;
+        height_ = height;
+        wi::eventhandler::SetVSync(false);
+        wi::renderer::SetTemporalAAEnabled(false);
+        wi::profiler::SetEnabled(true);
+        const double cpu_ms = have_last_harness_update_ ?
+            std::chrono::duration<double, std::milli>(now - last_harness_update_).count() : 0.0;
+        last_harness_update_ = now;
+        have_last_harness_update_ = true;
+        if (phase_ == Phase::Dormant)
+        {
+            ForceFullQuality();
+            phase_ = Phase::Warmup;
+            phase_start_ = now;
+            current_scene_ = 0;
+            selector.SetSelected(kScenes[scene_offset_].combo_index);
+            AfterSceneSwitch(now);
+            return;
+        }
+        const double elapsed = std::chrono::duration<double>(now - phase_start_).count();
+        const double settle_s = static_cast<double>(settle_milliseconds_) / 1000.0;
+        const double slot_s = phase_ == Phase::Warmup ? static_cast<double>(warmup_seconds_) :
+            static_cast<double>(seconds_) / kScenes.size() + settle_s;
+        const auto desired = std::min<std::size_t>(static_cast<std::size_t>(elapsed / slot_s), kScenes.size());
+        if (desired == kScenes.size())
+        {
+            if (phase_ == Phase::Warmup)
+            {
+                if (experiment_mode_ == "adaptive")
+                {
+                    // Explicit microseconds avoid locale-dependent decimal parsing.
+                    target_ms_ = EnvInt(L"ARC_WICKED_TARGET_US", 0, 0, 1000000) / 1000.0;
+                    const double p50 = EnvInt(L"ARC_WICKED_BASELINE_P50_US", 0, 0, 1000000) / 1000.0;
+                    if (target_ms_ <= 0.0 || p50 <= 0.0) { phase_ = Phase::Done; PostQuitMessage(2); return; }
+                    RegisterQualityProfiles(p50);
+                    if (!profiles_registered_) { phase_ = Phase::Done; PostQuitMessage(3); return; }
+                    host_->runtime().governor().quality().reset();
+                    host_->set_mode(arc::RuntimeMode::Controlled);
+                    last_control_metrics_ = host_->metrics();
+                }
+                phase_ = Phase::Baseline;
+                phase_start_ = now;
+                current_scene_ = 0;
+                selector.SetSelected(kScenes[scene_offset_].combo_index);
+                AfterSceneSwitch(now);
+                return;
+            }
+            if (!output_path_.parent_path().empty()) std::filesystem::create_directories(output_path_.parent_path());
+            if (host_) (void)host_->drain();
+            const auto hm = host_ ? host_->metrics() : arc::dx12::NativeHostAdapterMetrics{};
+            const auto graph_errors = host_ ? host_->graph().errors() : 0;
+            const auto backend_failures = host_ ? host_->runtime().governor().metrics().quality_backend_failures : 0;
+            const auto removed = device_ ? device_->GetDeviceRemovedReason() : E_FAIL;
+            const bool experiment_valid = hm.failed_observations == 0 && hm.bridge_rejections == 0 &&
+                graph_errors == 0 && backend_failures == 0 && invalid_samples_ == 0 &&
+                g_present_failures.load(std::memory_order_relaxed) == 0 && SUCCEEDED(removed) &&
+                (experiment_mode_ != "adaptive" || profiles_registered_);
+            std::ofstream out(output_path_, std::ios::trunc);
+            out << std::setprecision(9)
+                << "{\"schema\":1,\"experiment\":\"three_arm_comparison\",\"acceptance_evaluated\":false,"
+                << "\"valid\":" << (experiment_valid ? "true" : "false") << ','
+                << "\"mode\":\"" << experiment_mode_ << "\",\"arc_source_sha\":\"" << arc_source_sha_
+                << "\",\"scene_offset\":" << scene_offset_ << ",\"width\":" << width_
+                << ",\"height\":" << height_
+                << ",\"target_ms\":" << target_ms_
+                << ",\"calibration_p40_ms\":" << Percentile(baseline_.frames, 0.40)
+                << ",\"calibration_p50_ms\":" << Percentile(baseline_.frames, 0.50)
+                << ",\"quality_actions\":" << (host_ ? host_->runtime().governor().metrics().quality_actions_executed : 0)
+                << ",\"graph_errors\":" << graph_errors
+                << ",\"failed_observations\":" << hm.failed_observations
+                << ",\"bridge_rejections\":" << hm.bridge_rejections
+                << ",\"backend_failures\":" << backend_failures
+                << ",\"invalid_samples\":" << invalid_samples_
+                << ",\"present_failures\":" << g_present_failures.load(std::memory_order_relaxed)
+                << ",\"device_removed_reason\":" << static_cast<std::int32_t>(removed)
+                << ",\"recovery_validated\":false,\"scenes\":[";
+            for (std::size_t i = 0; i < kScenes.size(); ++i)
+            {
+                if (i) out << ',';
+                out << "{\"name\":\"" << kScenes[i].name << "\",\"gpu_samples\":" << baseline_scenes_[i].frames.size()
+                    << ",\"cpu_samples\":" << experiment_cpu_[i].frames.size()
+                    << ",\"gpu_p50_ms\":" << Percentile(baseline_scenes_[i].frames, 0.50)
+                    << ",\"gpu_p95_ms\":" << Percentile(baseline_scenes_[i].frames, 0.95)
+                    << ",\"cpu_p50_ms\":" << Percentile(experiment_cpu_[i].frames, 0.50)
+                    << ",\"cpu_p95_ms\":" << Percentile(experiment_cpu_[i].frames, 0.95) << '}';
+            }
+            out << "],\"hook_timings\":";
+            WriteHookTimings(out);
+            out << "}\n";
+            // This diagnostic resets renderer settings; it does not validate
+            // governor recovery. The official stage harness does that separately.
+            ForceFullQuality();
+            phase_ = Phase::Done;
+            PostQuitMessage(0);
+            return;
+        }
+        const auto scene = (desired + scene_offset_) % kScenes.size();
+        if (desired != current_scene_)
+        {
+            current_scene_ = desired;
+            selector.SetSelected(kScenes[scene].combo_index);
+            AfterSceneSwitch(now);
+            return;
+        }
+        if (phase_ == Phase::Warmup || elapsed - desired * slot_s < settle_s) return;
+        const double gpu_ms = static_cast<double>(wi::profiler::GetLastGPUFrameTimeMS());
+        if (!std::isfinite(gpu_ms) || !std::isfinite(cpu_ms)) { ++invalid_samples_; return; }
+        if (gpu_ms > 0.0)
+        {
+            baseline_scenes_[scene].frames.push_back(gpu_ms);
+            baseline_.frames.push_back(gpu_ms);
+            if (experiment_mode_ == "adaptive")
+            {
+                control_window_.push_back(gpu_ms);
+                if (static_cast<int>(control_window_.size()) >= control_frames_) TickGovernor(target_ms_);
+            }
+        }
+        if (cpu_ms > 0.0) experiment_cpu_[scene].frames.push_back(cpu_ms);
+    }
+
     void CaptureSceneSemantic(Phase phase, std::size_t scene)
     {
         if (!host_ || scene >= kScenes.size() ||
@@ -1146,6 +1336,7 @@ private:
           << "  \"graph\":{\"resources\":" << host_->graph().resource_count()
           << ",\"errors\":" << host_->graph().errors() << "},\n"
           << "  \"stage15_semantics\":{\"observer_only\":true"
+          << ",\"confidence_basis\":\"heuristic_score\",\"accuracy_validated\":false"
           << ",\"alive_resources\":" << semantic_predictions.size()
           << ",\"known_resources\":" << semantic_known
           << ",\"coverage\":" << semantic_coverage
@@ -1207,6 +1398,9 @@ private:
           << ",\"restore_backoffs\":" << adaptive_restore_backoffs_
           << ",\"recovery_ticks\":" << recovery_ticks_
           << ",\"quality_backend_failures\":" << gm.quality_backend_failures << "},\n"
+          << "  \"hook_timings\":";
+        WriteHookTimings(f);
+        f << ",\n"
           << "  \"diagnostics\":{\"cpu_frame_p50_ms\":" << cpu_frame_p50
           << ",\"cpu_frame_p99_ms\":" << cpu_frame_p99
           << ",\"cpu_frame_max_ms\":" << cpu_frame_max
@@ -1237,6 +1431,10 @@ private:
     std::mutex queue_mutex_;
     std::unordered_map<ID3D12CommandQueue*, QueueState> queues_;
 
+    std::string experiment_mode_;
+    std::size_t scene_offset_ = 0;
+    std::array<Stats, kScenes.size()> experiment_cpu_{};
+    std::uint64_t invalid_samples_ = 0;
     Phase phase_ = Phase::Dormant;
     std::chrono::steady_clock::time_point phase_start_{};
     std::chrono::steady_clock::time_point settle_until_{};
@@ -1349,6 +1547,8 @@ extern "C" void ARCWickedDeviceReady(
     std::scoped_lock lock(g_bridge_mutex);
     if (!g_bridge)
     {
+        g_hooks_enabled = EnvString(L"ARC_WICKED_EXPERIMENT_MODE") != L"off";
+        g_hook_timing_enabled = EnvInt(L"ARC_WICKED_HOOK_TIMING", 1, 0, 1) != 0;
         SetUnhandledExceptionFilter(ArcUnhandledException);
         g_bridge = new Bridge(device, resource_heap, sampler_heap);
     }
@@ -1356,12 +1556,16 @@ extern "C" void ARCWickedDeviceReady(
 
 extern "C" void ARCWickedResourceCreated(ID3D12Resource* resource) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(10);
     ArcBreadcrumb(10);
     if (auto* b = GetBridge()) b->ResourceCreated(resource);
 }
 
 extern "C" void ARCWickedResourceDestroyed(ID3D12Resource* resource) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(11);
     ArcBreadcrumb(11);
     if (auto* b = GetBridge()) b->ResourceDestroyed(resource);
 }
@@ -1372,6 +1576,8 @@ extern "C" void ARCWickedObserveSRV(
     ID3D12Resource* resource,
     const D3D12_SHADER_RESOURCE_VIEW_DESC* view) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(20);
     ArcBreadcrumb(20);
     if (auto* b = GetBridge()) b->ObserveSRV(heap, index, resource, view);
 }
@@ -1382,6 +1588,8 @@ extern "C" void ARCWickedObserveUAV(
     ID3D12Resource* resource,
     const D3D12_UNORDERED_ACCESS_VIEW_DESC* view) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(21);
     ArcBreadcrumb(21);
     if (auto* b = GetBridge()) b->ObserveUAV(heap, index, resource, view);
 }
@@ -1390,6 +1598,8 @@ extern "C" void ARCWickedObserveSampler(
     ID3D12DescriptorHeap* heap,
     std::uint32_t index) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(22);
     ArcBreadcrumb(22);
     if (auto* b = GetBridge()) b->ObserveSampler(heap, index);
 }
@@ -1398,6 +1608,8 @@ extern "C" void ARCWickedCommandBegin(
     ID3D12CommandList* command,
     D3D12_COMMAND_LIST_TYPE type) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(30);
     ArcBreadcrumb(30);
     if (auto* b = GetBridge()) b->CommandBegin(command, type);
 }
@@ -1407,6 +1619,8 @@ extern "C" void ARCWickedResourceUse(
     ID3D12Resource* resource,
     bool write) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(31);
     ArcBreadcrumb(31);
     if (auto* b = GetBridge()) b->ResourceUse(command, resource, write);
 }
@@ -1418,6 +1632,8 @@ extern "C" void ARCWickedTransition(
     D3D12_RESOURCE_STATES after_state,
     std::uint32_t subresource) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(32);
     ArcBreadcrumb(32);
     if (auto* b = GetBridge())
         b->Transition(command, resource, before_state, after_state, subresource);
@@ -1430,6 +1646,8 @@ extern "C" void ARCWickedCopy(
     std::uint64_t approximate_bytes,
     std::uint32_t kind) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(33);
     ArcBreadcrumb(33);
     if (auto* b = GetBridge()) b->Copy(command, source, destination, approximate_bytes, kind);
 }
@@ -1439,6 +1657,8 @@ extern "C" void ARCWickedCountCommand(
     std::uint32_t kind,
     std::uint64_t work_items) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(34);
     ArcBreadcrumb(34);
     if (auto* b = GetBridge()) b->Count(command, kind, work_items);
 }
@@ -1449,6 +1669,8 @@ extern "C" void ARCWickedSubmit(
     std::size_t count,
     D3D12_COMMAND_LIST_TYPE type) noexcept
 {
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(40);
     ArcBreadcrumb(40);
     if (auto* b = GetBridge()) b->Submit(queue, commands, count, type);
 }
@@ -1459,6 +1681,9 @@ extern "C" void ARCWickedPresent(
     std::uint32_t flags,
     HRESULT result) noexcept
 {
+    if (FAILED(result)) g_present_failures.fetch_add(1, std::memory_order_relaxed);
+    if (!g_hooks_enabled) return;
+    OptionalHookTimer hook_timer(50);
     ArcBreadcrumb(50);
     if (auto* b = GetBridge()) b->Present(swapchain_id, sync_interval, flags, result);
 }

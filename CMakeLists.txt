@@ -237,3 +237,38 @@ if(ARC_BUILD_TESTS)
 endif()
 
 include(cmake/stage5.cmake)
+
+if(ARC_BUILD_TESTS)
+    add_executable(arc-test-assertions-tests tests/test_assertions_tests.cpp)
+    add_test(NAME arc-test-assertions-tests COMMAND arc-test-assertions-tests)
+
+    find_package(Threads REQUIRED)
+    add_executable(arc-wicked-telemetry-tests tests/wicked_telemetry_tests.cpp)
+    target_link_libraries(arc-wicked-telemetry-tests PRIVATE Threads::Threads)
+    add_test(NAME arc-wicked-telemetry-tests COMMAND arc-wicked-telemetry-tests)
+
+    find_program(ARC_POWERSHELL NAMES pwsh powershell)
+    if(ARC_POWERSHELL)
+        add_test(NAME arc-stage15-validation-tests COMMAND ${ARC_POWERSHELL}
+            -NoProfile -ExecutionPolicy Bypass -File
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/stage15_validation_tests.ps1)
+    endif()
+
+    # Tests use assert for contracts (and some exercise operations inside it).
+    # Keep assertions in every test configuration without changing production
+    # library optimization or its NDEBUG contract. Run after all stage includes.
+    get_property(arc_build_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(arc_target IN LISTS arc_build_targets)
+        get_target_property(arc_sources ${arc_target} SOURCES)
+        foreach(arc_source IN LISTS arc_sources)
+            if(arc_source MATCHES "(^|/)tests/.*\\.cpp$")
+                if(MSVC)
+                    target_compile_options(${arc_target} PRIVATE /UNDEBUG)
+                else()
+                    target_compile_options(${arc_target} PRIVATE -UNDEBUG)
+                endif()
+                break()
+            endif()
+        endforeach()
+    endforeach()
+endif()

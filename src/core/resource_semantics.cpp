@@ -103,7 +103,7 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
     // Evidence bits are intentionally backend-neutral:
     // 0 SRV, 1 UAV, 2 RTV, 3 DSV, 4 texture, 5 buffer, 6 mip chain,
     // 7 mostly-read, 8 mostly-write, 9 transient/reused, 10 depth-like,
-    // 11 large 2D target, 12 persistent/recurrent.
+    // 11 large 2D target, 12 recurrent usage (not temporal-history evidence).
     if (f.srv) out.evidence_mask |= bit(0);
     if (f.uav) out.evidence_mask |= bit(1);
     const bool render_target_capable = f.rtv || (f.resource_flags & kNativeAllowRenderTarget) != 0;
@@ -186,10 +186,10 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
     }
 
     if (render_target_capable) {
-        if (f.srv && f.usage_bursts >= 3 && f.reuse_interval_frames > 0.0 && f.reuse_interval_frames <= 3.0) {
-            out.semantic = InferredResourceSemantic::PersistentHistory;
-            out.confidence = clamp01(0.58 + std::min(0.25, static_cast<double>(f.usage_bursts) / 20.0));
-        } else if (storage_capable || f.write_fraction >= 0.55) {
+        // Reusing an RTV/SRV each frame does not establish that an earlier
+        // frame's contents are read. These aggregates cannot distinguish
+        // temporal history from an ordinary target overwritten each frame.
+        if (storage_capable || f.write_fraction >= 0.55) {
             out.semantic = InferredResourceSemantic::TransientIntermediate;
             out.confidence = clamp01(0.66 + 0.18 * f.write_fraction);
         } else {
@@ -213,11 +213,8 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
         return out;
     }
 
-    if (f.srv && f.usage_bursts >= 4 && f.reuse_interval_frames > 0.0 && f.reuse_interval_frames <= 3.0) {
-        out.semantic = InferredResourceSemantic::PersistentHistory;
-        out.confidence = 0.60f;
-        return out;
-    }
+    // PersistentHistory remains reserved until ordered cross-frame dependency
+    // evidence is available. Recurrence alone also describes static textures.
 
     return out;
 }

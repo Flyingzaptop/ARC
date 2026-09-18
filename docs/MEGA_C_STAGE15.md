@@ -20,6 +20,20 @@ The runtime inference path receives no engine object names, pass names, scene na
 
 Predictions contain a semantic class, confidence, evidence mask, and the feature vector used to make the decision. The feature-vector overload allows scene windows to be classified from per-window activity rather than lifetime counters.
 
+`confidence_basis=HeuristicScore` explicitly marks confidence as an uncalibrated
+heuristic support score, not a probability that the class is correct. Coverage
+counts resources assigned a known class; it does not measure classification
+accuracy. Scene identity truth labels validate retrieval and clustering only,
+not individual resource roles. These predictions do not authorize mutations.
+
+`PersistentHistory` is reserved and is currently never inferred. Recurrent
+RTV/SRV use and read/write totals cannot distinguish a target overwritten each
+frame from contents carried across frames. Evidence bit 12 means recurrence
+only. Re-enabling history inference requires ordered cross-frame read/write
+dependencies, accounting for subresources and synchronization, and independent
+validation. Existing classes such as `ShadowMap` remain hypotheses too: shape
+and view capabilities do not uniquely determine a resource's role.
+
 ## Layer 2 — scene signatures
 
 `SceneUnderstandingInferencer` snapshots resource counters at scene-window entry. At the end of the window it builds a label-free signature from only activity that occurred after that checkpoint:
@@ -54,7 +68,7 @@ Only `stage15-wicked-bootstrap.ps1`, after the run has completed, compares the m
 A real Wicked GPU run closes Stage 15 only when all Stage 14.5 gates remain green and:
 
 1. all baseline/adaptive signatures are captured and non-empty;
-2. resource semantic coverage and confidence remain useful;
+2. resource semantic coverage and heuristic support scores meet the fixed observer thresholds (not an accuracy claim);
 3. nearest-baseline retrieval is correct for at least 80% of adaptive scenes;
 4. at least 80% of true pairs are inside the same-scene threshold;
 5. at least 80% of true pairs have positive margin against the best wrong scene;
@@ -63,6 +77,20 @@ A real Wicked GPU run closes Stage 15 only when all Stage 14.5 gates remain gree
 8. clustering is non-trivial (at least two clusters);
 9. truth labels remain absent from inference/controller inputs;
 10. ResourceGraph and quality backend remain clean.
+
+Acceptance schema 3 requires explicit JSON Boolean isolation flags and finite
+distance values in [0, 1]; missing safety declarations or error counters fail
+closed. The confidence basis must be declared as `heuristic_score`, with
+`accuracy_validated=false`. The numerical acceptance thresholds are unchanged.
+
+The current GPU experiment compares adaptation against an ARC observer baseline,
+not ARC OFF. Fixed baseline-then-adaptive ordering can confound the comparison
+with clock, thermal, and background-load drift. Pooled frame percentiles weight
+scenes by their sampled frame counts. Product performance validation therefore
+requires separate ARC OFF measurements, repeated paired runs with balanced order,
+and per-scene results in addition to pooled statistics. Schema 3 explicitly marks
+resource-role accuracy and product performance as unvalidated; a Stage 15 PASS
+does not close either of those separate questions.
 
 ## Verification status
 

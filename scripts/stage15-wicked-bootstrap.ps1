@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+. (Join-Path $PSScriptRoot 'stage15-validation.ps1')
 
 function Json-Write($Object, [string]$Path) {
     $Object | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $Path -Encoding utf8
@@ -78,7 +79,7 @@ $scene = $raw.scene_understanding
 $truthScenes = @($raw.scenes)
 $sceneCount = $truthScenes.Count
 $truthLabels = @($truthScenes | ForEach-Object { [string]$_.truth_label })
-$truthLabelsUnique = $sceneCount -gt 0 -and @($truthLabels | Sort-Object -Unique).Count -eq $sceneCount
+$truthLabelsUnique = $sceneCount -gt 1 -and @($truthLabels | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -eq 0 -and @($truthLabels | Sort-Object -Unique).Count -eq $sceneCount
 
 $baseline = @()
 $adaptive = @()
@@ -97,25 +98,19 @@ $capturesPresent =
 $sceneActivityPresent = $capturesPresent
 if ($capturesPresent) {
     foreach ($capture in @($baseline + $adaptive)) {
-        if (-not [bool]$capture.captured -or [int64]$capture.active_resources -le 0) {
+        if (-not (Test-ExplicitBoolean $capture captured $true) -or
+            -not (Test-ExplicitBoolean $capture history_complete $true) -or
+            -not (Test-FiniteNumber $capture.active_resources 1 ([double]::MaxValue))) {
             $sceneActivityPresent = $false
             break
         }
     }
 }
 
-$matrixShapeValid = $matrix.Count -eq $sceneCount -and $sceneCount -gt 0
-if ($matrixShapeValid) {
-    for ($i = 0; $i -lt $sceneCount; ++$i) {
-        if (@($matrix[$i]).Count -ne $sceneCount) {
-            $matrixShapeValid = $false
-            break
-        }
-    }
-}
+$matrixShapeValid = Test-DistanceMatrix $matrix $sceneCount
 
 $sameThreshold = 0.22
-if ($null -ne $scene -and [double]$scene.same_scene_threshold -gt 0.0) {
+if ($null -ne $scene -and (Test-FiniteNumber $scene.same_scene_threshold 0.000001 1.0)) {
     $sameThreshold = [double]$scene.same_scene_threshold
 }
 
@@ -171,16 +166,19 @@ $meanSameDistance = Mean-Value $sameDistances
 $meanIdentityMargin = Mean-Value $identityMargins
 
 $gates = [ordered]@{
-    underlying_stage14_5_pass = ($stage14Exit -eq 0 -and [bool]$raw.valid)
+    underlying_stage14_5_pass = ($stage14Exit -eq 0 -and (Test-ExplicitBoolean $raw valid $true))
     semantic_block_present = ($null -ne $sem)
-    semantic_observer_only = ($null -ne $sem -and [bool]$sem.observer_only)
+    semantic_observer_only = (Test-ExplicitBoolean $sem observer_only $true)
+    heuristic_confidence_declared = ($null -ne $sem -and $sem.confidence_basis -eq 'heuristic_score' -and (Test-ExplicitBoolean $sem accuracy_validated $false))
+    semantic_scores_valid = ($null -ne $sem -and (Test-FiniteNumber $sem.coverage 0 1) -and (Test-FiniteNumber $sem.mean_confidence 0 1) -and (Test-FiniteNumber $sem.high_confidence_ratio 0 1))
     complex_resource_population = ($null -ne $sem -and [int64]$sem.alive_resources -ge 128)
     useful_semantic_coverage = ($null -ne $sem -and [double]$sem.coverage -ge 0.20)
     confidence_floor = ($null -ne $sem -and [double]$sem.mean_confidence -ge 0.65)
     high_confidence_population = ($null -ne $sem -and [double]$sem.high_confidence_ratio -ge 0.50)
     scene_block_present = ($null -ne $scene)
-    scene_observer_only = ($null -ne $scene -and [bool]$scene.observer_only)
-    truth_labels_not_used_for_inference = ($null -ne $scene -and -not [bool]$scene.truth_labels_used_for_inference)
+    scene_observer_only = (Test-ExplicitBoolean $scene observer_only $true)
+    truth_labels_not_used_for_inference = (Test-ExplicitBoolean $scene truth_labels_used_for_inference $false)
+    same_scene_threshold_valid = ($null -ne $scene -and (Test-FiniteNumber $scene.same_scene_threshold 0.000001 1.0))
     truth_set_valid = $truthLabelsUnique
     scene_captures_complete = $capturesPresent
     scene_activity_present = $sceneActivityPresent
@@ -191,9 +189,9 @@ $gates = [ordered]@{
     identity_margin_floor = ($meanIdentityMargin -ge 0.02)
     cluster_recurrence = ($clusterRecurrence -ge 0.80)
     nontrivial_clustering = ($null -ne $scene -and [int64]$scene.cluster_count -ge 2)
-    controller_blind_to_truth = (-not [bool]$raw.semantic_labels_used_by_controller)
-    graph_clean = ([int64]$raw.graph.errors -eq 0)
-    backend_clean = ([int64]$raw.governor.quality_backend_failures -eq 0)
+    controller_blind_to_truth = (Test-ExplicitBoolean $raw semantic_labels_used_by_controller $false)
+    graph_clean = (Test-FiniteNumber $raw.graph.errors 0 0)
+    backend_clean = (Test-FiniteNumber $raw.governor.quality_backend_failures 0 0)
 }
 
 $passed = $true
@@ -202,12 +200,20 @@ foreach ($value in $gates.Values) {
 }
 
 $acceptance = [ordered]@{
-    schema = 2
+    schema = 3
     stage = '15-scene-understanding'
     verdict = $(if ($passed) { 'PASS' } else { 'FAIL' })
     source_sha = $sourceSha
     wicked_sha = [string]$raw.wicked_upstream_sha
     gates = $gates
+    validation_scope = [ordered]@{
+        semantic_confidence_basis = 'heuristic_score'
+        resource_semantic_accuracy_validated = $false
+        scene_identity_evaluated = $true
+        performance_comparison = 'adaptive_vs_observer_baseline'
+        arc_off_comparison_available = $false
+        product_performance_validated = $false
+    }
     metrics = [ordered]@{
         alive_resources = $(if ($sem) { [int64]$sem.alive_resources } else { 0 })
         known_resources = $(if ($sem) { [int64]$sem.known_resources } else { 0 })
@@ -226,7 +232,7 @@ $acceptance = [ordered]@{
         cluster_recurrence_ratio = $clusterRecurrence
         identity_margins = $identityMargins
     }
-    note = 'PASS closes the Stage 15 observer/truth gate for this real Wicked GPU run. Truth labels are post-run evaluation data only and never enter inference or controller inputs.'
+    note = 'PASS applies only to the Stage 15 observer and scene-identity gates for this run. Semantic coverage is not resource-role accuracy; confidence is an uncalibrated heuristic score. This experiment does not establish total overhead or product speedup relative to ARC OFF. Truth labels are post-run evaluation data only.'
 }
 Json-Write $acceptance (Join-Path $run.FullName 'stage15-acceptance.json')
 
@@ -235,10 +241,10 @@ $summary = @"
 ## Mega C / Stage 15
 - Verdict: **$($acceptance.verdict)**
 - Observer-only inference: $($gates.scene_observer_only)
-- Truth labels supplied to inference: **NO**
-- Truth labels supplied to controller: **NO**
+- Explicit truth isolation verified (inference): $($gates.truth_labels_not_used_for_inference)
+- Explicit truth isolation verified (controller): $($gates.controller_blind_to_truth)
 - Resource semantic coverage: $([math]::Round(100.0 * $acceptance.metrics.semantic_coverage, 2))%
-- Resource mean confidence: $([math]::Round($acceptance.metrics.mean_confidence, 3))
+- Resource mean heuristic score (uncalibrated): $([math]::Round($acceptance.metrics.mean_confidence, 3))
 - Scene retrieval accuracy: $([math]::Round(100.0 * $sceneMatchAccuracy, 2))%
 - Same-scene threshold recall: $([math]::Round(100.0 * $sameThresholdRatio, 2))%
 - Positive identity margin: $([math]::Round(100.0 * $positiveMarginRatio, 2))%

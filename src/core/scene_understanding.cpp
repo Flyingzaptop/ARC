@@ -95,12 +95,13 @@ SceneUnderstandingInferencer::SceneUnderstandingInferencer(SceneUnderstandingCon
 SceneObservationCheckpoint SceneUnderstandingInferencer::checkpoint(const ResourceGraph& graph) const {
     SceneObservationCheckpoint out{};
     out.frame = graph.presentation_frame();
-    out.submission_count = graph.submissions().size();
-    out.copy_count = graph.copies().size();
+    out.submission_count = graph.workload_totals().submissions;
+    out.copy_count = graph.workload_totals().copies;
+    out.workload = graph.workload_totals();
+    out.resource_history_generation = graph.resource_history_generation();
     out.valid = true;
     out.resources.reserve(graph.resources().size());
     for (const auto& [id, record] : graph.resources()) {
-        if (!record.alive) continue;
         SceneResourceUsageCheckpoint usage{};
         usage.reads = record.read_count;
         usage.writes = record.write_count;
@@ -124,6 +125,13 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
 {
     SceneSemanticSignature out{};
     out.frame = graph.presentation_frame();
+    out.history_complete = graph.resource_history_generation() ==
+        (checkpoint.valid ? checkpoint.resource_history_generation : 0);
+    if (!checkpoint.valid && !out.history_complete && config_.active_window_frames > 0) {
+        const auto pruned_frame = graph.last_pruned_resource_usage_frame();
+        out.history_complete = out.frame >= pruned_frame &&
+            out.frame - pruned_frame > config_.active_window_frames;
+    }
     if (checkpoint.valid) {
         out.window_frames = out.frame >= checkpoint.frame ?
             std::max<FrameId>(1, out.frame - checkpoint.frame) : 1;
@@ -143,7 +151,6 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
     double confidence_sum = 0.0;
 
     for (const auto& [id, record] : graph.resources()) {
-        if (!record.alive) continue;
 
         auto features = resources.extract(graph, id);
         std::uint64_t delta_reads = record.read_count;
@@ -222,29 +229,43 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
         confidence_sum += prediction.confidence;
     }
 
-    const auto& submissions = graph.submissions();
-    const std::size_t submission_begin = checkpoint.valid ?
-        std::min(checkpoint.submission_count, submissions.size()) : 0;
-    for (std::size_t i = submission_begin; i < submissions.size(); ++i) {
-        const auto& submission = submissions[i];
-        if (!checkpoint.valid && config_.active_window_frames > 0 &&
-            out.frame >= submission.presentation &&
-            out.frame - submission.presentation > config_.active_window_frames) {
-            continue;
+    const auto& totals = graph.workload_totals();
+    if (checkpoint.valid) {
+        const auto delta = [](std::uint64_t now, std::uint64_t before) {
+            return now >= before ? now - before : 0;
+        };
+        out.submissions = delta(totals.submissions, checkpoint.workload.submissions);
+        out.copies = delta(totals.copies, checkpoint.workload.copies);
+        out.draws = delta(totals.counters.draws, checkpoint.workload.counters.draws);
+        out.indexed_draws = delta(totals.counters.indexed_draws, checkpoint.workload.counters.indexed_draws);
+        out.dispatches = delta(totals.counters.dispatches, checkpoint.workload.counters.dispatches);
+        out.indirect = delta(totals.counters.indirect, checkpoint.workload.counters.indirect);
+        out.draw_items = delta(totals.counters.draw_items, checkpoint.workload.counters.draw_items);
+        out.dispatch_groups = delta(totals.counters.dispatch_groups, checkpoint.workload.counters.dispatch_groups);
+        if (totals.submissions < checkpoint.workload.submissions || out.frame < checkpoint.frame)
+            out.history_complete = false;
+    } else {
+        const auto in_window = [&](FrameId frame) {
+            return !config_.active_window_frames || out.frame < frame ||
+                out.frame - frame <= config_.active_window_frames;
+        };
+        if ((totals.submissions > graph.submissions().size() && in_window(graph.last_pruned_submission_frame())) ||
+            (totals.copies > graph.copies().size() && in_window(graph.last_pruned_copy_frame())))
+            out.history_complete = false;
+        for (const auto& submission : graph.submissions()) {
+            if (!in_window(submission.presentation)) continue;
+            ++out.submissions;
+            out.draws += submission.counters.draws;
+            out.indexed_draws += submission.counters.indexed_draws;
+            out.dispatches += submission.counters.dispatches;
+            out.indirect += submission.counters.indirect;
+            out.draw_items += submission.counters.draw_items;
+            out.dispatch_groups += submission.counters.dispatch_groups;
         }
-        ++out.submissions;
-        out.draws += submission.counters.draws;
-        out.indexed_draws += submission.counters.indexed_draws;
-        out.dispatches += submission.counters.dispatches;
-        out.indirect += submission.counters.indirect;
-        out.draw_items += submission.counters.draw_items;
-        out.dispatch_groups += submission.counters.dispatch_groups;
+        for (const auto& copy : graph.copies()) {
+            if (in_window(copy.presentation)) ++out.copies;
+        }
     }
-
-    const auto& copies = graph.copies();
-    const std::size_t copy_begin = checkpoint.valid ?
-        std::min(checkpoint.copy_count, copies.size()) : 0;
-    out.copies = static_cast<std::uint64_t>(copies.size() - copy_begin);
 
     out.coverage = safe_ratio(out.known_resources, out.active_resources);
     out.mean_confidence = out.known_resources ?
@@ -274,7 +295,7 @@ SceneSemanticComparison SceneUnderstandingInferencer::compare(
     const SceneSemanticSignature& b) const noexcept
 {
     SceneSemanticComparison out{};
-    if (!a.active_resources || !b.active_resources || !a.known_resources || !b.known_resources) {
+    if (!a.history_complete || !b.history_complete || !a.active_resources || !b.active_resources || !a.known_resources || !b.known_resources) {
         out.distance = 1.0F;
         out.similarity = 0.0F;
         out.confidence = 0.0F;
@@ -340,7 +361,7 @@ SceneSemanticClusterer::SceneSemanticClusterer(SceneUnderstandingConfig config) 
 
 SceneClusterAssignment SceneSemanticClusterer::observe(const SceneSemanticSignature& signature) {
     SceneClusterAssignment out{};
-    if (!signature.active_resources || !signature.known_resources) {
+    if (!signature.history_complete || !signature.active_resources || !signature.known_resources) {
         out.distance = 1.0F;
         return out;
     }

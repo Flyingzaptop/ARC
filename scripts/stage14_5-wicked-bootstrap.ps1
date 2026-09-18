@@ -111,7 +111,7 @@ if ($LASTEXITCODE -ne 0) { throw "ARC configure failed: $LASTEXITCODE" }
 if ($LASTEXITCODE -ne 0) { throw "ARC Release build failed: $LASTEXITCODE" }
 
 Step 'Running ARC deterministic regressions'
-& $ctest --test-dir $arcBuild -C Release -R 'arc-(resource-semantics-tests|scene-understanding-tests|adaptive-quality-tests|adaptive-quality-controller-tests|closed-loop-quality-sim-tests|dx12-host-adapter-tests|dx12-host-adapter-surface-tests|runtime-event-bridge-tests|runtime-integration-tests|global-action-arbiter-tests|unified-runtime-governor-tests)' --output-on-failure --timeout 60
+& $ctest --test-dir $arcBuild -C Release -R 'arc-(test-assertions-tests|wicked-telemetry-tests|stage15-validation-tests|resource-semantics-tests|scene-understanding-tests|adaptive-quality-tests|adaptive-quality-controller-tests|closed-loop-quality-sim-tests|dx12-host-adapter-tests|dx12-host-adapter-surface-tests|runtime-event-bridge-tests|runtime-integration-tests|global-action-arbiter-tests|unified-runtime-governor-tests)' --output-on-failure --timeout 60
 if ($LASTEXITCODE -ne 0) { throw "ARC deterministic regressions failed: $LASTEXITCODE" }
 
 Step 'Preparing pinned Wicked Engine'
@@ -192,7 +192,7 @@ $started = [DateTime]::UtcNow.ToString('o')
 $exit = -1
 $fatal = $null
 try {
-    $process = Start-Process -FilePath $exe -WorkingDirectory (Join-Path $wicked 'Samples\Tests') -PassThru
+    $process = Start-Process -FilePath $exe -WorkingDirectory (Join-Path $wicked 'Samples\Tests') -PassThru -WindowStyle Hidden
     $timeoutSeconds = ($Seconds * 2) + 180
     if (-not $process.WaitForExit($timeoutSeconds * 1000)) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
