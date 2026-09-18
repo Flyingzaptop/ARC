@@ -74,7 +74,7 @@ struct VisibilityObservation {
 [[nodiscard]] VisibilityObservation make_potential_visibility_observation(
     const AttributionNode& node,
     std::uint64_t frame,
-    bool present_reachable) noexcept;
+    std::optional<bool> present_reachable = std::nullopt) noexcept;
 
 struct TemporalVisibilityState {
     VisualTrackId id{};
