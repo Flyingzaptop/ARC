@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <cstddef>
 #include <unordered_map>
 
 namespace arc {
@@ -34,6 +35,12 @@ public:
         const FrameBudgetSample& context) const noexcept;
 
     void clear() noexcept { states_.clear(); }
+    [[nodiscard]] std::size_t model_count() const noexcept { return states_.size(); }
+    [[nodiscard]] std::uint64_t total_samples() const noexcept {
+        std::uint64_t total = 0;
+        for (const auto& [_, state] : states_) total += state.samples;
+        return total;
+    }
 
 private:
     struct Key {
