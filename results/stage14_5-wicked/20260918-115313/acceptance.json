@@ -1,0 +1,30 @@
+﻿{
+    "schema":  1,
+    "verdict":  "FAIL",
+    "stage14_5_wicked_valid":  false,
+    "gates":  {
+                  "report_parsed":  false,
+                  "report_self_valid":  false,
+                  "exact_arc_source":  false,
+                  "exact_pinned_wicked":  false,
+                  "renderer_identity":  false,
+                  "native_1080p":  false,
+                  "temporal_disabled":  false,
+                  "gpu_timestamp_timing":  false,
+                  "semantic_labels_not_used":  false,
+                  "complex_renderer_observed":  false,
+                  "scene_coverage":  false,
+                  "resource_graph_clean":  false,
+                  "observation_control_clean":  false,
+                  "physical_quality_actuation":  false,
+                  "online_effect_learning":  false,
+                  "performance_win":  false,
+                  "bounded_churn":  false,
+                  "full_quality_recovered":  false,
+                  "backend_clean":  false
+              },
+    "metrics":  {
+
+                },
+    "fatal_error":  "Wicked Tests exit code -1073741819"
+}

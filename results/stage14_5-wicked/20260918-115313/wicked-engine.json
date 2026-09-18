@@ -1,0 +1,9 @@
+﻿{
+    "schema":  1,
+    "valid":  false,
+    "benchmark":  "stage14_5_wicked_engine",
+    "integration":  "wicked_engine_tests_dx12",
+    "wicked_upstream_sha":  "0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+    "arc_source_sha":  "df92c45391b5101f3a0c8255a4ce9d0e4d1246cb",
+    "fatal_error":  "Wicked Tests exit code -1073741819"
+}

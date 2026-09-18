@@ -1,0 +1,12 @@
+﻿{
+    "schema":  1,
+    "source_sha":  "df92c45391b5101f3a0c8255a4ce9d0e4d1246cb",
+    "wicked_repository":  "turanszkij/WickedEngine",
+    "wicked_sha":  "0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+    "wicked_actual_sha":  "0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+    "started_utc":  "2026-09-18T09:53:13.1039821Z",
+    "finished_utc":  "2026-09-18T09:53:51.1888318Z",
+    "seconds_per_measurement_phase":  30,
+    "benchmark_exit_code":  -1073741819,
+    "fatal_error":  "Wicked Tests exit code -1073741819"
+}

@@ -1,0 +1,6 @@
+﻿ARC Stage 14.5 Wicked Engine truth test
+ARC source: df92c45391b5101f3a0c8255a4ce9d0e4d1246cb
+Wicked source: 0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7
+Executable: C:\Users\r3d_flzp\ARC-Stage14_5-Wicked\WickedEngine\BUILD\x64\Release\Tests\Tests.exe
+Exit code: -1073741819
+Verdict: FAIL
