@@ -36,6 +36,29 @@ struct Context {
     }
 };
 
+ComPtr<ID3D12Resource> texture2d(
+    ID3D12Device* device,
+    DXGI_FORMAT format,
+    D3D12_RESOURCE_FLAGS flags) {
+    D3D12_HEAP_PROPERTIES hp{};
+    hp.Type = D3D12_HEAP_TYPE_DEFAULT;
+    D3D12_RESOURCE_DESC rd{};
+    rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    rd.Width = 256;
+    rd.Height = 256;
+    rd.DepthOrArraySize = 1;
+    rd.MipLevels = 1;
+    rd.Format = format;
+    rd.SampleDesc.Count = 1;
+    rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    rd.Flags = flags;
+    ComPtr<ID3D12Resource> out;
+    check(device->CreateCommittedResource(
+        &hp, D3D12_HEAP_FLAG_NONE, &rd, D3D12_RESOURCE_STATE_COMMON,
+        nullptr, IID_PPV_ARGS(&out)));
+    return out;
+}
+
 ComPtr<ID3D12Resource> buffer(ID3D12Device* device, std::uint64_t bytes) {
     D3D12_HEAP_PROPERTIES hp{};
     hp.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -128,6 +151,47 @@ int main() {
     assert(metrics.barriers_observed == 2);
     assert(metrics.copies_observed == 1);
     assert(metrics.failed_observations == 0);
+
+    // CPU-only RTV/DSV allocators do not expose a stable native heap/index to
+    // the integration. ARC must still retain semantic evidence without
+    // fabricating descriptor locations.
+    auto color = texture2d(
+        c.device.Get(),
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+    auto depth = texture2d(
+        c.device.Get(),
+        DXGI_FORMAT_R32_TYPELESS,
+        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+    const auto color_id = host.observe_committed_resource(color.Get());
+    const auto depth_id = host.observe_committed_resource(depth.Get());
+    assert(color_id && depth_id);
+
+    D3D12_RENDER_TARGET_VIEW_DESC rtv{};
+    rtv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    rtv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    assert(host.observe_rtv_unlocated(color.Get(), rtv));
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsv{};
+    dsv.Format = DXGI_FORMAT_D32_FLOAT;
+    dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    assert(host.observe_dsv_unlocated(depth.Get(), dsv));
+    assert(host.drain() > 0);
+    host.graph().analyze();
+
+    const auto semantics = host.semantic_snapshot();
+    bool saw_color = false;
+    bool saw_depth = false;
+    for (const auto& estimate : semantics) {
+        if (estimate.resource == color_id)
+            saw_color = estimate.semantic == arc::ResourceSemantic::ColorTarget;
+        if (estimate.resource == depth_id)
+            saw_depth = estimate.semantic == arc::ResourceSemantic::DepthTarget;
+    }
+    assert(saw_color);
+    assert(saw_depth);
+    assert(host.graph().errors() == 0);
+    assert(host.metrics().descriptor_writes == 3);
 
     std::cout << "dx12-host-adapter-surface-tests: PASS\n";
     return 0;
