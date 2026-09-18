@@ -65,6 +65,20 @@ int main() {
     const auto fp_magnitude = make_visual_track_fingerprint(magnitude_work);
     check(fp_magnitude.id != fp_a.id, "work magnitude participates in visual identity");
 
+    auto evidence_work = fingerprint_work;
+    evidence_work.accesses[0].evidence = AccessEvidence::Observed;
+    const auto fp_evidence = make_visual_track_fingerprint(evidence_work);
+    check(fp_evidence.id == fp_a.id, "evidence upgrades must not change visual identity");
+
+    auto jitter_a = fingerprint_work;
+    jitter_a.items = 100;
+    auto jitter_b = fingerprint_work;
+    jitter_b.items = 120;
+    check(
+        make_visual_track_fingerprint(jitter_a).id ==
+            make_visual_track_fingerprint(jitter_b).id,
+        "small work magnitude jitter should stay in one identity bucket");
+
     AttributionNode node{};
     node.id = 1;
     node.work = fingerprint_work;
