@@ -37,6 +37,8 @@ public:
     UINT SampleIterations() const noexcept;
 
     void OnCommandReset();
+    void OnGpuFrameBegin();
+    void OnGpuFrameEnd();
     void ObserveTransition(ID3D12Resource* resource, const D3D12_RESOURCE_BARRIER& barrier);
     void ObserveFrameUses(ID3D12Resource* renderTarget, ID3D12Resource* vertexBuffer, ID3D12Resource* texture);
     void OnCommandClosed();
@@ -70,6 +72,7 @@ private:
     static std::string JsonEscape(const std::string& value);
 
     void RegisterQualityProfile();
+    double ConsumeGpuFrameMs(double fallbackMs) noexcept;
     void AddStat(Stats& stats, double frameMs);
     void TickGovernor(double targetMs);
     void EnterPhase(Phase phase);
@@ -86,6 +89,11 @@ private:
     ID3D12Fence* fence_{};
     ID3D12Resource* vertexBuffer_{};
     ID3D12Resource* texture_{};
+    Microsoft::WRL::ComPtr<ID3D12QueryHeap> timestampHeap_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> timestampReadback_;
+    std::uint64_t timestampFrequency_{};
+    bool timestampRecorded_{};
+    std::uint64_t gpuTimestampSamples_{};
 
     arc::QualityResourceProfile profile_{};
     UINT qualityLevel_{};
