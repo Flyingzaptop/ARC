@@ -86,6 +86,10 @@ public:
         double after_frame_ms,
         bool success) noexcept;
 
+    // Enter an explicit recovery/rollback phase. Preserve active actions and
+    // learned effects, but release temporary anti-chatter state that is only
+    // meaningful while holding a steady adaptive operating point.
+    void begin_recovery() noexcept;
     void reset() noexcept;
 
     [[nodiscard]] std::vector<QualityActionCandidate> active_actions() const;
