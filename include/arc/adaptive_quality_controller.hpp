@@ -91,6 +91,7 @@ public:
     [[nodiscard]] std::vector<QualityActionCandidate> active_actions() const;
     [[nodiscard]] AdaptiveQualityControllerState state() const noexcept;
     [[nodiscard]] const ActionEffectTracker& effects() const noexcept { return effects_; }
+    [[nodiscard]] const ActionEffectTracker& restore_effects() const noexcept { return restore_effects_; }
     [[nodiscard]] const AdaptiveQualityControllerConfig& config() const noexcept { return config_; }
 
 private:
@@ -111,6 +112,7 @@ private:
     AdaptiveQualityControllerConfig config_{};
     AdaptiveQualityOptimizer optimizer_{};
     ActionEffectTracker effects_{};
+    ActionEffectTracker restore_effects_{};
     struct RestorePenalty {
         std::uint32_t failures{};
         std::uint32_t cooldown{};
