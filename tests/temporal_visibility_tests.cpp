@@ -33,6 +33,12 @@ VisibilityObservation direct(
 }
 
 int main() {
+    const auto half = visible_coverage_from_occlusion(50, 100, 1);
+    check(half && std::abs(*half - .5) < 1e-12, "occlusion coverage conversion");
+    const auto msaa = visible_coverage_from_occlusion(200, 100, 4);
+    check(msaa && std::abs(*msaa - .5) < 1e-12, "MSAA occlusion normalization");
+    check(!visible_coverage_from_occlusion(1, 0, 1), "zero target rejected");
+    check(!visible_coverage_from_occlusion(1, 100, 0), "zero sample count rejected");
     WorkObservation fingerprint_work{};
     fingerprint_work.kind = GpuWorkKind::Draw;
     fingerprint_work.pipeline = 77;
