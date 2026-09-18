@@ -243,7 +243,11 @@ Replace-Exact $cpp @'
     // Set necessary state.
 '@ @'
     ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
-    if (m_arc) m_arc->OnCommandReset();
+    if (m_arc)
+    {
+        m_arc->OnCommandReset();
+        m_arc->OnGpuFrameBegin();
+    }
 
     // Set necessary state.
 '@
@@ -290,7 +294,11 @@ Replace-Exact $cpp @'
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT);
     m_commandList->ResourceBarrier(1, &toPresent);
-    if (m_arc) m_arc->ObserveTransition(m_renderTargets[m_frameIndex].Get(), toPresent);
+    if (m_arc)
+    {
+        m_arc->ObserveTransition(m_renderTargets[m_frameIndex].Get(), toPresent);
+        m_arc->OnGpuFrameEnd();
+    }
 
     ThrowIfFailed(m_commandList->Close());
     if (m_arc) m_arc->OnCommandClosed();
