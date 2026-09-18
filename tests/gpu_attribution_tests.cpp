@@ -63,6 +63,8 @@ int main(){
     check(bounded.command_count()==0&&bounded.complete(),"bounded lifetime churn");
     check(bounded.begin(1)&&bounded.begin(2)&&!bounded.begin(3)&&bounded.command_count()==2,"command capacity");
     bounded.clear();check(bounded.begin(1)&&bounded.record(1,work(0,1))&&bounded.record(1,work(0,2))&&!bounded.record(1,work(0,3)),"record capacity");
+    check(bounded.begin(2)&&!bounded.record(2,work(0,3)),"aggregate pending budget");
+    bounded.retire_command(1);check(bounded.record(2,work(0,3)),"retirement releases pending budget");
     limits.nodes=16;limits.resources=1;GpuAttributionGraph resource_bound(limits);
     run(resource_bound,1,1,work(0,1));run(resource_bound,1,2,work(0,2));check(!resource_bound.complete(),"resource capacity");
     limits.resources=8;limits.edges=1;GpuAttributionGraph edge_bound(limits);

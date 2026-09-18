@@ -83,7 +83,7 @@ public:
 private:
     using Clock = std::map<QueueId, std::uint64_t>;
     struct Recording { bool closed{}; std::vector<WorkObservation> works; };
-    struct Writer { WorkId id{}; Clock clock; AccessEvidence evidence{}; };
+    struct Writer { WorkId id{}; AccessEvidence evidence{}; };
     struct Signal { std::uint64_t fence{}, value{}; QueueId owner{}; Clock clock; };
     AttributionLimits limits_;
     std::map<CommandId, Recording> commands_;
@@ -91,7 +91,9 @@ private:
     std::map<ResourceId, std::vector<Writer>> writers_;
     std::vector<Signal> signals_;
     std::vector<AttributionNode> nodes_;
+    std::vector<Clock> work_clocks_;
     std::vector<AttributionEdge> edges_;
+    std::size_t recorded_works_{};
     std::uint64_t errors_{};
     bool fail() noexcept { ++errors_; return false; }
     Clock* queue(QueueId);

@@ -260,6 +260,9 @@ if(ARC_BUILD_TESTS)
 
     find_program(ARC_POWERSHELL NAMES pwsh powershell)
     if(ARC_POWERSHELL)
+        add_test(NAME arc-mega-d-validation-tests COMMAND ${ARC_POWERSHELL}
+            -NoProfile -ExecutionPolicy Bypass -File
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/mega_d_validation_tests.ps1)
         add_test(NAME arc-wicked-audit-boundary-tests COMMAND ${ARC_POWERSHELL}
             -NoProfile -ExecutionPolicy Bypass -File
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/wicked_audit_boundary_tests.ps1)

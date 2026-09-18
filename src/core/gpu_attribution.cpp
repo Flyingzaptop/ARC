@@ -22,24 +22,27 @@ std::optional<double> gpu_duration_ms(const GpuTimestampSample& s) noexcept {
     return std::isfinite(ms) ? std::optional<double>{ms} : std::nullopt;
 }
 void GpuAttributionGraph::clear() {
-    commands_.clear();clocks_.clear();writers_.clear();signals_.clear();nodes_.clear();edges_.clear();errors_=0;
+    commands_.clear();clocks_.clear();writers_.clear();signals_.clear();nodes_.clear();work_clocks_.clear();edges_.clear();recorded_works_=0;errors_=0;
 }
 bool GpuAttributionGraph::begin(CommandId id) {
     if(!id || (!commands_.contains(id) && commands_.size()>=limits_.commands)) return fail();
+    if(auto it=commands_.find(id);it!=commands_.end())recorded_works_-=it->second.works.size();
     commands_[id]={}; return true;
 }
 bool GpuAttributionGraph::record(CommandId id,const WorkObservation& w) {
     auto it=commands_.find(id);
     if(it==commands_.end() || it->second.closed || it->second.works.size()>=limits_.works_per_command ||
-       w.accesses.size()>limits_.accesses_per_work) return fail();
+       w.accesses.size()>limits_.accesses_per_work || recorded_works_>=limits_.nodes) return fail();
     if(std::any_of(w.accesses.begin(),w.accesses.end(),[](const auto& a){return !a.resource;})) return fail();
-    it->second.works.push_back(w);return true;
+    it->second.works.push_back(w);++recorded_works_;return true;
 }
 bool GpuAttributionGraph::close(CommandId id) {
     auto it=commands_.find(id);if(it==commands_.end()||it->second.closed)return fail();
     it->second.closed=true;return true;
 }
-void GpuAttributionGraph::retire_command(CommandId id) {commands_.erase(id);}
+void GpuAttributionGraph::retire_command(CommandId id) {
+    if(auto it=commands_.find(id);it!=commands_.end()){recorded_works_-=it->second.works.size();commands_.erase(it);}
+}
 GpuAttributionGraph::Clock* GpuAttributionGraph::queue(QueueId id) {
     if(!id || (!clocks_.contains(id)&&clocks_.size()>=limits_.queues)){fail();return nullptr;}
     return &clocks_[id];
@@ -61,7 +64,7 @@ WorkId GpuAttributionGraph::execute(QueueId q,CommandId cmd,const WorkObservatio
         if(it==writers_.end()||it->second.empty()){node.unresolved_inputs=true;continue;}
         for(const auto& writer:it->second){
             if(edges_.size()>=limits_.edges){fail();node.unresolved_inputs=true;break;}
-            const bool sync=ordered(writer.clock);
+            const bool sync=ordered(work_clocks_[writer.id-1]);
             const bool observed=a.evidence==AccessEvidence::Observed&&writer.evidence==AccessEvidence::Observed;
             edges_.push_back({writer.id,id,a.resource,sync,observed});
             if(!sync||!observed)node.unresolved_inputs=true;
@@ -72,11 +75,11 @@ WorkId GpuAttributionGraph::execute(QueueId q,CommandId cmd,const WorkObservatio
         auto& prior=writers_[a.resource];
         // A partial write can preserve earlier pixels. Unsynchronized writes never erase evidence.
         if(a.full_overwrite&&a.evidence==AccessEvidence::Observed)
-            std::erase_if(prior,[&](const auto& writer){return ordered(writer.clock);});
+            std::erase_if(prior,[&](const auto& writer){return writer.id!=id&&ordered(work_clocks_[writer.id-1]);});
         if(prior.size()>=limits_.nodes){fail();continue;}
-        prior.push_back({id,*clock,a.evidence});
+        prior.push_back({id,a.evidence});
     }
-    nodes_.push_back(std::move(node));return id;
+    work_clocks_.push_back(*clock);nodes_.push_back(std::move(node));return id;
 }
 std::vector<WorkId> GpuAttributionGraph::submit(QueueId q,CommandId cmd) {
     auto it=commands_.find(cmd);
