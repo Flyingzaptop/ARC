@@ -85,7 +85,7 @@ $dx = Replace-Nth $dx $textureDefault ($T + $T + 'ARCWickedResourceCreated(inter
 # deferred release point in wiGraphicsDevice_DX12.h instead.
 $dxHeaderPath = Join-Path $WickedRoot 'WickedEngine\\wiGraphicsDevice_DX12.h'
 $dxh = Read-Lf $dxHeaderPath
-$dxh = Replace-Once $dxh '#include "wiPlatform.h"' ('#include "wiPlatform.h"' + $LF + '#include "ArcWickedHooks.h"') 'DX12 header hooks include'
+$dxh = Replace-Once $dxh '#include <wrl/client.h> // ComPtr' ('#include <wrl/client.h> // ComPtr' + $LF + $LF + 'extern "C" void ARCWickedResourceDestroyed(ID3D12Resource* resource) noexcept;') 'DX12 deferred destroy hook declaration'
 $releaseOld = @'
 				while (!destroyer_resources.empty() && destroyer_resources.front().second + BUFFERCOUNT < FRAMECOUNT)
 				{
