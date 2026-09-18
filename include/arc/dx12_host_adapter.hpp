@@ -36,6 +36,10 @@ struct NativeHostAdapterMetrics {
     std::uint64_t queues_observed{};
     std::uint64_t command_lists_observed{};
     std::uint64_t resource_uses{};
+    std::uint64_t draws_observed{};
+    std::uint64_t indexed_draws_observed{};
+    std::uint64_t dispatches_observed{};
+    std::uint64_t indirect_observed{};
     std::uint64_t barriers_observed{};
     std::uint64_t copies_observed{};
     std::uint64_t queue_submits{};
