@@ -231,7 +231,11 @@ AdaptiveQualityPlan AdaptiveQualityOptimizer::plan_restore(
     });
 
     double spent_ms = 0.0;
-    const double budget = std::max(0.0, headroom - config_.restoration_headroom_ms * 0.5);
+    // Restoration must leave the full configured safety reserve after paying
+    // the expected cost of the restored quality step. Near-target workloads
+    // otherwise oscillate because "some headroom" is mistaken for sustainable
+    // full-quality headroom.
+    const double budget = std::max(0.0, headroom - config_.restoration_headroom_ms);
     for (const auto& candidate : candidates) {
         if (plan.actions.size() >= config_.max_actions_per_plan) break;
         if (spent_ms + candidate.expected_ms_gain > budget) continue;
