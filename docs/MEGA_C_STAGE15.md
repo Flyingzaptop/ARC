@@ -12,8 +12,8 @@ The runtime inference path receives no engine object names, pass names, scene na
 
 `ResourceSemanticInferencer` classifies resources from backend-neutral runtime evidence already stored in `ResourceGraph`:
 
-- resource kind, dimensions, allocation size, mip/layer/sample structure;
-- SRV/UAV/RTV/DSV/CBV evidence;
+- resource kind, dimensions, allocation size, mip/layer/sample structure, plus retained native format/flags metadata;
+- SRV/UAV/RTV/DSV/CBV evidence, including distinct shader-storage, upload-like, readback-like, and geometry-buffer behavior;
 - read/write balance;
 - usage count, burstiness, inter-frame reuse;
 - queue fan-out and resource age.
