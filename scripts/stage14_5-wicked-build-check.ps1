@@ -64,13 +64,21 @@ try {
     $msbuild = (& $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1)
     if (-not $msbuild) { throw 'MSBuild.exe not found.' }
 
-    Write-Host "MSBuild: $msbuild"
+    $msbuildVersionText = (& $msbuild -version -nologo | Select-Object -Last 1).Trim()
+    if ($msbuildVersionText -notmatch '^(\\d+)\\.') { throw "Unable to parse MSBuild version: $msbuildVersionText" }
+    $msbuildMajor = [int]$Matches[1]
+    if ($msbuildMajor -ge 18) { $platformToolset = 'v145' }
+    elseif ($msbuildMajor -ge 17) { $platformToolset = 'v143' }
+    else { throw "MSBuild $msbuildVersionText is too old for the Stage 14.5 C++23 bridge." }
+
+    Write-Host "MSBuild: $msbuild ($msbuildVersionText / $platformToolset)"
     Write-Host '=== Build patched Wicked Samples/Tests ==='
     $msbuildArgs = @(
         (Join-Path $wicked 'Samples\Tests\Tests.vcxproj'),
         '/m',
         '/p:Configuration=Release',
         '/p:Platform=x64',
+        "/p:PlatformToolset=$platformToolset",
         "/p:SolutionDir=$wicked\",
         "/p:ArcRepoRoot=$RepoRoot",
         "/p:ArcBuildRoot=$arcBuild"
