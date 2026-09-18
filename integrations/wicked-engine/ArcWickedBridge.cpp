@@ -786,8 +786,8 @@ private:
             {
                 probe.domain = id == kGeometryProfile ? arc::QualityDomain::Geometry : arc::QualityDomain::Bandwidth;
                 probe.levels = id == kGeometryProfile
-                    ? std::vector<arc::QualityLevel>{{0.5, 0.1, 0}}
-                    : std::vector<arc::QualityLevel>{{0.75, 0.1, 0}, {0.5, 0.1, 0}};
+                    ? std::vector<arc::QualityLevelStep>{{0.5, 0.1, 0}}
+                    : std::vector<arc::QualityLevelStep>{{0.75, 0.1, 0}, {0.5, 0.1, 0}};
             }
             for (const auto& action : arc::QualityCandidateFactory::build(probe))
                 if (host_->runtime().governor().quality().effects().find(action)) ++learned;
