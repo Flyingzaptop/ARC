@@ -20,7 +20,19 @@ function Mean-Value($Values) {
 }
 
 $arc = Join-Path $WorkRoot 'arc'
-New-Item -ItemType Directory -Force $WorkRoot | Out-Null
+$archiveRoot = Join-Path $WorkRoot 'stage15-run-archive'
+New-Item -ItemType Directory -Force $WorkRoot,$archiveRoot | Out-Null
+
+# Preserve any prior local run before git clean removes untracked diagnostics.
+$priorLocalRoot = Join-Path $arc 'results\stage14_5-wicked-local'
+if (Test-Path -LiteralPath $priorLocalRoot) {
+    foreach ($prior in Get-ChildItem -LiteralPath $priorLocalRoot -Directory -ErrorAction SilentlyContinue) {
+        $destination = Join-Path $archiveRoot $prior.Name
+        if (-not (Test-Path -LiteralPath $destination)) {
+            Copy-Item -LiteralPath $prior.FullName -Destination $destination -Recurse -Force
+        }
+    }
+}
 
 if (-not (Test-Path -LiteralPath (Join-Path $arc '.git'))) {
     & git.exe clone $RepoUrl $arc
@@ -47,7 +59,17 @@ $run = Get-ChildItem -LiteralPath $localRoot -Directory |
     Sort-Object Name -Descending |
     Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'wicked-engine.json') } |
     Select-Object -First 1
-if (-not $run) { throw 'Stage 14.5 did not produce a local Wicked result.' }
+if (-not $run) {
+    if (Test-Path -LiteralPath $localRoot) {
+        $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        Copy-Item -LiteralPath $localRoot -Destination (Join-Path $archiveRoot ("incomplete-" + $stamp)) -Recurse -Force
+    }
+    throw "Stage 14.5 did not produce a local Wicked result. Preserved diagnostics under $archiveRoot"
+}
+
+$archiveRun = Join-Path $archiveRoot $run.Name
+if (Test-Path -LiteralPath $archiveRun) { Remove-Item -LiteralPath $archiveRun -Recurse -Force }
+Copy-Item -LiteralPath $run.FullName -Destination $archiveRun -Recurse -Force
 
 $raw = Get-Content -LiteralPath (Join-Path $run.FullName 'wicked-engine.json') -Raw | ConvertFrom-Json
 $sem = $raw.stage15_semantics
