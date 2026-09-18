@@ -31,9 +31,9 @@ Predictions contain a semantic class, confidence, evidence mask, and the feature
 - multi-queue participation;
 - semantic coverage and mean semantic confidence.
 
-The checkpoint also snapshots burst counters, preventing earlier scenes from leaking their accumulated burst history into the next scene.
+The checkpoint snapshots read/write counts, burst counters, per-queue use counters, and reuse-gap aggregates. Scene-window features are derived from counter deltas, so queue fan-out and reuse evidence from an earlier scene cannot leak into the next scene signature.
 
-A convenience rolling-window path exists for offline inspection; the Wicked acceptance path uses explicit checkpoints.
+A convenience rolling-window path exists for offline inspection; the Wicked acceptance path uses explicit checkpoints. Online cluster assignments are required to remain finite/JSON-safe even when the first observation creates a new cluster.
 
 ## Similarity and online clustering
 
@@ -68,6 +68,6 @@ A real Wicked GPU run closes Stage 15 only when all Stage 14.5 gates remain gree
 
 CPU implementation is covered by deterministic scene-understanding tests for semantic separation, rolling activity, checkpoint isolation, fail-closed empty windows, and online cluster recurrence.
 
-Repository CI must additionally pass Linux Release, Windows Debug/Release, PowerShell parsing, the pinned external renderer build check, and the pinned Wicked Stage 14.5 integration build check.
+Repository CI must additionally pass Linux Release, Windows Debug/Release, PowerShell parsing, the pinned external renderer build check, and the pinned Wicked Stage 14.5 integration build check. The hardware bootstrap explicitly runs `arc-resource-semantics-tests` and `arc-scene-understanding-tests` before preparing Wicked.
 
-The final real GPU Wicked truth run is intentionally external to CI and remains the only hardware-dependent Stage 15 gate.
+The final real GPU Wicked truth run is intentionally external to CI and remains the only hardware-dependent Stage 15 gate. A completed run is published immutably under a dedicated `results/stage15-wicked-<timestamp>` branch with artifacts stored below `results/stage15-wicked/<timestamp>`.
