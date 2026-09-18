@@ -48,7 +48,7 @@ VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work
     if (!work.pipeline && identity.empty()) return {};
 
     std::uint64_t hash = 1469598103934665603ULL;
-    const auto mix = [&](std::uint64_t value) mutable {
+    const auto mix = [&](std::uint64_t value) {
         hash ^= value;
         hash *= 1099511628211ULL;
         hash ^= hash >> 32U;
