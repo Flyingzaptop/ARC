@@ -93,18 +93,20 @@ Write-Utf8Lf $testsPath $tt
 # Exact 1920x1080 client area:
 $mainPath = Join-Path $WickedRoot 'Samples\Tests\main_Windows.cpp'
 $mw = Read-Lf $mainPath
+$mw = Replace-Once $mw '    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_WICKEDENGINETESTS);' '    wcex.lpszMenuName   = nullptr;' 'remove class menu for borderless harness'
 $windowOld = @'
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 '@
 $windowNew = @'
-   RECT arcClient = { 0, 0, 1920, 1080 };
-   AdjustWindowRectEx(&arcClient, WS_OVERLAPPEDWINDOW, FALSE, 0);
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, arcClient.right - arcClient.left, arcClient.bottom - arcClient.top,
-      nullptr, nullptr, hInstance, nullptr);
+   // Borderless window: the client area itself is exactly 1920x1080 physical
+   // pixels. A decorated 1920x1080 window is clamped to the desktop work area
+   // on a 1080p display, which previously produced a 1920x1030 client.
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_POPUP,
+      0, 0, 1920, 1080, nullptr, nullptr, hInstance, nullptr);
 '@
 $mw = Replace-Once $mw $windowOld $windowNew '1080p client window'
+$mw = Replace-Once $mw '   ShowWindow(hWnd, nCmdShow);' '   ShowWindow(hWnd, SW_SHOWNORMAL);' 'stable borderless show state'
 Write-Utf8Lf $mainPath $mw
 
 # MSBuild wiring:
