@@ -1,0 +1,14 @@
+﻿ARC Stage 14.5 Wicked Engine truth test
+ARC source: 09dc94f6fe759f68c4dbbcbe30b7eec39c332a20
+Wicked source: 0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7
+Executable: C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\Tests\Tests.exe
+Exit code: 0
+Verdict: PASS
+Target: 2.217984 ms
+Baseline p50: 2.315264 ms
+Adaptive p50: 2.09408 ms
+Baseline miss: 60%
+Adaptive miss: 35.9%
+Scene wins: 2/5
+Quality actions/domains: 16/3
+Learned effects: 6
