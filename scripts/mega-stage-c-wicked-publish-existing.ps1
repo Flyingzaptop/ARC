@@ -48,7 +48,7 @@ if([string]::IsNullOrWhiteSpace($RunStamp)){
     $runDir=Join-Path $localRoot $RunStamp
 }
 
-$required=@('wicked-engine.json','manifest.json','acceptance.json','SUMMARY.md','benchmark.log')
+$required=@('mega-stage-c-wicked.json','manifest.json','acceptance.json','SUMMARY.md','benchmark.log')
 foreach($name in $required){
     $path=Join-Path $runDir $name
     if(-not(Test-Path -LiteralPath $path)){throw "Missing result artifact: $path"}
