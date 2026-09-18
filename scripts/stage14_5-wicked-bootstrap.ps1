@@ -269,6 +269,7 @@ $gates = [ordered]@{
     renderer_identity = $false
     native_1080p = $false
     temporal_disabled = $false
+    vsync_disabled = $false
     gpu_timestamp_timing = $false
     semantic_labels_not_used = $false
     complex_renderer_observed = $false
@@ -292,6 +293,7 @@ if ($raw) {
     $gates.renderer_identity = ([string]$raw.benchmark -eq 'stage14_5_wicked_engine' -and [string]$raw.integration -eq 'wicked_engine_tests_dx12')
     $gates.native_1080p = ([int]$raw.native_width -eq 1920 -and [int]$raw.native_height -eq 1080)
     $gates.temporal_disabled = (-not [bool]$raw.temporal_used)
+    $gates.vsync_disabled = ($null -ne $raw.vsync_present_count -and [int64]$raw.vsync_present_count -eq 0)
     $gates.gpu_timestamp_timing = ([string]$raw.timing_source -eq 'wicked_dx12_gpu_timestamp')
     $gates.semantic_labels_not_used = (-not [bool]$raw.semantic_labels_used_by_controller)
     $gates.complex_renderer_observed = (

@@ -52,6 +52,7 @@ $dxPath = Join-Path $WickedRoot 'WickedEngine\wiGraphicsDevice_DX12.cpp'
 $dx = Read-Lf $dxPath
 
 $dx = Replace-Once $dx '#include "wiGraphicsDevice_DX12.h"' ('#include "wiGraphicsDevice_DX12.h"' + $LF + '#include "ArcWickedHooks.h"') 'DX12 include'
+$dx = Replace-Once $dx 'x->resource.Reset(); // forced immediate reset' ('ARCWickedResourceDestroyed(x->resource.Get());'+$LF+$T+$T+$T+$T+'x->resource.Reset(); // forced immediate reset') 'retire back buffers after swapchain GPU wait'
 
 $retire = @'
 		for (auto* command : commandlists)

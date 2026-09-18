@@ -23,7 +23,7 @@ Check (-not (Test-FiniteNumber $null 0 1)) 'Missing score must fail'
 $comparison = [pscustomobject]@{
     valid=$true; acceptance_evaluated=$false; hook_timings=[pscustomobject]@{enabled=$false}
     mode='off'; arc_source_sha='test'; experiment='three_arm_comparison'; scene_offset=0; width=1920; height=1080
-    graph_errors=0; failed_observations=0; bridge_rejections=0; backend_failures=0; invalid_samples=0; present_failures=0; device_removed_reason=0
+    graph_errors=0; failed_observations=0; bridge_rejections=0; backend_failures=0; invalid_samples=0; present_failures=0; device_removed_reason=0; vsync_present_count=0
     calibration_p40_ms=2.0; calibration_p50_ms=3.0
     scenes=@('model','shadows','water','volumetric','instances_65k') | ForEach-Object {
         [pscustomobject]@{name=$_; gpu_samples=50; cpu_samples=50; gpu_p50_ms=2.0; gpu_p95_ms=3.0; cpu_p50_ms=4.0; cpu_p95_ms=5.0}
@@ -41,7 +41,7 @@ $comparison.backend_failures = 1
 Check (-not (Test-WickedComparisonRun $comparison off test 0)) 'Backend failure must invalidate comparison'
 Write-Host 'stage15-validation-tests: PASS'
 $observations=@(1..42 | ForEach-Object { $family=($_-1)%6; [pscustomobject]@{resource=$_; expected_family=$family; predicted_class=@(2,3,5,6,8,9)[$family]; confidence=0.8} })
-$audit=[pscustomobject]@{scope='six_resource_use_families'; labels_used_for_inference=$false; fine_subtypes_validated=$false; truncated=$false; samples=42; families=6; covered=42;correct=42;coverage=1.0; family_precision=1.0;observations=$observations}
+$audit=[pscustomobject]@{scope='six_resource_use_families'; labels_used_for_inference=$false; fine_subtypes_validated=$false; truncated=$false; metadata_mismatches=0; samples=42; families=6; covered=42;correct=42;coverage=1.0; family_precision=1.0;observations=$observations}
 Check (Test-SemanticFamilyAudit $audit) 'Independent family audit must accept valid evidence'
 $audit.family_precision=0.89
 Check (-not (Test-SemanticFamilyAudit $audit)) 'Incorrect families must fail audit'

@@ -101,6 +101,7 @@ std::array<arc_wicked::HookTiming, 64> g_hook_timings{};
 std::atomic<bool> g_hooks_enabled{true};
 std::atomic<bool> g_hook_timing_enabled{true};
 std::atomic<std::uint64_t> g_present_failures{0};
+std::atomic<std::uint64_t> g_vsync_presents{0};
 
 void WriteHookTimings(std::ostream& out)
 {
@@ -433,7 +434,7 @@ public:
         std::scoped_lock lock(truth_mutex_);
         if (entry<0) { truth_live_.erase(resource); return; }
         if (truth_live_.size() >= 4096 && !truth_live_.contains(resource)) { truth_truncated_=true; return; }
-        truth_live_[resource]={id,entry};
+        truth_live_[resource]={id,entry,static_cast<std::uint32_t>(resource->GetDesc().Flags)};
     }
     void QueueDestroyed(ID3D12CommandQueue* queue) noexcept {
         if (!host_ || !queue) return;
@@ -845,7 +846,7 @@ private:
             const auto removed = device_ ? device_->GetDeviceRemovedReason() : E_FAIL;
             const bool experiment_valid = hm.failed_observations == 0 && hm.bridge_rejections == 0 &&
                 graph_errors == 0 && backend_failures == 0 && invalid_samples_ == 0 &&
-                g_present_failures.load(std::memory_order_relaxed) == 0 && SUCCEEDED(removed) &&
+                g_present_failures.load(std::memory_order_relaxed) == 0 && g_vsync_presents.load()==0 && SUCCEEDED(removed) &&
                 (experiment_mode_ != "adaptive" || profiles_registered_);
             std::ofstream out(output_path_, std::ios::trunc);
             out << std::setprecision(9)
@@ -864,6 +865,7 @@ private:
                 << ",\"backend_failures\":" << backend_failures
                 << ",\"invalid_samples\":" << invalid_samples_
                 << ",\"present_failures\":" << g_present_failures.load(std::memory_order_relaxed)
+                << ",\"vsync_present_count\":" << g_vsync_presents.load()
                 << ",\"device_removed_reason\":" << static_cast<std::int32_t>(removed)
                 << ",\"recovery_validated\":false,\"scenes\":[";
             for (std::size_t i = 0; i < kScenes.size(); ++i)
@@ -929,12 +931,13 @@ private:
             std::scoped_lock lock(truth_mutex_);
             for(const auto& [pointer, truth] : truth_live_) {
                 (void)pointer;
-                auto resource=host_->graph().find(truth.first);
-                if(!resource || !resource->alive || truth_samples_.contains(truth.first)) continue;
+                auto resource=host_->graph().find(truth.id);
+                if(!resource || !resource->alive || truth_samples_.contains(truth.id)) continue;
                 if(!resource->read_count && !resource->write_count) continue;
-                auto prediction=arc::ResourceSemanticInferencer{}.classify(host_->graph(),truth.first);
+                auto prediction=arc::ResourceSemanticInferencer{}.classify(host_->graph(),truth.id);
                 if(truth_samples_.size()>=4096) { truth_truncated_=true; break; }
-                truth_samples_.emplace(truth.first,AuditSample{truth.second,prediction.semantic,prediction.confidence});
+                truth_samples_.emplace(truth.id,AuditSample{truth.entry,prediction.semantic,prediction.confidence,
+                    prediction.features.resource_flags,truth.native_flags});
             }
         }
         capture.cluster = scene_clusters_.observe(capture.signature);
@@ -1311,7 +1314,7 @@ private:
         const bool valid =
             host_clean && timing_valid && complex_renderer && scene_coverage &&
             physical_quality && learning && performance && bounded_churn &&
-            full_recovery && native_1080 && profiles_registered_;
+            full_recovery && native_1080 && profiles_registered_ && g_vsync_presents.load()==0;
 
         const double cpu_frame_p50 = Percentile(cpu_frame_intervals_ms_, 0.50);
         const double cpu_frame_p99 = Percentile(cpu_frame_intervals_ms_, 0.99);
@@ -1371,6 +1374,7 @@ private:
           << "  \"temporal_used\":false,\n"
           << "  \"timing_source\":\"wicked_dx12_gpu_timestamp\",\n"
           << "  \"semantic_labels_used_by_controller\":false,\n"
+          << "  \"vsync_present_count\":" << g_vsync_presents.load() << ",\n"
           << "  \"target_frame_ms\":" << target_ms_ << ",\n"
           << "  \"target_calibration\":\"global_baseline_p40\",\n"
           << "  \"baseline\":{\"samples\":" << baseline_.frames.size()
@@ -1513,7 +1517,7 @@ private:
         std::scoped_lock lock(truth_mutex_);
         std::array<std::uint64_t,6> populations{},correct_by_family{};
         std::array<std::array<std::uint64_t,arc::kInferredResourceSemanticCount>,6> confusion{};
-        std::uint64_t covered=0,correct=0,high=0,high_wrong=0;
+        std::uint64_t covered=0,correct=0,high=0,high_wrong=0,metadata_mismatches=0;
         for(const auto& [id,sample]:truth_samples_) {
             (void)id;
             auto expected=static_cast<unsigned>(arc_wicked::audit::catalog[sample.entry].family);
@@ -1523,6 +1527,7 @@ private:
             if(sample.predicted!=arc::InferredResourceSemantic::Unknown) ++covered;
             if(match) { ++correct; ++correct_by_family[expected]; }
             if(sample.confidence>=.75f) { ++high; if(!match) ++high_wrong; }
+            if(sample.observed_flags!=sample.native_flags) ++metadata_mismatches;
         }
         const auto families=std::count_if(populations.begin(),populations.end(),[](auto n){return n>0;});
         out << "  \"resource_semantic_audit\":{\"schema\":1,\"catalog_version\":1,\"scope\":\"six_resource_use_families\","
@@ -1533,20 +1538,22 @@ private:
             << ",\"family_recall\":" << (truth_samples_.empty()?0.0:double(correct)/truth_samples_.size())
             << ",\"high_confidence_samples\":" << high << ",\"high_confidence_wrong\":" << high_wrong << ",\"confusion\":[";
         for(unsigned i=0;i<6;++i) { if(i)out<<',';out<<'[';for(unsigned j=0;j<arc::kInferredResourceSemanticCount;++j){if(j)out<<',';out<<confusion[i][j];}out<<']'; }
-        out << "],\"observations\":[";
+        out << "],\"metadata_mismatches\":" << metadata_mismatches << ",\"observations\":[";
         bool first=true;
         for(const auto& [id,sample]:truth_samples_) {
             if(!first)out<<',';first=false;
             const auto& entry=arc_wicked::audit::catalog[sample.entry];
             out << "{\"resource\":" << id << ",\"name\":\"" << entry.name << "\",\"expected_family\":" << int(entry.family)
-                << ",\"predicted_class\":" << int(sample.predicted) << ",\"confidence\":" << sample.confidence << '}';
+                << ",\"predicted_class\":" << int(sample.predicted) << ",\"confidence\":" << sample.confidence
+                << ",\"observed_flags\":" << sample.observed_flags << ",\"native_flags\":" << sample.native_flags << '}';
         }
         out << "]},\n";
     }
 
-    struct AuditSample { int entry; arc::InferredResourceSemantic predicted; float confidence; };
+    struct AuditSample { int entry; arc::InferredResourceSemantic predicted; float confidence; std::uint32_t observed_flags,native_flags; };
+    struct TruthLabel { arc::ResourceId id; int entry; std::uint32_t native_flags; };
     std::mutex truth_mutex_;
-    std::unordered_map<ID3D12Resource*,std::pair<arc::ResourceId,int>> truth_live_;
+    std::unordered_map<ID3D12Resource*,TruthLabel> truth_live_;
     std::unordered_map<arc::ResourceId,AuditSample> truth_samples_;
     bool truth_truncated_=false;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
@@ -1826,6 +1833,7 @@ extern "C" void ARCWickedPresent(
     HRESULT result) noexcept
 {
     if (FAILED(result)) g_present_failures.fetch_add(1, std::memory_order_relaxed);
+    if (sync_interval) g_vsync_presents.fetch_add(1,std::memory_order_relaxed);
     if (!g_hooks_enabled) return;
     OptionalHookTimer hook_timer(50);
     ArcBreadcrumb(50);

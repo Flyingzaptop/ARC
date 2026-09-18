@@ -4,6 +4,7 @@ function Test-SemanticFamilyAudit($Audit) {
         (Test-ExplicitBoolean $Audit labels_used_for_inference $false) -and
         (Test-ExplicitBoolean $Audit fine_subtypes_validated $false) -and
         (Test-ExplicitBoolean $Audit truncated $false) -and
+        (Test-FiniteNumber $Audit.metadata_mismatches 0 0) -and
         (Test-FiniteNumber $Audit.samples 20 4096) -and
         (Test-FiniteNumber $Audit.families 4 6) -and
         (Test-FiniteNumber $Audit.coverage 0.80 1) -and
@@ -61,7 +62,7 @@ function Test-WickedComparisonRun($Result, [string]$Mode, [string]$SourceSha, [i
     if ($Result.mode -ne $Mode -or $Result.arc_source_sha -ne $SourceSha -or
         $Result.experiment -ne 'three_arm_comparison' -or $Result.scene_offset -ne $Offset -or
         $Result.width -ne 1920 -or $Result.height -ne 1080) { return $false }
-    foreach ($counter in @('graph_errors','failed_observations','bridge_rejections','backend_failures','invalid_samples','present_failures','device_removed_reason')) {
+    foreach ($counter in @('graph_errors','failed_observations','bridge_rejections','backend_failures','invalid_samples','present_failures','device_removed_reason','vsync_present_count')) {
         if (-not (Test-FiniteNumber $Result.$counter 0 0)) { return $false }
     }
     $expected = @('model','shadows','water','volumetric','instances_65k')

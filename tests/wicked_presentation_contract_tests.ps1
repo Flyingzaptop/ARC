@@ -10,3 +10,5 @@ $windowBlock=[regex]::Match($overlay,"(?s)\`$windowNew = @'.*?'@").Value
 if (-not $windowBlock -or $windowBlock.IndexOf('tests.swapChain.desc.vsync = false;') -lt 0 -or
     $windowBlock.IndexOf('tests.swapChain.desc.vsync = false;') -gt $windowBlock.IndexOf('HWND hWnd = CreateWindowW')) { throw 'Presentation policy must precede CreateWindow, which can send WM_SIZE synchronously.' }
 Write-Host 'wicked-presentation-contract-tests: PASS'
+if (-not $overlay.Contains('Unexpected scene presentation override')) { throw 'Patched scene callbacks must reject presentation overrides.' }
+if (-not $bridge.Contains('if (sync_interval) g_vsync_presents.fetch_add')) { throw 'Actual Present sync intervals must be checked, including OFF.' }

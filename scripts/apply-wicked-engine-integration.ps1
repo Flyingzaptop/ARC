@@ -78,6 +78,9 @@ Write-Utf8Lf $profCppPath $pc
 # Tests harness:
 $testsPath = Join-Path $WickedRoot 'Samples\Tests\Tests.cpp'
 $tt = Read-Lf $testsPath
+$tt = Replace-Once $tt 'wi::eventhandler::SetVSync(true);' '// ARC keeps presentation policy fixed across scene selection.' 'remove scene VSync reset'
+$tt = Replace-Once $tt 'wi::eventhandler::SetVSync(false); // turn off vsync if we can to accelerate the baking' '// ARC already initializes VSync off before creating the window.' 'remove redundant baking VSync event'
+if ($tt.Contains('wi::eventhandler::SetVSync(')) { throw 'Unexpected scene presentation override' }
 $tt = Replace-Once $tt '#include "stdafx.h"' ('#include "stdafx.h"'+$LF+'#include "ArcWickedBridge.h"') 'Tests bridge include'
 $loadOld = 'void TestsRenderer::Load()'+$LF+'{'+$LF+$T+'setSSREnabled(false);'
 $loadNew = 'void TestsRenderer::Load()'+$LF+'{'+$LF+$T+'arc_wicked::ForceFullQuality();'+$LF+$T+'setSSREnabled(false);'
