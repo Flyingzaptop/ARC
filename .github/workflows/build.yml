@@ -32,6 +32,10 @@ jobs:
         if: matrix.configuration == 'Release'
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stage14-external-build-check.ps1 -ArcRepoRoot "${{ github.workspace }}"
+      - name: Build pinned Wicked Engine Stage 14.5 integration
+        if: matrix.configuration == 'Release'
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stage14_5-wicked-build-check.ps1 -RepoRoot "${{ github.workspace }}"
 
   linux:
     runs-on: ubuntu-latest
