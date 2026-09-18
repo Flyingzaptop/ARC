@@ -80,8 +80,29 @@ $dx = Replace-Once $dx $bufferViews ($T + $T + 'ARCWickedResourceCreated(interna
 $textureDefault = $T + $T + 'if (!has_flag(desc->misc_flags, ResourceMiscFlag::NO_DEFAULT_DESCRIPTORS))'
 $dx = Replace-Nth $dx $textureDefault ($T + $T + 'ARCWickedResourceCreated(internal_state->resource.Get());' + $LF + $LF + $textureDefault) 2 'texture observation'
 
-$destroy = $T + $T + $T + 'if (resource) allocationhandler->destroyer_resources.push_back(std::make_pair(resource, framecount));'
-$dx = Replace-Once $dx $destroy ($T + $T + $T + 'if (resource) ARCWickedResourceDestroyed(resource.Get());' + $LF + $destroy) 'resource destruction'
+# Resource_DX12 uses deferred destruction. Observing wrapper destruction here would
+# make ARC mark resources dead before the last queued GPU use. Hook the actual
+# deferred release point in wiGraphicsDevice_DX12.h instead.
+$dxHeaderPath = Join-Path $WickedRoot 'WickedEngine\\wiGraphicsDevice_DX12.h'
+$dxh = Read-Lf $dxHeaderPath
+$dxh = Replace-Once $dxh '#include "wiPlatform.h"' ('#include "wiPlatform.h"' + $LF + '#include "ArcWickedHooks.h"') 'DX12 header hooks include'
+$releaseOld = @'
+				while (!destroyer_resources.empty() && destroyer_resources.front().second + BUFFERCOUNT < FRAMECOUNT)
+				{
+					destroyer_resources.pop_front();
+					// comptr auto delete
+				}
+'@
+$releaseNew = @'
+				while (!destroyer_resources.empty() && destroyer_resources.front().second + BUFFERCOUNT < FRAMECOUNT)
+				{
+					ARCWickedResourceDestroyed(destroyer_resources.front().first.Get());
+					destroyer_resources.pop_front();
+					// comptr auto delete
+				}
+'@
+$dxh = Replace-Once $dxh $releaseOld $releaseNew 'deferred resource destruction'
+Write-Utf8Lf $dxHeaderPath $dxh
 
 $old = @'
 		return cmd;
