@@ -286,13 +286,20 @@ SceneSemanticComparison SceneUnderstandingInferencer::compare(
             static_cast<double>(a.active_resources), static_cast<double>(b.active_resources), 4.0) +
         0.45F * normalized_log_distance(
             static_cast<double>(a.active_bytes), static_cast<double>(b.active_bytes), 12.0);
-    const float workload_distance =
-        0.30F * normalized_log_distance(a.resource_accesses_per_frame, b.resource_accesses_per_frame, 5.0) +
-        0.25F * normalized_log_distance(a.draw_calls_per_frame, b.draw_calls_per_frame, 5.0) +
-        0.20F * normalized_log_distance(a.dispatches_per_frame, b.dispatches_per_frame, 5.0) +
-        0.10F * normalized_log_distance(a.indirect_per_frame, b.indirect_per_frame, 4.0) +
-        0.10F * normalized_log_distance(a.submissions_per_frame, b.submissions_per_frame, 4.0) +
-        0.05F * normalized_log_distance(a.copies_per_frame, b.copies_per_frame, 5.0);
+    const std::array<float, 6> workload_axes{
+        normalized_log_distance(a.resource_accesses_per_frame, b.resource_accesses_per_frame, 5.0),
+        normalized_log_distance(a.draw_calls_per_frame, b.draw_calls_per_frame, 5.0),
+        normalized_log_distance(a.dispatches_per_frame, b.dispatches_per_frame, 5.0),
+        normalized_log_distance(a.indirect_per_frame, b.indirect_per_frame, 4.0),
+        normalized_log_distance(a.submissions_per_frame, b.submissions_per_frame, 4.0),
+        normalized_log_distance(a.copies_per_frame, b.copies_per_frame, 5.0),
+    };
+    double workload_mean = 0.0;
+    for (const float axis : workload_axes) workload_mean += axis;
+    workload_mean /= static_cast<double>(workload_axes.size());
+    const float workload_distance = clamp01(
+        0.70 * *std::max_element(workload_axes.begin(), workload_axes.end()) +
+        0.30 * workload_mean);
 
     out.distance = clamp01(
         0.22 * semantic_resource_distance +
