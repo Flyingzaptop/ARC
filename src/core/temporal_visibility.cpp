@@ -180,8 +180,8 @@ bool TemporalVisibilityModel::advance(std::uint64_t frame) {
     if (!frame || frame < frame_) return false;
     if (frame == frame_) return true;
 
-    const auto delta = frame_ ? frame - frame_ : 1;
     frame_ = frame;
+    const std::uint64_t decay_through = frame_ > 0 ? frame_ - 1 : 0;
 
     for (auto it = tracks_.begin(); it != tracks_.end();) {
         auto& track = it->second;
@@ -191,10 +191,16 @@ bool TemporalVisibilityModel::advance(std::uint64_t frame) {
             continue;
         }
 
-        const auto decay_steps = static_cast<double>(delta);
-        track.smoothed_coverage *= std::pow(config_.missing_decay, decay_steps);
-        track.smoothed_velocity *= std::pow(config_.missing_decay, decay_steps);
-        track.state.confidence = clamp01(track.state.confidence * std::pow(config_.confidence_decay, decay_steps));
+        if (track.last_state_frame < decay_through) {
+            const auto steps = decay_through - track.last_state_frame;
+            const double decay_steps = static_cast<double>(steps);
+            track.smoothed_coverage *= std::pow(config_.missing_decay, decay_steps);
+            track.smoothed_velocity *= std::pow(config_.missing_decay, decay_steps);
+            track.state.confidence = clamp01(
+                track.state.confidence * std::pow(config_.confidence_decay, decay_steps));
+            track.last_state_frame = decay_through;
+        }
+
         track.state.frame = frame_;
         track.state.frames_since_observed = saturating_frames(since_observed);
         track.state.frames_since_visible = track.last_visible_frame
@@ -227,6 +233,7 @@ bool TemporalVisibilityModel::observe(const VisibilityObservation& observation) 
         track.state.id = observation.id;
         track.state.frame = observation.frame;
         track.state.frames_since_visible = (std::numeric_limits<std::uint32_t>::max)();
+        track.last_state_frame = observation.frame;
         it = tracks_.emplace(observation.id, track).first;
     }
 
@@ -272,6 +279,7 @@ bool TemporalVisibilityModel::observe(const VisibilityObservation& observation) 
     }
 
     track.last_observed_frame = observation.frame;
+    track.last_state_frame = observation.frame;
     state.frame = observation.frame;
     state.frames_since_observed = 0;
     state.direct_visibility_sample = direct;
