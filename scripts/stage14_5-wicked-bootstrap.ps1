@@ -116,7 +116,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $wicked '.git'))) {
 }
 & git.exe -C $wicked reset --hard
 & git.exe -C $wicked clean -fdx
-& git.exe -C $wicked sparse-checkout set WickedEngine Samples/Tests
+& git.exe -C $wicked sparse-checkout set WickedEngine Samples/Tests Content
 if ($LASTEXITCODE -ne 0) { throw "Wicked sparse selection failed: $LASTEXITCODE" }
 & git.exe -C $wicked fetch origin $WickedSha --depth=1
 if ($LASTEXITCODE -ne 0) { throw "Wicked pinned fetch failed: $LASTEXITCODE" }
