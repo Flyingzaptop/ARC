@@ -42,7 +42,7 @@ Observed creation flags are also compared with GetDesc at the independent
 SetName hook; any mismatch invalidates the audit. This detects stale native
 pointer identities instead of blaming the classifier for corrupted inputs.
 
-## Population witness (acceptance schema 5)
+## Population witness and approved measured cohort
 
 The 128-resource complexity threshold applies to the largest **measured baseline
 snapshot**, selected only by live population, not confidence, classification
@@ -57,6 +57,20 @@ counting those dead identities was not valid complexity evidence. No numeric
 threshold is reduced. If no complete measured baseline snapshot has 128 live
 resources, the gate still fails. Existing scene identity, coverage, confidence,
 performance and safety gates are unchanged.
+
+After observing all five real baseline populations (122,124,124,123,121), the
+user explicitly approved acceptance schema 6: complexity requires >=128 distinct
+resources with submitted read/write/copy-use evidence across all five measured
+baseline windows. Each window exports its sorted resource IDs, and the evaluator
+independently checks uniqueness within a window, agreement with active_resources,
+complete history, and the deduplicated union. Merely created/live resources do
+not count. This is observer evidence of submitted use, not shader-instruction
+instrumentation or proof of visible contribution.
+
+The peak live-population snapshot remains as the semantic summary and a recorded
+diagnostic; its 128-concurrent-live requirement no longer determines complexity.
+The threshold 128 and all other numeric gates are retained. Earlier schema 4/5
+FAIL results are immutable and are not reclassified as schema 6 passes.
 
 This adds independent hardware evidence for the supported family-level claims.
 It does not certify fine-subtype accuracy, calibrate probability, or establish

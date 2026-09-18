@@ -1,4 +1,27 @@
 # Pure validation helpers: dot-sourcing performs no builds, runs, or publication.
+function Get-MeasuredResourceCohort($Captures) {
+    $invalid=[pscustomobject]@{valid=$false;count=0;ids=@()}
+    $rows=@($Captures)
+    if ($rows.Count -ne 5) { return $invalid }
+    $union=@{}
+    foreach($row in $rows) {
+        if (-not (Test-ExplicitBoolean $row captured $true) -or
+            -not (Test-ExplicitBoolean $row history_complete $true) -or
+            -not (Test-FiniteNumber $row.active_resources 1 65536)) { return $invalid }
+        $ids=@($row.used_resource_ids)
+        if ($ids.Count -ne $row.active_resources) { return $invalid }
+        $local=@{}
+        foreach($id in $ids) {
+            if (-not (Test-FiniteNumber $id 1 ([long]::MaxValue))) { return $invalid }
+            try { if ([decimal]$id -ne [decimal][long]$id) { return $invalid } } catch { return $invalid }
+            $key=[string][long]$id
+            if ($local.ContainsKey($key)) { return $invalid }
+            $local[$key]=$true; $union[$key]=$true
+        }
+    }
+    $all=@($union.Keys | ForEach-Object {[long]$_} | Sort-Object)
+    return [pscustomobject]@{valid=$true;count=$all.Count;ids=$all}
+}
 function Test-SemanticPopulationWitness($Sem, $Captures) {
     $rows=@($Captures)
     if ($null -eq $Sem -or $Sem.capture_phase -ne 'baseline_peak_measured' -or $rows.Count -eq 0 -or

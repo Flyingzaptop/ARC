@@ -74,6 +74,7 @@ struct SceneSemanticCapture
 {
     bool captured = false;
     std::uint64_t live_population = 0;
+    std::vector<arc::ResourceId> used_resources;
     arc::SceneSemanticSignature signature{};
     arc::SceneClusterAssignment cluster{};
 };
@@ -247,7 +248,9 @@ void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& ca
         << ",\"cluster_created\":" << (capture.cluster.created ? "true" : "false")
         << ",\"frame\":" << signature.frame
         << ",\"live_population\":" << capture.live_population
-        << ",\"window_frames\":" << signature.window_frames
+        << ",\"used_resource_ids\":[";
+    for (std::size_t i=0;i<capture.used_resources.size();++i) { if(i)out<<',';out<<capture.used_resources[i]; }
+    out << "],\"window_frames\":" << signature.window_frames
         << ",\"active_resources\":" << signature.active_resources
         << ",\"known_resources\":" << signature.known_resources
         << ",\"active_bytes\":" << signature.active_bytes
@@ -927,6 +930,16 @@ private:
 
         (void)host_->drain();
         capture.signature = scene_understanding_.summarize(host_->graph(), scene_checkpoint_);
+        for (const auto& [id,resource] : host_->graph().resources()) {
+            const auto prior=scene_checkpoint_.resources.find(id);
+            const auto reads=prior==scene_checkpoint_.resources.end()?0:prior->second.reads;
+            const auto writes=prior==scene_checkpoint_.resources.end()?0:prior->second.writes;
+            if (resource.read_count>reads || resource.write_count>writes) {
+                if(capture.used_resources.size()>=65536) { capture.signature.history_complete=false; break; }
+                capture.used_resources.push_back(id);
+            }
+        }
+        std::sort(capture.used_resources.begin(),capture.used_resources.end());
         auto population = arc::ResourceSemanticInferencer{}.classify_all(host_->graph(),true);
         capture.live_population = population.size();
         // Complexity means a genuinely observed full-quality population,

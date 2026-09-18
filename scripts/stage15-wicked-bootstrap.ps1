@@ -172,6 +172,7 @@ $clusterRecurrence = if ($sceneCount) { [double]$clusterMatches / [double]$scene
 $meanSameDistance = Mean-Value $sameDistances
 $meanIdentityMargin = Mean-Value $identityMargins
 
+$cohort = Get-MeasuredResourceCohort $baseline
 $gates = [ordered]@{
     underlying_stage14_5_pass = ($stage14Exit -eq 0 -and (Test-ExplicitBoolean $raw valid $true))
     semantic_block_present = ($null -ne $sem)
@@ -180,7 +181,8 @@ $gates = [ordered]@{
     measured_semantic_population = (Test-SemanticPopulationWitness $sem $baseline)
     heuristic_confidence_declared = ($null -ne $sem -and $sem.confidence_basis -eq 'heuristic_score' -and (Test-ExplicitBoolean $sem accuracy_validated $false))
     semantic_scores_valid = ($null -ne $sem -and (Test-FiniteNumber $sem.coverage 0 1) -and (Test-FiniteNumber $sem.mean_confidence 0 1) -and (Test-FiniteNumber $sem.high_confidence_ratio 0 1))
-    complex_resource_population = ($null -ne $sem -and [int64]$sem.alive_resources -ge 128)
+    measured_resource_cohort_valid = $cohort.valid
+    complex_resource_population = ($cohort.valid -and $cohort.count -ge 128)
     useful_semantic_coverage = ($null -ne $sem -and [double]$sem.coverage -ge 0.20)
     confidence_floor = ($null -ne $sem -and [double]$sem.mean_confidence -ge 0.65)
     high_confidence_population = ($null -ne $sem -and [double]$sem.high_confidence_ratio -ge 0.50)
@@ -209,7 +211,7 @@ foreach ($value in $gates.Values) {
 }
 
 $acceptance = [ordered]@{
-    schema = 5
+    schema = 6
     stage = '15-scene-understanding'
     verdict = $(if ($passed) { 'PASS' } else { 'FAIL' })
     source_sha = $sourceSha
@@ -226,6 +228,9 @@ $acceptance = [ordered]@{
         product_performance_validated = $false
     }
     metrics = [ordered]@{
+        complexity_population_scope = 'distinct_used_resources_across_five_baseline_windows'
+        measured_unique_resources = $cohort.count
+        measured_resource_ids = $cohort.ids
         alive_resources = $(if ($sem) { [int64]$sem.alive_resources } else { 0 })
         known_resources = $(if ($sem) { [int64]$sem.known_resources } else { 0 })
         semantic_coverage = $(if ($sem) { [double]$sem.coverage } else { 0.0 })

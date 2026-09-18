@@ -11,6 +11,15 @@ Check (-not (Test-SemanticPopulationWitness $pop $windows)) 'Invented larger pop
 $pop.alive_resources=140; $pop.capture_frame=100
 Check (-not (Test-SemanticPopulationWitness $pop $windows)) 'Population from another frame must be rejected'
 $record = '{"safe":false,"observe":true,"string":"false"}' | ConvertFrom-Json
+$cohortWindows=@(0..4 | ForEach-Object { $start=1+$_*16; [pscustomobject]@{captured=$true;history_complete=$true;active_resources=80;used_resource_ids=@($start..($start+79))} })
+$cohort=Get-MeasuredResourceCohort $cohortWindows
+Check ($cohort.valid -and $cohort.count -eq 144) 'Measured IDs must be deduplicated across all windows'
+$cohortWindows[0].used_resource_ids[1]=1
+Check (-not (Get-MeasuredResourceCohort $cohortWindows).valid) 'Duplicates inside a window must fail'
+$cohortWindows[0].used_resource_ids[1]=2; $cohortWindows[0].active_resources=81
+Check (-not (Get-MeasuredResourceCohort $cohortWindows).valid) 'Claimed activity must match the ID list'
+$cohortWindows[0].active_resources=80; $cohortWindows[0].history_complete=$false
+Check (-not (Get-MeasuredResourceCohort $cohortWindows).valid) 'Incomplete history must not supply complexity evidence'
 Check (Test-ExplicitBoolean $record safe $false) 'Explicit false must pass'
 Check (Test-ExplicitBoolean $record observe $true) 'Explicit true must pass'
 Check (-not (Test-ExplicitBoolean $record missing $false)) 'Missing false flag must fail closed'
