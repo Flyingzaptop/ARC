@@ -63,6 +63,13 @@ Weak evidence:
 
 - Mega D local raster coverage upper bound.
 
+Native D3D12 validation also covers the strong-evidence path. The
+`arc-temporal-visibility-native` test renders a front draw and a fully depth-
+occluded draw under real D3D12 occlusion queries, resolves samples-passed data,
+normalizes it through `visible_coverage_from_occlusion()`, and feeds the result
+into Stage 18. This proves the core can consume real GPU visibility evidence
+without engine object/camera metadata.
+
 A raster upper bound is never silently promoted to actual visibility. When it is
 the only signal, confidence is reduced.
 
@@ -213,6 +220,7 @@ Mega E is considered functionally complete when:
 - existing ARC regression suite remains green;
 - the Windows visual debugger builds;
 - the native D3D12 attribution foundation smoke still passes on the user's GPU;
+- the native Stage 18 D3D12 occlusion-query test passes on the user's GPU;
 - the visual debugger exhibits stable, bounded importance behavior under movement
   and camera rotation.
 
