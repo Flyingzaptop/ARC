@@ -71,6 +71,19 @@ VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work
     return {hash, clamp01(confidence)};
 }
 
+std::optional<double> visible_coverage_from_occlusion(
+    std::uint64_t passed_samples,
+    std::uint64_t target_pixels,
+    std::uint32_t sample_count) noexcept {
+    if (!target_pixels || !sample_count) return {};
+    const long double denominator =
+        static_cast<long double>(target_pixels) * static_cast<long double>(sample_count);
+    if (!(denominator > 0.0L) || !std::isfinite(static_cast<double>(denominator))) return {};
+    const long double value = static_cast<long double>(passed_samples) / denominator;
+    if (!std::isfinite(static_cast<double>(value))) return {};
+    return clamp01(static_cast<double>(value));
+}
+
 VisibilityObservation make_potential_visibility_observation(
     const AttributionNode& node,
     std::uint64_t frame,
