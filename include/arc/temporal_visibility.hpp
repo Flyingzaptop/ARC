@@ -22,6 +22,13 @@ struct VisualTrackFingerprint {
 [[nodiscard]] VisualTrackFingerprint make_visual_track_fingerprint(
     const WorkObservation& work) noexcept;
 
+// Convert D3D12 occlusion-query samples-passed evidence into normalized visible
+// pixel coverage. sample_count is the render-target MSAA sample count.
+[[nodiscard]] std::optional<double> visible_coverage_from_occlusion(
+    std::uint64_t passed_samples,
+    std::uint64_t target_pixels,
+    std::uint32_t sample_count = 1) noexcept;
+
 enum class VisibilityPhase : std::uint8_t {
     Unknown,
     Hidden,
