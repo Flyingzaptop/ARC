@@ -170,6 +170,7 @@ void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& ca
         << ",\"cluster_confidence\":" << capture.cluster.confidence
         << ",\"cluster_created\":" << (capture.cluster.created ? "true" : "false")
         << ",\"frame\":" << signature.frame
+        << ",\"window_frames\":" << signature.window_frames
         << ",\"active_resources\":" << signature.active_resources
         << ",\"known_resources\":" << signature.known_resources
         << ",\"active_bytes\":" << signature.active_bytes
@@ -179,6 +180,18 @@ void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& ca
         << ",\"read_fraction\":" << signature.read_fraction
         << ",\"write_fraction\":" << signature.write_fraction
         << ",\"multi_queue_fraction\":" << signature.multi_queue_fraction
+        << ",\"submissions\":" << signature.submissions
+        << ",\"draws\":" << signature.draws
+        << ",\"indexed_draws\":" << signature.indexed_draws
+        << ",\"dispatches\":" << signature.dispatches
+        << ",\"indirect\":" << signature.indirect
+        << ",\"copies\":" << signature.copies
+        << ",\"resource_accesses_per_frame\":" << signature.resource_accesses_per_frame
+        << ",\"draw_calls_per_frame\":" << signature.draw_calls_per_frame
+        << ",\"dispatches_per_frame\":" << signature.dispatches_per_frame
+        << ",\"indirect_per_frame\":" << signature.indirect_per_frame
+        << ",\"submissions_per_frame\":" << signature.submissions_per_frame
+        << ",\"copies_per_frame\":" << signature.copies_per_frame
         << ",\"resource_fractions\":";
     WriteFloatArray(out, signature.resource_fractions);
     out << ",\"byte_fractions\":";
