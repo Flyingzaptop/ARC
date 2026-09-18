@@ -1,6 +1,7 @@
 #include "arc/temporal_visibility.hpp"
 #include "arc/visual_importance.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
