@@ -102,6 +102,7 @@ private:
         QualityActionCandidate action{};
         QualityDecisionKind kind{QualityDecisionKind::None};
         double before_frame_ms{};
+        FrameBudgetSample context{};
     };
 
     [[nodiscard]] std::vector<QualityActionCandidate> candidates() const;
