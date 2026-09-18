@@ -76,7 +76,11 @@ void use(
     arc::QueueId queue_id,
     arc::ResourceId resource,
     bool write,
-    std::uint64_t sequence)
+    std::uint64_t sequence,
+    std::uint64_t draws = 0,
+    std::uint64_t indexed_draws = 0,
+    std::uint64_t dispatches = 0,
+    std::uint64_t indirect = 0)
 {
     arc::CommandListPayload list{};
     list.command = command;
@@ -88,12 +92,20 @@ void use(
     usage.write = write ? 1u : 0u;
     graph.consume(event(arc::EventType::ResourceUse, usage, sequence + 1));
 
-    graph.consume(event(arc::EventType::CommandListClosed, list, sequence + 2));
+    arc::CountersPayload counters{};
+    counters.command = command;
+    counters.draws = draws;
+    counters.indexed_draws = indexed_draws;
+    counters.dispatches = dispatches;
+    counters.indirect = indirect;
+    graph.consume(event(arc::EventType::CommandCounters, counters, sequence + 2));
+
+    graph.consume(event(arc::EventType::CommandListClosed, list, sequence + 3));
 
     arc::QueueSubmitPayload submit{};
     submit.queue = queue_id;
     submit.command = command;
-    graph.consume(event(arc::EventType::QueueSubmit, submit, sequence + 3));
+    graph.consume(event(arc::EventType::QueueSubmit, submit, sequence + 4));
 }
 
 arc::ResourceGraph make_material_scene(std::uint64_t scale = 1) {
@@ -199,6 +211,31 @@ int main() {
     assert(!a2.created);
     assert(a2.cluster == a1.cluster);
     assert(clusters.cluster_count() == 3);
+
+    // Identical resources with radically different command intensity must no
+    // longer collapse to one scene identity. This models cases such as a
+    // heavily instanced scene sharing the same material/resource set.
+    arc::ResourceGraph light_workload;
+    arc::ResourceGraph heavy_workload;
+    queue(light_workload, 1);
+    queue(heavy_workload, 1);
+    create(light_workload, 40, arc::ResourceKind::Texture2D, 1024, 1024, 8);
+    create(heavy_workload, 40, arc::ResourceKind::Texture2D, 1024, 1024, 8);
+    view(light_workload, 40, 401, arc::ViewType::Srv);
+    view(heavy_workload, 40, 401, arc::ViewType::Srv);
+    for (arc::FrameId frame = 1; frame <= 8; ++frame) {
+        present(light_workload, frame);
+        present(heavy_workload, frame);
+        use(light_workload, 2000 + frame, 1, 40, false, 20000 + frame * 10, 8);
+        use(heavy_workload, 3000 + frame, 1, 40, false, 30000 + frame * 10, 8000);
+    }
+    const auto light_signature = infer.summarize(light_workload);
+    const auto heavy_signature = infer.summarize(heavy_workload);
+    assert(light_signature.draw_calls_per_frame > 0.0F);
+    assert(heavy_signature.draw_calls_per_frame > light_signature.draw_calls_per_frame * 100.0F);
+    const auto workload_difference = infer.compare(light_signature, heavy_signature);
+    assert(!workload_difference.same_scene);
+    assert(workload_difference.distance > config.same_scene_distance);
 
     arc::ResourceGraph stale_graph = make_storage_scene();
     present(stale_graph, 100);
