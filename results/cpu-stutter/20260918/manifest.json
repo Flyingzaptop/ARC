@@ -1,0 +1,11 @@
+{
+  "fix_sha": "3927c89f362e5b7c24925f9be89c041d0b930ac3",
+  "instrumentation_sha": "ab83591",
+  "wicked_sha": "0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+  "diagnostic_only": true,
+  "acceptance_evaluated": false,
+  "release_core_tests": "36/36 PASS",
+  "debug_core_tests": "36/36 PASS",
+  "final_wicked_overlay_build": "PASS",
+  "note": "Paired profiles used development builds of the instrumentation and fix; individual manifests retain executable hashes. Final committed source was compiled after initialization-order and output-error handling refinements. No GPU driver or security setting changed."
+}

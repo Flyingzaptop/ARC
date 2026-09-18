@@ -1,0 +1,890 @@
+[
+  {
+    "file": "model-vsync-before.csv",
+    "after_ms": 4000.0,
+    "minimum_frame": 10,
+    "row_limit_reached": false,
+    "frame_interval": {
+      "count": 261,
+      "p50_ms": 13.130499999999302,
+      "p95_ms": 19.500099999999293,
+      "max_ms": 174.85309999999936
+    },
+    "events": {
+      "Animations": {
+        "count": 261,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.000199999995,
+        "max_ms": 0.00039999999
+      },
+      "Application Compose": {
+        "count": 262,
+        "p50_ms": 0.3875,
+        "p95_ms": 0.42,
+        "max_ms": 0.9044
+      },
+      "Application Render": {
+        "count": 262,
+        "p50_ms": 0.2687,
+        "p95_ms": 0.4871,
+        "max_ms": 1.0711
+      },
+      "Application Update": {
+        "count": 262,
+        "p50_ms": 11.6552,
+        "p95_ms": 17.6565,
+        "max_ms": 173.5398
+      },
+      "Compose": {
+        "count": 261,
+        "p50_ms": 0.387199998,
+        "p95_ms": 0.419699997,
+        "max_ms": 0.904200017
+      },
+      "CPU Frame": {
+        "count": 261,
+        "p50_ms": 12.4977999,
+        "p95_ms": 18.7451992,
+        "max_ms": 174.551407
+      },
+      "Fixed Update": {
+        "count": 261,
+        "p50_ms": 0.00150000001,
+        "p95_ms": 0.00310000009,
+        "max_ms": 0.0178999994
+      },
+      "Frustum Culling": {
+        "count": 261,
+        "p50_ms": 0.0460000001,
+        "p95_ms": 0.0617000014,
+        "max_ms": 0.109899998
+      },
+      "GUI Render": {
+        "count": 261,
+        "p50_ms": 0.0381000005,
+        "p95_ms": 0.112599999,
+        "max_ms": 0.2333
+      },
+      "GUI Update": {
+        "count": 261,
+        "p50_ms": 0.0207000002,
+        "p95_ms": 0.0355999991,
+        "max_ms": 0.102300003
+      },
+      "Input": {
+        "count": 261,
+        "p50_ms": 0.107900001,
+        "p95_ms": 0.181600004,
+        "max_ms": 0.476000011
+      },
+      "Physics": {
+        "count": 261,
+        "p50_ms": 0.00400000019,
+        "p95_ms": 0.0105999997,
+        "max_ms": 0.0286999997
+      },
+      "Procedural Animations": {
+        "count": 261,
+        "p50_ms": 0.000699999975,
+        "p95_ms": 0.00170000002,
+        "max_ms": 0.0055999998
+      },
+      "Render": {
+        "count": 261,
+        "p50_ms": 0.2685,
+        "p95_ms": 0.486799985,
+        "max_ms": 1.07099998
+      },
+      "RenderPath3D Update": {
+        "count": 262,
+        "p50_ms": 0.1475,
+        "p95_ms": 0.2085,
+        "max_ms": 0.5594
+      },
+      "Script Components": {
+        "count": 261,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.00039999999,
+        "max_ms": 0.00630000001
+      },
+      "SetVSync": {
+        "count": 262,
+        "p50_ms": 11.5027,
+        "p95_ms": 17.3365,
+        "max_ms": 173.3194
+      },
+      "Shadowmap packing": {
+        "count": 261,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00039999999,
+        "max_ms": 0.0110999998
+      },
+      "Spline Update": {
+        "count": 261,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00039999999,
+        "max_ms": 0.00150000001
+      },
+      "Spring Dependencies": {
+        "count": 261,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00039999999,
+        "max_ms": 0.00100000005
+      },
+      "SubmitCommandLists": {
+        "count": 262,
+        "p50_ms": 0.5584,
+        "p95_ms": 0.8371,
+        "max_ms": 3.1308
+      },
+      "Update": {
+        "count": 261,
+        "p50_ms": 11.6582003,
+        "p95_ms": 17.6562996,
+        "max_ms": 173.539505
+      },
+      "Update Buffers (CPU)": {
+        "count": 261,
+        "p50_ms": 0.0480999984,
+        "p95_ms": 0.0976999998,
+        "max_ms": 0.303799987
+      }
+    }
+  },
+  {
+    "file": "model-vsync-after.csv",
+    "after_ms": 4000.0,
+    "minimum_frame": 10,
+    "row_limit_reached": false,
+    "frame_interval": {
+      "count": 575,
+      "p50_ms": 6.940599999999904,
+      "p95_ms": 7.1850000000004,
+      "max_ms": 19.048899999999776
+    },
+    "events": {
+      "Animations": {
+        "count": 576,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 9.99999975E-05,
+        "max_ms": 0.0105999997
+      },
+      "Application Compose": {
+        "count": 576,
+        "p50_ms": 0.3868,
+        "p95_ms": 0.4343,
+        "max_ms": 0.77
+      },
+      "Application Render": {
+        "count": 576,
+        "p50_ms": 0.2714,
+        "p95_ms": 0.3989,
+        "max_ms": 0.8487
+      },
+      "Application Update": {
+        "count": 576,
+        "p50_ms": 0.1566,
+        "p95_ms": 0.2015,
+        "max_ms": 0.86
+      },
+      "Compose": {
+        "count": 576,
+        "p50_ms": 0.386299998,
+        "p95_ms": 0.433800012,
+        "max_ms": 0.769699991
+      },
+      "CPU Frame": {
+        "count": 576,
+        "p50_ms": 1.02550006,
+        "p95_ms": 1.33399999,
+        "max_ms": 2.52830005
+      },
+      "Fixed Update": {
+        "count": 576,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.00380000006,
+        "max_ms": 0.0239000004
+      },
+      "Frustum Culling": {
+        "count": 576,
+        "p50_ms": 0.0445999987,
+        "p95_ms": 0.0626000017,
+        "max_ms": 0.1131
+      },
+      "GUI Render": {
+        "count": 576,
+        "p50_ms": 0.0388999991,
+        "p95_ms": 0.0621000007,
+        "max_ms": 0.422300011
+      },
+      "GUI Update": {
+        "count": 576,
+        "p50_ms": 0.0179999992,
+        "p95_ms": 0.0320999995,
+        "max_ms": 0.0883999988
+      },
+      "Input": {
+        "count": 576,
+        "p50_ms": 0.0997999981,
+        "p95_ms": 0.170100003,
+        "max_ms": 0.568199992
+      },
+      "Physics": {
+        "count": 576,
+        "p50_ms": 0.000899999985,
+        "p95_ms": 0.0199999996,
+        "max_ms": 0.0282000005
+      },
+      "Procedural Animations": {
+        "count": 576,
+        "p50_ms": 0.000500000024,
+        "p95_ms": 0.00120000006,
+        "max_ms": 0.0198999997
+      },
+      "Render": {
+        "count": 576,
+        "p50_ms": 0.270799994,
+        "p95_ms": 0.397599995,
+        "max_ms": 0.848500013
+      },
+      "RenderPath3D Update": {
+        "count": 576,
+        "p50_ms": 0.1373,
+        "p95_ms": 0.1719,
+        "max_ms": 0.3986
+      },
+      "Script Components": {
+        "count": 576,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.000300000014,
+        "max_ms": 0.0122999996
+      },
+      "Shadowmap packing": {
+        "count": 576,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000300000014,
+        "max_ms": 0.0103000002
+      },
+      "Spline Update": {
+        "count": 576,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.00039999999,
+        "max_ms": 0.00200000009
+      },
+      "Spring Dependencies": {
+        "count": 576,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.000300000014,
+        "max_ms": 0.0167999994
+      },
+      "SubmitCommandLists": {
+        "count": 577,
+        "p50_ms": 5.8943,
+        "p95_ms": 6.0881,
+        "max_ms": 17.9754
+      },
+      "Update": {
+        "count": 576,
+        "p50_ms": 0.156399995,
+        "p95_ms": 0.201299995,
+        "max_ms": 0.859700024
+      },
+      "Update Buffers (CPU)": {
+        "count": 576,
+        "p50_ms": 0.0463999994,
+        "p95_ms": 0.0851999968,
+        "max_ms": 0.230599999
+      }
+    }
+  },
+  {
+    "file": "instances-vsync-before.csv",
+    "after_ms": 4000.0,
+    "minimum_frame": 10,
+    "row_limit_reached": false,
+    "frame_interval": {
+      "count": 98,
+      "p50_ms": 44.01190000000042,
+      "p95_ms": 49.46060000000034,
+      "max_ms": 55.87989999999991
+    },
+    "events": {
+      "Animations": {
+        "count": 99,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000899999985,
+        "max_ms": 0.0013
+      },
+      "Application Compose": {
+        "count": 100,
+        "p50_ms": 0.4099,
+        "p95_ms": 0.454,
+        "max_ms": 0.6101
+      },
+      "Application Render": {
+        "count": 100,
+        "p50_ms": 9.8093,
+        "p95_ms": 13.2886,
+        "max_ms": 21.3725
+      },
+      "Application Update": {
+        "count": 99,
+        "p50_ms": 32.5776,
+        "p95_ms": 35.7603,
+        "max_ms": 38.8991
+      },
+      "Compose": {
+        "count": 99,
+        "p50_ms": 0.409200013,
+        "p95_ms": 0.453200012,
+        "max_ms": 0.609200001
+      },
+      "CPU Frame": {
+        "count": 99,
+        "p50_ms": 42.8638,
+        "p95_ms": 49.3865013,
+        "max_ms": 56.1323013
+      },
+      "Fixed Update": {
+        "count": 99,
+        "p50_ms": 0.00540000014,
+        "p95_ms": 0.00899999961,
+        "max_ms": 0.0250000004
+      },
+      "Frustum Culling": {
+        "count": 99,
+        "p50_ms": 1.21060002,
+        "p95_ms": 1.44770002,
+        "max_ms": 2.36179996
+      },
+      "GUI Render": {
+        "count": 99,
+        "p50_ms": 0.102600001,
+        "p95_ms": 0.184200004,
+        "max_ms": 0.219400004
+      },
+      "GUI Update": {
+        "count": 99,
+        "p50_ms": 0.0406999998,
+        "p95_ms": 0.0615999997,
+        "max_ms": 0.111599997
+      },
+      "Input": {
+        "count": 99,
+        "p50_ms": 0.144199997,
+        "p95_ms": 0.233899996,
+        "max_ms": 0.426299989
+      },
+      "Physics": {
+        "count": 99,
+        "p50_ms": 0.00730000017,
+        "p95_ms": 0.0136000002,
+        "max_ms": 0.0362999998
+      },
+      "Procedural Animations": {
+        "count": 99,
+        "p50_ms": 0.00120000006,
+        "p95_ms": 0.00179999997,
+        "max_ms": 0.0113000004
+      },
+      "Render": {
+        "count": 99,
+        "p50_ms": 9.80860043,
+        "p95_ms": 13.2870998,
+        "max_ms": 21.3708992
+      },
+      "RenderPath3D Update": {
+        "count": 99,
+        "p50_ms": 4.7844,
+        "p95_ms": 5.5276,
+        "max_ms": 6.1442
+      },
+      "Script Components": {
+        "count": 99,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000500000024,
+        "max_ms": 0.00329999998
+      },
+      "SetVSync": {
+        "count": 99,
+        "p50_ms": 26.7968,
+        "p95_ms": 29.7377,
+        "max_ms": 31.6422
+      },
+      "Shadowmap packing": {
+        "count": 99,
+        "p50_ms": 0.00039999999,
+        "p95_ms": 0.0013,
+        "max_ms": 0.00170000002
+      },
+      "Spline Update": {
+        "count": 99,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00039999999,
+        "max_ms": 0.0103000002
+      },
+      "Spring Dependencies": {
+        "count": 99,
+        "p50_ms": 0.000300000014,
+        "p95_ms": 0.00100000005,
+        "max_ms": 0.00159999996
+      },
+      "SubmitCommandLists": {
+        "count": 100,
+        "p50_ms": 0.8807,
+        "p95_ms": 1.0643,
+        "max_ms": 2.2696
+      },
+      "Update": {
+        "count": 99,
+        "p50_ms": 32.6162987,
+        "p95_ms": 35.7601013,
+        "max_ms": 38.8983002
+      },
+      "Update Buffers (CPU)": {
+        "count": 99,
+        "p50_ms": 0.0936999992,
+        "p95_ms": 0.131600007,
+        "max_ms": 0.246700004
+      }
+    }
+  },
+  {
+    "file": "instances-vsync-after.csv",
+    "after_ms": 4000.0,
+    "minimum_frame": 10,
+    "row_limit_reached": false,
+    "frame_interval": {
+      "count": 193,
+      "p50_ms": 19.919400000000678,
+      "p95_ms": 25.051300000000083,
+      "max_ms": 27.832000000000335
+    },
+    "events": {
+      "Animations": {
+        "count": 194,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000899999985,
+        "max_ms": 0.00480000023
+      },
+      "Application Compose": {
+        "count": 195,
+        "p50_ms": 0.409,
+        "p95_ms": 0.5011,
+        "max_ms": 0.6505
+      },
+      "Application Render": {
+        "count": 195,
+        "p50_ms": 11.2178,
+        "p95_ms": 15.4451,
+        "max_ms": 17.7259
+      },
+      "Application Update": {
+        "count": 194,
+        "p50_ms": 6.9783,
+        "p95_ms": 8.3915,
+        "max_ms": 11.0067
+      },
+      "Compose": {
+        "count": 194,
+        "p50_ms": 0.408199996,
+        "p95_ms": 0.499799997,
+        "max_ms": 0.649100006
+      },
+      "CPU Frame": {
+        "count": 194,
+        "p50_ms": 19.0601006,
+        "p95_ms": 23.8848,
+        "max_ms": 28.3535995
+      },
+      "Fixed Update": {
+        "count": 194,
+        "p50_ms": 0.00540000014,
+        "p95_ms": 0.0113000004,
+        "max_ms": 0.0311999992
+      },
+      "Frustum Culling": {
+        "count": 194,
+        "p50_ms": 1.5826,
+        "p95_ms": 2.10549998,
+        "max_ms": 6.87919998
+      },
+      "GUI Render": {
+        "count": 194,
+        "p50_ms": 0.0978000015,
+        "p95_ms": 0.166199997,
+        "max_ms": 0.252299994
+      },
+      "GUI Update": {
+        "count": 194,
+        "p50_ms": 0.0461000018,
+        "p95_ms": 0.0746000037,
+        "max_ms": 0.152400002
+      },
+      "Input": {
+        "count": 194,
+        "p50_ms": 0.135800004,
+        "p95_ms": 0.243699998,
+        "max_ms": 0.441700011
+      },
+      "Physics": {
+        "count": 194,
+        "p50_ms": 0.00669999979,
+        "p95_ms": 0.0165999997,
+        "max_ms": 0.0531000011
+      },
+      "Procedural Animations": {
+        "count": 194,
+        "p50_ms": 0.00139999995,
+        "p95_ms": 0.00230000005,
+        "max_ms": 0.0186000001
+      },
+      "Render": {
+        "count": 194,
+        "p50_ms": 11.2167997,
+        "p95_ms": 15.4436998,
+        "max_ms": 17.7245007
+      },
+      "RenderPath3D Update": {
+        "count": 194,
+        "p50_ms": 5.8636,
+        "p95_ms": 6.9894,
+        "max_ms": 10.0472
+      },
+      "Script Components": {
+        "count": 194,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000500000024,
+        "max_ms": 0.0109000001
+      },
+      "Shadowmap packing": {
+        "count": 194,
+        "p50_ms": 0.000600000028,
+        "p95_ms": 0.0013,
+        "max_ms": 0.0193000007
+      },
+      "Spline Update": {
+        "count": 194,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000600000028,
+        "max_ms": 0.0104999999
+      },
+      "Spring Dependencies": {
+        "count": 194,
+        "p50_ms": 0.000600000028,
+        "p95_ms": 0.00150000001,
+        "max_ms": 0.0175999999
+      },
+      "SubmitCommandLists": {
+        "count": 195,
+        "p50_ms": 0.9447,
+        "p95_ms": 1.3935,
+        "max_ms": 3.3799
+      },
+      "Update": {
+        "count": 194,
+        "p50_ms": 6.9769001,
+        "p95_ms": 8.31820011,
+        "max_ms": 10.9226999
+      },
+      "Update Buffers (CPU)": {
+        "count": 194,
+        "p50_ms": 0.114600003,
+        "p95_ms": 0.213499993,
+        "max_ms": 0.344700009
+      }
+    }
+  },
+  {
+    "file": "model-observe-after.csv",
+    "after_ms": 4000.0,
+    "minimum_frame": 10,
+    "row_limit_reached": false,
+    "frame_interval": {
+      "count": 574,
+      "p50_ms": 6.943600000000515,
+      "p95_ms": 7.361699999999473,
+      "max_ms": 13.97230000000036
+    },
+    "events": {
+      "Animations": {
+        "count": 575,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.000199999995,
+        "max_ms": 0.00079999998
+      },
+      "Application Compose": {
+        "count": 575,
+        "p50_ms": 0.4008,
+        "p95_ms": 0.5236,
+        "max_ms": 0.9982
+      },
+      "Application Render": {
+        "count": 575,
+        "p50_ms": 0.3454,
+        "p95_ms": 0.6529,
+        "max_ms": 3.8121
+      },
+      "Application Update": {
+        "count": 575,
+        "p50_ms": 0.1897,
+        "p95_ms": 0.425,
+        "max_ms": 0.8287
+      },
+      "Compose": {
+        "count": 575,
+        "p50_ms": 0.400400013,
+        "p95_ms": 0.523199975,
+        "max_ms": 0.997300029
+      },
+      "CPU Frame": {
+        "count": 575,
+        "p50_ms": 1.20580006,
+        "p95_ms": 2.09640002,
+        "max_ms": 5.84719992
+      },
+      "Fixed Update": {
+        "count": 575,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.0119000003,
+        "max_ms": 0.0281000007
+      },
+      "Frustum Culling": {
+        "count": 575,
+        "p50_ms": 0.0476999991,
+        "p95_ms": 0.0995000005,
+        "max_ms": 0.207100004
+      },
+      "GUI Render": {
+        "count": 575,
+        "p50_ms": 0.0557000004,
+        "p95_ms": 0.100100003,
+        "max_ms": 0.338099986
+      },
+      "GUI Update": {
+        "count": 575,
+        "p50_ms": 0.0216000006,
+        "p95_ms": 0.066200003,
+        "max_ms": 0.144400001
+      },
+      "Input": {
+        "count": 575,
+        "p50_ms": 0.1184,
+        "p95_ms": 0.324200004,
+        "max_ms": 0.641600013
+      },
+      "Physics": {
+        "count": 575,
+        "p50_ms": 0.00200000009,
+        "p95_ms": 0.0141000003,
+        "max_ms": 0.0379000008
+      },
+      "Procedural Animations": {
+        "count": 575,
+        "p50_ms": 0.000899999985,
+        "p95_ms": 0.00329999998,
+        "max_ms": 0.0174000002
+      },
+      "Render": {
+        "count": 575,
+        "p50_ms": 0.346500009,
+        "p95_ms": 0.652400017,
+        "max_ms": 3.81139994
+      },
+      "RenderPath3D Update": {
+        "count": 575,
+        "p50_ms": 0.158,
+        "p95_ms": 0.3206,
+        "max_ms": 0.6313
+      },
+      "Script Components": {
+        "count": 575,
+        "p50_ms": 9.99999975E-05,
+        "p95_ms": 0.000699999975,
+        "max_ms": 0.00230000005
+      },
+      "Shadowmap packing": {
+        "count": 575,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000500000024,
+        "max_ms": 0.0168999992
+      },
+      "Spline Update": {
+        "count": 575,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00120000006,
+        "max_ms": 0.0100999996
+      },
+      "Spring Dependencies": {
+        "count": 575,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00079999998,
+        "max_ms": 0.00529999984
+      },
+      "SubmitCommandLists": {
+        "count": 576,
+        "p50_ms": 5.6984,
+        "p95_ms": 6.0497,
+        "max_ms": 12.764
+      },
+      "Update": {
+        "count": 575,
+        "p50_ms": 0.189600006,
+        "p95_ms": 0.424600005,
+        "max_ms": 0.828400016
+      },
+      "Update Buffers (CPU)": {
+        "count": 575,
+        "p50_ms": 0.068400003,
+        "p95_ms": 0.166500002,
+        "max_ms": 0.548799992
+      }
+    }
+  },
+  {
+    "file": "instances-observe-after.csv",
+    "after_ms": 4000.0,
+    "minimum_frame": 10,
+    "row_limit_reached": false,
+    "frame_interval": {
+      "count": 194,
+      "p50_ms": 19.128600000000006,
+      "p95_ms": 27.891999999999825,
+      "max_ms": 47.717899999999645
+    },
+    "events": {
+      "Animations": {
+        "count": 194,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00079999998,
+        "max_ms": 0.0013
+      },
+      "Application Compose": {
+        "count": 195,
+        "p50_ms": 0.406,
+        "p95_ms": 0.4681,
+        "max_ms": 0.6903
+      },
+      "Application Render": {
+        "count": 195,
+        "p50_ms": 10.6551,
+        "p95_ms": 15.967,
+        "max_ms": 36.7696
+      },
+      "Application Update": {
+        "count": 195,
+        "p50_ms": 6.5164,
+        "p95_ms": 11.3178,
+        "max_ms": 14.1253
+      },
+      "Compose": {
+        "count": 194,
+        "p50_ms": 0.405099988,
+        "p95_ms": 0.467099994,
+        "max_ms": 0.685400009
+      },
+      "CPU Frame": {
+        "count": 194,
+        "p50_ms": 17.8647995,
+        "p95_ms": 26.6527004,
+        "max_ms": 49.7075005
+      },
+      "Fixed Update": {
+        "count": 194,
+        "p50_ms": 0.00549999997,
+        "p95_ms": 0.0120999999,
+        "max_ms": 0.0269000009
+      },
+      "Frustum Culling": {
+        "count": 194,
+        "p50_ms": 1.28719997,
+        "p95_ms": 2.52620006,
+        "max_ms": 24.3983994
+      },
+      "GUI Render": {
+        "count": 194,
+        "p50_ms": 0.109099999,
+        "p95_ms": 0.1655,
+        "max_ms": 0.314700007
+      },
+      "GUI Update": {
+        "count": 194,
+        "p50_ms": 0.0476000011,
+        "p95_ms": 0.0979999974,
+        "max_ms": 0.184499994
+      },
+      "Input": {
+        "count": 194,
+        "p50_ms": 0.140200004,
+        "p95_ms": 0.236399993,
+        "max_ms": 0.4199
+      },
+      "Physics": {
+        "count": 194,
+        "p50_ms": 0.00590000022,
+        "p95_ms": 0.0171000008,
+        "max_ms": 0.0346000008
+      },
+      "Procedural Animations": {
+        "count": 194,
+        "p50_ms": 0.00139999995,
+        "p95_ms": 0.00449999981,
+        "max_ms": 0.0208000001
+      },
+      "Render": {
+        "count": 194,
+        "p50_ms": 10.6478996,
+        "p95_ms": 15.9658003,
+        "max_ms": 36.766201
+      },
+      "RenderPath3D Update": {
+        "count": 195,
+        "p50_ms": 5.4364,
+        "p95_ms": 8.1995,
+        "max_ms": 11.451
+      },
+      "Script Components": {
+        "count": 194,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.00079999998,
+        "max_ms": 0.0195000004
+      },
+      "Shadowmap packing": {
+        "count": 194,
+        "p50_ms": 0.00039999999,
+        "p95_ms": 0.00120000006,
+        "max_ms": 0.00209999993
+      },
+      "Spline Update": {
+        "count": 194,
+        "p50_ms": 0.000199999995,
+        "p95_ms": 0.000600000028,
+        "max_ms": 0.00200000009
+      },
+      "Spring Dependencies": {
+        "count": 194,
+        "p50_ms": 0.000600000028,
+        "p95_ms": 0.00139999995,
+        "max_ms": 0.00579999993
+      },
+      "SubmitCommandLists": {
+        "count": 195,
+        "p50_ms": 1.1045,
+        "p95_ms": 1.5063,
+        "max_ms": 2.6778
+      },
+      "Update": {
+        "count": 194,
+        "p50_ms": 6.50610018,
+        "p95_ms": 11.3175001,
+        "max_ms": 14.1247997
+      },
+      "Update Buffers (CPU)": {
+        "count": 194,
+        "p50_ms": 0.1237,
+        "p95_ms": 0.185900003,
+        "max_ms": 0.333400011
+      }
+    }
+  }
+]

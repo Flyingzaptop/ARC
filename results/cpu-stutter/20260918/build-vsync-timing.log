@@ -1,0 +1,10 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  WickedEngine_Windows.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\WickedEngine_Windows.lib
+  ArcWickedBridge.cpp
+  Создание кода
+  10 of 74083 functions (<0.1%) were compiled, the rest were copied from previous compilation.
+    1 functions were new in current compilation
+    764 functions had inline decision re-evaluated but remain unchanged
+  Создание кода завершено
+  Tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\Tests\Tests.exe

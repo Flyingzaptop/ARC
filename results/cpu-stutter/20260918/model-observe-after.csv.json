@@ -1,0 +1,11 @@
+﻿{
+    "schema":  1,
+    "diagnostic_only":  true,
+    "executable_sha256":  "215C7A5B4CFDD8ADBFD10CDAF82CB46F024FC4595E4B2AA1B7E738B28943D240",
+    "scene":  1,
+    "seconds":  8,
+    "mode":  "observe",
+    "always_active":  false,
+    "started":  "2026-09-18T18:14:32.5392088+02:00",
+    "exit_code":  0
+}

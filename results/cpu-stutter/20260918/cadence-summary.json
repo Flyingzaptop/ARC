@@ -1,0 +1,50 @@
+[
+  {
+    "run": "model-vsync-before",
+    "frames": 261,
+    "frame_interval_p50_ms": 13.130499999999302,
+    "frame_interval_p95_ms": 19.500099999999293,
+    "cpu_frame_p50_ms": 12.4977999,
+    "cpu_frame_max_ms": 174.551407
+  },
+  {
+    "run": "model-vsync-after",
+    "frames": 575,
+    "frame_interval_p50_ms": 6.940599999999904,
+    "frame_interval_p95_ms": 7.1850000000004,
+    "cpu_frame_p50_ms": 1.02550006,
+    "cpu_frame_max_ms": 2.52830005
+  },
+  {
+    "run": "instances-vsync-before",
+    "frames": 98,
+    "frame_interval_p50_ms": 44.01190000000042,
+    "frame_interval_p95_ms": 49.46060000000034,
+    "cpu_frame_p50_ms": 42.8638,
+    "cpu_frame_max_ms": 56.1323013
+  },
+  {
+    "run": "instances-vsync-after",
+    "frames": 193,
+    "frame_interval_p50_ms": 19.919400000000678,
+    "frame_interval_p95_ms": 25.051300000000083,
+    "cpu_frame_p50_ms": 19.0601006,
+    "cpu_frame_max_ms": 28.3535995
+  },
+  {
+    "run": "model-observe-after",
+    "frames": 574,
+    "frame_interval_p50_ms": 6.943600000000515,
+    "frame_interval_p95_ms": 7.361699999999473,
+    "cpu_frame_p50_ms": 1.20580006,
+    "cpu_frame_max_ms": 5.84719992
+  },
+  {
+    "run": "instances-observe-after",
+    "frames": 194,
+    "frame_interval_p50_ms": 19.128600000000006,
+    "frame_interval_p95_ms": 27.891999999999825,
+    "cpu_frame_p50_ms": 17.8647995,
+    "cpu_frame_max_ms": 49.7075005
+  }
+]

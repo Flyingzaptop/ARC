@@ -1,0 +1,7 @@
+Wicked runtime harness must not broadcast the swapchain-recreating SetVSync event.
+At C:\Users\r3d_flzp\Desktop\ARC-hardening\tests\wicked_presentation_contract_tests.ps1:6 char:41
++ ... nc\s*\(') { throw 'Wicked runtime harness must not broadcast the swap ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Wicked runtime ...SetVSync event.:String) [], RuntimeException
+    + FullyQualifiedErrorId : Wicked runtime harness must not broadcast the swapchain-recreating SetVSync event.
+ 

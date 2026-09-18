@@ -1,0 +1,200 @@
+[
+  {
+    "scene": "model",
+    "version": "before",
+    "event": "CPU Frame",
+    "count": 261,
+    "p50": 12.4977999,
+    "p95": 18.7451992,
+    "max": 174.551407
+  },
+  {
+    "scene": "model",
+    "version": "before",
+    "event": "Application Update",
+    "count": 262,
+    "p50": 11.6552,
+    "p95": 17.6565,
+    "max": 173.5398
+  },
+  {
+    "scene": "model",
+    "version": "before",
+    "event": "RenderPath3D Update",
+    "count": 262,
+    "p50": 0.1475,
+    "p95": 0.2085,
+    "max": 0.5594
+  },
+  {
+    "scene": "model",
+    "version": "before",
+    "event": "Application Render",
+    "count": 262,
+    "p50": 0.2687,
+    "p95": 0.4871,
+    "max": 1.0711
+  },
+  {
+    "scene": "model",
+    "version": "before",
+    "event": "SubmitCommandLists",
+    "count": 262,
+    "p50": 0.5584,
+    "p95": 0.8371,
+    "max": 3.1308
+  },
+  {
+    "scene": "model",
+    "version": "before",
+    "event": "SetVSync",
+    "count": 262,
+    "p50": 11.5027,
+    "p95": 17.3365,
+    "max": 173.3194
+  },
+  {
+    "scene": "model",
+    "version": "after",
+    "event": "CPU Frame",
+    "count": 576,
+    "p50": 1.02550006,
+    "p95": 1.33399999,
+    "max": 2.52830005
+  },
+  {
+    "scene": "model",
+    "version": "after",
+    "event": "Application Update",
+    "count": 576,
+    "p50": 0.1566,
+    "p95": 0.2015,
+    "max": 0.86
+  },
+  {
+    "scene": "model",
+    "version": "after",
+    "event": "RenderPath3D Update",
+    "count": 576,
+    "p50": 0.1373,
+    "p95": 0.1719,
+    "max": 0.3986
+  },
+  {
+    "scene": "model",
+    "version": "after",
+    "event": "Application Render",
+    "count": 576,
+    "p50": 0.2714,
+    "p95": 0.3989,
+    "max": 0.8487
+  },
+  {
+    "scene": "model",
+    "version": "after",
+    "event": "SubmitCommandLists",
+    "count": 577,
+    "p50": 5.8943,
+    "p95": 6.0881,
+    "max": 17.9754
+  },
+  {
+    "scene": "instances",
+    "version": "before",
+    "event": "CPU Frame",
+    "count": 99,
+    "p50": 42.8638,
+    "p95": 49.3865013,
+    "max": 56.1323013
+  },
+  {
+    "scene": "instances",
+    "version": "before",
+    "event": "Application Update",
+    "count": 99,
+    "p50": 32.5776,
+    "p95": 35.7603,
+    "max": 38.8991
+  },
+  {
+    "scene": "instances",
+    "version": "before",
+    "event": "RenderPath3D Update",
+    "count": 99,
+    "p50": 4.7844,
+    "p95": 5.5276,
+    "max": 6.1442
+  },
+  {
+    "scene": "instances",
+    "version": "before",
+    "event": "Application Render",
+    "count": 100,
+    "p50": 9.8093,
+    "p95": 13.2886,
+    "max": 21.3725
+  },
+  {
+    "scene": "instances",
+    "version": "before",
+    "event": "SubmitCommandLists",
+    "count": 100,
+    "p50": 0.8807,
+    "p95": 1.0643,
+    "max": 2.2696
+  },
+  {
+    "scene": "instances",
+    "version": "before",
+    "event": "SetVSync",
+    "count": 99,
+    "p50": 26.7968,
+    "p95": 29.7377,
+    "max": 31.6422
+  },
+  {
+    "scene": "instances",
+    "version": "after",
+    "event": "CPU Frame",
+    "count": 194,
+    "p50": 19.0601006,
+    "p95": 23.8848,
+    "max": 28.3535995
+  },
+  {
+    "scene": "instances",
+    "version": "after",
+    "event": "Application Update",
+    "count": 194,
+    "p50": 6.9783,
+    "p95": 8.3915,
+    "max": 11.0067
+  },
+  {
+    "scene": "instances",
+    "version": "after",
+    "event": "RenderPath3D Update",
+    "count": 194,
+    "p50": 5.8636,
+    "p95": 6.9894,
+    "max": 10.0472
+  },
+  {
+    "scene": "instances",
+    "version": "after",
+    "event": "Application Render",
+    "count": 195,
+    "p50": 11.2178,
+    "p95": 15.4451,
+    "max": 17.7259
+  },
+  {
+    "scene": "instances",
+    "version": "after",
+    "event": "SubmitCommandLists",
+    "count": 195,
+    "p50": 0.9447,
+    "p95": 1.3935,
+    "max": 3.3799
+  }
+]
