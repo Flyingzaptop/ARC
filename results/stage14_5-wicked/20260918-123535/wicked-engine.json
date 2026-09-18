@@ -1,0 +1,32 @@
+{
+  "schema":1,
+  "valid":false,
+  "benchmark":"stage14_5_wicked_engine",
+  "integration":"wicked_engine_tests_dx12",
+  "wicked_upstream_sha":"0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+  "arc_source_sha":"646b90b0cacfe9fd68a2c03246b961d0826970ec",
+  "native_width":1920,
+  "native_height":1030,
+  "temporal_used":false,
+  "timing_source":"wicked_dx12_gpu_timestamp",
+  "semantic_labels_used_by_controller":false,
+  "target_frame_ms":2.440192,
+  "target_calibration":"global_baseline_p40",
+  "baseline":{"samples":3604,"p50_ms":2.587648,"p99_ms":7.456676,"miss_ratio":0.599334,"mean_overshoot_ms":1.043364},
+  "adaptive":{"samples":3700,"p50_ms":2.451968,"p99_ms":6.849700,"miss_ratio":0.514324,"mean_overshoot_ms":0.965347},
+  "scene_pairs":5,
+  "scene_wins":1,
+  "scenes":[
+    {"truth_label":"model","baseline_samples":1025,"adaptive_samples":1055,"baseline_p50_ms":1.239040,"adaptive_p50_ms":1.236992,"baseline_miss_ratio":0.000976,"adaptive_miss_ratio":0.003791},
+    {"truth_label":"shadows","baseline_samples":850,"adaptive_samples":855,"baseline_p50_ms":2.442240,"adaptive_p50_ms":2.428928,"baseline_miss_ratio":0.507059,"adaptive_miss_ratio":0.444444},
+    {"truth_label":"water","baseline_samples":713,"adaptive_samples":759,"baseline_p50_ms":3.665920,"adaptive_p50_ms":3.174400,"baseline_miss_ratio":1.000000,"adaptive_miss_ratio":1.000000},
+    {"truth_label":"volumetric","baseline_samples":849,"adaptive_samples":860,"baseline_p50_ms":2.675712,"adaptive_p50_ms":2.735104,"baseline_miss_ratio":0.998822,"adaptive_miss_ratio":0.684884},
+    {"truth_label":"instances_65k","baseline_samples":167,"adaptive_samples":171,"baseline_p50_ms":5.484544,"adaptive_p50_ms":5.776384,"baseline_miss_ratio":1.000000,"adaptive_miss_ratio":1.000000}
+  ],
+  "host":{"resources":338,"resources_destroyed":204,"descriptor_writes":33165,"resource_uses":465549,"draws":711763,"indexed_draws":101546,"dispatches":299535,"indirect":32469,"barriers":0,"copies":267279,"queue_submits":156054,"fence_signals":143400,"completion_updates":177634,"presents":11694,"events_drained":2651444,"failed_observations":0,"bridge_rejections":0},
+  "graph":{"resources":338,"errors":0},
+  "governor":{"quality_actions_executed":12,"learned_effects":6,"quality_domains_executed":3,"adaptive_ticks":228,"adaptive_quality_actions":6,"adaptive_direction_changes":0,"adaptive_action_rate":0.026316,"adaptive_direction_change_rate":0.000000,"restore_probes":0,"restore_backoffs":0,"recovery_ticks":69,"quality_backend_failures":0},
+  "performance_win":false,
+  "bounded_churn":true,
+  "final_quality_full":true
+}
