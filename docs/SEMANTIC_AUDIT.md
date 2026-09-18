@@ -38,6 +38,26 @@ coverage >=80%, family precision >=90%, explicit label blindness, and no dropped
 audit records. Both live labels and unique audit records are capped at 4096;
 overflow invalidates the audit. Resource destruction removes live labels.
 
+Observed creation flags are also compared with GetDesc at the independent
+SetName hook; any mismatch invalidates the audit. This detects stale native
+pointer identities instead of blaming the classifier for corrupted inputs.
+
+## Population witness (acceptance schema 5)
+
+The 128-resource complexity threshold applies to the largest **measured baseline
+snapshot**, selected only by live population, not confidence, classification
+accuracy, or scene identity. All five baseline and adaptive live populations are
+written beside their scene signatures. The evaluator requires the reported peak
+and frame ID to match an actual baseline capture. It preserves the end-adaptive
+population separately, and rejects an invented peak or a frame mismatch.
+
+This replaces selecting the last scene as the population for the entire suite.
+That endpoint fell to 120 once stale swapchain identities were correctly retired;
+counting those dead identities was not valid complexity evidence. No numeric
+threshold is reduced. If no complete measured baseline snapshot has 128 live
+resources, the gate still fails. Existing scene identity, coverage, confidence,
+performance and safety gates are unchanged.
+
 This adds independent hardware evidence for the supported family-level claims.
 It does not certify fine-subtype accuracy, calibrate probability, or establish
 generalization to another renderer. Fine-role inference must remain observer-only

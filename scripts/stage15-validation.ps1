@@ -1,4 +1,18 @@
 # Pure validation helpers: dot-sourcing performs no builds, runs, or publication.
+function Test-SemanticPopulationWitness($Sem, $Captures) {
+    $rows=@($Captures)
+    if ($null -eq $Sem -or $Sem.capture_phase -ne 'baseline_peak_measured' -or $rows.Count -eq 0 -or
+        -not (Test-FiniteNumber $Sem.capture_scene_index 0 ($rows.Count-1)) -or
+        [double]$Sem.capture_scene_index -ne [int]$Sem.capture_scene_index -or
+        -not (Test-FiniteNumber $Sem.capture_frame 1 ([double]::MaxValue))) { return $false }
+    foreach($row in $rows) {
+        if (-not (Test-ExplicitBoolean $row captured $true) -or
+            -not (Test-FiniteNumber $row.live_population 1 ([double]::MaxValue))) { return $false }
+    }
+    $peak=($rows | Measure-Object live_population -Maximum).Maximum
+    $witness=$rows[[int]$Sem.capture_scene_index]
+    return $Sem.alive_resources -eq $peak -and $witness.live_population -eq $peak -and $witness.frame -eq $Sem.capture_frame
+}
 function Test-SemanticFamilyAudit($Audit) {
     $valid = $null -ne $Audit -and $Audit.scope -eq 'six_resource_use_families' -and
         (Test-ExplicitBoolean $Audit labels_used_for_inference $false) -and

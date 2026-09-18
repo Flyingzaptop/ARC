@@ -3,6 +3,13 @@ $ErrorActionPreference = 'Stop'
 function Check([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw $Message }
 }
+$pop=[pscustomobject]@{capture_phase='baseline_peak_measured'; capture_scene_index=1; capture_frame=200; alive_resources=140}
+$windows=@([pscustomobject]@{captured=$true;live_population=120;frame=100},[pscustomobject]@{captured=$true;live_population=140;frame=200})
+Check (Test-SemanticPopulationWitness $pop $windows) 'Measured peak population must have a witness'
+$pop.alive_resources=150
+Check (-not (Test-SemanticPopulationWitness $pop $windows)) 'Invented larger population must be rejected'
+$pop.alive_resources=140; $pop.capture_frame=100
+Check (-not (Test-SemanticPopulationWitness $pop $windows)) 'Population from another frame must be rejected'
 $record = '{"safe":false,"observe":true,"string":"false"}' | ConvertFrom-Json
 Check (Test-ExplicitBoolean $record safe $false) 'Explicit false must pass'
 Check (Test-ExplicitBoolean $record observe $true) 'Explicit true must pass'

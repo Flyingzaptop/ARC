@@ -73,6 +73,7 @@ struct SceneSpec
 struct SceneSemanticCapture
 {
     bool captured = false;
+    std::uint64_t live_population = 0;
     arc::SceneSemanticSignature signature{};
     arc::SceneClusterAssignment cluster{};
 };
@@ -245,6 +246,7 @@ void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& ca
         << ",\"cluster_confidence\":" << capture.cluster.confidence
         << ",\"cluster_created\":" << (capture.cluster.created ? "true" : "false")
         << ",\"frame\":" << signature.frame
+        << ",\"live_population\":" << capture.live_population
         << ",\"window_frames\":" << signature.window_frames
         << ",\"active_resources\":" << signature.active_resources
         << ",\"known_resources\":" << signature.known_resources
@@ -925,6 +927,16 @@ private:
 
         (void)host_->drain();
         capture.signature = scene_understanding_.summarize(host_->graph(), scene_checkpoint_);
+        auto population = arc::ResourceSemanticInferencer{}.classify_all(host_->graph(),true);
+        capture.live_population = population.size();
+        // Complexity means a genuinely observed full-quality population,
+        // independent of the final scene and adaptive resource retirement.
+        // Select by population only, never by accuracy or scene truth label.
+        if (phase==Phase::Baseline && population.size()>measured_semantics_.size()) {
+            measured_semantics_=std::move(population);
+            semantic_snapshot_frame_=capture.signature.frame;
+            semantic_snapshot_scene_=scene;
+        }
         // Independent source-owner labels join only AFTER inference. First
         // baseline observation per resource ID avoids repeated-frame weighting.
         if (phase == Phase::Baseline) {
@@ -1018,12 +1030,11 @@ private:
         wi::gui::ComboBox& selector,
         std::chrono::steady_clock::time_point now)
     {
-        // Evaluate the renderer population while the measured workload is
-        // still loaded. Recovery switches to HelloWorld and retires resources;
-        // its eventual live count is not evidence about the measured workload.
+        // Preserve the old endpoint count as a diagnostic, not a selector for
+        // the entire five-scene workload's semantic evaluation population.
         (void)host_->drain();
-        measured_semantics_ = arc::ResourceSemanticInferencer{}.classify_all(host_->graph(), true);
-        semantic_snapshot_frame_ = host_->graph().presentation_frame();
+        end_adaptive_population_=std::count_if(host_->graph().resources().begin(),host_->graph().resources().end(),
+            [](const auto& item){return item.second.alive;});
         const auto gm = host_->runtime().governor().metrics();
         const auto qs = host_->runtime().governor().quality().state();
         adaptive_quality_actions_ = gm.quality_actions_executed;
@@ -1428,7 +1439,9 @@ private:
         WriteSemanticAudit(f);
         f << "  \"stage15_semantics\":{\"observer_only\":true"
           << ",\"confidence_basis\":\"heuristic_score\",\"accuracy_validated\":false"
-          << ",\"capture_phase\":\"adaptive_end_before_recovery\",\"capture_frame\":" << semantic_snapshot_frame_
+          << ",\"capture_phase\":\"baseline_peak_measured\",\"capture_frame\":" << semantic_snapshot_frame_
+          << ",\"capture_scene_index\":" << semantic_snapshot_scene_
+          << ",\"end_adaptive_alive_resources\":" << end_adaptive_population_
           << ",\"alive_resources\":" << semantic_predictions.size()
           << ",\"known_resources\":" << semantic_known
           << ",\"coverage\":" << semantic_coverage
@@ -1577,6 +1590,8 @@ private:
     bool cpu_profile_selected_ = false;
     std::vector<arc::ResourceSemanticPrediction> measured_semantics_;
     arc::FrameId semantic_snapshot_frame_ = 0;
+    std::size_t semantic_snapshot_scene_=0;
+    std::uint64_t end_adaptive_population_=0;
     Phase phase_ = Phase::Dormant;
     std::chrono::steady_clock::time_point phase_start_{};
     std::chrono::steady_clock::time_point settle_until_{};

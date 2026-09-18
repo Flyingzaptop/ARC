@@ -177,7 +177,7 @@ $gates = [ordered]@{
     semantic_block_present = ($null -ne $sem)
     independent_family_audit = (Test-SemanticFamilyAudit $audit)
     semantic_observer_only = (Test-ExplicitBoolean $sem observer_only $true)
-    measured_semantic_population = ($null -ne $sem -and $sem.capture_phase -eq 'adaptive_end_before_recovery' -and (Test-FiniteNumber $sem.capture_frame 1 ([double]::MaxValue)))
+    measured_semantic_population = (Test-SemanticPopulationWitness $sem $baseline)
     heuristic_confidence_declared = ($null -ne $sem -and $sem.confidence_basis -eq 'heuristic_score' -and (Test-ExplicitBoolean $sem accuracy_validated $false))
     semantic_scores_valid = ($null -ne $sem -and (Test-FiniteNumber $sem.coverage 0 1) -and (Test-FiniteNumber $sem.mean_confidence 0 1) -and (Test-FiniteNumber $sem.high_confidence_ratio 0 1))
     complex_resource_population = ($null -ne $sem -and [int64]$sem.alive_resources -ge 128)
@@ -209,7 +209,7 @@ foreach ($value in $gates.Values) {
 }
 
 $acceptance = [ordered]@{
-    schema = 4
+    schema = 5
     stage = '15-scene-understanding'
     verdict = $(if ($passed) { 'PASS' } else { 'FAIL' })
     source_sha = $sourceSha
