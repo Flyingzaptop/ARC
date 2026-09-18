@@ -1,6 +1,7 @@
 #include "arc/temporal_visibility.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -22,30 +23,37 @@ std::uint32_t saturating_frames(std::uint64_t value) noexcept {
 }  // namespace
 
 VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work) noexcept {
-    std::vector<std::uint64_t> identity;
-    identity.reserve(work.accesses.size());
-    bool have_read = false;
-    bool have_write = false;
+    std::vector<std::uint64_t> reads;
+    std::vector<std::uint64_t> writes;
+    reads.reserve(work.accesses.size());
+    writes.reserve(work.accesses.size());
     bool observed_access = false;
 
     for (const auto& access : work.accesses) {
         const std::uint64_t resource = static_cast<std::uint64_t>(access.resource);
         if (!resource) continue;
-        const std::uint64_t encoded =
-            (resource << 3U) ^
-            (access.write ? 0x4ULL : 0x0ULL) ^
-            (access.full_overwrite ? 0x2ULL : 0x0ULL) ^
-            (access.evidence == AccessEvidence::Observed ? 0x1ULL : 0x0ULL);
-        identity.push_back(encoded);
-        have_write = have_write || access.write;
-        have_read = have_read || !access.write;
+        // Evidence quality is deliberately excluded from identity: a track must
+        // not change merely because Possible evidence later becomes Observed.
+        if (access.write) writes.push_back(resource);
+        else reads.push_back(resource);
         observed_access = observed_access || access.evidence == AccessEvidence::Observed;
     }
 
-    std::ranges::sort(identity);
-    identity.erase(std::unique(identity.begin(), identity.end()), identity.end());
+    const auto normalize = [](auto& resources) {
+        std::ranges::sort(resources);
+        resources.erase(std::unique(resources.begin(), resources.end()), resources.end());
+    };
+    normalize(reads);
+    normalize(writes);
 
-    if (!work.pipeline && identity.empty() && !work.items) return {};
+    // Shared render targets are poor object identity. Prefer input resources;
+    // use outputs only when no input identity exists.
+    const auto& identity = reads.empty() ? writes : reads;
+    const auto magnitude_bucket = [](std::uint64_t value) -> std::uint64_t {
+        return value ? static_cast<std::uint64_t>(std::bit_width(value)) : 0ULL;
+    };
+
+    if (!work.pipeline && identity.empty() && !work.items && !work.copy_bytes) return {};
 
     std::uint64_t hash = 1469598103934665603ULL;
     const auto mix = [&](std::uint64_t value) {
@@ -56,8 +64,8 @@ VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work
 
     mix(static_cast<std::uint64_t>(work.kind) + 1ULL);
     mix(work.pipeline);
-    mix(work.items);
-    mix(work.copy_bytes);
+    mix(magnitude_bucket(work.items));
+    mix(magnitude_bucket(work.copy_bytes));
     mix(static_cast<std::uint64_t>(work.raster.width));
     mix(static_cast<std::uint64_t>(work.raster.height));
     for (const auto value : identity) mix(value);
@@ -66,8 +74,8 @@ VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work
     double confidence = 0.20;
     if (work.pipeline) confidence += 0.20;
     if (work.items || work.copy_bytes) confidence += 0.10;
-    if (have_read) confidence += 0.15;
-    if (have_write) confidence += 0.15;
+    if (!reads.empty()) confidence += 0.20;
+    if (!writes.empty()) confidence += 0.10;
     if (observed_access) confidence += 0.05;
     if (work.raster.known) confidence += 0.05;
     if (work.bindings_complete) confidence += 0.05;
