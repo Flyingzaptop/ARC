@@ -126,6 +126,7 @@ private:
     std::unordered_map<Key, RestorePenalty, Hash> restore_penalties_{};
     std::unordered_map<Key, std::uint32_t, Hash> recent_restores_{};
 
+    bool recovery_mode_{};
     bool filter_initialized_{};
     double filtered_frame_ms_{};
     std::uint32_t overload_samples_{};
