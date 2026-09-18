@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
 
 namespace arc {
 namespace {
@@ -19,6 +20,74 @@ std::uint32_t saturating_frames(std::uint64_t value) noexcept {
 }
 
 }  // namespace
+
+VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work) noexcept {
+    std::vector<std::uint64_t> writes;
+    std::vector<std::uint64_t> reads;
+    bool observed_write = false;
+
+    for (const auto& access : work.accesses) {
+        const std::uint64_t resource = static_cast<std::uint64_t>(access.resource);
+        if (!resource) continue;
+        const std::uint64_t encoded =
+            (resource << 2U) ^
+            (access.write ? 0x2ULL : 0x0ULL) ^
+            (access.evidence == AccessEvidence::Observed ? 0x1ULL : 0x0ULL);
+        if (access.write) {
+            writes.push_back(encoded);
+            observed_write = observed_write || access.evidence == AccessEvidence::Observed;
+        } else {
+            reads.push_back(encoded);
+        }
+    }
+
+    auto& identity = writes.empty() ? reads : writes;
+    std::ranges::sort(identity);
+    identity.erase(std::unique(identity.begin(), identity.end()), identity.end());
+
+    if (!work.pipeline && identity.empty()) return {};
+
+    std::uint64_t hash = 1469598103934665603ULL;
+    const auto mix = [&](std::uint64_t value) mutable {
+        hash ^= value;
+        hash *= 1099511628211ULL;
+        hash ^= hash >> 32U;
+    };
+
+    mix(static_cast<std::uint64_t>(work.kind) + 1ULL);
+    mix(work.pipeline);
+    mix(static_cast<std::uint64_t>(work.raster.width));
+    mix(static_cast<std::uint64_t>(work.raster.height));
+    for (const auto value : identity) mix(value);
+    if (!hash) hash = 1;
+
+    double confidence = 0.30;
+    if (work.pipeline) confidence += 0.25;
+    if (!writes.empty()) confidence += 0.20;
+    if (observed_write) confidence += 0.10;
+    if (work.raster.known) confidence += 0.05;
+    if (work.bindings_complete) confidence += 0.05;
+
+    return {hash, clamp01(confidence)};
+}
+
+VisibilityObservation make_potential_visibility_observation(
+    const AttributionNode& node,
+    std::uint64_t frame,
+    bool present_reachable) noexcept {
+    VisibilityObservation observation{};
+    const auto fingerprint = make_visual_track_fingerprint(node.work);
+    observation.id = fingerprint.id;
+    observation.frame = frame;
+    observation.local_coverage_upper = node.local_coverage_upper;
+    observation.present_reachable = present_reachable;
+
+    double confidence = fingerprint.confidence;
+    confidence *= node.unresolved_inputs ? 0.55 : 0.80;
+    confidence *= node.local_coverage_upper ? 0.80 : 0.40;
+    observation.confidence = clamp01(confidence);
+    return observation;
+}
 
 TemporalVisibilityModel::TemporalVisibilityModel(TemporalVisibilityConfig config)
     : config_(config) {
