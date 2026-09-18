@@ -25,6 +25,7 @@ struct NativeHostAdapterConfig {
     std::size_t event_capacity{16384};
     RuntimeIntegrationConfig runtime{};
     double default_reload_ms{0.25};
+    bool enforce_compatibility_guard{false};
 };
 
 struct NativeHostAdapterMetrics {
@@ -51,6 +52,7 @@ struct NativeHostAdapterMetrics {
     std::uint64_t events_drained{};
     std::uint64_t bridge_rejections{};
     std::uint64_t controlled_resources{};
+    std::uint64_t compatibility_blocks{};
     std::uint64_t failed_observations{};
 };
 
@@ -271,6 +273,7 @@ private:
     std::uint64_t submission_sequence_{};
     FrameId frame_{};
     NativeHostAdapterMetrics metrics_{};
+    CompatibilityDecision last_compatibility_{};
 };
 
 }  // namespace arc::dx12
