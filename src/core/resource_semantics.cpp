@@ -33,9 +33,14 @@ ResourceSemanticFeatures ResourceSemanticInferencer::extract(
     f.allocation_bytes = d.allocation_bytes;
     f.width = d.width;
     f.height = d.height;
+    f.depth = d.depth;
+    f.format = d.format;
+    f.resource_flags = d.resource_flags;
     f.mip_levels = d.mip_levels;
     f.array_layers = d.array_layers;
     f.sample_count = d.sample_count;
+    f.plane_count = d.plane_count;
+    f.allocation_kind = d.allocation_kind;
     f.srv = has_view(r, ViewType::Srv);
     f.uav = has_view(r, ViewType::Uav);
     f.rtv = has_view(r, ViewType::Rtv);
@@ -92,19 +97,31 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
         out.evidence_mask |= bit(12);
 
     if (buffer) {
-        if (f.cbv && f.write_fraction >= 0.50) {
-            out.semantic = InferredResourceSemantic::UploadLikeBuffer;
-            out.confidence = clamp01(0.55 + 0.35 * f.write_fraction);
+        if (f.uav) {
+            out.semantic = InferredResourceSemantic::StorageBuffer;
+            out.confidence = clamp01(0.68 + 0.18 * std::max(f.read_fraction, f.write_fraction));
             return out;
         }
-        if (f.srv && !f.uav && f.read_fraction >= 0.85) {
+        if (f.srv && f.read_fraction >= 0.85) {
             out.semantic = InferredResourceSemantic::GeometryBuffer;
             out.confidence = clamp01(0.58 + 0.30 * f.read_fraction);
             return out;
         }
-        if (f.uav && f.write_fraction >= 0.70 && f.read_fraction < 0.20) {
+        if (f.cbv && f.read_fraction >= 0.70) {
+            out.semantic = InferredResourceSemantic::UploadLikeBuffer;
+            out.confidence = clamp01(0.56 + 0.30 * f.read_fraction);
+            return out;
+        }
+
+        const bool no_shader_view = !f.srv && !f.uav && !f.cbv;
+        if (no_shader_view && f.read_fraction >= 0.90) {
+            out.semantic = InferredResourceSemantic::UploadLikeBuffer;
+            out.confidence = clamp01(0.50 + 0.35 * f.read_fraction);
+            return out;
+        }
+        if (no_shader_view && f.write_fraction >= 0.90) {
             out.semantic = InferredResourceSemantic::ReadbackLikeBuffer;
-            out.confidence = clamp01(0.45 + 0.35 * f.write_fraction);
+            out.confidence = clamp01(0.50 + 0.35 * f.write_fraction);
             return out;
         }
         return out;
