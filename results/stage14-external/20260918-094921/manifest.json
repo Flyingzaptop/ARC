@@ -1,0 +1,17 @@
+﻿{
+    "schema":  1,
+    "source_sha":  "dac0ee6b9f35462f41474302ae222a94b23559aa",
+    "upstream_repository":  "microsoft/DirectX-Graphics-Samples",
+    "upstream_sha":  "213dd4fd4918ea009dd8f35adee1aff1f2ecaba4",
+    "upstream_actual_sha":  "213dd4fd4918ea009dd8f35adee1aff1f2ecaba4",
+    "started_utc":  "2026-09-18T07:49:21.0551048Z",
+    "finished_utc":  "2026-09-18T07:50:36.6507386Z",
+    "seconds_per_measurement_phase":  30,
+    "benchmark_exit_code":  0,
+    "os":  "Майкрософт Windows 11 Домашняя Insider Preview",
+    "os_build":  "26200",
+    "cpu":  "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+    "gpu_driver":  "32.0.16.1664",
+    "power_scheme":  "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "fatal_error":  null
+}
