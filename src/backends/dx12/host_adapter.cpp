@@ -489,8 +489,17 @@ bool NativeHostAdapter::enable_residency_control(
     if (it == resources_.end()) return note_failure();
     if (controlled_.contains(resource)) return true;
     (void)drain_locked();
+    graph_.analyze();
     const auto record = graph_.find(it->second);
     if (!record || !record->alive) return note_failure();
+    if (config_.enforce_compatibility_guard) {
+        const auto semantic =
+            SceneUnderstandingModel::infer_resource(*record, graph_.presentation_frame());
+        if (!CompatibilityGuard::residency_safe(*record, semantic)) {
+            ++metrics_.compatibility_blocks;
+            return false;
+        }
+    }
     std::uint64_t bytes = record->description.allocation_bytes;
     if (!bytes && device_) {
         const auto desc = resource->GetDesc();
@@ -541,7 +550,29 @@ UnifiedRuntimeTickResult NativeHostAdapter::frame_tick(
         if (!frame.local_budget_bytes) frame.local_budget_bytes = budget->local_budget;
         if (!frame.local_usage_bytes) frame.local_usage_bytes = budget->local_usage;
     }
-    return runtime_.tick_adaptive(frame);
+
+    const auto compatibility = compatibility_snapshot();
+    {
+        std::scoped_lock lock(mutex_);
+        last_compatibility_ = compatibility;
+    }
+
+    const auto requested = runtime_.coordinator().requested_mode();
+    const bool compatibility_block =
+        config_.enforce_compatibility_guard &&
+        requested == RuntimeMode::Controlled &&
+        !compatibility.allow_quality;
+    if (compatibility_block) {
+        {
+            std::scoped_lock lock(mutex_);
+            ++metrics_.compatibility_blocks;
+        }
+        runtime_.set_mode(RuntimeMode::ObserveOnly);
+    }
+
+    auto result = runtime_.tick_adaptive(frame);
+    if (compatibility_block) runtime_.set_mode(requested);
+    return result;
 }
 
 ResourceId NativeHostAdapter::resource_id(ID3D12Resource* resource) const noexcept {
