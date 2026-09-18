@@ -1,5 +1,10 @@
 # Runtime and measurement hardening — 2026-09-18
 
+**Subsequent correction:** CPU profiling identified a per-frame swapchain
+recreation bug in the shared harness, including OFF. It is now fixed; see
+[root cause and measurements](CPU_STUTTER_FIX_20260918.md). The performance
+numbers below remain historical evidence, not valid estimates of ARC overhead.
+
 Current status: fixes published; Release 52/52 and Debug 35/35 pass. Latest
 official GPU run passes every Stage 15-specific gate, but fails underlying
 Stage 14.5 performance acceptance. Final comparison was interrupted by device

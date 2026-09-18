@@ -249,6 +249,9 @@ if(ARC_BUILD_TESTS)
 
     find_program(ARC_POWERSHELL NAMES pwsh powershell)
     if(ARC_POWERSHELL)
+        add_test(NAME arc-wicked-presentation-contract-tests COMMAND ${ARC_POWERSHELL}
+            -NoProfile -ExecutionPolicy Bypass -File
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/wicked_presentation_contract_tests.ps1)
         add_test(NAME arc-stage15-validation-tests COMMAND ${ARC_POWERSHELL}
             -NoProfile -ExecutionPolicy Bypass -File
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/stage15_validation_tests.ps1)

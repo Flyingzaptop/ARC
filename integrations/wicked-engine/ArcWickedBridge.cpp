@@ -100,12 +100,6 @@ std::array<arc_wicked::HookTiming, 64> g_hook_timings{};
 std::atomic<bool> g_hooks_enabled{true};
 std::atomic<bool> g_hook_timing_enabled{true};
 std::atomic<std::uint64_t> g_present_failures{0};
-void SetVSyncProfiled()
-{
-    const auto begin = std::chrono::steady_clock::now();
-    wi::eventhandler::SetVSync(false);
-    ARCWickedCpuSample("SetVSync", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
-}
 
 void WriteHookTimings(std::ostream& out)
 {
@@ -322,6 +316,7 @@ public:
         const auto cpu_output = EnvString(L"ARC_WICKED_CPU_PROFILE");
         if (!cpu_output.empty()) {
             cpu_profile_.open(std::filesystem::path(cpu_output), std::ios::trunc);
+            if (!cpu_profile_) { phase_ = Phase::Done; PostQuitMessage(2); return; }
             cpu_profile_ << "elapsed_ms,frame,scene,event,ms\n";
             cpu_profile_scene_ = EnvInt(L"ARC_WICKED_CPU_SCENE", 1, 0, 18);
             cpu_profile_seconds_ = EnvInt(L"ARC_WICKED_CPU_SECONDS", 8, 2, 15);
@@ -597,7 +592,6 @@ public:
                 CpuSample("Scene switch", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
                 cpu_profile_selected_ = true;
             }
-            SetVSyncProfiled();
             wi::renderer::SetTemporalAAEnabled(false);
             wi::profiler::SetEnabled(true);
             return;
@@ -613,7 +607,6 @@ public:
         g_arc_last_scene.store(static_cast<std::uint32_t>(current_scene_), std::memory_order_relaxed);
         width_ = width;
         height_ = height;
-        SetVSyncProfiled();
         wi::renderer::SetTemporalAAEnabled(false);
         wi::profiler::SetEnabled(true);
 
@@ -777,7 +770,6 @@ private:
         const auto now = std::chrono::steady_clock::now();
         width_ = width;
         height_ = height;
-        SetVSyncProfiled();
         wi::renderer::SetTemporalAAEnabled(false);
         wi::profiler::SetEnabled(true);
         const double cpu_ms = have_last_harness_update_ ?
@@ -945,7 +937,6 @@ private:
     void AfterSceneSwitch(std::chrono::steady_clock::time_point now)
     {
         settle_until_ = now + std::chrono::milliseconds(settle_milliseconds_);
-        SetVSyncProfiled();
         ApplyCurrentQuality();
         wi::profiler::SetEnabled(true);
         control_window_.clear();

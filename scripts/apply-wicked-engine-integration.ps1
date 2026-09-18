@@ -100,6 +100,8 @@ $windowOld = @'
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 '@
 $windowNew = @'
+   // CreateWindow can already dispatch WM_SIZE -> SetWindow. Set policy first.
+   tests.swapChain.desc.vsync = false;
    // Borderless window: the client area itself is exactly 1920x1080 physical
    // pixels. A decorated 1920x1080 window is clamped to the desktop work area
    // on a 1080p display, which previously produced a 1920x1030 client.
