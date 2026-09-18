@@ -1,0 +1,706 @@
+HEAD is now at 8278c25 Require a measured baseline population witness for semantic acceptance
+Removing build-validation/
+Removing build-wicked/
+Removing results/
+From https://github.com/Flyingzaptop/ARC
+ * branch            codex_den/runtime-hardening -> FETCH_HEAD
+   8278c25..cd13c35  codex_den/runtime-hardening -> origin/codex_den/runtime-hardening
+Reset branch 'codex_den/runtime-hardening'
+branch 'codex_den/runtime-hardening' set up to track 'origin/codex_den/runtime-hardening'.
+Your branch is up to date with 'origin/codex_den/runtime-hardening'.
+
+=== Preparing exact ARC source ===
+HEAD is now at cd13c35 Validate the approved distinct used-resource cohort across baseline windows
+From https://github.com/Flyingzaptop/ARC
+ * branch            codex_den/runtime-hardening -> FETCH_HEAD
+Reset branch 'codex_den/runtime-hardening'
+branch 'codex_den/runtime-hardening' set up to track 'origin/codex_den/runtime-hardening'.
+Your branch is up to date with 'origin/codex_den/runtime-hardening'.
+ARC source: cd13c3516bbd986ef3b60d54e11f4406c046d428
+MSBuild: 18.5.4.18101 / v145
+
+=== Building and running ARC deterministic regressions with standard CRT ===
+-- Building for: Visual Studio 18 2026
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- The CXX compiler identification is MSVC 19.50.35729.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Configuring done (4.2s)
+-- Generating done (0.7s)
+-- Build files have been written to: C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/build-validation
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-test-assertions-tests.vcxproj]
+  test_assertions_tests.cpp
+  arc-test-assertions-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-test-assertions-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-wicked-telemetry-tests.vcxproj]
+  wicked_telemetry_tests.cpp
+  arc-wicked-telemetry-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-wicked-telemetry-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  clock.cpp
+  session.cpp
+  multi_session.cpp
+  event_ring.cpp
+  resource_graph.cpp
+  resource_semantics.cpp
+  scene_understanding.cpp
+  residency.cpp
+  residency_candidates.cpp
+  texture_quality.cpp
+  texture_quality_candidates.cpp
+  memory_arbiter.cpp
+  memory_planner.cpp
+  transition_predictor.cpp
+  live_runtime.cpp
+  runtime_event_bridge.cpp
+  runtime_coordinator.cpp
+  runtime_integration.cpp
+  trace_writer.cpp
+  trace_reader.cpp
+  Создание кода...
+  Компиляция...
+  steam_library.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\steam_library.cpp(96,50): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning. [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-core.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\steam_library.cpp(116,66): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning. [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-core.vcxproj]
+  adaptive_quality.cpp
+  action_effect_tracker.cpp
+  adaptive_quality_controller.cpp
+  quality_profile.cpp
+  quality_admission.cpp
+  global_action_arbiter.cpp
+  unified_runtime_governor.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\unified_runtime_governor.cpp(188,39): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-core.vcxproj]
+  Создание кода...
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-lifecycle-tests.vcxproj]
+  lifecycle_tests.cpp
+  arc-lifecycle-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-lifecycle-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-resource-semantics-tests.vcxproj]
+  resource_semantics_tests.cpp
+  arc-resource-semantics-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-resource-semantics-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-scene-understanding-tests.vcxproj]
+  scene_understanding_tests.cpp
+  arc-scene-understanding-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-scene-understanding-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-adaptive-quality-tests.vcxproj]
+  adaptive_quality_tests.cpp
+  arc-adaptive-quality-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-adaptive-quality-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-adaptive-quality-controller-tests.vcxproj]
+  adaptive_quality_controller_tests.cpp
+  arc-adaptive-quality-controller-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-adaptive-quality-controller-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-closed-loop-quality-sim-tests.vcxproj]
+  closed_loop_quality_sim_tests.cpp
+  arc-closed-loop-quality-sim-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-closed-loop-quality-sim-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  dx12_observer.cpp
+  views.cpp
+  barriers.cpp
+  residency.cpp
+  runtime_backend.cpp
+  host_adapter.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(62,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(73,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(92,33): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(97,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(125,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(148,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(349,63): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(367,45): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(376,21): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(476,59): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(481,25): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+  host_adapter_extra.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter_extra.cpp(10,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-observer.vcxproj]
+  Создание кода...
+  arc-dx12-observer.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-dx12-observer.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-host-adapter-surface-tests.vcxproj]
+  dx12_host_adapter_surface_tests.cpp
+  arc-dx12-host-adapter-surface-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-dx12-host-adapter-surface-tests.exe
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-dx12-host-adapter-tests.vcxproj]
+  dx12_host_adapter_tests.cpp
+  arc-dx12-host-adapter-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-dx12-host-adapter-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  arc-dx12-observer.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-dx12-observer.lib
+  arc-dx12-host-adapter-surface-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-dx12-host-adapter-surface-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-runtime-event-bridge-tests.vcxproj]
+  runtime_event_bridge_tests.cpp
+  arc-runtime-event-bridge-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-runtime-event-bridge-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-runtime-integration-tests.vcxproj]
+  runtime_integration_tests.cpp
+  arc-runtime-integration-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-runtime-integration-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-global-action-arbiter-tests.vcxproj]
+  global_action_arbiter_tests.cpp
+  arc-global-action-arbiter-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-global-action-arbiter-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\arc-unified-runtime-governor-tests.vcxproj]
+  unified_runtime_governor_tests.cpp
+  arc-unified-runtime-governor-tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-validation\Release\arc-unified-runtime-governor-tests.exe
+Test project C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/build-validation
+      Start  2: arc-resource-semantics-tests
+ 1/17 Test  #2: arc-resource-semantics-tests .............   Passed    0.03 sec
+      Start  3: arc-scene-understanding-tests
+ 2/17 Test  #3: arc-scene-understanding-tests ............   Passed    0.05 sec
+      Start 16: arc-runtime-event-bridge-tests
+ 3/17 Test #16: arc-runtime-event-bridge-tests ...........   Passed    0.05 sec
+      Start 18: arc-runtime-integration-tests
+ 4/17 Test #18: arc-runtime-integration-tests ............   Passed    0.03 sec
+      Start 21: arc-adaptive-quality-tests
+ 5/17 Test #21: arc-adaptive-quality-tests ...............   Passed    0.03 sec
+      Start 23: arc-adaptive-quality-controller-tests
+ 6/17 Test #23: arc-adaptive-quality-controller-tests ....   Passed    0.03 sec
+      Start 25: arc-closed-loop-quality-sim-tests
+ 7/17 Test #25: arc-closed-loop-quality-sim-tests ........   Passed    0.03 sec
+      Start 28: arc-global-action-arbiter-tests
+ 8/17 Test #28: arc-global-action-arbiter-tests ..........   Passed    0.03 sec
+      Start 29: arc-unified-runtime-governor-tests
+ 9/17 Test #29: arc-unified-runtime-governor-tests .......   Passed    0.03 sec
+      Start 30: arc-dx12-host-adapter-tests
+10/17 Test #30: arc-dx12-host-adapter-tests ..............   Passed    0.06 sec
+      Start 31: arc-dx12-host-adapter-surface-tests
+11/17 Test #31: arc-dx12-host-adapter-surface-tests ......   Passed    0.07 sec
+      Start 32: arc-lifecycle-tests
+12/17 Test #32: arc-lifecycle-tests ......................   Passed    0.04 sec
+      Start 33: arc-test-assertions-tests
+13/17 Test #33: arc-test-assertions-tests ................   Passed    0.02 sec
+      Start 34: arc-wicked-telemetry-tests
+14/17 Test #34: arc-wicked-telemetry-tests ...............   Passed    0.03 sec
+      Start 35: arc-wicked-audit-boundary-tests
+15/17 Test #35: arc-wicked-audit-boundary-tests ..........   Passed    0.60 sec
+      Start 36: arc-wicked-presentation-contract-tests
+16/17 Test #36: arc-wicked-presentation-contract-tests ...   Passed    0.59 sec
+      Start 37: arc-stage15-validation-tests
+17/17 Test #37: arc-stage15-validation-tests .............   Passed    0.84 sec
+
+100% tests passed, 0 tests failed out of 17
+
+Total Test time (real) =   2.81 sec
+
+=== Building ARC libraries with Wicked-compatible static CRT ===
+-- Building for: Visual Studio 18 2026
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- The CXX compiler identification is MSVC 19.50.35729.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (2.1s)
+-- Generating done (0.3s)
+-- Build files have been written to: C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/build-wicked
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  clock.cpp
+  session.cpp
+  multi_session.cpp
+  event_ring.cpp
+  resource_graph.cpp
+  resource_semantics.cpp
+  scene_understanding.cpp
+  residency.cpp
+  residency_candidates.cpp
+  texture_quality.cpp
+  texture_quality_candidates.cpp
+  memory_arbiter.cpp
+  memory_planner.cpp
+  transition_predictor.cpp
+  live_runtime.cpp
+  runtime_event_bridge.cpp
+  runtime_coordinator.cpp
+  runtime_integration.cpp
+  trace_writer.cpp
+  trace_reader.cpp
+  Создание кода...
+  Компиляция...
+  steam_library.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\steam_library.cpp(96,50): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning. [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\steam_library.cpp(116,66): warning C4996: 'std::filesystem::u8path': warning STL4021: The std::filesystem::u8path() overloads are deprecated in C++20. The constructors of std::filesystem::path provide equivalent functionality via construction from u8string, u8string_view, or iterators with value_type char8_t. You can define _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING or _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS to suppress this warning. [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core.vcxproj]
+  adaptive_quality.cpp
+  action_effect_tracker.cpp
+  adaptive_quality_controller.cpp
+  quality_profile.cpp
+  quality_admission.cpp
+  global_action_arbiter.cpp
+  unified_runtime_governor.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\core\unified_runtime_governor.cpp(188,39): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-core.vcxproj]
+  Создание кода...
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-core.lib
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-core.lib
+  Building Custom Rule C:/Users/r3d_flzp/ARC-Hardening-GPU/arc/CMakeLists.txt
+  dx12_observer.cpp
+  views.cpp
+  barriers.cpp
+  residency.cpp
+  runtime_backend.cpp
+  host_adapter.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(62,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(73,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(92,33): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(97,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(125,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(148,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(349,63): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(367,45): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(376,21): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(476,59): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter.cpp(481,25): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+  host_adapter_extra.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\src\backends\dx12\host_adapter_extra.cpp(10,28): warning C4834: удаление возвращаемого значения функции с атрибутом [[nodiscard]] [C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\arc-dx12-observer.vcxproj]
+  Создание кода...
+  arc-dx12-observer.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked\Release\arc-dx12-observer.lib
+
+=== Preparing pinned Wicked Engine ===
+HEAD is now at 0b4dd9eb multiple light batching shadow render, occlusion culling improvements (#1701)
+Removing BUILD/
+Removing Samples/Tests/ArcWickedBridge.cpp
+Removing Samples/Tests/ArcWickedBridge.h
+Removing Samples/Tests/ArcWickedSemanticAudit.h
+Removing Samples/Tests/ArcWickedTelemetry.h
+Removing Samples/Tests/Tests/
+Removing Samples/Tests/log.txt
+Removing Samples/Tests/shaders/
+Removing WickedEngine/ArcWickedHooks.h
+Removing WickedEngine/WickedEngine_Windows/
+From https://github.com/turanszkij/WickedEngine
+ * branch              0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7 -> FETCH_HEAD
+HEAD is now at 0b4dd9eb multiple light batching shadow render, occlusion culling improvements (#1701)
+
+=== Applying ARC integration overlay ===
+Wicked DX12 backend patched for ARC.
+ARC Wicked Engine overlay applied.
+Wicked SHA: 0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7
+ARC root: C:\Users\r3d_flzp\ARC-Hardening-GPU\arc
+ARC build: C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\build-wicked
+
+=== Building real Wicked Samples/Tests renderer ===
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  AABBTreeBuilder.cpp
+  ComputeSystem.cpp
+  ComputeBufferCPU.cpp
+  ComputeQueueCPU.cpp
+  ComputeSystemCPU.cpp
+  ComputeBufferDX12.cpp
+  ComputeQueueDX12.cpp
+  ComputeSystemDX12.cpp
+  ComputeSystemDX12Impl.cpp
+  ComputeBufferVK.cpp
+  ComputeQueueVK.cpp
+  ComputeShaderVK.cpp
+  ComputeSystemVK.cpp
+  ComputeSystemVKImpl.cpp
+  ComputeSystemVKWithAllocator.cpp
+  Color.cpp
+  Factory.cpp
+  IssueReporting.cpp
+  JobSystemSingleThreaded.cpp
+  JobSystemThreadPool.cpp
+  JobSystemWithBarrier.cpp
+  LinearCurve.cpp
+  Memory.cpp
+  Profiler.cpp
+  RTTI.cpp
+  Semaphore.cpp
+  StringTools.cpp
+  TickCounter.cpp
+  ConvexHullBuilder.cpp
+  ConvexHullBuilder2D.cpp
+  Indexify.cpp
+  OrientedBox.cpp
+  Vec3.cpp
+  ObjectStream.cpp
+  ObjectStreamBinaryIn.cpp
+  ObjectStreamBinaryOut.cpp
+  ObjectStreamIn.cpp
+  ObjectStreamOut.cpp
+  ObjectStreamTextIn.cpp
+  ObjectStreamTextOut.cpp
+  SerializableObject.cpp
+  TypeDeclarations.cpp
+  Body.cpp
+  BodyCreationSettings.cpp
+  BodyInterface.cpp
+  BodyManager.cpp
+  MassProperties.cpp
+  MotionProperties.cpp
+  Character.cpp
+  CharacterBase.cpp
+  CharacterVirtual.cpp
+  BroadPhase.cpp
+  BroadPhaseBruteForce.cpp
+  BroadPhaseQuadTree.cpp
+  QuadTree.cpp
+  CastConvexVsTriangles.cpp
+  CastSphereVsTriangles.cpp
+  CollideConvexVsTriangles.cpp
+  CollideSphereVsTriangles.cpp
+  CollisionDispatch.cpp
+  CollisionGroup.cpp
+  EstimateCollisionResponse.cpp
+  GroupFilter.cpp
+  GroupFilterTable.cpp
+  ManifoldBetweenTwoFaces.cpp
+  NarrowPhaseQuery.cpp
+  NarrowPhaseStats.cpp
+  PhysicsMaterial.cpp
+  PhysicsMaterialSimple.cpp
+  BoxShape.cpp
+  CapsuleShape.cpp
+  CompoundShape.cpp
+  ConvexHullShape.cpp
+  ConvexShape.cpp
+  CylinderShape.cpp
+  DecoratedShape.cpp
+  EmptyShape.cpp
+  HeightFieldShape.cpp
+  MeshShape.cpp
+  MutableCompoundShape.cpp
+  OffsetCenterOfMassShape.cpp
+  PlaneShape.cpp
+  RotatedTranslatedShape.cpp
+  ScaledShape.cpp
+  Shape.cpp
+  SphereShape.cpp
+  StaticCompoundShape.cpp
+  TaperedCapsuleShape.cpp
+  TaperedCylinderShape.cpp
+  TriangleShape.cpp
+  TransformedShape.cpp
+  ConeConstraint.cpp
+  Constraint.cpp
+  ConstraintManager.cpp
+  ContactConstraintManager.cpp
+  DistanceConstraint.cpp
+  FixedConstraint.cpp
+  GearConstraint.cpp
+  HingeConstraint.cpp
+  MotorSettings.cpp
+  PathConstraint.cpp
+  PathConstraintPath.cpp
+  PathConstraintPathHermite.cpp
+  PointConstraint.cpp
+  PulleyConstraint.cpp
+  RackAndPinionConstraint.cpp
+  SixDOFConstraint.cpp
+  SliderConstraint.cpp
+  SpringSettings.cpp
+  SwingTwistConstraint.cpp
+  TwoBodyConstraint.cpp
+  DeterminismLog.cpp
+  Hair.cpp
+  HairSettings.cpp
+  HairShaders.cpp
+  RegisterHair.cpp
+  IslandBuilder.cpp
+  LargeIslandSplitter.cpp
+  PhysicsScene.cpp
+  PhysicsSystem.cpp
+  PhysicsUpdateContext.cpp
+  Ragdoll.cpp
+  SoftBodyCreationSettings.cpp
+  SoftBodyMotionProperties.cpp
+  SoftBodyShape.cpp
+  SoftBodySharedSettings.cpp
+  StateRecorderImpl.cpp
+  MotorcycleController.cpp
+  TrackedVehicleController.cpp
+  VehicleAntiRollBar.cpp
+  VehicleCollisionTester.cpp
+  VehicleConstraint.cpp
+  VehicleController.cpp
+  VehicleDifferential.cpp
+  VehicleEngine.cpp
+  VehicleTrack.cpp
+  VehicleTransmission.cpp
+  Wheel.cpp
+  WheeledVehicleController.cpp
+  RegisterTypes.cpp
+  DebugRenderer.cpp
+  DebugRendererPlayback.cpp
+  DebugRendererRecorder.cpp
+  DebugRendererSimple.cpp
+  HairWrapper.cpp
+  TestComputeWrapper.cpp
+  SkeletalAnimation.cpp
+  Skeleton.cpp
+  SkeletonMapper.cpp
+  SkeletonPose.cpp
+  TriangleSplitter.cpp
+  TriangleSplitterBinning.cpp
+  TriangleSplitterMean.cpp
+  lodepng.cpp
+  allocator.cpp
+  clusterizer.cpp
+  indexanalyzer.cpp
+  indexcodec.cpp
+  indexgenerator.cpp
+  meshletcodec.cpp
+  meshletutils.cpp
+  opacitymap.cpp
+  overdrawoptimizer.cpp
+  partition.cpp
+  quantization.cpp
+  rasterizer.cpp
+  simplifier.cpp
+  spatialorder.cpp
+  stripifier.cpp
+  tangentspace.cpp
+  vcacheoptimizer.cpp
+  vertexcodec.cpp
+  vertexfilter.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(686,35): warning C4334: <<: результат 32-разрядного смещения неявно преобразуется в 64-разрядное значение (предполагалось 64-разрядное смещение?) [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(704,28): warning C4267: =: преобразование из "size_t" в "unsigned short"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(705,20): warning C4334: <<: результат 32-разрядного смещения неявно преобразуется в 64-разрядное значение (предполагалось 64-разрядное смещение?) [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(729,36): warning C4267: =: преобразование из "size_t" в "unsigned short"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(746,37): warning C4267: =: преобразование из "size_t" в "unsigned short"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(3999,77): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5062,29): warning C4267: =: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5331,57): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5336,80): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5337,91): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5338,80): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5339,91): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5340,80): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5341,91): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5342,75): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+  vfetchoptimizer.cpp
+  offsetAllocator.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5537,3): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5561,7): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5595,40): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5612,3): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5634,45): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5665,45): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5778,45): warning C4267: аргумент: преобразование из "size_t" в "unsigned int"; возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\lodepng.cpp(5892,28): warning C4334: <<: результат 32-разрядного смещения неявно преобразуется в 64-разрядное значение (предполагалось 64-разрядное смещение?) [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+  pugixml.cpp
+  wiAsync_BindLua.cpp
+  wiConfig.cpp
+  wiGaussianSplatModel.cpp
+  wiLocalization.cpp
+  wiPathQuery.cpp
+  wiPathQuery_BindLua.cpp
+  wiPhysics_BindLua.cpp
+  wiPhysics_Jolt.cpp
+  wiRenderPath3D_PathTracing.cpp
+  samplerBlueNoiseErrorDistribution_128x128_OptimizedFor_2d2d2d2d_1spp.cpp
+  utility_common.cpp
+  wiArchive.cpp
+  wiAudio.cpp
+  wiAudio_BindLua.cpp
+  wiEventHandler.cpp
+  wiFFTGenerator.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\zstd\zstd.c(19144,11): warning C4551: в вызове функции отсутствует список аргументов [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+  (compiling source file 'Utility/utility_common.cpp')
+  
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\Utility\zstd\zstd.c(19144,30): warning C4551: в вызове функции отсутствует список аргументов [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+  (compiling source file 'Utility/utility_common.cpp')
+  
+  wiGPUBVH.cpp
+  wiGPUSortLib.cpp
+  wiGraphicsDevice_DX12.cpp
+  wiGraphicsDevice_Vulkan.cpp
+  wiLoadingScreen.cpp
+  wiLoadingScreen_BindLua.cpp
+  wiApplication.cpp
+  wiApplication_BindLua.cpp
+  wiRenderPath2D.cpp
+  wiRenderPath2D_BindLua.cpp
+  wiRenderPath3D.cpp
+  wiRenderPath3D_BindLua.cpp
+  wiRenderPath_BindLua.cpp
+  wiScene_Components.cpp
+  wiSpriteAnim_BindLua.cpp
+  wiTerrain.cpp
+  wiTexture_BindLua.cpp
+  wiMath_BindLua.cpp
+  wiBacklog.cpp
+  wiBacklog_BindLua.cpp
+  wiEmittedParticle.cpp
+  wiFadeManager.cpp
+  wiFont.cpp
+  wiNetwork_Linux.cpp
+  wiSDLInput.cpp
+  wiShaderCompiler.cpp
+  wiSpriteFont_BindLua.cpp
+  wiGUI.cpp
+  wiHairParticle.cpp
+  wiHelper.cpp
+  wiImage.cpp
+  wiImageParams_BindLua.cpp
+  wiInitializer.cpp
+  wiInput.cpp
+  wiInput_BindLua.cpp
+  wiPrimitive.cpp
+  wiPrimitive_BindLua.cpp
+  wiJobSystem.cpp
+  wiNetwork_Windows.cpp
+  wiLua.cpp
+  wiMath.cpp
+  wiNetwork_BindLua.cpp
+  wiOcean.cpp
+  wiProfiler.cpp
+  wiRandom.cpp
+  wiRawInput.cpp
+  wiRenderer.cpp
+  wiRenderer_BindLua.cpp
+  wiResourceManager.cpp
+  wiScene.cpp
+  wiScene_BindLua.cpp
+  wiScene_Serializers.cpp
+  wiSprite.cpp
+  wiSpriteFont.cpp
+  wiSprite_BindLua.cpp
+  wiArguments.cpp
+  wiTextureHelper.cpp
+  wiTrailRenderer.cpp
+  wiTrailRenderer_BindLua.cpp
+  wiVersion.cpp
+  wiVideo.cpp
+  wiVideo_BindLua.cpp
+  wiVoxelGrid.cpp
+  wiVoxelGrid_BindLua.cpp
+  wiXInput.cpp
+  spirv_reflect.c
+  stb_vorbis.c
+  lapi.c
+  lauxlib.c
+  lbaselib.c
+  lcode.c
+  lcorolib.c
+  lctype.c
+  ldblib.c
+  ldebug.c
+  ldo.c
+  ldump.c
+  lfunc.c
+  lgc.c
+  linit.c
+  liolib.c
+  llex.c
+  lmathlib.c
+  lmem.c
+  loadlib.c
+  lobject.c
+  lopcodes.c
+  loslib.c
+  lparser.c
+  lstate.c
+  lstring.c
+  lstrlib.c
+  ltable.c
+  ltablib.c
+  ltm.c
+  lua.c
+  lundump.c
+  lutf8lib.c
+  lvm.c
+  lzio.c
+  WickedEngine_Windows.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\WickedEngine_Windows.lib
+  stdafx.cpp
+  main_Windows.cpp
+  Tests.cpp
+  ArcWickedBridge.cpp
+  Создание кода
+  Previous IPDB not found, fall back to full compilation.
+  All 74444 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Создание кода завершено
+  Tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\Tests\Tests.exe
+
+=== Running Stage 14.5 real-renderer acceptance ===
+Wicked upstream : 0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7
+ARC source      : cd13c3516bbd986ef3b60d54e11f4406c046d428
+Renderer        : Wicked Samples/Tests / D3D12
+Resolution      : native 1920x1080
+Temporal/upscale: OFF
+Scenes          : Model, Shadows, Water, Volumetric, 65k Instances
+Measured time   : 60 s baseline + 60 s adaptive (+ warmup/settle/recovery)
+Leave other GPU-heavy applications idle.
+
+=== Stage 14.5 acceptance complete ===
+Verdict      : PASS
+Miss ratio   : 60% -> 33.9%
+p50          : 2.32 -> 2.08 ms
+p99          : 5.162 -> 5.052 ms
+Scenes won   : 2/5
+Actions      : 14 across 3 domains
+Learned      : 6
+Local results: C:\Users\r3d_flzp\ARC-Hardening-GPU\arc\results\stage14_5-wicked-local\20260918-195042
+
+ARC Stage 14.5 Wicked PASS
+Misses: 60% -> 33.9%
+p50: 2.32 -> 2.08 ms
+Scenes won: 2/5
+Results URL:
+
+Publishing Stage 15 Wicked run 20260918-195042
+Published Stage 15 results: https://github.com/Flyingzaptop/ARC/tree/results/stage15-wicked-20260918-195042/results/stage15-wicked/20260918-195042
+
+Stage 15: FAIL
+Scene retrieval: 100%
+Same-scene threshold recall: 100%
+Positive identity margin: 100%
+Cluster recurrence: 80%
+Results URL: https://github.com/Flyingzaptop/ARC/tree/results/stage15-wicked-20260918-195042/results/stage15-wicked/20260918-195042
