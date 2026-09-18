@@ -1,0 +1,26 @@
+﻿
+dx12-host-adapter-tests: PASS
+global-action-arbiter-tests: PASS
+unified-runtime-governor-tests: PASS
+ARC Mega Stage B native host renderer on NVIDIA GeForce RTX 3060 Laptop GPU
+Target: 0.734 ms, native 1920x1080, temporal OFF
+Calibrating renderer quality ladders
+  texture sampling: 0.100, 0.121, 0.108 ms
+  raster layers: 0.156, 0.158, 0.161 ms
+  lighting iterations: 0.208, 0.134, 0.118 ms
+Baseline renderer schedule: 10 s/phase
+Adaptive native-host schedule
+  easy-0
+  bandwidth-heavy
+  recover-bandwidth
+  raster-moderate-memory
+  recover-raster
+  lighting-heavy
+  recover-lighting
+  mixed-emergency
+  final-easy
+Baseline miss: 27.823%  ARC: 59.454%
+Host resources: 6, submits: 152550, presents: 152550, rejections: 0
+Quality actions: 158, domains: 3 [bandwidth=yes, raster=yes, lighting=yes], memory actions: 8, combined ticks: 1
+Final quality full: yes, residency restored: yes
+Report: C:\Users\r3d_flzp\ARC-Mega-B\repo\results\mega-stage-b-local\20260918-075312\mega-stage-b.json
