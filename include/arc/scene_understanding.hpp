@@ -44,10 +44,14 @@ struct SceneSemanticSignature {
     std::uint64_t indexed_draws{};
     std::uint64_t dispatches{};
     std::uint64_t indirect{};
+    std::uint64_t draw_items{};
+    std::uint64_t dispatch_groups{};
     std::uint64_t copies{};
     float resource_accesses_per_frame{};
     float draw_calls_per_frame{};
+    float draw_items_per_frame{};
     float dispatches_per_frame{};
+    float dispatch_groups_per_frame{};
     float indirect_per_frame{};
     float submissions_per_frame{};
     float copies_per_frame{};
