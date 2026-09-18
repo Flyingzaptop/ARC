@@ -94,6 +94,13 @@ $ctest = Join-Path (Split-Path -Parent $cmake) 'ctest.exe'
 $msbuild = Find-MSBuild
 if (-not $msbuild) { throw 'MSBuild not found. Install Visual Studio / Build Tools with Desktop development with C++.' }
 $env:VSLANG = '1033'
+$msbuildVersionText = (& $msbuild -version -nologo | Select-Object -Last 1).Trim()
+if ($msbuildVersionText -notmatch '^(\\d+)\\.') { throw "Unable to parse MSBuild version: $msbuildVersionText" }
+$msbuildMajor = [int]$Matches[1]
+if ($msbuildMajor -ge 18) { $platformToolset = 'v145' }
+elseif ($msbuildMajor -ge 17) { $platformToolset = 'v143' }
+else { throw "MSBuild $msbuildVersionText is too old for the Stage 14.5 C++23 bridge." }
+Write-Host "MSBuild: $msbuildVersionText / $platformToolset"
 
 Step 'Building ARC with Wicked-compatible static CRT'
 $arcBuild = Join-Path $arc 'build-wicked'
@@ -136,6 +143,7 @@ $msbuildArgs = @(
     '/m',
     '/p:Configuration=Release',
     '/p:Platform=x64',
+    "/p:PlatformToolset=$platformToolset",
     "/p:SolutionDir=$wicked\",
     "/p:ArcRepoRoot=$arc",
     "/p:ArcBuildRoot=$arcBuild",
