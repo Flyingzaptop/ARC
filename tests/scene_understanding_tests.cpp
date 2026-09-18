@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <cmath>
 #include <iostream>
 
 namespace {
@@ -191,6 +192,8 @@ int main() {
     const auto c1 = clusters.observe(storage);
     const auto a2 = clusters.observe(material_b);
     assert(a1.created);
+    assert(std::isfinite(a1.distance));
+    assert(a1.distance == 1.0F);
     assert(s1.created);
     assert(c1.created);
     assert(!a2.created);
@@ -221,6 +224,30 @@ int main() {
     assert(isolated_window.known_resources == 1);
     assert(isolated_window.resource_fractions[
         static_cast<std::size_t>(arc::InferredResourceSemantic::TransientIntermediate)] > 0.99F);
+
+    arc::ResourceGraph queue_window;
+    queue(queue_window, 1);
+    queue(queue_window, 2, arc::QueueClass::Compute);
+    create(queue_window, 30, arc::ResourceKind::Texture2D, 512, 512);
+    view(queue_window, 30, 301, arc::ViewType::Uav);
+    present(queue_window, 1);
+    use(queue_window, 1000, 1, 30, true, 12000);
+    use(queue_window, 1001, 2, 30, true, 12010);
+
+    const auto queue_checkpoint = infer.checkpoint(queue_window);
+    present(queue_window, 2);
+    use(queue_window, 1002, 1, 30, true, 12020);
+    const auto single_queue_window = infer.summarize(queue_window, queue_checkpoint);
+    assert(single_queue_window.active_resources == 1);
+    assert(single_queue_window.multi_queue_fraction == 0.0F);
+
+    const auto queue_checkpoint2 = infer.checkpoint(queue_window);
+    present(queue_window, 3);
+    use(queue_window, 1003, 1, 30, true, 12030);
+    use(queue_window, 1004, 2, 30, true, 12040);
+    const auto multi_queue_window = infer.summarize(queue_window, queue_checkpoint2);
+    assert(multi_queue_window.active_resources == 1);
+    assert(multi_queue_window.multi_queue_fraction > 0.99F);
 
     std::cout << "scene-understanding-tests: PASS\n";
 }
