@@ -47,28 +47,9 @@ $dx = Read-Lf $dxPath
 
 $dx = Replace-Once $dx '#include "wiGraphicsDevice_DX12.h"' ('#include "wiGraphicsDevice_DX12.h"' + $LF + '#include "ArcWickedHooks.h"') 'DX12 include'
 
-$old = @'
-			for (int i = 0; i < BINDLESS_SAMPLER_CAPACITY; ++i)
-			{
-				allocationhandler->free_bindless_sam.push_back(BINDLESS_SAMPLER_CAPACITY - i - 1);
-			}
-		}
-
-		// Create frame-resident resources:
-'@
-$new = @'
-			for (int i = 0; i < BINDLESS_SAMPLER_CAPACITY; ++i)
-			{
-				allocationhandler->free_bindless_sam.push_back(BINDLESS_SAMPLER_CAPACITY - i - 1);
-			}
-		}
-
-		ARCWickedDeviceReady(device.Get(), descriptorheap_res.heap_GPU.Get(), descriptorheap_sam.heap_GPU.Get());
-
-		// Create frame-resident resources:
-'@
-$dx = Replace-Once $dx $old $new 'device ready'
-
+$deviceReadyAnchor = $T+$T+'// Create frame-resident resources:'
+$deviceReadyInsert = $T+$T+'ARCWickedDeviceReady(device.Get(), descriptorheap_res.heap_GPU.Get(), descriptorheap_sam.heap_GPU.Get());'+$LF+$LF+$deviceReadyAnchor
+$dx = Replace-Once $dx $deviceReadyAnchor $deviceReadyInsert 'device ready'
 $copy = '				allocationhandler->device->CopyDescriptorsSimple(1, dst_bindless, handle, type);'
 $dx = Replace-Nth $dx $copy ($copy + $LF + '				ARCWickedObserveSRV(device->descriptorheap_res.heap_GPU.Get(), (uint32_t)index, res, &srv);') 2 'bindless SRV'
 $dx = Replace-Nth $dx $copy ($copy + $LF + '				ARCWickedObserveUAV(device->descriptorheap_res.heap_GPU.Get(), (uint32_t)index, res, &uav);') 3 'bindless UAV'
