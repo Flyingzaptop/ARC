@@ -127,9 +127,9 @@ $present = $T+$T+$T+$T+$T+'HRESULT hr = dx12_check(swapchain_internal->swapChain
 $dx = Replace-Once $dx $present ($present + $LF + $T+$T+$T+$T+$T+'ARCWickedPresent((uint64_t)swapchain_internal->swapChain.Get(), swapchain->desc.vsync, presentFlags, hr);') 'present'
 
 $anchor = $T+$T+'CommandList_DX12& commandlist = GetCommandList(cmd);'
-$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindResource(' $anchor ($LF+$T+$T+'ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), false);') 'BindResource'
-$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindUAV(' $anchor ($LF+$T+$T+'ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), true);') 'BindUAV'
-$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindConstantBuffer(' $anchor ($LF+$T+$T+'ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(buffer)->resource.Get(), false);') 'BindConstantBuffer'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindResource(' $anchor ($LF+$T+$T+'if (resource != nullptr && resource->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), false);') 'BindResource'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindUAV(' $anchor ($LF+$T+$T+'if (resource != nullptr && resource->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), true);') 'BindUAV'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindConstantBuffer(' $anchor ($LF+$T+$T+'if (buffer != nullptr && buffer->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(buffer)->resource.Get(), false);') 'BindConstantBuffer'
 
 $vertex = $LF+$T+$T+'for (uint32_t arc_i = 0; arc_i < count; ++arc_i)'+$LF+
           $T+$T+'{'+$LF+
