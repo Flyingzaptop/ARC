@@ -198,16 +198,16 @@ void test_restore_probe_breaks_stale_cost_deadlock() {
     s.local_usage_bytes = 500;
     s.local_budget_bytes = 1000;
 
-    // Both learned costs exceed the ordinary restore budget even though there
-    // is stable headroom. ARC must still make bounded progress by probing one
-    // reversible step rather than leaving quality permanently degraded.
+    // The stateless optimizer must not force a restore whose learned cost does
+    // not fit the current budget. Deadlock-breaking probes need controller
+    // history (stable headroom + reversal backoff) and therefore live in
+    // AdaptiveQualityController rather than here.
     std::vector<QualityActionCandidate> active{
         {101, QualityDomain::Raster, "stale heavy-scene estimate", 0.80, 0.20, 0.95, 0, true, false, 1},
         {102, QualityDomain::Lighting, "cheaper reversible probe", 0.55, 0.10, 0.95, 0, true, false, 0},
     };
     const auto p = optimizer.plan_restore(s, active);
-    assert(p.actions.size() == 1);
-    assert(p.actions.front().id == 102);
+    assert(p.actions.empty());
 }
 
 void test_temporal_can_be_explicitly_enabled() {
