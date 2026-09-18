@@ -19,16 +19,21 @@ Incomplete captures, unknown producers, incomplete binding sets and unsynchroniz
 dependencies prohibit a complete attribution claim. No optimizer consumes this graph.
 
 Raster contribution is an upper bound in the local output target from target,
-viewport and scissor intersection. It is not actual visible coverage or a bound
+viewport and scissor intersection, rounded outwards to pixel boundaries. It is not actual visible coverage or a bound
 after arbitrary later composition. Unknown raster state yields null, not zero.
 GPU cost is attached only from completed timestamp pairs at the queue's frequency.
 Unmeasured work remains null; items and copy bytes remain separate cost proxies.
 No claim to cache pressure, bandwidth or per-resource GPU time without measurements.
 
-All capture dimensions have configurable hard limits. Overflow fails closed;
+All capture dimensions have configurable hard limits. Pending recorded work also
+shares a global node-sized budget; adding command lists cannot multiply it.
+Synchronization clocks are stored once per execution node, not once per resource
+access. Overflow fails closed;
 clear starts a fresh capture. Host must serialize calls and use stable, unique
 resource IDs (including native-pointer lifetime changes). The observer introduces
 no quality/resource mutation.
+Unmodeled aliasing or missing command events must invalidate the capture; distinct
+resource IDs alone do not establish physical-memory independence.
 
 Acceptance requires independently specified small dependency fixtures (including
 unrelated branches, overwrite, reset/replay and cross-queue cases), invalid/missing
@@ -60,6 +65,9 @@ signals diagnostic completion fences after submission and polls without blocking
 before reading results. Raw ticks, queue frequency and execution-node ID accompany
 every measurement. This diagnostic mode adds GPU query/fence work and is not an
 unperturbed performance comparison. It does not drive the quality controller.
+These are bracketed queue intervals (including any preparation commands between
+the hook and draw), not marginal isolated costs. Intervals on different queues
+can overlap; summing them is not frame time. Zero ticks can reflect timer resolution.
 Unmeasured work retains null cost. Renderer fence dependencies and bindless shader
 access remain incomplete, so a complete Present slice is not claimed.
 
@@ -72,3 +80,33 @@ copies by readback and independently exports all six raw timestamps.
 `scripts/validate-mega-d.ps1` independently checks native topology, timestamp
 conversion and renderer measurement-to-work association. A PASS is scoped to this
 observer prototype, not full shader-level causality or production optimization.
+
+For a prebuilt pinned renderer and native test executable, run
+`scripts/run-mega-d-capture.ps1` with `-Executable`, `-WorkingDirectory`,
+`-NativeExecutable` and a new `-OutputDirectory`. It records source/binary hashes,
+runs the hardware readback test and the observer capture, independently validates
+the JSON, and preserves failures. Build both executables from the declared source
+first; a binary hash alone is not proof of its source provenance.
+
+## Recorded hardware result
+
+The final pinned capture at source `cf280cf35b499690186ae4ca3ed4431e6410925e`
+passed the independent validator. It contains 149 execution nodes, 839
+conservative dependency edges, 28 raster-bound observations, 64 measured GPU
+timestamp pairs and 24 recomputed Present ancestors. The graph reported zero
+capture errors and the native 4 MiB three-copy readback fixture passed.
+
+The capture callback durations summed to 1.8913 ms for this sampled frame. This is
+diagnostic observer work across callbacks, not a frame critical-path measurement.
+The capture mode is therefore opt-in and samples one settled Water frame; it is
+not enabled in normal runs or in performance comparisons.
+
+A separate ARC-OFF control run completed cleanly, but the laptop GPU was under an
+active NVIDIA software power cap near 30 W with changing clocks. Its results are
+retained as environment evidence, not used to claim a Mega D performance delta.
+The existing Stage 14.5/15 acceptance artifacts remain separate and unchanged.
+
+The callback CPU metric sums instrumented observer method durations, including
+mutex wait, across threads. It excludes Present export/file I/O and outer host
+lookups; it is not a complete frame-critical-path overhead measurement. Capture
+defaults OFF, and exactly one settled frame is sampled when explicitly enabled.
