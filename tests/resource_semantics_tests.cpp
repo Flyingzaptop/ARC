@@ -100,7 +100,46 @@ int main() {
     assert(infer.classify(geometry).semantic ==
         arc::InferredResourceSemantic::GeometryBuffer);
 
+    arc::ResourceCreatePayload external{};
+    external.resource = 6;
+    external.kind = arc::ResourceKind::Texture2D;
+    external.allocation_kind = arc::ResourceAllocationKind::External;
+    external.width = 640;
+    external.height = 480;
+    external.depth = 1;
+    external.array_layers = 1;
+    external.sample_count = 1;
+    g.consume(event(arc::EventType::ResourceCreated, external, 600));
+    const auto external_features = infer.extract(g, 6);
+    assert(external_features.allocation_bytes == 640ull * 480ull * 4ull);
+
+    arc::ResourceSemanticFeatures native_shadow{};
+    native_shadow.resource = 104;
+    native_shadow.kind = arc::ResourceKind::Texture2D;
+    native_shadow.width = 2048;
+    native_shadow.height = 2048;
+    native_shadow.array_layers = 4;
+    native_shadow.resource_flags = 0x2u; // D3D12 allow-depth-stencil capability
+    native_shadow.srv = true;
+    native_shadow.read_fraction = 0.35;
+    native_shadow.write_fraction = 0.65;
+    native_shadow.usage_count = 20;
+    assert(infer.classify(native_shadow).semantic ==
+        arc::InferredResourceSemantic::ShadowMap);
+
+    arc::ResourceSemanticFeatures native_rt{};
+    native_rt.resource = 105;
+    native_rt.kind = arc::ResourceKind::Texture2D;
+    native_rt.width = 1920;
+    native_rt.height = 1080;
+    native_rt.resource_flags = 0x1u; // D3D12 allow-render-target capability
+    native_rt.read_fraction = 0.60;
+    native_rt.write_fraction = 0.40;
+    native_rt.usage_count = 20;
+    assert(infer.classify(native_rt).semantic ==
+        arc::InferredResourceSemantic::RenderTarget);
+
     const auto all=infer.classify_all(g);
-    assert(all.size()==5);
+    assert(all.size()==6);
     std::cout<<"resource-semantics-tests: PASS\n";
 }
