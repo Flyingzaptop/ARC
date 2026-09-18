@@ -130,7 +130,7 @@ bool UnifiedRuntimeGovernor::execute_quality(
     }
 
     consecutive_quality_failures_ = 0;
-    pending_ = PendingEffect{action, decision.kind, frame.frame_ms};
+    pending_ = PendingEffect{action, decision.kind, frame.frame_ms, frame};
     result.quality_executed = true;
     ++metrics_.quality_actions_executed;
     return true;
@@ -151,7 +151,8 @@ UnifiedRuntimeTickResult UnifiedRuntimeGovernor::tick(
             pending_->kind,
             pending_->before_frame_ms,
             frame.frame_ms,
-            true);
+            true,
+            &pending_->context);
         pending_.reset();
         result.pending_effect_resolved = true;
         ++metrics_.pending_effects_resolved;
