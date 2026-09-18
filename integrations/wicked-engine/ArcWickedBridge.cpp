@@ -429,8 +429,9 @@ public:
         if (!host_ || !resource || !name) return;
         const auto id=host_->resource_id(resource);
         const int entry=arc_wicked::audit::find(name);
-        if (!id || entry<0) return;
+        if (!id) return;
         std::scoped_lock lock(truth_mutex_);
+        if (entry<0) { truth_live_.erase(resource); return; }
         if (truth_live_.size() >= 4096 && !truth_live_.contains(resource)) { truth_truncated_=true; return; }
         truth_live_[resource]={id,entry};
     }
