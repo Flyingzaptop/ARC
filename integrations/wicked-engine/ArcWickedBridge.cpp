@@ -518,7 +518,13 @@ private:
         wi::renderer::SetShadowProps2D(res2d[shadow_level_]);
         wi::renderer::SetShadowPropsCube(cube[shadow_level_]);
         wi::renderer::SetTessellationEnabled(geometry_level_ == 0);
-        wi::renderer::SetDisableAlbedoMaps(bandwidth_level_ != 0);
+        constexpr std::array<float, 3> mip_bias{0.0f, 0.75f, 1.50f};
+        if (const auto* object_sampler = wi::renderer::GetSampler(wi::enums::SAMPLER_OBJECTSHADER))
+        {
+            auto sampler_desc = object_sampler->GetDesc();
+            sampler_desc.mip_lod_bias = mip_bias[bandwidth_level_];
+            wi::renderer::ModifyObjectSampler(sampler_desc);
+        }
         wi::renderer::SetTemporalAAEnabled(false);
     }
 
@@ -614,13 +620,14 @@ private:
         arc::QualityResourceProfile bandwidth{};
         bandwidth.id = kBandwidthProfile;
         bandwidth.domain = arc::QualityDomain::Bandwidth;
-        bandwidth.label = "wicked albedo sampling";
+        bandwidth.label = "wicked material mip bias";
         bandwidth.semantic = arc::QualitySemanticClass::Environment;
         bandwidth.importance = {0.65, 0.95, 0.40, 0.45, 0.60};
-        bandwidth.confidence = 0.72;
+        bandwidth.confidence = 0.82;
         bandwidth.reversible = true;
         bandwidth.levels = {
-            {0.40, baseline_p50 * 0.12, 0},
+            {0.75, baseline_p50 * 0.07, 0},
+            {0.50, baseline_p50 * 0.06, 0},
         };
 
         profiles_registered_ =
@@ -718,19 +725,25 @@ private:
         }
         else if (action.id == kBandwidthProfile)
         {
+            constexpr std::array<float, 3> mip_bias{0.0f, 0.75f, 1.50f};
             if (!restore)
             {
-                if (action.sequence != 0 || bandwidth_level_ != 0)
+                if (action.sequence != bandwidth_level_ || bandwidth_level_ + 1 >= mip_bias.size())
                     return arc::RuntimeBackendStatus::Failure;
-                bandwidth_level_ = 1;
-                wi::renderer::SetDisableAlbedoMaps(true);
+                ++bandwidth_level_;
             }
             else
             {
-                if (bandwidth_level_ != 1)
+                if (bandwidth_level_ == 0 || action.sequence + 1 != bandwidth_level_)
                     return arc::RuntimeBackendStatus::Failure;
-                bandwidth_level_ = 0;
-                wi::renderer::SetDisableAlbedoMaps(false);
+                --bandwidth_level_;
+            }
+
+            if (const auto* object_sampler = wi::renderer::GetSampler(wi::enums::SAMPLER_OBJECTSHADER))
+            {
+                auto sampler_desc = object_sampler->GetDesc();
+                sampler_desc.mip_lod_bias = mip_bias[bandwidth_level_];
+                wi::renderer::ModifyObjectSampler(sampler_desc);
             }
             quality_domains_[2] = true;
         }
@@ -772,7 +785,9 @@ private:
             else
             {
                 probe.domain = id == kGeometryProfile ? arc::QualityDomain::Geometry : arc::QualityDomain::Bandwidth;
-                probe.levels = {{0.5, 0.1, 0}};
+                probe.levels = id == kGeometryProfile
+                    ? std::vector<arc::QualityLevel>{{0.5, 0.1, 0}}
+                    : std::vector<arc::QualityLevel>{{0.75, 0.1, 0}, {0.5, 0.1, 0}};
             }
             for (const auto& action : arc::QualityCandidateFactory::build(probe))
                 if (host_->runtime().governor().quality().effects().find(action)) ++learned;
