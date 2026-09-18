@@ -90,6 +90,11 @@ int main() {
     check(!weak_from_d.visible_coverage, "Stage D raster bound not promoted to actual visibility");
     check(weak_from_d.confidence < fp_a.confidence, "unresolved Stage D evidence lowers confidence");
 
+    const auto unknown_reachability = make_potential_visibility_observation(node, 1);
+    check(!unknown_reachability.present_reachable.has_value(), "unknown Present reachability preserved");
+    check(unknown_reachability.confidence < weak_from_d.confidence,
+          "unknown Present reachability lowers confidence");
+
     TemporalVisibilityModel model;
 
     check(model.observe(direct(1, 1, .01, .01)), "first observation");
