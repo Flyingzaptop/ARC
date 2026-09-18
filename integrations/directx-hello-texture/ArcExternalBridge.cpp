@@ -332,6 +332,7 @@ void ArcExternalBridge::OnFrame(double frameMs)
             adaptiveRestoreProbes_ = qs.restore_probes;
             adaptiveRestoreBackoffs_ = qs.restore_backoffs;
             controlWindow_.clear();
+            host_->runtime().governor().quality().begin_recovery();
             EnterPhase(Phase::Recovery);
         }
         break;
