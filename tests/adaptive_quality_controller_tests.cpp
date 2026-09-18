@@ -274,6 +274,49 @@ int main() {
         assert(controller.state().restore_probes == 2);
     }
 
+    // Explicit recovery must release transient anti-chatter penalties without
+    // forgetting the active ladder or learned action effects.
+    {
+        auto cfg = immediate_config();
+        cfg.minimum_hold_samples_after_degrade = 2;
+        cfg.restore_reversal_window_samples = 8;
+        cfg.restore_backoff_base_samples = 50;
+        cfg.restore_backoff_max_samples = 200;
+        AdaptiveQualityController controller{cfg};
+
+        std::vector<QualityActionCandidate> candidates{
+            {41, QualityDomain::Lighting, "recovery step", 2.0, 0.05, 0.95, 0, true, false, 0},
+        };
+
+        auto degrade = controller.tick(lighting_sample(20.0, 10.0), candidates);
+        assert(degrade.kind == QualityDecisionKind::Degrade);
+        controller.note_action_applied(degrade.plan.actions.front(), degrade.kind, 20.0, 16.0, true);
+
+        for (int i = 0; i < 2; ++i) (void)controller.tick(lighting_sample(5.0, 10.0), candidates);
+        auto restore = controller.tick(lighting_sample(5.0, 10.0), candidates);
+        assert(restore.kind == QualityDecisionKind::Restore);
+        controller.note_action_applied(restore.plan.actions.front(), restore.kind, 5.0, 8.0, true);
+
+        auto reverse = controller.tick(lighting_sample(13.0, 10.0), candidates);
+        assert(reverse.kind == QualityDecisionKind::Degrade);
+        controller.note_action_applied(reverse.plan.actions.front(), reverse.kind, 13.0, 8.0, true);
+        assert(controller.state().restore_backoffs == 1);
+        assert(controller.state().restore_guard_remaining > 0);
+        assert(controller.active_actions().size() == 1);
+        assert(controller.effects().find(candidates.front()).has_value());
+
+        controller.begin_recovery();
+
+        const auto state = controller.state();
+        assert(state.active_actions == 1);
+        assert(state.restore_guard_remaining == 0);
+        assert(state.settle_remaining == 0);
+        assert(controller.effects().find(candidates.front()).has_value());
+
+        auto recovery = controller.tick(lighting_sample(4.0, 12.0), candidates);
+        assert(recovery.kind == QualityDecisionKind::Restore);
+    }
+
     std::cout << "adaptive-quality-controller-tests: PASS\n";
     return 0;
 }
