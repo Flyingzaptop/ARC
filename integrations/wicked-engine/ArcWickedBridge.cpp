@@ -5,6 +5,7 @@
 #include "arc/dx12_host_adapter.hpp"
 #include "arc/quality_profile.hpp"
 #include "arc/resource_semantics.hpp"
+#include "arc/scene_understanding.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,6 +18,7 @@
 #include <iomanip>
 #include <memory>
 #include <mutex>
+#include <ostream>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -62,6 +64,13 @@ struct SceneSpec
 {
     int combo_index;
     const char* name;
+};
+
+struct SceneSemanticCapture
+{
+    bool captured = false;
+    arc::SceneSemanticSignature signature{};
+    arc::SceneClusterAssignment cluster{};
 };
 
 constexpr std::array<SceneSpec, 5> kScenes{{
@@ -138,6 +147,43 @@ double MissRatio(const Stats& s)
 double MeanOvershoot(const Stats& s)
 {
     return s.misses ? s.overshoot / static_cast<double>(s.misses) : 0.0;
+}
+
+template<std::size_t N>
+void WriteFloatArray(std::ostream& out, const std::array<float, N>& values)
+{
+    out << "[";
+    for (std::size_t i = 0; i < values.size(); ++i)
+    {
+        if (i) out << ",";
+        out << values[i];
+    }
+    out << "]";
+}
+
+void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& capture)
+{
+    const auto& signature = capture.signature;
+    out << "{\"captured\":" << (capture.captured ? "true" : "false")
+        << ",\"cluster\":" << capture.cluster.cluster
+        << ",\"cluster_distance\":" << capture.cluster.distance
+        << ",\"cluster_confidence\":" << capture.cluster.confidence
+        << ",\"cluster_created\":" << (capture.cluster.created ? "true" : "false")
+        << ",\"frame\":" << signature.frame
+        << ",\"active_resources\":" << signature.active_resources
+        << ",\"known_resources\":" << signature.known_resources
+        << ",\"active_bytes\":" << signature.active_bytes
+        << ",\"known_bytes\":" << signature.known_bytes
+        << ",\"coverage\":" << signature.coverage
+        << ",\"mean_confidence\":" << signature.mean_confidence
+        << ",\"read_fraction\":" << signature.read_fraction
+        << ",\"write_fraction\":" << signature.write_fraction
+        << ",\"multi_queue_fraction\":" << signature.multi_queue_fraction
+        << ",\"resource_fractions\":";
+    WriteFloatArray(out, signature.resource_fractions);
+    out << ",\"byte_fractions\":";
+    WriteFloatArray(out, signature.byte_fractions);
+    out << "}";
 }
 
 void Recompute(Stats& s, double target)
@@ -454,6 +500,7 @@ public:
 
             if (desired >= kScenes.size())
             {
+                CaptureSceneSemantic(phase_, current_scene_);
                 if (phase_ == Phase::Baseline) FinishBaseline(selector, now);
                 else FinishAdaptive(selector, now);
                 return;
@@ -461,6 +508,7 @@ public:
 
             if (desired != current_scene_)
             {
+                CaptureSceneSemantic(phase_, current_scene_);
                 current_scene_ = desired;
                 selector.SetSelected(kScenes[current_scene_].combo_index);
                 AfterSceneSwitch(now);
@@ -521,6 +569,22 @@ public:
     }
 
 private:
+    void CaptureSceneSemantic(Phase phase, std::size_t scene)
+    {
+        if (!host_ || scene >= kScenes.size() ||
+            (phase != Phase::Baseline && phase != Phase::Adaptive))
+            return;
+
+        auto& capture = phase == Phase::Baseline ?
+            baseline_scene_semantics_[scene] : adaptive_scene_semantics_[scene];
+        if (capture.captured) return;
+
+        (void)host_->drain();
+        capture.signature = scene_understanding_.summarize(host_->graph(), scene_checkpoint_);
+        capture.cluster = scene_clusters_.observe(capture.signature);
+        capture.captured = true;
+    }
+
     void AddSample(Stats& total, Stats& scene, double ms)
     {
         total.frames.push_back(ms);
@@ -558,6 +622,11 @@ private:
         ApplyCurrentQuality();
         wi::profiler::SetEnabled(true);
         control_window_.clear();
+        if (host_)
+        {
+            (void)host_->drain();
+            scene_checkpoint_ = scene_understanding_.checkpoint(host_->graph());
+        }
     }
 
     void EnterMeasuredPhase(
@@ -884,7 +953,7 @@ private:
 
         arc::ResourceSemanticInferencer semantic_inferencer{};
         const auto semantic_predictions = semantic_inferencer.classify_all(host_->graph(), true);
-        std::array<std::uint64_t, 11> semantic_counts{};
+        std::array<std::uint64_t, arc::kInferredResourceSemanticCount> semantic_counts{};
         std::uint64_t semantic_known = 0;
         std::uint64_t semantic_high_confidence = 0;
         double semantic_confidence_sum = 0.0;
@@ -986,6 +1055,43 @@ private:
             f << semantic_counts[i];
         }
         f << "]},\n"
+          << "  \"scene_understanding\":{\"observer_only\":true"
+          << ",\"truth_labels_used_for_inference\":false"
+          << ",\"same_scene_threshold\":" << scene_understanding_.config().same_scene_distance
+          << ",\"cluster_threshold\":" << scene_understanding_.config().cluster_distance
+          << ",\"cluster_count\":" << scene_clusters_.cluster_count()
+          << ",\"baseline\":[";
+        for (std::size_t i = 0; i < baseline_scene_semantics_.size(); ++i)
+        {
+            if (i) f << ",";
+            WriteSceneSemanticCapture(f, baseline_scene_semantics_[i]);
+        }
+        f << "],\"adaptive\":[";
+        for (std::size_t i = 0; i < adaptive_scene_semantics_.size(); ++i)
+        {
+            if (i) f << ",";
+            WriteSceneSemanticCapture(f, adaptive_scene_semantics_[i]);
+        }
+        f << "],\"baseline_to_adaptive_distance\":[";
+        for (std::size_t i = 0; i < baseline_scene_semantics_.size(); ++i)
+        {
+            if (i) f << ",";
+            f << "[";
+            for (std::size_t j = 0; j < adaptive_scene_semantics_.size(); ++j)
+            {
+                if (j) f << ",";
+                double distance = 1.0;
+                if (baseline_scene_semantics_[i].captured && adaptive_scene_semantics_[j].captured)
+                {
+                    distance = scene_understanding_.compare(
+                        baseline_scene_semantics_[i].signature,
+                        adaptive_scene_semantics_[j].signature).distance;
+                }
+                f << distance;
+            }
+            f << "]";
+        }
+        f << "]},\n"
           << "  \"governor\":{\"quality_actions_executed\":" << gm.quality_actions_executed
           << ",\"learned_effects\":" << learned
           << ",\"quality_domains_executed\":" << domains
@@ -1036,6 +1142,12 @@ private:
     std::array<Stats, kScenes.size()> baseline_scenes_{};
     std::array<Stats, kScenes.size()> adaptive_scenes_{};
     std::vector<double> control_window_;
+
+    arc::SceneUnderstandingInferencer scene_understanding_{};
+    arc::SceneSemanticClusterer scene_clusters_{};
+    arc::SceneObservationCheckpoint scene_checkpoint_{};
+    std::array<SceneSemanticCapture, kScenes.size()> baseline_scene_semantics_{};
+    std::array<SceneSemanticCapture, kScenes.size()> adaptive_scene_semantics_{};
 
     double target_ms_ = 0.0;
     double recovery_target_ms_ = 0.0;

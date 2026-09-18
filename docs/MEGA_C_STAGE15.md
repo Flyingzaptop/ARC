@@ -1,56 +1,73 @@
 # Mega C / Stage 15 — Automatic Scene Understanding
 
-Stage 15 begins from the accepted Stage 14.5 Wicked Engine truth test.
+Stage 15 starts from the accepted Stage 14.5 Wicked Engine baseline at `17af73117827c67cc7304bf19e66d3486f1caab3`.
 
 ## Safety boundary
 
-The first Stage 15 implementation is observer-only. Inferred semantics are not fed into
-quality mutation or residency control until their behavior is measured against an
-external truth set.
+Stage 15 remains observer-only until its real Wicked GPU truth gate passes. Resource and scene semantics are not used by the governor, residency planner, or quality mutation path. Wicked scene names are evaluation metadata only.
 
-## Behavioral resource semantics
+The runtime inference path receives no engine object names, pass names, scene names, or manually assigned semantic tags.
 
-ARC classifies resources using only backend-neutral runtime evidence already present
-in the ResourceGraph:
+## Layer 1 — behavioral resource semantics
 
-- resource kind and dimensions;
-- mip/layer/sample structure;
+`ResourceSemanticInferencer` classifies resources from backend-neutral runtime evidence already stored in `ResourceGraph`:
+
+- resource kind, dimensions, allocation size, mip/layer/sample structure;
 - SRV/UAV/RTV/DSV/CBV evidence;
 - read/write balance;
-- usage count and burstiness;
-- inter-frame reuse interval;
+- usage count, burstiness, inter-frame reuse;
 - queue fan-out and resource age.
 
-The controller is not given engine object names, pass names, scene names, or manually
-assigned semantic tags.
+Predictions contain a semantic class, confidence, evidence mask, and the feature vector used to make the decision. The feature-vector overload allows scene windows to be classified from per-window activity rather than lifetime counters.
 
-Current output classes:
+## Layer 2 — scene signatures
 
-- Unknown
-- MaterialTexture
-- RenderTarget
-- DepthBuffer
-- ShadowMap
-- StorageTexture
-- GeometryBuffer
-- UploadLikeBuffer
-- ReadbackLikeBuffer
-- TransientIntermediate
-- PersistentHistory
+`SceneUnderstandingInferencer` snapshots resource counters at scene-window entry. At the end of the window it builds a label-free signature from only activity that occurred after that checkpoint:
 
-Each prediction carries a confidence and evidence mask so downstream code can fail
-closed on low-confidence or ambiguous resources.
+- active and semantically known resource populations;
+- active and known byte populations;
+- resource-semantic and byte-semantic distributions;
+- read/write balance;
+- multi-queue participation;
+- semantic coverage and mean semantic confidence.
 
-## Phase A acceptance
+The checkpoint also snapshots burst counters, preventing earlier scenes from leaking their accumulated burst history into the next scene.
 
-Phase A is complete when:
+A convenience rolling-window path exists for offline inspection; the Wicked acceptance path uses explicit checkpoints.
 
-1. deterministic semantic tests are green on Linux and Windows;
-2. no regression to Mega A/B/Stage 14.5 tests;
-3. the classifier can run over a complex Wicked trace without ResourceGraph errors;
-4. unknown/low-confidence resources remain untouched;
-5. semantic predictions are stable enough to support a separate truth-label study.
+## Similarity and online clustering
 
-Stage 15 is not closed by Phase A. Engine-independent truth-label accuracy and
-scene/pass understanding remain required before inferred semantics may affect the
-governor.
+Scene comparison combines total-variation distance over resource and byte semantic distributions with behavioral and logarithmic population distances. The default same-scene and cluster thresholds are 0.22. Empty or completely unknown signatures fail closed.
+
+`SceneSemanticClusterer` assigns label-free online cluster IDs and updates centroids conservatively. Cluster IDs have no engine-specific meaning.
+
+## Wicked truth protocol
+
+The Wicked bridge captures one scene signature at the end of each baseline and adaptive scene slot. The bridge stores captures by slot for evaluation bookkeeping, but the scene index/name is never passed into the inferencer or clusterer.
+
+The result JSON contains resource-semantic coverage, baseline/adaptive scene signatures, label-free cluster assignments, and a full baseline-to-adaptive distance matrix. It explicitly records `truth_labels_used_for_inference=false` and `semantic_labels_used_by_controller=false`.
+
+Only `stage15-wicked-bootstrap.ps1`, after the run has completed, compares the matrix and cluster IDs with external Wicked truth labels.
+
+## Stage 15 GPU acceptance
+
+A real Wicked GPU run closes Stage 15 only when all Stage 14.5 gates remain green and:
+
+1. all baseline/adaptive signatures are captured and non-empty;
+2. resource semantic coverage and confidence remain useful;
+3. nearest-baseline retrieval is correct for at least 80% of adaptive scenes;
+4. at least 80% of true pairs are inside the same-scene threshold;
+5. at least 80% of true pairs have positive margin against the best wrong scene;
+6. mean identity margin is at least 0.02;
+7. at least 80% of true baseline/adaptive pairs retain the same online cluster ID;
+8. clustering is non-trivial (at least two clusters);
+9. truth labels remain absent from inference/controller inputs;
+10. ResourceGraph and quality backend remain clean.
+
+## Verification status
+
+CPU implementation is covered by deterministic scene-understanding tests for semantic separation, rolling activity, checkpoint isolation, fail-closed empty windows, and online cluster recurrence.
+
+Repository CI must additionally pass Linux Release, Windows Debug/Release, PowerShell parsing, the pinned external renderer build check, and the pinned Wicked Stage 14.5 integration build check.
+
+The final real GPU Wicked truth run is intentionally external to CI and remains the only hardware-dependent Stage 15 gate.
