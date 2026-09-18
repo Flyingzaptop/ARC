@@ -78,6 +78,14 @@ int main() {
     check(entering->temporal_relevance >= entering->estimated_visible_coverage, "future relevance retained");
     check(entering->confidence > .7, "direct evidence confidence");
 
+    TemporalVisibilityModel steady_model;
+    for (std::uint64_t frame = 1; frame <= 20; ++frame) {
+        check(steady_model.observe(direct(77, frame, .10, .10)), "steady observation");
+    }
+    const auto* steady = steady_model.find(77);
+    check(steady && std::abs(steady->estimated_visible_coverage - .10) < .005,
+          "continuously observed coverage must not decay");
+
     check(model.observe(direct(2, 3, .50, 0.0)), "occluded observation");
     const auto* occluded = model.find(2);
     check(occluded && occluded->phase == VisibilityPhase::Hidden, "direct occlusion wins over potential raster area");
