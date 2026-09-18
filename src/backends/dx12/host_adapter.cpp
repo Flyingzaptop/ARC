@@ -223,6 +223,32 @@ bool NativeHostAdapter::observe_rtv(
     return true;
 }
 
+bool NativeHostAdapter::observe_rtv_unlocated(
+    ID3D12Resource* resource,
+    const D3D12_RENDER_TARGET_VIEW_DESC& view) {
+    if (!resource) return false;
+    std::scoped_lock lock(mutex_);
+    const auto rit = resources_.find(resource);
+    if (rit == resources_.end()) return note_failure();
+    const auto id = ids_.next();
+    if (!observer_.observe_rtv(id, rit->second, view)) return note_failure();
+    ++metrics_.descriptor_writes;
+    return true;
+}
+
+bool NativeHostAdapter::observe_dsv_unlocated(
+    ID3D12Resource* resource,
+    const D3D12_DEPTH_STENCIL_VIEW_DESC& view) {
+    if (!resource) return false;
+    std::scoped_lock lock(mutex_);
+    const auto rit = resources_.find(resource);
+    if (rit == resources_.end()) return note_failure();
+    const auto id = ids_.next();
+    if (!observer_.observe_dsv(id, rit->second, view)) return note_failure();
+    ++metrics_.descriptor_writes;
+    return true;
+}
+
 bool NativeHostAdapter::observe_dsv(
     ID3D12DescriptorHeap* heap, const std::uint32_t index,
     ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& view) {
