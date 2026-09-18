@@ -180,6 +180,8 @@ public:
 
     // Mutation is opt-in. Observed resources remain read-only until the host
     // explicitly marks them safe for residency control.
+    // The host must synchronize earlier read-only uses before granting control;
+    // residency in-flight tracking starts with controlled submissions.
     bool enable_residency_control(
         ID3D12Resource* resource,
         double reload_ms = -1.0,

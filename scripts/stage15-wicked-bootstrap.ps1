@@ -175,6 +175,7 @@ $gates = [ordered]@{
     underlying_stage14_5_pass = ($stage14Exit -eq 0 -and (Test-ExplicitBoolean $raw valid $true))
     semantic_block_present = ($null -ne $sem)
     semantic_observer_only = (Test-ExplicitBoolean $sem observer_only $true)
+    measured_semantic_population = ($null -ne $sem -and $sem.capture_phase -eq 'adaptive_end_before_recovery' -and (Test-FiniteNumber $sem.capture_frame 1 ([double]::MaxValue)))
     heuristic_confidence_declared = ($null -ne $sem -and $sem.confidence_basis -eq 'heuristic_score' -and (Test-ExplicitBoolean $sem accuracy_validated $false))
     semantic_scores_valid = ($null -ne $sem -and (Test-FiniteNumber $sem.coverage 0 1) -and (Test-FiniteNumber $sem.mean_confidence 0 1) -and (Test-FiniteNumber $sem.high_confidence_ratio 0 1))
     complex_resource_population = ($null -ne $sem -and [int64]$sem.alive_resources -ge 128)

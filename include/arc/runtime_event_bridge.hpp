@@ -51,6 +51,15 @@ public:
     [[nodiscard]] std::uint64_t logical_epoch() const noexcept { return logical_epoch_; }
     [[nodiscard]] std::uint64_t presentation_frame() const noexcept { return presentation_frame_; }
     [[nodiscard]] bool requires_explicit_completion_fence() const noexcept { return require_explicit_completion_fence_; }
+    // Diagnostic: submissions awaiting a residency completion-fence signal.
+    [[nodiscard]] std::size_t pending_submission_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& [queue, submissions] : pending_blocks_by_queue_) {
+            (void)queue;
+            count += submissions.size();
+        }
+        return count;
+    }
 
 private:
     struct SignaledBatch {

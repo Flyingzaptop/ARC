@@ -107,5 +107,19 @@ int main() {
     CHECK(metrics.malformed_events == 1);
     CHECK(metrics.controller_rejections == 0);
 
+    // Observation must not require fence signals just to release bookkeeping.
+    // Repeated read-only submissions have no residency work to wait for.
+    LiveRuntimeController observed_runtime;
+    RuntimeEventBridge observed_bridge(observed_runtime, true);
+    CHECK(observed_bridge.consume(make_event(EventType::CommandListCreated, CommandListPayload{.command=20})));
+    CHECK(observed_bridge.consume(make_event(EventType::ResourceUse, ResourceUsePayload{.command=20,.resource=999})));
+    CHECK(observed_bridge.consume(make_event(EventType::CommandListClosed, CommandListPayload{.command=20})));
+    for (std::uint64_t i = 1; i <= 100000; ++i) {
+        CHECK(observed_bridge.consume(make_event(EventType::QueueSubmit, QueueSubmitPayload{.queue=7,.command=20,.submission=i})));
+    }
+    CHECK(observed_bridge.pending_submission_count() == 0);
+    CHECK(observed_bridge.metrics().submission_blocks == 0);
+    CHECK(observed_bridge.metrics().controller_rejections == 0);
+
     return 0;
 }

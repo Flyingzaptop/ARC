@@ -39,3 +39,10 @@ Regression coverage compares pruned checkpoint counters against full history,
 checks destroyed-resource windows and expired-window rejection, runs 10,000
 resource lifetimes with descriptor reuse, and verifies rolling-window recovery.
 The churn test checks retained populations, not process RSS or allocator peaks.
+
+The live residency event bridge also filters pending fence bookkeeping to
+controlled resources. Repeated read-only submissions without fence signals do
+not accumulate empty pending batches or external-resource use history. A
+100,000-submission regression covers this case. A host granting residency
+control after earlier read-only use must first synchronize that prior work;
+control is an explicit safety opt-in, not retroactive tracking.

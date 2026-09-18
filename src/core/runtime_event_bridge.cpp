@@ -47,17 +47,22 @@ void RuntimeEventBridge::append_use(CommandId command, ResourceId resource) {
 
 bool RuntimeEventBridge::queue_submission(QueueId queue, const std::vector<ResourceId>& uses) {
     if (!queue) return false;
-    auto& pending_uses = pending_uses_by_queue_[queue];
-    pending_uses.insert(pending_uses.end(), uses.begin(), uses.end());
-
     std::unordered_set<ResourceId> unique;
     std::vector<ResourceId> controlled;
+    std::vector<ResourceId> controlled_uses;
     controlled.reserve(uses.size());
     for (const auto resource : uses) {
-        if (!resource || !unique.insert(resource).second || !runtime_.controlled(resource)) continue;
+        if (!resource || !runtime_.controlled(resource)) continue;
+        // Preserve controlled-use telemetry, but never retain an observer-only
+        // submission waiting for a fence that its host need not supply.
+        controlled_uses.push_back(resource);
+        if (!unique.insert(resource).second) continue;
         if (runtime_.inflight_count(resource) == (std::numeric_limits<std::uint32_t>::max)()) return false;
         controlled.push_back(resource);
     }
+    if (controlled.empty()) return true;
+    auto& pending_uses = pending_uses_by_queue_[queue];
+    pending_uses.insert(pending_uses.end(), controlled_uses.begin(), controlled_uses.end());
     for (const auto resource : controlled) {
         if (!runtime_.mark_inflight(resource)) return false;
         ++metrics_.submission_blocks;

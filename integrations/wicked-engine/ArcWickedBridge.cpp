@@ -516,6 +516,11 @@ public:
         (void)host_->observe_execute_command_lists(
             queue, std::span<ID3D12CommandList* const>(commands, count));
 
+        // Wicked quality setters own their renderer synchronization. Extra
+        // ARC completion fences are only needed for explicitly opted-in
+        // residency resources; observation must not inject GPU queue work.
+        if (host_->metrics().controlled_resources == 0) return;
+
         Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence;
         std::uint64_t completion_value = 0;
         {
@@ -934,6 +939,12 @@ private:
         wi::gui::ComboBox& selector,
         std::chrono::steady_clock::time_point now)
     {
+        // Evaluate the renderer population while the measured workload is
+        // still loaded. Recovery switches to HelloWorld and retires resources;
+        // its eventual live count is not evidence about the measured workload.
+        (void)host_->drain();
+        measured_semantics_ = arc::ResourceSemanticInferencer{}.classify_all(host_->graph(), true);
+        semantic_snapshot_frame_ = host_->graph().presentation_frame();
         const auto gm = host_->runtime().governor().metrics();
         const auto qs = host_->runtime().governor().quality().state();
         adaptive_quality_actions_ = gm.quality_actions_executed;
@@ -1242,8 +1253,7 @@ private:
             cpu_frame_intervals_ms_.begin(), cpu_frame_intervals_ms_.end(),
             [](double ms) { return ms >= 100.0; }));
 
-        arc::ResourceSemanticInferencer semantic_inferencer{};
-        const auto semantic_predictions = semantic_inferencer.classify_all(host_->graph(), true);
+        const auto& semantic_predictions = measured_semantics_;
         std::array<std::uint64_t, arc::kInferredResourceSemanticCount> semantic_counts{};
         std::uint64_t semantic_known = 0;
         std::uint64_t semantic_high_confidence = 0;
@@ -1337,6 +1347,7 @@ private:
           << ",\"errors\":" << host_->graph().errors() << "},\n"
           << "  \"stage15_semantics\":{\"observer_only\":true"
           << ",\"confidence_basis\":\"heuristic_score\",\"accuracy_validated\":false"
+          << ",\"capture_phase\":\"adaptive_end_before_recovery\",\"capture_frame\":" << semantic_snapshot_frame_
           << ",\"alive_resources\":" << semantic_predictions.size()
           << ",\"known_resources\":" << semantic_known
           << ",\"coverage\":" << semantic_coverage
@@ -1435,6 +1446,8 @@ private:
     std::size_t scene_offset_ = 0;
     std::array<Stats, kScenes.size()> experiment_cpu_{};
     std::uint64_t invalid_samples_ = 0;
+    std::vector<arc::ResourceSemanticPrediction> measured_semantics_;
+    arc::FrameId semantic_snapshot_frame_ = 0;
     Phase phase_ = Phase::Dormant;
     std::chrono::steady_clock::time_point phase_start_{};
     std::chrono::steady_clock::time_point settle_until_{};
