@@ -2,6 +2,7 @@
 
 #include "arc/dx12_observer.hpp"
 #include "arc/dx12_runtime_backend.hpp"
+#include "arc/compatibility_guard.hpp"
 #include "arc/runtime_integration.hpp"
 
 #include <d3d12.h>
@@ -218,6 +219,8 @@ public:
     [[nodiscard]] LiveRuntimeBackend& backend() noexcept { return backend_; }
     [[nodiscard]] const LiveRuntimeBackend& backend() const noexcept { return backend_; }
     [[nodiscard]] NativeHostAdapterMetrics metrics() const noexcept;
+    [[nodiscard]] std::vector<ResourceSemanticEstimate> semantic_snapshot() const;
+    [[nodiscard]] CompatibilityDecision compatibility_snapshot() const;
 
 private:
     struct DescriptorHeapRecord {
