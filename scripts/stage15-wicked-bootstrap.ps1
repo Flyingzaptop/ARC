@@ -226,7 +226,7 @@ $summary = @"
 "@
 Add-Content -LiteralPath (Join-Path $run.FullName 'SUMMARY.md') -Value $summary -Encoding utf8
 
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $arc 'scripts\stage14_5-wicked-publish-existing.ps1') -RepoRoot $arc -RunStamp $run.Name
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $arc 'scripts\stage15-wicked-publish-existing.ps1') -RepoRoot $arc -RunStamp $run.Name
 if ($LASTEXITCODE -ne 0) { throw "Publishing failed: $LASTEXITCODE" }
 
 Write-Host ""
@@ -235,6 +235,10 @@ Write-Host "Scene retrieval: $([math]::Round(100.0 * $sceneMatchAccuracy,2))%"
 Write-Host "Same-scene threshold recall: $([math]::Round(100.0 * $sameThresholdRatio,2))%"
 Write-Host "Positive identity margin: $([math]::Round(100.0 * $positiveMarginRatio,2))%"
 Write-Host "Cluster recurrence: $([math]::Round(100.0 * $clusterRecurrence,2))%"
+$stage15Url = Join-Path $localRoot 'last-stage15-result-url.txt'
+if (Test-Path -LiteralPath $stage15Url) {
+    Write-Host "Results URL: $((Get-Content -LiteralPath $stage15Url -Raw).Trim())"
+}
 
 if ($passed) { exit 0 }
 exit 2
