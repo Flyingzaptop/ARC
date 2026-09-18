@@ -6,16 +6,22 @@ param(
 $ErrorActionPreference='Stop'
 $ExpectedUpstreamSha='213dd4fd4918ea009dd8f35adee1aff1f2ecaba4'
 
+function Normalize-Lf([string]$Text) {
+    return [regex]::Replace($Text,'\r\n?',[string][char]10)
+}
+
 function Replace-Exact {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
         [Parameter(Mandatory=$true)][string]$Old,
         [Parameter(Mandatory=$true)][string]$New
     )
-    $text=Get-Content -LiteralPath $Path -Raw
-    if(-not$text.Contains($Old)){throw "Expected patch anchor not found in $Path"}
-    $text=$text.Replace($Old,$New)
-    Set-Content -LiteralPath $Path -Value $text -Encoding utf8
+    $text=Normalize-Lf ([System.IO.File]::ReadAllText($Path))
+    $oldLf=Normalize-Lf $Old
+    $newLf=Normalize-Lf $New
+    if(-not$text.Contains($oldLf)){throw "Expected patch anchor not found in $Path"}
+    $text=$text.Replace($oldLf,$newLf)
+    [System.IO.File]::WriteAllText($Path,$text,[System.Text.UTF8Encoding]::new($false))
 }
 
 $ExternalRoot=(Resolve-Path -LiteralPath $ExternalRoot).Path
@@ -30,8 +36,18 @@ Copy-Item -LiteralPath (Join-Path $ArcRepoRoot 'integrations\directx-hello-textu
 Copy-Item -LiteralPath (Join-Path $ArcRepoRoot 'integrations\directx-hello-texture\ArcExternalBridge.cpp') -Destination $sample -Force
 
 $header=Join-Path $sample 'D3D12HelloTexture.h'
-Replace-Exact $header '#include "DXSample.h"' "#include \"DXSample.h\"\r\n#include \"ArcExternalBridge.h\""
-Replace-Exact $header '    ComPtr<ID3D12Resource> m_texture;' "    ComPtr<ID3D12Resource> m_texture;\r\n    std::unique_ptr<ArcExternalBridge> m_arc;"
+Replace-Exact $header @'
+#include "DXSample.h"
+'@ @'
+#include "DXSample.h"
+#include "ArcExternalBridge.h"
+'@
+Replace-Exact $header @'
+    ComPtr<ID3D12Resource> m_texture;
+'@ @'
+    ComPtr<ID3D12Resource> m_texture;
+    std::unique_ptr<ArcExternalBridge> m_arc;
+'@
 
 $cpp=Join-Path $sample 'D3D12HelloTexture.cpp'
 Replace-Exact $cpp @'
@@ -69,6 +85,11 @@ Replace-Exact $cpp @'
         WaitForPreviousFrame();
     }
 
+    ID3D12Resource* arcRenderTargets[FrameCount] =
+    {
+        m_renderTargets[0].Get(),
+        m_renderTargets[1].Get()
+    };
     m_arc = std::make_unique<ArcExternalBridge>(
         m_device.Get(),
         m_commandQueue.Get(),
@@ -76,7 +97,7 @@ Replace-Exact $cpp @'
         m_fence.Get(),
         m_rtvHeap.Get(),
         m_srvHeap.Get(),
-        m_renderTargets,
+        arcRenderTargets,
         FrameCount,
         m_vertexBuffer.Get(),
         m_texture.Get());
@@ -253,13 +274,27 @@ float4 PSMain(PSInput input) : SV_TARGET
 '@
 
 $main=Join-Path $sample 'Main.cpp'
-Replace-Exact $main '    D3D12HelloTexture sample(1280, 720, L"D3D12 Hello Texture");' '    D3D12HelloTexture sample(1920, 1080, L"D3D12 Hello Texture + ARC External Acceptance");'
+Replace-Exact $main @'
+    D3D12HelloTexture sample(1280, 720, L"D3D12 Hello Texture");
+'@ @'
+    D3D12HelloTexture sample(1920, 1080, L"D3D12 Hello Texture + ARC External Acceptance");
+'@
 
 $project=Join-Path $sample 'D3D12HelloTexture.vcxproj'
-Replace-Exact $project '    <ClInclude Include="Win32Application.h" />' "    <ClInclude Include=\"ArcExternalBridge.h\" />\r\n    <ClInclude Include=\"Win32Application.h\" />"
-Replace-Exact $project '    <ClCompile Include="Win32Application.cpp" />' "    <ClCompile Include=\"ArcExternalBridge.cpp\" />\r\n    <ClCompile Include=\"Win32Application.cpp\" />"
 Replace-Exact $project @'
-  <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
+    <ClInclude Include="Win32Application.h" />
+'@ @'
+    <ClInclude Include="ArcExternalBridge.h" />
+    <ClInclude Include="Win32Application.h" />
+'@
+Replace-Exact $project @'
+    <ClCompile Include="Win32Application.cpp" />
+'@ @'
+    <ClCompile Include="ArcExternalBridge.cpp" />
+    <ClCompile Include="Win32Application.cpp" />
+'@
+Replace-Exact $project @'
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 '@ @'
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <ClCompile>
@@ -271,7 +306,7 @@ Replace-Exact $project @'
       <AdditionalDependencies>arc-dx12-observer.lib;arc-core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 '@
 
 Write-Host "ARC external renderer overlay applied to Microsoft D3D12HelloTexture at $actual" -ForegroundColor Green
