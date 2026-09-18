@@ -65,6 +65,7 @@ private:
     static double Percentile(std::vector<double> values, double p);
     static double MissRatio(const Stats& stats) noexcept;
     static double MeanOvershoot(const Stats& stats) noexcept;
+    static void RecomputeBudgetStats(Stats& stats, double targetMs) noexcept;
     static std::string Narrow(const std::wstring& value);
     static std::string JsonEscape(const std::string& value);
 
@@ -76,7 +77,7 @@ private:
     arc::RuntimeBackendStatus Mutate(const arc::QualityActionCandidate& action, bool restore) noexcept;
 
     static constexpr std::uint64_t kQualityProfileId = 9101;
-    static constexpr std::array<UINT, 5> kIterations{96, 64, 40, 24, 12};
+    static constexpr std::array<UINT, 5> kIterations{128, 80, 48, 28, 12};
 
     Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter_;
     std::unique_ptr<arc::dx12::NativeHostAdapter> host_;
