@@ -4,6 +4,7 @@
 
 #include "arc/dx12_host_adapter.hpp"
 #include "arc/quality_profile.hpp"
+#include "arc/resource_semantics.hpp"
 
 #include <algorithm>
 #include <array>
@@ -881,6 +882,30 @@ private:
             physical_quality && learning && performance && bounded_churn &&
             full_recovery && native_1080 && profiles_registered_;
 
+        arc::ResourceSemanticInferencer semantic_inferencer{};
+        const auto semantic_predictions = semantic_inferencer.classify_all(host_->graph(), true);
+        std::array<std::uint64_t, 11> semantic_counts{};
+        std::uint64_t semantic_known = 0;
+        std::uint64_t semantic_high_confidence = 0;
+        double semantic_confidence_sum = 0.0;
+        for (const auto& prediction : semantic_predictions)
+        {
+            const auto index = static_cast<std::size_t>(prediction.semantic);
+            if (index < semantic_counts.size()) ++semantic_counts[index];
+            if (prediction.semantic != arc::InferredResourceSemantic::Unknown)
+            {
+                ++semantic_known;
+                semantic_confidence_sum += prediction.confidence;
+                if (prediction.confidence >= 0.75f) ++semantic_high_confidence;
+            }
+        }
+        const double semantic_coverage = semantic_predictions.empty() ? 0.0 :
+            static_cast<double>(semantic_known) / static_cast<double>(semantic_predictions.size());
+        const double semantic_high_confidence_ratio = semantic_known == 0 ? 0.0 :
+            static_cast<double>(semantic_high_confidence) / static_cast<double>(semantic_known);
+        const double semantic_mean_confidence = semantic_known == 0 ? 0.0 :
+            semantic_confidence_sum / static_cast<double>(semantic_known);
+
         std::error_code ec;
         if (const auto parent = output_path_.parent_path(); !parent.empty())
             std::filesystem::create_directories(parent, ec);
@@ -948,6 +973,19 @@ private:
           << ",\"bridge_rejections\":" << hm.bridge_rejections << "},\n"
           << "  \"graph\":{\"resources\":" << host_->graph().resource_count()
           << ",\"errors\":" << host_->graph().errors() << "},\n"
+          << "  \"stage15_semantics\":{\"observer_only\":true"
+          << ",\"alive_resources\":" << semantic_predictions.size()
+          << ",\"known_resources\":" << semantic_known
+          << ",\"coverage\":" << semantic_coverage
+          << ",\"high_confidence_ratio\":" << semantic_high_confidence_ratio
+          << ",\"mean_confidence\":" << semantic_mean_confidence
+          << ",\"counts\":[";
+        for (std::size_t i = 0; i < semantic_counts.size(); ++i)
+        {
+            if (i) f << ",";
+            f << semantic_counts[i];
+        }
+        f << "]},\n"
           << "  \"governor\":{\"quality_actions_executed\":" << gm.quality_actions_executed
           << ",\"learned_effects\":" << learned
           << ",\"quality_domains_executed\":" << domains
