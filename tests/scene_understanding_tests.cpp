@@ -80,7 +80,9 @@ void use(
     std::uint64_t draws = 0,
     std::uint64_t indexed_draws = 0,
     std::uint64_t dispatches = 0,
-    std::uint64_t indirect = 0)
+    std::uint64_t indirect = 0,
+    std::uint64_t draw_items = 0,
+    std::uint64_t dispatch_groups = 0)
 {
     arc::CommandListPayload list{};
     list.command = command;
@@ -98,6 +100,8 @@ void use(
     counters.indexed_draws = indexed_draws;
     counters.dispatches = dispatches;
     counters.indirect = indirect;
+    counters.draw_items = draw_items;
+    counters.dispatch_groups = dispatch_groups;
     graph.consume(event(arc::EventType::CommandCounters, counters, sequence + 2));
 
     graph.consume(event(arc::EventType::CommandListClosed, list, sequence + 3));
@@ -226,13 +230,14 @@ int main() {
     for (arc::FrameId frame = 1; frame <= 8; ++frame) {
         present(light_workload, frame);
         present(heavy_workload, frame);
-        use(light_workload, 2000 + frame, 1, 40, false, 20000 + frame * 10, 8);
-        use(heavy_workload, 3000 + frame, 1, 40, false, 30000 + frame * 10, 8000);
+        use(light_workload, 2000 + frame, 1, 40, false, 20000 + frame * 10, 8, 0, 0, 0, 800);
+        use(heavy_workload, 3000 + frame, 1, 40, false, 30000 + frame * 10, 8, 0, 0, 0, 800 * 65000ull);
     }
     const auto light_signature = infer.summarize(light_workload);
     const auto heavy_signature = infer.summarize(heavy_workload);
     assert(light_signature.draw_calls_per_frame > 0.0F);
-    assert(heavy_signature.draw_calls_per_frame > light_signature.draw_calls_per_frame * 100.0F);
+    assert(std::abs(heavy_signature.draw_calls_per_frame - light_signature.draw_calls_per_frame) < 0.001F);
+    assert(heavy_signature.draw_items_per_frame > light_signature.draw_items_per_frame * 10000.0F);
     const auto workload_difference = infer.compare(light_signature, heavy_signature);
     assert(!workload_difference.same_scene);
     assert(workload_difference.distance > config.same_scene_distance);
