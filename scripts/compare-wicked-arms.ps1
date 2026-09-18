@@ -27,7 +27,7 @@ function Run-Arm([string]$Mode, [int]$Offset, [string]$Name) {
     $env:ARC_WICKED_SCENE_OFFSET = [string]$Offset
     $env:ARC_WICKED_OUTPUT = $path
     $env:ARC_WICKED_CRASH_OUTPUT = Join-Path $OutputRoot ($Name + '-crash.txt')
-    $process = Start-Process -FilePath $Executable -WorkingDirectory $WorkingDirectory -PassThru -WindowStyle Hidden
+    $process = Start-Process -FilePath $Executable -WorkingDirectory $WorkingDirectory -PassThru -WindowStyle Hidden -ArgumentList alwaysactive
     if (-not $process.WaitForExit(($Seconds + 180) * 1000)) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         throw "Comparison timed out: $Name"

@@ -209,7 +209,7 @@ $started = [DateTime]::UtcNow.ToString('o')
 $exit = -1
 $fatal = $null
 try {
-    $process = Start-Process -FilePath $exe -WorkingDirectory (Join-Path $wicked 'Samples\Tests') -PassThru -WindowStyle Hidden
+    $process = Start-Process -FilePath $exe -WorkingDirectory (Join-Path $wicked 'Samples\Tests') -PassThru -WindowStyle Hidden -ArgumentList alwaysactive
     $timeoutSeconds = ($Seconds * 2) + 180
     if (-not $process.WaitForExit($timeoutSeconds * 1000)) {
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
