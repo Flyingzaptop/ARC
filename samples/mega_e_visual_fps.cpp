@@ -32,7 +32,8 @@ struct RectD {
 };
 
 struct WorldObject {
-    arc::VisualTrackId id{};
+    arc::ResourceId output_resource{};
+    std::uint64_t pipeline{};
     const wchar_t* name{};
     Vec3 center{};
     Vec3 size{};
@@ -41,6 +42,7 @@ struct WorldObject {
 
 struct ProjectedObject {
     const WorldObject* object{};
+    arc::VisualTrackId track_id{};
     RectD rect{};
     double depth{};
     double upper_coverage{};
@@ -210,14 +212,14 @@ class Demo final {
 public:
     explicit Demo(HWND hwnd) : hwnd_(hwnd) {
         objects_ = {
-            {101, L"Near pillar", {-2.0, 1.0, 2.0}, {1.0, 2.0, 1.0}, RGB(80, 150, 240)},
-            {102, L"Center crate", {1.2, 0.8, 4.0}, {1.4, 1.6, 1.4}, RGB(230, 150, 70)},
-            {103, L"Far wall", {0.0, 1.5, 12.0}, {8.0, 3.0, 0.7}, RGB(130, 105, 175)},
-            {104, L"Left small", {-5.0, 0.7, 7.0}, {0.8, 1.4, 0.8}, RGB(90, 200, 160)},
-            {105, L"Right tower", {5.5, 2.0, 8.0}, {1.3, 4.0, 1.3}, RGB(210, 90, 120)},
-            {106, L"Occluded box", {1.2, 0.65, 6.4}, {1.1, 1.3, 1.1}, RGB(80, 200, 220)},
-            {107, L"Rear object", {0.0, 1.0, -11.0}, {2.0, 2.0, 2.0}, RGB(200, 110, 220)},
-            {108, L"Thin marker", {-0.8, 1.0, 9.0}, {0.25, 2.0, 0.25}, RGB(220, 220, 90)},
+            {101, 1001, L"Near pillar", {-2.0, 1.0, 2.0}, {1.0, 2.0, 1.0}, RGB(80, 150, 240)},
+            {102, 1001, L"Center crate", {1.2, 0.8, 4.0}, {1.4, 1.6, 1.4}, RGB(230, 150, 70)},
+            {103, 1002, L"Far wall", {0.0, 1.5, 12.0}, {8.0, 3.0, 0.7}, RGB(130, 105, 175)},
+            {104, 1001, L"Left small", {-5.0, 0.7, 7.0}, {0.8, 1.4, 0.8}, RGB(90, 200, 160)},
+            {105, 1003, L"Right tower", {5.5, 2.0, 8.0}, {1.3, 4.0, 1.3}, RGB(210, 90, 120)},
+            {106, 1001, L"Occluded box", {1.2, 0.65, 6.4}, {1.1, 1.3, 1.1}, RGB(80, 200, 220)},
+            {107, 1004, L"Rear object", {0.0, 1.0, -11.0}, {2.0, 2.0, 2.0}, RGB(200, 110, 220)},
+            {108, 1003, L"Thin marker", {-0.8, 1.0, 9.0}, {0.25, 2.0, 0.25}, RGB(220, 220, 90)},
         };
     }
 
@@ -365,16 +367,36 @@ private:
 
         ++frame_;
         for (auto& p : projected_) {
+            arc::WorkObservation work{};
+            work.kind = arc::GpuWorkKind::Draw;
+            work.pipeline = p.object->pipeline;
+            work.raster = {
+                static_cast<std::uint32_t>(width),
+                static_cast<std::uint32_t>(height),
+                {0.0, 0.0, static_cast<double>(width), static_cast<double>(height)},
+                {p.rect.left, p.rect.top, p.rect.width(), p.rect.height()},
+                p.on_screen
+            };
+            work.accesses.push_back({
+                p.object->output_resource,
+                true,
+                arc::AccessEvidence::Observed,
+                true
+            });
+            work.bindings_complete = true;
+            const auto fingerprint = arc::make_visual_track_fingerprint(work);
+            p.track_id = fingerprint.id;
+
             arc::VisibilityObservation observation{};
-            observation.id = p.object->id;
+            observation.id = p.track_id;
             observation.frame = frame_;
             observation.local_coverage_upper = p.upper_coverage;
             observation.visible_coverage = p.visible_coverage;
             observation.present_reachable = p.on_screen && p.depth > 0.18;
-            observation.confidence = 0.96;
+            observation.confidence = std::min(0.96, fingerprint.confidence);
             temporal_.observe(observation);
 
-            if (const auto* state = temporal_.find(p.object->id)) {
+            if (const auto* state = temporal_.find(p.track_id)) {
                 p.temporal = *state;
                 arc::VisualImportanceHint hint{};
                 if (p.on_screen) {
@@ -483,7 +505,7 @@ private:
             swprintf_s(
                 line,
                 L"#%llu %-14s imp %.3f  conf %.2f  %-8s",
-                static_cast<unsigned long long>(p.object->id),
+                static_cast<unsigned long long>(p.track_id),
                 p.object->name,
                 p.importance.score,
                 p.importance.confidence,
