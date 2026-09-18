@@ -195,10 +195,9 @@ void ArcExternalBridge::OnFrame(double frameMs)
         (void)host_->drain();
         if (elapsed >= static_cast<double>(warmupSeconds_))
         {
-            const double p50 = Percentile(warmup_.frames, 0.50);
-            targetMs_ = std::max(0.05, p50 * 0.82);
-            recoveryTargetMs_ = std::max(targetMs_ * 1.8, p50 * 1.35);
-            RegisterQualityProfile();
+            // Warmup is intentionally not used to choose the acceptance target.
+            // The target is frozen from the independent baseline distribution
+            // immediately before ARC control is enabled.
             EnterPhase(Phase::Baseline);
         }
         break;
@@ -208,6 +207,15 @@ void ArcExternalBridge::OnFrame(double frameMs)
         (void)host_->drain();
         if (elapsed >= static_cast<double>(measureSeconds_))
         {
+            // Use a pre-declared baseline quantile rather than a warmup scale
+            // factor. p40 creates real but non-saturated pressure (~60% misses)
+            // while leaving room for ARC to move frames across the target.
+            const double baselineP50 = std::max(0.05, Percentile(baseline_.frames, 0.50));
+            targetMs_ = std::max(0.05, Percentile(baseline_.frames, 0.40));
+            recoveryTargetMs_ = std::max(targetMs_ * 1.5, baselineP50 * 1.25);
+            RecomputeBudgetStats(baseline_, targetMs_);
+            RegisterQualityProfile();
+
             qualityLevel_ = 0;
             host_->runtime().governor().quality().reset();
             host_->set_mode(arc::RuntimeMode::Controlled);
@@ -332,6 +340,21 @@ double ArcExternalBridge::MeanOvershoot(const Stats& stats) noexcept
     return stats.misses ? stats.overshootSum / static_cast<double>(stats.misses) : 0.0;
 }
 
+void ArcExternalBridge::RecomputeBudgetStats(Stats& stats, double targetMs) noexcept
+{
+    stats.misses = 0;
+    stats.overshootSum = 0.0;
+    if (!(targetMs > 0.0) || !std::isfinite(targetMs)) return;
+    for (const double frameMs : stats.frames)
+    {
+        if (std::isfinite(frameMs) && frameMs > targetMs)
+        {
+            ++stats.misses;
+            stats.overshootSum += frameMs - targetMs;
+        }
+    }
+}
+
 std::string ArcExternalBridge::Narrow(const std::wstring& value)
 {
     if (value.empty()) return {};
@@ -360,7 +383,8 @@ std::string ArcExternalBridge::JsonEscape(const std::string& value)
 void ArcExternalBridge::RegisterQualityProfile()
 {
     if (!host_ || profileRegistered_) return;
-    const double p50 = std::max(0.05, Percentile(warmup_.frames, 0.50));
+    const auto& calibrationFrames = baseline_.frames.empty() ? warmup_.frames : baseline_.frames;
+    const double p50 = std::max(0.05, Percentile(calibrationFrames, 0.50));
 
     profile_ = {};
     profile_.id = kQualityProfileId;
@@ -446,7 +470,9 @@ void ArcExternalBridge::WriteReport(bool complete)
         bm.malformed_events == 0 &&
         host_->graph().errors() == 0;
     const bool finalFull = qualityLevel_ == 0 && qs.active_actions == 0;
+    const bool baselinePressureValid = bmiss >= 0.45 && bmiss <= 0.75;
     const bool performanceWin =
+        baselinePressureValid &&
         missReduction >= 0.10 &&
         p50Reduction >= 0.05 &&
         ap99 <= bp99 * 1.10;
@@ -478,6 +504,7 @@ void ArcExternalBridge::WriteReport(bool complete)
       << "  \"native_height\":1080,\n"
       << "  \"temporal_used\":false,\n"
       << "  \"target_frame_ms\":" << targetMs_ << ",\n"
+      << "  \"target_calibration\":\"baseline_p40\",\n"
       << "  \"baseline\":{\"samples\":" << baseline_.frames.size()
       << ",\"p50_ms\":" << bp50 << ",\"p99_ms\":" << bp99
       << ",\"miss_ratio\":" << bmiss
