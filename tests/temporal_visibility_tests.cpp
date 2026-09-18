@@ -33,6 +33,31 @@ VisibilityObservation direct(
 }
 
 int main() {
+    WorkObservation fingerprint_work{};
+    fingerprint_work.kind = GpuWorkKind::Draw;
+    fingerprint_work.pipeline = 77;
+    fingerprint_work.raster = {1920, 1080, {0, 0, 1920, 1080}, {0, 0, 960, 1080}, true};
+    fingerprint_work.accesses = {
+        {11, false, AccessEvidence::Possible, false},
+        {42, true, AccessEvidence::Observed, true},
+    };
+    fingerprint_work.bindings_complete = false;
+    const auto fp_a = make_visual_track_fingerprint(fingerprint_work);
+    const auto fp_b = make_visual_track_fingerprint(fingerprint_work);
+    check(fp_a.id != 0 && fp_a.id == fp_b.id, "stable Stage D work fingerprint");
+    check(fp_a.confidence > .5, "fingerprint confidence");
+
+    AttributionNode node{};
+    node.id = 1;
+    node.work = fingerprint_work;
+    node.local_coverage_upper = .5;
+    node.unresolved_inputs = true;
+    const auto weak_from_d = make_potential_visibility_observation(node, 1, true);
+    check(weak_from_d.id == fp_a.id, "Stage D bridge track identity");
+    check(weak_from_d.local_coverage_upper && *weak_from_d.local_coverage_upper == .5, "Stage D coverage forwarded");
+    check(!weak_from_d.visible_coverage, "Stage D raster bound not promoted to actual visibility");
+    check(weak_from_d.confidence < fp_a.confidence, "unresolved Stage D evidence lowers confidence");
+
     TemporalVisibilityModel model;
 
     check(model.observe(direct(1, 1, .01, .01)), "first observation");
