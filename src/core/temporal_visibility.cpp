@@ -99,7 +99,7 @@ std::optional<double> visible_coverage_from_occlusion(
 VisibilityObservation make_potential_visibility_observation(
     const AttributionNode& node,
     std::uint64_t frame,
-    bool present_reachable) noexcept {
+    std::optional<bool> present_reachable) noexcept {
     VisibilityObservation observation{};
     const auto fingerprint = make_visual_track_fingerprint(node.work);
     observation.id = fingerprint.id;
@@ -110,6 +110,7 @@ VisibilityObservation make_potential_visibility_observation(
     double confidence = fingerprint.confidence;
     confidence *= node.unresolved_inputs ? 0.55 : 0.80;
     confidence *= node.local_coverage_upper ? 0.80 : 0.40;
+    confidence *= present_reachable.has_value() ? 1.0 : 0.75;
     observation.confidence = clamp01(confidence);
     return observation;
 }
