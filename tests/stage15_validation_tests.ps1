@@ -40,3 +40,12 @@ Check (-not (Test-WickedComparisonRun $comparison off test 1)) 'Wrong scene orde
 $comparison.backend_failures = 1
 Check (-not (Test-WickedComparisonRun $comparison off test 0)) 'Backend failure must invalidate comparison'
 Write-Host 'stage15-validation-tests: PASS'
+$observations=@(1..42 | ForEach-Object { $family=($_-1)%6; [pscustomobject]@{resource=$_; expected_family=$family; predicted_class=@(2,3,5,6,8,9)[$family]; confidence=0.8} })
+$audit=[pscustomobject]@{scope='six_resource_use_families'; labels_used_for_inference=$false; fine_subtypes_validated=$false; truncated=$false; samples=42; families=6; covered=42;correct=42;coverage=1.0; family_precision=1.0;observations=$observations}
+Check (Test-SemanticFamilyAudit $audit) 'Independent family audit must accept valid evidence'
+$audit.family_precision=0.89
+Check (-not (Test-SemanticFamilyAudit $audit)) 'Incorrect families must fail audit'
+$audit.family_precision=1; $audit.truncated=$true
+Check (-not (Test-SemanticFamilyAudit $audit)) 'Truncated audit must fail closed'
+$audit.truncated=$false; $audit.observations[0].predicted_class=9
+Check (-not (Test-SemanticFamilyAudit $audit)) 'Reported accuracy must agree with raw independently scored rows'

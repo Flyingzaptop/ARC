@@ -53,6 +53,16 @@ $dx = Read-Lf $dxPath
 
 $dx = Replace-Once $dx '#include "wiGraphicsDevice_DX12.h"' ('#include "wiGraphicsDevice_DX12.h"' + $LF + '#include "ArcWickedHooks.h"') 'DX12 include'
 
+$retire = @'
+		for (auto* command : commandlists)
+			for (auto& native : command->commandLists)
+				if (native) ARCWickedCommandDestroyed(native.Get());
+		for (auto& q : queues) if (q.queue) ARCWickedQueueDestroyed(q.queue.Get());
+		ARCWickedDeviceDestroyed();
+'@
+$dx = Insert-AfterFunctionAnchor $dx 'GraphicsDevice_DX12::~GraphicsDevice_DX12()' 'WaitForGPU();' ($LF+$retire) 'retire observer lifetimes after GPU idle'
+$dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::SetName(GPUResource* pResource, const char* name)' '{' ($LF+$T+$T+'if (pResource && pResource->IsValid() && name) ARCWickedResourceTruth(to_internal(pResource)->resource.Get(), name);') 'evaluation-only resource names'
+
 $deviceReadyAnchor = $T+$T+'// Create frame-resident resources:'
 $deviceReadyInsert = $T+$T+'ARCWickedDeviceReady(device.Get(), descriptorheap_res.heap_GPU.Get(), descriptorheap_sam.heap_GPU.Get());'+$LF+$LF+$deviceReadyAnchor
 $dx = Replace-Once $dx $deviceReadyAnchor $deviceReadyInsert 'device ready'

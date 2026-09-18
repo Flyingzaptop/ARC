@@ -34,6 +34,12 @@ public:
         : runtime_(runtime), require_explicit_completion_fence_(require_explicit_completion_fence) {}
 
     bool consume(const Event& event);
+    [[nodiscard]] bool can_retire_queue(QueueId queue) const noexcept;
+    [[nodiscard]] std::size_t command_count() const noexcept { return command_uses_.size(); }
+    [[nodiscard]] std::size_t queue_state_count() const noexcept {
+        return pending_uses_by_queue_.size() + pending_blocks_by_queue_.size() +
+            signaled_by_queue_.size() + completed_by_queue_.size() + completion_fence_by_queue_.size();
+    }
 
     // Production integrations should bind one monotonic completion fence per
     // command queue. Other application/game fences on that queue are ignored

@@ -2,6 +2,7 @@
 #include "ArcWickedBridge.h"
 #include "ArcWickedHooks.h"
 #include "ArcWickedTelemetry.h"
+#include "ArcWickedSemanticAudit.h"
 
 #include "arc/dx12_host_adapter.hpp"
 #include "arc/quality_profile.hpp"
@@ -379,6 +380,7 @@ public:
     {
         if (!host_ || !resource) return;
         if (host_->resource_id(resource)) (void)host_->observe_resource_destroyed(resource);
+        std::scoped_lock lock(truth_mutex_); truth_live_.erase(resource);
     }
 
     void ObserveSRV(
@@ -416,6 +418,26 @@ public:
         (void)host_->observe_command_list_reset(command);
         std::scoped_lock lock(pending_mutex_);
         pending_[command] = {};
+    }
+
+    void CommandDestroyed(ID3D12CommandList* command) noexcept {
+        if (!host_ || !command) return;
+        { std::scoped_lock lock(pending_mutex_); pending_.erase(command); }
+        if (host_->command_id(command)) (void)host_->observe_command_list_destroyed(command);
+    }
+    void ResourceTruth(ID3D12Resource* resource, const char* name) {
+        if (!host_ || !resource || !name) return;
+        const auto id=host_->resource_id(resource);
+        const int entry=arc_wicked::audit::find(name);
+        if (!id || entry<0) return;
+        std::scoped_lock lock(truth_mutex_);
+        if (truth_live_.size() >= 4096 && !truth_live_.contains(resource)) { truth_truncated_=true; return; }
+        truth_live_[resource]={id,entry};
+    }
+    void QueueDestroyed(ID3D12CommandQueue* queue) noexcept {
+        if (!host_ || !queue) return;
+        if (host_->queue_id(queue) && !host_->observe_queue_destroyed(queue)) return;
+        std::scoped_lock lock(queue_mutex_); queues_.erase(queue);
     }
 
     void ResourceUse(ID3D12CommandList* command, ID3D12Resource* resource, bool write) noexcept
@@ -900,6 +922,20 @@ private:
 
         (void)host_->drain();
         capture.signature = scene_understanding_.summarize(host_->graph(), scene_checkpoint_);
+        // Independent source-owner labels join only AFTER inference. First
+        // baseline observation per resource ID avoids repeated-frame weighting.
+        if (phase == Phase::Baseline) {
+            std::scoped_lock lock(truth_mutex_);
+            for(const auto& [pointer, truth] : truth_live_) {
+                (void)pointer;
+                auto resource=host_->graph().find(truth.first);
+                if(!resource || !resource->alive || truth_samples_.contains(truth.first)) continue;
+                if(!resource->read_count && !resource->write_count) continue;
+                auto prediction=arc::ResourceSemanticInferencer{}.classify(host_->graph(),truth.first);
+                if(truth_samples_.size()>=4096) { truth_truncated_=true; break; }
+                truth_samples_.emplace(truth.first,AuditSample{truth.second,prediction.semantic,prediction.confidence});
+            }
+        }
         capture.cluster = scene_clusters_.observe(capture.signature);
         capture.captured = true;
     }
@@ -1383,8 +1419,9 @@ private:
           << ",\"failed_observations\":" << hm.failed_observations
           << ",\"bridge_rejections\":" << hm.bridge_rejections << "},\n"
           << "  \"graph\":{\"resources\":" << host_->graph().resource_count()
-          << ",\"errors\":" << host_->graph().errors() << "},\n"
-          << "  \"stage15_semantics\":{\"observer_only\":true"
+          << ",\"errors\":" << host_->graph().errors() << "},\n";
+        WriteSemanticAudit(f);
+        f << "  \"stage15_semantics\":{\"observer_only\":true"
           << ",\"confidence_basis\":\"heuristic_score\",\"accuracy_validated\":false"
           << ",\"capture_phase\":\"adaptive_end_before_recovery\",\"capture_frame\":" << semantic_snapshot_frame_
           << ",\"alive_resources\":" << semantic_predictions.size()
@@ -1471,6 +1508,46 @@ private:
           << "}\n";
     }
 
+    void WriteSemanticAudit(std::ostream& out) {
+        std::scoped_lock lock(truth_mutex_);
+        std::array<std::uint64_t,6> populations{},correct_by_family{};
+        std::array<std::array<std::uint64_t,arc::kInferredResourceSemanticCount>,6> confusion{};
+        std::uint64_t covered=0,correct=0,high=0,high_wrong=0;
+        for(const auto& [id,sample]:truth_samples_) {
+            (void)id;
+            auto expected=static_cast<unsigned>(arc_wicked::audit::catalog[sample.entry].family);
+            ++populations[expected];
+            ++confusion[expected][static_cast<unsigned>(sample.predicted)];
+            const bool match=arc_wicked::audit::predicted_family(sample.predicted)==int(expected);
+            if(sample.predicted!=arc::InferredResourceSemantic::Unknown) ++covered;
+            if(match) { ++correct; ++correct_by_family[expected]; }
+            if(sample.confidence>=.75f) { ++high; if(!match) ++high_wrong; }
+        }
+        const auto families=std::count_if(populations.begin(),populations.end(),[](auto n){return n>0;});
+        out << "  \"resource_semantic_audit\":{\"schema\":1,\"catalog_version\":1,\"scope\":\"six_resource_use_families\","
+            << "\"labels_used_for_inference\":false,\"fine_subtypes_validated\":false,\"truncated\":" << (truth_truncated_?"true":"false")
+            << ",\"samples\":" << truth_samples_.size() << ",\"covered\":" << covered << ",\"correct\":" << correct
+            << ",\"families\":" << families << ",\"coverage\":" << (truth_samples_.empty()?0.0:double(covered)/truth_samples_.size())
+            << ",\"family_precision\":" << (covered?double(correct)/covered:0.0)
+            << ",\"family_recall\":" << (truth_samples_.empty()?0.0:double(correct)/truth_samples_.size())
+            << ",\"high_confidence_samples\":" << high << ",\"high_confidence_wrong\":" << high_wrong << ",\"confusion\":[";
+        for(unsigned i=0;i<6;++i) { if(i)out<<',';out<<'[';for(unsigned j=0;j<arc::kInferredResourceSemanticCount;++j){if(j)out<<',';out<<confusion[i][j];}out<<']'; }
+        out << "],\"observations\":[";
+        bool first=true;
+        for(const auto& [id,sample]:truth_samples_) {
+            if(!first)out<<',';first=false;
+            const auto& entry=arc_wicked::audit::catalog[sample.entry];
+            out << "{\"resource\":" << id << ",\"name\":\"" << entry.name << "\",\"expected_family\":" << int(entry.family)
+                << ",\"predicted_class\":" << int(sample.predicted) << ",\"confidence\":" << sample.confidence << '}';
+        }
+        out << "]},\n";
+    }
+
+    struct AuditSample { int entry; arc::InferredResourceSemantic predicted; float confidence; };
+    std::mutex truth_mutex_;
+    std::unordered_map<ID3D12Resource*,std::pair<arc::ResourceId,int>> truth_live_;
+    std::unordered_map<arc::ResourceId,AuditSample> truth_samples_;
+    bool truth_truncated_=false;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
     ID3D12DescriptorHeap* resource_heap_ = nullptr;
     ID3D12DescriptorHeap* sampler_heap_ = nullptr;
@@ -1609,6 +1686,15 @@ extern "C" void ARCWickedDeviceReady(
         SetUnhandledExceptionFilter(ArcUnhandledException);
         g_bridge = new Bridge(device, resource_heap, sampler_heap);
     }
+}
+
+extern "C" void ARCWickedCommandDestroyed(ID3D12CommandList* command) noexcept { if(auto* b=GetBridge()) b->CommandDestroyed(command); }
+extern "C" void ARCWickedQueueDestroyed(ID3D12CommandQueue* queue) noexcept { if(auto* b=GetBridge()) b->QueueDestroyed(queue); }
+extern "C" void ARCWickedResourceTruth(ID3D12Resource* resource, const char* name) noexcept { if(auto* b=GetBridge()) b->ResourceTruth(resource,name); }
+extern "C" void ARCWickedDeviceDestroyed() noexcept {
+    // Device owner has stopped recording and waited for GPU completion.
+    // No cross-TU global mutex here: this also runs during static shutdown.
+    auto* retired=g_bridge; g_bridge=nullptr; delete retired;
 }
 
 extern "C" void ARCWickedResourceCreated(ID3D12Resource* resource) noexcept

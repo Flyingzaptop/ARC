@@ -47,6 +47,8 @@ enum class EventType : std::uint16_t {
     DescriptorLocation,
     DescriptorCopied,
     ResidencyTransition,
+    CommandListDestroyed,
+    CommandQueueDestroyed,
 };
 
 struct EventHeader final {

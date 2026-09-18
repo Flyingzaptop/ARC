@@ -68,6 +68,8 @@ struct DescriptorWrittenPayload final {
 };
 
 struct QueueCreatePayload final { QueueId queue{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };
+struct QueueDestroyPayload final { QueueId queue{}; };
+struct CommandDestroyPayload final { CommandId command{}; };
 struct CommandListPayload final { CommandId command{}; QueueClass type{QueueClass::Unknown}; std::uint8_t reserved[7]{}; };
 struct QueueSubmitPayload final { QueueId queue{}; CommandId command{}; std::uint64_t submission{}; };
 struct BarrierPayload final { ResourceId resource{}; CommandId command{}; std::uint32_t before_state{}; std::uint32_t after_state{}; std::uint32_t subresource{}; std::uint32_t reserved{}; };
@@ -93,7 +95,7 @@ static_assert(sizeof(CountersPayload) <= kMaxEventPayloadBytes);
 
 struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
 struct ViewRecord final { DescriptorWrittenPayload description{}; bool alive{true}; };
-struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; };
+struct QueueRecord final { QueueCreatePayload description{}; std::uint64_t submissions{}; bool alive{true}; };
 struct SubmissionRecord { QueueSubmitPayload description{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; CountersPayload counters{}; };
 struct CopyRecord { CopyPayload description{}; QueueId queue{}; std::uint64_t timestamp_ns{}; FrameId presentation{}; };
 struct CommandRecord { bool closed{}; std::vector<CopyPayload> copies; std::vector<ResourceUsePayload> uses; std::vector<BarrierPayload> barriers; std::vector<ExtendedBarrierPayload> extended_barriers; CountersPayload counters{}; };
@@ -138,6 +140,8 @@ struct GraphWorkloadTotals {
 
 class ResourceGraph final {
 public:
+    [[nodiscard]] std::size_t command_count() const noexcept { return commands_.size(); }
+    [[nodiscard]] std::size_t queue_count() const noexcept { return queues_.size(); }
     explicit ResourceGraph(ResourceGraphRetention retention = {}) : retention_(retention) {}
     [[nodiscard]] const GraphWorkloadTotals& workload_totals() const noexcept { return totals_; }
     [[nodiscard]] std::uint64_t resource_history_generation() const noexcept { return resource_history_generation_; }

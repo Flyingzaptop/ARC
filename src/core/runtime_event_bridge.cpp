@@ -21,6 +21,15 @@ void erase_resource(std::vector<ResourceId>& resources, ResourceId resource) {
 
 }  // namespace
 
+bool RuntimeEventBridge::can_retire_queue(QueueId queue) const noexcept {
+    if (!queue) return false;
+    if (auto it = pending_blocks_by_queue_.find(queue); it != pending_blocks_by_queue_.end())
+        for (const auto& batch : it->second) if (!batch.empty()) return false;
+    if (auto it = signaled_by_queue_.find(queue); it != signaled_by_queue_.end())
+        for (const auto& batch : it->second) if (!batch.resources.empty()) return false;
+    return true;
+}
+
 bool RuntimeEventBridge::bind_completion_fence(QueueId queue, std::uint64_t fence_id) noexcept {
     if (!queue || !fence_id) return false;
     const auto it = completion_fence_by_queue_.find(queue);
@@ -127,6 +136,21 @@ bool RuntimeEventBridge::consume(const Event& event) {
     }
 
     switch (event.header.type) {
+    case EventType::CommandListDestroyed: {
+        CommandDestroyPayload p{};
+        if (!decode(event, p) || !command_uses_.erase(p.command)) { ++metrics_.malformed_events; return false; }
+        return true; // Submitted uses are owned by their pending/signaled batches.
+    }
+    case EventType::CommandQueueDestroyed: {
+        QueueDestroyPayload p{};
+        if (!decode(event, p) || !can_retire_queue(p.queue)) { ++metrics_.controller_rejections; return false; }
+        pending_uses_by_queue_.erase(p.queue);
+        pending_blocks_by_queue_.erase(p.queue);
+        signaled_by_queue_.erase(p.queue);
+        completed_by_queue_.erase(p.queue);
+        completion_fence_by_queue_.erase(p.queue);
+        return true;
+    }
     case EventType::CommandListCreated:
     case EventType::CommandListReset: {
         CommandListPayload payload{};

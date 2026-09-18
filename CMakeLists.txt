@@ -240,6 +240,9 @@ include(cmake/stage5.cmake)
 
 if(ARC_BUILD_TESTS)
     add_executable(arc-test-assertions-tests tests/test_assertions_tests.cpp)
+    add_executable(arc-lifecycle-tests tests/lifecycle_tests.cpp)
+    target_link_libraries(arc-lifecycle-tests PRIVATE arc::core)
+    add_test(NAME arc-lifecycle-tests COMMAND arc-lifecycle-tests)
     add_test(NAME arc-test-assertions-tests COMMAND arc-test-assertions-tests)
 
     find_package(Threads REQUIRED)
@@ -249,6 +252,9 @@ if(ARC_BUILD_TESTS)
 
     find_program(ARC_POWERSHELL NAMES pwsh powershell)
     if(ARC_POWERSHELL)
+        add_test(NAME arc-wicked-audit-boundary-tests COMMAND ${ARC_POWERSHELL}
+            -NoProfile -ExecutionPolicy Bypass -File
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/wicked_audit_boundary_tests.ps1)
         add_test(NAME arc-wicked-presentation-contract-tests COMMAND ${ARC_POWERSHELL}
             -NoProfile -ExecutionPolicy Bypass -File
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/wicked_presentation_contract_tests.ps1)

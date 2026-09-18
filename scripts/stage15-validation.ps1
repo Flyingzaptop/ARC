@@ -1,4 +1,34 @@
 # Pure validation helpers: dot-sourcing performs no builds, runs, or publication.
+function Test-SemanticFamilyAudit($Audit) {
+    $valid = $null -ne $Audit -and $Audit.scope -eq 'six_resource_use_families' -and
+        (Test-ExplicitBoolean $Audit labels_used_for_inference $false) -and
+        (Test-ExplicitBoolean $Audit fine_subtypes_validated $false) -and
+        (Test-ExplicitBoolean $Audit truncated $false) -and
+        (Test-FiniteNumber $Audit.samples 20 4096) -and
+        (Test-FiniteNumber $Audit.families 4 6) -and
+        (Test-FiniteNumber $Audit.coverage 0.80 1) -and
+        (Test-FiniteNumber $Audit.family_precision 0.90 1)
+    if (-not $valid) { return $false }
+    $rows=@($Audit.observations)
+    if ($rows.Count -ne $Audit.samples) { return $false }
+    $mapping=@(-1,-1,0,1,1,2,3,3,4,5,0,0)
+    $ids=@{}; $families=@{}; $covered=0; $correct=0
+    foreach($row in $rows) {
+        if (-not (Test-FiniteNumber $row.resource 1 ([double]::MaxValue)) -or
+            -not (Test-FiniteNumber $row.expected_family 0 5) -or
+            -not (Test-FiniteNumber $row.predicted_class 0 11) -or
+            -not (Test-FiniteNumber $row.confidence 0 1)) { return $false }
+        if ([double]$row.expected_family -ne [int]$row.expected_family -or
+            [double]$row.predicted_class -ne [int]$row.predicted_class -or $ids.ContainsKey([string]$row.resource)) { return $false }
+        $ids[[string]$row.resource]=$true; $families[[string]$row.expected_family]=$true
+        if ($row.predicted_class -ne 0) { ++$covered }
+        if ($mapping[[int]$row.predicted_class] -eq $row.expected_family) { ++$correct }
+    }
+    return $covered -gt 0 -and $families.Count -eq $Audit.families -and
+        $covered -eq $Audit.covered -and $correct -eq $Audit.correct -and
+        [math]::Abs([double]$Audit.coverage - $covered / [double]$rows.Count) -lt 0.00001 -and
+        [math]::Abs([double]$Audit.family_precision - $correct / [double]$covered) -lt 0.00001
+}
 function Test-ExplicitBoolean($Object, [string]$Name, [bool]$Expected) {
     if ($null -eq $Object) { return $false }
     $property = $Object.PSObject.Properties[$Name]

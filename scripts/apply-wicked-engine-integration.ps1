@@ -41,6 +41,7 @@ Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedHooks.h') (Jo
 Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedTelemetry.h') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedTelemetry.h') -Force
 Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedBridge.h') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedBridge.h') -Force
 Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedBridge.cpp') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedBridge.cpp') -Force
+Copy-Item (Join-Path $ArcRoot 'integrations\wicked-engine\ArcWickedSemanticAudit.h') (Join-Path $WickedRoot 'Samples\Tests\ArcWickedSemanticAudit.h') -Force
 
 & (Join-Path $ArcRoot 'scripts\patch-wicked-dx12.ps1') -WickedRoot $WickedRoot
 if ($LASTEXITCODE -ne 0) { throw 'DX12 overlay failed.' }

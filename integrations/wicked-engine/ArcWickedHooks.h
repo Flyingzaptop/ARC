@@ -73,6 +73,10 @@ void ARCWickedPresent(
 
 // Main-thread diagnostic samples only; disabled unless explicitly requested.
 void ARCWickedCpuSample(const char* name, double milliseconds) noexcept;
+void ARCWickedCommandDestroyed(ID3D12CommandList* command) noexcept;
+void ARCWickedQueueDestroyed(ID3D12CommandQueue* queue) noexcept;
+void ARCWickedDeviceDestroyed() noexcept;
+void ARCWickedResourceTruth(ID3D12Resource* resource, const char* name) noexcept;
 
 }
 #endif

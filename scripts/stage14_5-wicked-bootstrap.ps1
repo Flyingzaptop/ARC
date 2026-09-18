@@ -110,7 +110,7 @@ $validationBuild = Join-Path $arc 'build-validation'
 & $cmake -S $arc -B $validationBuild -A x64 -DARC_BUILD_TESTS=ON -DARC_GPU_TESTS=OFF -DARC_STRESS_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { throw "ARC test configure failed: $LASTEXITCODE" }
 $regressionTargets = @(
-    'arc-test-assertions-tests', 'arc-wicked-telemetry-tests',
+    'arc-test-assertions-tests', 'arc-wicked-telemetry-tests', 'arc-lifecycle-tests',
     'arc-resource-semantics-tests', 'arc-scene-understanding-tests',
     'arc-adaptive-quality-tests', 'arc-adaptive-quality-controller-tests',
     'arc-closed-loop-quality-sim-tests', 'arc-dx12-host-adapter-tests',
@@ -120,7 +120,7 @@ $regressionTargets = @(
 )
 & $cmake --build $validationBuild --config Release --parallel 4 --target @regressionTargets
 if ($LASTEXITCODE -ne 0) { throw "ARC regression build failed: $LASTEXITCODE" }
-& $ctest --test-dir $validationBuild -C Release -R 'arc-(test-assertions-tests|wicked-telemetry-tests|wicked-presentation-contract-tests|stage15-validation-tests|resource-semantics-tests|scene-understanding-tests|adaptive-quality-tests|adaptive-quality-controller-tests|closed-loop-quality-sim-tests|dx12-host-adapter-tests|dx12-host-adapter-surface-tests|runtime-event-bridge-tests|runtime-integration-tests|global-action-arbiter-tests|unified-runtime-governor-tests)' --output-on-failure --timeout 60
+& $ctest --test-dir $validationBuild -C Release -R 'arc-(test-assertions-tests|lifecycle-tests|wicked-telemetry-tests|wicked-presentation-contract-tests|wicked-audit-boundary-tests|stage15-validation-tests|resource-semantics-tests|scene-understanding-tests|adaptive-quality-tests|adaptive-quality-controller-tests|closed-loop-quality-sim-tests|dx12-host-adapter-tests|dx12-host-adapter-surface-tests|runtime-event-bridge-tests|runtime-integration-tests|global-action-arbiter-tests|unified-runtime-governor-tests)' --output-on-failure --timeout 60
 if ($LASTEXITCODE -ne 0) { throw "ARC deterministic regressions failed: $LASTEXITCODE" }
 
 Step 'Building ARC libraries with Wicked-compatible static CRT'

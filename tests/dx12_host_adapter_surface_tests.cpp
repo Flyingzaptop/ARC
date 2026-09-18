@@ -129,6 +129,65 @@ int main() {
     assert(metrics.copies_observed == 1);
     assert(metrics.failed_observations == 0);
 
+    assert(host.observe_command_list_destroyed(c.list.Get()));
+    D3D12_COMMAND_QUEUE_DESC queue_desc{};
+    ComPtr<ID3D12CommandQueue> queue;
+    ComPtr<ID3D12Fence> fence;
+    check(c.device->CreateCommandQueue(&queue_desc,IID_PPV_ARGS(&queue)));
+    check(c.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));
+    arc::QueueId previous_queue=0;
+    arc::CommandId previous_command=command;
+    for(unsigned i=0;i<1000;++i) {
+        // The observer sees actual COM pointers reused for successive logical
+        // lifetimes; each new lifetime must receive a fresh ID.
+        auto q=host.observe_queue(queue.Get(),D3D12_COMMAND_LIST_TYPE_DIRECT);
+        auto cmd=host.observe_command_list(c.list.Get(),D3D12_COMMAND_LIST_TYPE_DIRECT);
+        assert(q!=previous_queue && cmd!=previous_command);
+        assert(host.bind_completion_fence(queue.Get(),fence.Get())!=0);
+        assert(host.observe_command_list_destroyed(c.list.Get()));
+        assert(host.observe_queue_destroyed(queue.Get()));
+        assert(host.live_command_count()==0 && host.live_queue_count()==0 && host.live_fence_count()==0);
+        assert(host.graph().command_count()==0 && host.graph().queue_count()==0);
+        assert(host.runtime().bridge().command_count()==0 && host.runtime().bridge().queue_state_count()==0);
+        previous_queue=q; previous_command=cmd;
+    }
+    assert(host.graph().errors()==0);
+    ComPtr<ID3D12CommandQueue> second_queue;
+    check(c.device->CreateCommandQueue(&queue_desc,IID_PPV_ARGS(&second_queue)));
+    assert(host.observe_queue(queue.Get(),D3D12_COMMAND_LIST_TYPE_DIRECT));
+    assert(host.observe_queue(second_queue.Get(),D3D12_COMMAND_LIST_TYPE_DIRECT));
+    assert(host.bind_completion_fence(queue.Get(),fence.Get()));
+    assert(host.bind_completion_fence(second_queue.Get(),fence.Get()));
+    assert(host.observe_queue_destroyed(queue.Get()));
+    assert(host.live_fence_count()==1); // Another queue still owns this binding.
+    assert(host.observe_queue_destroyed(second_queue.Get()));
+    assert(host.live_fence_count()==0);
+
+    assert(host.enable_residency_control(a.Get()));
+    check(c.allocator->Reset());
+    check(c.list->Reset(c.allocator.Get(),nullptr));
+    c.list->CopyResource(b.Get(),a.Get());
+    check(c.list->Close());
+    assert(host.observe_queue(queue.Get(),D3D12_COMMAND_LIST_TYPE_DIRECT));
+    assert(host.bind_completion_fence(queue.Get(),fence.Get()));
+    assert(host.observe_command_list(c.list.Get(),D3D12_COMMAND_LIST_TYPE_DIRECT));
+    assert(host.observe_resource_use(c.list.Get(),a.Get(),false));
+    assert(host.observe_command_list_closed(c.list.Get()));
+    ID3D12CommandList* submitted[]={c.list.Get()};
+    queue->ExecuteCommandLists(1,submitted);
+    assert(host.observe_execute_command_lists(queue.Get(),submitted));
+    assert(host.observe_command_list_destroyed(c.list.Get()));
+    assert(!host.observe_queue_destroyed(queue.Get()));
+    assert(host.runtime().runtime().inflight_count(aid)==1);
+    check(queue->Signal(fence.Get(),1));
+    assert(host.observe_fence_signal(queue.Get(),fence.Get(),1));
+    HANDLE done=CreateEvent(nullptr,FALSE,FALSE,nullptr);
+    assert(done);
+    check(fence->SetEventOnCompletion(1,done));
+    assert(WaitForSingleObject(done,5000)==WAIT_OBJECT_0);
+    CloseHandle(done);
+    assert(host.observe_queue_destroyed(queue.Get()));
+    assert(host.live_fence_count()==0 && host.runtime().bridge().queue_state_count()==0);
     std::cout << "dx12-host-adapter-surface-tests: PASS\n";
     return 0;
 }

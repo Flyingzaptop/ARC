@@ -28,12 +28,24 @@ all-history observation remains incomplete after pruning. Historical graph
 queries such as `alive_at` return retained records only in live mode. IDs remain
 session-local and must never be reused, as required by `ids.hpp`.
 
-These limits bound historical populations, not the application's live object
-population or every graph allocation. Command lists can be resubmitted after
-closing; they cannot safely be discarded merely because they were submitted.
-The event protocol currently has no command-list or queue destruction events,
-so those registries can grow with unique object lifetimes. Completing that
-lifecycle protocol is required before claiming a globally bounded runtime.
+These limits bound history, not the application's live object population or
+outstanding controlled GPU work. Trace schema 5 appends explicit command-list
+and queue destruction events. Hosts notify before final COM release; a reused
+pointer receives a fresh ID. Command-list destruction removes recording state
+but preserves submitted residency batches. Queue retirement refuses unresolved
+controlled work, polls its completion fence, and removes graph/runtime/native
+registries plus unshared fence bindings only when safe. Live graph retirement
+also removes per-resource queue evidence; an overlapping scene checkpoint is
+invalidated conservatively instead of silently presenting complete evidence.
+
+The pinned Wicked device destructor emits retirements after WaitForGPU, then
+destroys its ARC bridge; later resource-release callbacks see no bridge. Hosts
+with shorter object lifetimes must call the public retirement methods at those
+lifetimes. Missing lifetime notifications cannot be safely guessed by ARC.
+Tests cover 10,000 logical lifetimes, 1,000 COM pointer re-registrations, retained
+submission history, shared native fence cleanup, and in-flight retirement
+rejection. The new binary trace schema is deliberately rejected by older tools;
+this reader expects schema 5 and does not silently reinterpret schema 4 files.
 
 Regression coverage compares pruned checkpoint counters against full history,
 checks destroyed-resource windows and expired-window rejection, runs 10,000

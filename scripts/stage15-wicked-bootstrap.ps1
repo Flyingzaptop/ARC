@@ -80,6 +80,7 @@ Copy-Item -LiteralPath $run.FullName -Destination $archiveRun -Recurse -Force
 
 $raw = Get-Content -LiteralPath (Join-Path $run.FullName 'wicked-engine.json') -Raw | ConvertFrom-Json
 $sem = $raw.stage15_semantics
+$audit = $raw.resource_semantic_audit
 $scene = $raw.scene_understanding
 
 $truthScenes = @($raw.scenes)
@@ -174,6 +175,7 @@ $meanIdentityMargin = Mean-Value $identityMargins
 $gates = [ordered]@{
     underlying_stage14_5_pass = ($stage14Exit -eq 0 -and (Test-ExplicitBoolean $raw valid $true))
     semantic_block_present = ($null -ne $sem)
+    independent_family_audit = (Test-SemanticFamilyAudit $audit)
     semantic_observer_only = (Test-ExplicitBoolean $sem observer_only $true)
     measured_semantic_population = ($null -ne $sem -and $sem.capture_phase -eq 'adaptive_end_before_recovery' -and (Test-FiniteNumber $sem.capture_frame 1 ([double]::MaxValue)))
     heuristic_confidence_declared = ($null -ne $sem -and $sem.confidence_basis -eq 'heuristic_score' -and (Test-ExplicitBoolean $sem accuracy_validated $false))
@@ -207,7 +209,7 @@ foreach ($value in $gates.Values) {
 }
 
 $acceptance = [ordered]@{
-    schema = 3
+    schema = 4
     stage = '15-scene-understanding'
     verdict = $(if ($passed) { 'PASS' } else { 'FAIL' })
     source_sha = $sourceSha
@@ -216,6 +218,8 @@ $acceptance = [ordered]@{
     validation_scope = [ordered]@{
         semantic_confidence_basis = 'heuristic_score'
         resource_semantic_accuracy_validated = $false
+        resource_family_audit_pass = (Test-SemanticFamilyAudit $audit)
+        resource_family_audit_scope = 'six allocation/use families on named pinned-Wicked resources; fine subtypes not validated'
         scene_identity_evaluated = $true
         performance_comparison = 'adaptive_vs_observer_baseline'
         arc_off_comparison_available = $false

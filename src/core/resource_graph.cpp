@@ -51,6 +51,8 @@ void ResourceGraph::consume(const Event& event) {
     case EventType::DescriptorLocation: expected = sizeof(DescriptorLocationPayload); break;
     case EventType::DescriptorCopied: expected = sizeof(DescriptorCopyPayload); break;
     case EventType::CommandQueueCreated: expected = sizeof(QueueCreatePayload); break;
+    case EventType::CommandQueueDestroyed: expected = sizeof(QueueDestroyPayload); break;
+    case EventType::CommandListDestroyed: expected = sizeof(CommandDestroyPayload); break;
     case EventType::CommandListCreated: case EventType::CommandListReset: case EventType::CommandListClosed: expected = sizeof(CommandListPayload); break;
     case EventType::QueueSubmit: expected = sizeof(QueueSubmitPayload); break;
     case EventType::CopyResource: case EventType::CopyBuffer: case EventType::CopyTexture: case EventType::ResolveSubresource: expected = sizeof(CopyPayload); break;
@@ -174,13 +176,39 @@ void ResourceGraph::consume(const Event& event) {
         else { ++errors_; }
         return;
     }
+    if (event.header.type == EventType::CommandListDestroyed) {
+        CommandDestroyPayload p{}; decode(event, p);
+        if (!commands_.erase(p.command)) ++errors_;
+        return;
+    }
+    if (event.header.type == EventType::CommandQueueDestroyed) {
+        QueueDestroyPayload p{}; decode(event, p);
+        auto q = queues_.find(p.queue);
+        if (q == queues_.end() || !q->second.alive) { ++errors_; return; }
+        if (retention_.dead_resources) {
+            queues_.erase(q);
+            bool lost_evidence = false;
+            for (auto& [id, resource] : resources_) {
+                (void)id;
+                if (resource.queues.erase(p.queue)) {
+                    resource.queue_use_counts.erase(p.queue);
+                    last_pruned_resource_usage_frame_ = std::max(last_pruned_resource_usage_frame_, resource.last_used_frame);
+                    lost_evidence = true;
+                }
+            }
+            if (lost_evidence) ++resource_history_generation_;
+        } else q->second.alive = false;
+        return;
+    }
     if (event.header.type == EventType::QueueSubmit) {
         QueueSubmitPayload payload{};
         if (decode(event, payload)) {
-            if (auto queue = queues_.find(payload.queue); queue != queues_.end()) { ++queue->second.submissions; }
+            bool valid_queue=false;
+            if (auto queue = queues_.find(payload.queue); queue != queues_.end() && queue->second.alive) { ++queue->second.submissions; valid_queue=true; }
             else { ++errors_; }
             auto command = commands_.find(payload.command);
             if (command == commands_.end() || !command->second.closed) { ++errors_; return; }
+            if (!valid_queue) return;
             submissions_.push_back({payload, event.header.timestamp_ns, presentation_frame_, command->second.counters});
             ++totals_.submissions;
             const auto& counters = command->second.counters;

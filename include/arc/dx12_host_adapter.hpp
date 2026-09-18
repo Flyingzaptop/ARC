@@ -120,6 +120,13 @@ public:
         std::uint32_t destination_index);
 
     [[nodiscard]] QueueId observe_queue(ID3D12CommandQueue* queue, D3D12_COMMAND_LIST_TYPE type);
+    // Notify before final COM release. Queue retirement refuses unresolved
+    // controlled submissions; the host must signal and complete them first.
+    bool observe_queue_destroyed(ID3D12CommandQueue* queue);
+    bool observe_command_list_destroyed(ID3D12CommandList* command);
+    [[nodiscard]] std::size_t live_command_count() const noexcept;
+    [[nodiscard]] std::size_t live_queue_count() const noexcept;
+    [[nodiscard]] std::size_t live_fence_count() const noexcept;
     [[nodiscard]] CommandId observe_command_list(ID3D12CommandList* command, D3D12_COMMAND_LIST_TYPE type);
     bool observe_command_list_reset(ID3D12CommandList* command);
     bool observe_command_list_closed(ID3D12CommandList* command);

@@ -385,11 +385,60 @@ bool NativeHostAdapter::unbind_completion_fence(ID3D12CommandQueue* queue) {
     std::scoped_lock lock(mutex_);
     const auto it = completion_bindings_.find(queue);
     if (it == completion_bindings_.end()) return false;
+    (void)drain_locked();
+    if (!runtime_.bridge().can_retire_queue(it->second.queue)) return note_failure();
+    auto* fence = it->second.fence.Get();
     (void)runtime_.unbind_completion_fence(it->second.queue);
     (void)backend_.unbind_queue_fence(it->second.queue);
     completion_bindings_.erase(it);
+    const bool shared = std::any_of(completion_bindings_.begin(), completion_bindings_.end(),
+        [fence](const auto& entry) { return entry.second.fence.Get() == fence; });
+    if (!shared) fences_.erase(fence);
     return true;
 }
+
+bool NativeHostAdapter::observe_command_list_destroyed(ID3D12CommandList* command) {
+    if (!command) return false;
+    std::scoped_lock lock(mutex_);
+    auto it = commands_.find(command);
+    if (it == commands_.end()) return note_failure();
+    const CommandDestroyPayload p{it->second};
+    if (!emit_locked(EventType::CommandListDestroyed, &p, sizeof(p))) return false;
+    commands_.erase(it);
+    return true;
+}
+
+bool NativeHostAdapter::observe_queue_destroyed(ID3D12CommandQueue* queue) {
+    if (!queue) return false;
+    std::scoped_lock lock(mutex_);
+    const auto q = queues_.find(queue);
+    if (q == queues_.end()) return note_failure();
+    (void)drain_locked();
+    auto binding = completion_bindings_.find(queue);
+    if (binding != completion_bindings_.end()) {
+        const auto completed = binding->second.fence->GetCompletedValue();
+        if (completed == D3D12_FENCE_VALUE_MAX || !runtime_.note_queue_completed(q->second, binding->second.fence_id, completed))
+            return note_failure();
+    }
+    if (!runtime_.bridge().can_retire_queue(q->second)) return note_failure();
+    const QueueDestroyPayload p{q->second};
+    if (!emit_locked(EventType::CommandQueueDestroyed, &p, sizeof(p))) return false;
+    if (binding != completion_bindings_.end()) {
+        auto* fence = binding->second.fence.Get();
+        (void)backend_.unbind_queue_fence(q->second);
+        completion_bindings_.erase(binding);
+        const bool shared = std::any_of(completion_bindings_.begin(), completion_bindings_.end(),
+            [fence](const auto& entry) { return entry.second.fence.Get() == fence; });
+        if (!shared) fences_.erase(fence);
+    }
+    queues_.erase(q);
+    (void)drain_locked();
+    return true;
+}
+
+std::size_t NativeHostAdapter::live_command_count() const noexcept { std::scoped_lock lock(mutex_); return commands_.size(); }
+std::size_t NativeHostAdapter::live_queue_count() const noexcept { std::scoped_lock lock(mutex_); return queues_.size(); }
+std::size_t NativeHostAdapter::live_fence_count() const noexcept { std::scoped_lock lock(mutex_); return fences_.size(); }
 
 bool NativeHostAdapter::observe_fence_signal(
     ID3D12CommandQueue* queue,
