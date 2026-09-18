@@ -62,7 +62,12 @@ bool NativeHostAdapter::observe_command_counters(
         .dispatches = dispatches,
         .indirect = indirect,
     };
-    return emit_locked(EventType::CommandCounters, &payload, sizeof(payload));
+    if (!emit_locked(EventType::CommandCounters, &payload, sizeof(payload))) return false;
+    metrics_.draws_observed += draws;
+    metrics_.indexed_draws_observed += indexed_draws;
+    metrics_.dispatches_observed += dispatches;
+    metrics_.indirect_observed += indirect;
+    return true;
 }
 
 bool NativeHostAdapter::observe_global_barrier(
