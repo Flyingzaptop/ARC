@@ -16,9 +16,14 @@ float safe_ratio(std::uint64_t numerator, std::uint64_t denominator) noexcept {
     return static_cast<float>(static_cast<double>(numerator) / static_cast<double>(denominator));
 }
 
-float normalized_log_distance(std::uint64_t a, std::uint64_t b, double span) noexcept {
-    const double la = std::log1p(static_cast<double>(a));
-    const double lb = std::log1p(static_cast<double>(b));
+float safe_rate(std::uint64_t value, FrameId frames) noexcept {
+    if (!frames) return 0.0F;
+    return static_cast<float>(static_cast<double>(value) / static_cast<double>(frames));
+}
+
+float normalized_log_distance(double a, double b, double span) noexcept {
+    const double la = std::log1p(std::max(0.0, a));
+    const double lb = std::log1p(std::max(0.0, b));
     return clamp01(std::abs(la - lb) / span);
 }
 
@@ -37,11 +42,18 @@ void blend(float& dst, float src, float alpha) noexcept {
 
 void blend_signature(SceneSemanticSignature& dst, const SceneSemanticSignature& src, float alpha) noexcept {
     dst.frame = src.frame;
+    dst.window_frames = src.window_frames;
     blend(dst.coverage, src.coverage, alpha);
     blend(dst.mean_confidence, src.mean_confidence, alpha);
     blend(dst.read_fraction, src.read_fraction, alpha);
     blend(dst.write_fraction, src.write_fraction, alpha);
     blend(dst.multi_queue_fraction, src.multi_queue_fraction, alpha);
+    blend(dst.resource_accesses_per_frame, src.resource_accesses_per_frame, alpha);
+    blend(dst.draw_calls_per_frame, src.draw_calls_per_frame, alpha);
+    blend(dst.dispatches_per_frame, src.dispatches_per_frame, alpha);
+    blend(dst.indirect_per_frame, src.indirect_per_frame, alpha);
+    blend(dst.submissions_per_frame, src.submissions_per_frame, alpha);
+    blend(dst.copies_per_frame, src.copies_per_frame, alpha);
 
     const auto blend_count = [alpha](std::uint64_t current, std::uint64_t sample) noexcept {
         const double value = static_cast<double>(current) +
@@ -52,6 +64,12 @@ void blend_signature(SceneSemanticSignature& dst, const SceneSemanticSignature& 
     dst.known_resources = blend_count(dst.known_resources, src.known_resources);
     dst.active_bytes = blend_count(dst.active_bytes, src.active_bytes);
     dst.known_bytes = blend_count(dst.known_bytes, src.known_bytes);
+    dst.submissions = blend_count(dst.submissions, src.submissions);
+    dst.draws = blend_count(dst.draws, src.draws);
+    dst.indexed_draws = blend_count(dst.indexed_draws, src.indexed_draws);
+    dst.dispatches = blend_count(dst.dispatches, src.dispatches);
+    dst.indirect = blend_count(dst.indirect, src.indirect);
+    dst.copies = blend_count(dst.copies, src.copies);
 
     for (std::size_t i = 0; i < dst.resource_fractions.size(); ++i) {
         blend(dst.resource_fractions[i], src.resource_fractions[i], alpha);
@@ -73,6 +91,8 @@ SceneUnderstandingInferencer::SceneUnderstandingInferencer(SceneUnderstandingCon
 SceneObservationCheckpoint SceneUnderstandingInferencer::checkpoint(const ResourceGraph& graph) const {
     SceneObservationCheckpoint out{};
     out.frame = graph.presentation_frame();
+    out.submission_count = graph.submissions().size();
+    out.copy_count = graph.copies().size();
     out.valid = true;
     out.resources.reserve(graph.resources().size());
     for (const auto& [id, record] : graph.resources()) {
@@ -100,6 +120,15 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
 {
     SceneSemanticSignature out{};
     out.frame = graph.presentation_frame();
+    if (checkpoint.valid) {
+        out.window_frames = out.frame >= checkpoint.frame ?
+            std::max<FrameId>(1, out.frame - checkpoint.frame) : 1;
+    } else if (config_.active_window_frames > 0) {
+        out.window_frames = std::max<FrameId>(
+            1, std::min(config_.active_window_frames, std::max<FrameId>(1, out.frame)));
+    } else {
+        out.window_frames = std::max<FrameId>(1, out.frame);
+    }
 
     ResourceSemanticInferencer resources{};
     std::array<std::uint64_t, kInferredResourceSemanticCount> semantic_resources{};
@@ -189,6 +218,28 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
         confidence_sum += prediction.confidence;
     }
 
+    const auto& submissions = graph.submissions();
+    const std::size_t submission_begin = checkpoint.valid ?
+        std::min(checkpoint.submission_count, submissions.size()) : 0;
+    for (std::size_t i = submission_begin; i < submissions.size(); ++i) {
+        const auto& submission = submissions[i];
+        if (!checkpoint.valid && config_.active_window_frames > 0 &&
+            out.frame >= submission.presentation &&
+            out.frame - submission.presentation > config_.active_window_frames) {
+            continue;
+        }
+        ++out.submissions;
+        out.draws += submission.counters.draws;
+        out.indexed_draws += submission.counters.indexed_draws;
+        out.dispatches += submission.counters.dispatches;
+        out.indirect += submission.counters.indirect;
+    }
+
+    const auto& copies = graph.copies();
+    const std::size_t copy_begin = checkpoint.valid ?
+        std::min(checkpoint.copy_count, copies.size()) : 0;
+    out.copies = static_cast<std::uint64_t>(copies.size() - copy_begin);
+
     out.coverage = safe_ratio(out.known_resources, out.active_resources);
     out.mean_confidence = out.known_resources ?
         static_cast<float>(confidence_sum / static_cast<double>(out.known_resources)) : 0.0F;
@@ -196,6 +247,12 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
     out.read_fraction = safe_ratio(reads, accesses);
     out.write_fraction = safe_ratio(writes, accesses);
     out.multi_queue_fraction = safe_ratio(multi_queue, out.active_resources);
+    out.resource_accesses_per_frame = safe_rate(accesses, out.window_frames);
+    out.draw_calls_per_frame = safe_rate(out.draws + out.indexed_draws, out.window_frames);
+    out.dispatches_per_frame = safe_rate(out.dispatches, out.window_frames);
+    out.indirect_per_frame = safe_rate(out.indirect, out.window_frames);
+    out.submissions_per_frame = safe_rate(out.submissions, out.window_frames);
+    out.copies_per_frame = safe_rate(out.copies, out.window_frames);
 
     for (std::size_t i = 0; i < kInferredResourceSemanticCount; ++i) {
         out.resource_fractions[i] = safe_ratio(semantic_resources[i], out.known_resources);
@@ -225,14 +282,24 @@ SceneSemanticComparison SceneUnderstandingInferencer::compare(
         std::abs(static_cast<double>(a.multi_queue_fraction) - static_cast<double>(b.multi_queue_fraction)) +
         std::abs(static_cast<double>(a.coverage) - static_cast<double>(b.coverage))) / 4.0);
     const float population_distance =
-        0.55F * normalized_log_distance(a.active_resources, b.active_resources, 4.0) +
-        0.45F * normalized_log_distance(a.active_bytes, b.active_bytes, 12.0);
+        0.55F * normalized_log_distance(
+            static_cast<double>(a.active_resources), static_cast<double>(b.active_resources), 4.0) +
+        0.45F * normalized_log_distance(
+            static_cast<double>(a.active_bytes), static_cast<double>(b.active_bytes), 12.0);
+    const float workload_distance =
+        0.30F * normalized_log_distance(a.resource_accesses_per_frame, b.resource_accesses_per_frame, 5.0) +
+        0.25F * normalized_log_distance(a.draw_calls_per_frame, b.draw_calls_per_frame, 5.0) +
+        0.20F * normalized_log_distance(a.dispatches_per_frame, b.dispatches_per_frame, 5.0) +
+        0.10F * normalized_log_distance(a.indirect_per_frame, b.indirect_per_frame, 4.0) +
+        0.10F * normalized_log_distance(a.submissions_per_frame, b.submissions_per_frame, 4.0) +
+        0.05F * normalized_log_distance(a.copies_per_frame, b.copies_per_frame, 5.0);
 
     out.distance = clamp01(
-        0.38 * semantic_resource_distance +
-        0.27 * semantic_byte_distance +
-        0.20 * behavior_distance +
-        0.15 * population_distance);
+        0.22 * semantic_resource_distance +
+        0.18 * semantic_byte_distance +
+        0.12 * behavior_distance +
+        0.10 * population_distance +
+        0.38 * workload_distance);
     out.similarity = 1.0F - out.distance;
 
     const float evidence = std::min({a.coverage, b.coverage, a.mean_confidence, b.mean_confidence});
