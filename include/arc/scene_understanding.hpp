@@ -14,6 +14,9 @@ struct SceneResourceUsageCheckpoint {
     std::uint64_t reads{};
     std::uint64_t writes{};
     std::uint64_t usage_bursts{};
+    std::uint64_t reuse_gap_frames_sum{};
+    std::uint64_t reuse_gap_samples{};
+    std::unordered_map<QueueId, std::uint64_t> queue_use_counts;
 };
 
 struct SceneObservationCheckpoint {
