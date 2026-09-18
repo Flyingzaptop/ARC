@@ -319,6 +319,20 @@ void AdaptiveQualityController::note_action_applied(
     headroom_samples_ = 0;
 }
 
+void AdaptiveQualityController::begin_recovery() noexcept {
+    // Deliberate recovery is not a steady-state restore probe. Keep the active
+    // quality ladder and learned directional effects, but discard temporary
+    // hysteresis/backoff state accumulated while defending the adaptive target.
+    restore_penalties_.clear();
+    recent_restores_.clear();
+    overload_samples_ = 0;
+    headroom_samples_ = 0;
+    settle_remaining_ = 0;
+    restore_guard_remaining_ = 0;
+    filter_initialized_ = false;
+    filtered_frame_ms_ = 0.0;
+}
+
 void AdaptiveQualityController::reset() noexcept {
     active_.clear();
     restore_penalties_.clear();
