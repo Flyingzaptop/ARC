@@ -28,6 +28,10 @@ jobs:
       - run: cmake -S . -B build -A x64
       - run: cmake --build build --config ${{ matrix.configuration }}
       - run: ctest --test-dir build -C ${{ matrix.configuration }} --output-on-failure --timeout 60
+      - name: Build pinned Microsoft external renderer integration
+        if: matrix.configuration == 'Release'
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/stage14-external-build-check.ps1 -ArcRepoRoot "${{ github.workspace }}"
 
   linux:
     runs-on: ubuntu-latest
