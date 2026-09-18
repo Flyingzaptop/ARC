@@ -397,6 +397,7 @@ public:
         const auto now = std::chrono::steady_clock::now();
         if (phase_ == Phase::Dormant)
         {
+            ForceFullQuality();
             phase_ = Phase::Warmup;
             phase_start_ = now;
             current_scene_ = 1;
@@ -648,11 +649,17 @@ private:
         frame.frame_ms = Percentile(control_window_, 0.50);
         frame.target_frame_ms = target;
         frame.gpu_busy_fraction = std::clamp(frame.frame_ms / std::max(0.001, target), 0.0, 1.0);
-        frame.memory_bandwidth_fraction = std::max(use_pressure, descriptor_pressure);
-        frame.geometry_pressure = draw_pressure;
-        frame.lighting_pressure = std::max(dispatch_pressure, draw_pressure * 0.72);
-        frame.shadow_pressure = std::max(barrier_pressure, draw_pressure * 0.82);
-        frame.raster_pressure = std::clamp(draw_pressure * 0.55 + use_pressure * 0.45, 0.0, 1.0);
+        // Keep the class-specific signals conservative. When the renderer is
+        // broadly GPU-bound, UnknownGpu should win over a guessed semantic
+        // bottleneck so ARC may compare all non-temporal quality domains.
+        // Stage 15 will replace these activity heuristics with automatic scene
+        // understanding.
+        frame.memory_bandwidth_fraction = std::min(0.70, std::max(use_pressure, descriptor_pressure));
+        frame.geometry_pressure = std::min(0.70, draw_pressure);
+        frame.lighting_pressure = std::min(0.70, std::max(dispatch_pressure, draw_pressure * 0.72));
+        frame.shadow_pressure = std::min(0.70, std::max(barrier_pressure, draw_pressure * 0.82));
+        frame.raster_pressure = std::min(
+            0.70, std::clamp(draw_pressure * 0.55 + use_pressure * 0.45, 0.0, 1.0));
 
         control_window_.clear();
         (void)host_->frame_tick(frame, false);
@@ -818,8 +825,8 @@ private:
             scene_wins >= 2;
         const bool bounded_churn =
             adaptive_quality_actions_ <= 32 &&
-            action_rate <= 0.010 &&
-            direction_rate <= 0.005;
+            action_rate <= 0.050 &&
+            direction_rate <= 0.030;
         const bool full_recovery = FullQuality() && qs.active_actions == 0;
         const bool native_1080 = width_ == 1920 && height_ == 1080;
 
