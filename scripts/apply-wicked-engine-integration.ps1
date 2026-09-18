@@ -79,7 +79,7 @@ $loadNew = 'void TestsRenderer::Load()'+$LF+'{'+$LF+$T+'arc_wicked::ForceFullQua
 $tt = Replace-Once $tt $loadOld $loadNew 'Tests Load quality reset'
 $updateOld = 'void TestsRenderer::Update(float dt)'+$LF+'{'+$LF+$T+'int selected = testSelector.GetSelected();'
 $updateNew = 'void TestsRenderer::Update(float dt)'+$LF+'{'+$LF+
-    $T+'setResolutionScale(1.0f);'+$LF+
+    $T+'resolutionScale = 1.0f;'+$LF+
     $T+'setFSREnabled(false);'+$LF+
     $T+'setFSR2Enabled(false);'+$LF+
     $T+'arc_wicked::HarnessUpdate(testSelector, GetPhysicalWidth(), GetPhysicalHeight());'+$LF+
