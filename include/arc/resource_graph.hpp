@@ -77,7 +77,7 @@ struct ExtendedBarrierPayload {
 };
 struct CopyPayload final { ResourceId source{}; ResourceId destination{}; CommandId command{}; std::uint64_t approximate_bytes{}; };
 struct FencePayload final { QueueId queue{}; std::uint64_t fence{}; std::uint64_t value{}; };
-struct CountersPayload final { CommandId command{}; std::uint64_t draws{}; std::uint64_t indexed_draws{}; std::uint64_t dispatches{}; std::uint64_t indirect{}; };
+struct CountersPayload final { CommandId command{}; std::uint64_t draws{}; std::uint64_t indexed_draws{}; std::uint64_t dispatches{}; std::uint64_t indirect{}; std::uint64_t draw_items{}; std::uint64_t dispatch_groups{}; };
 struct ResourceUsePayload final { CommandId command{}; ResourceId resource{}; std::uint32_t write{}; std::uint32_t reserved{}; };
 struct PresentPayload final { std::uint64_t swapchain{}; FrameId frame{}; std::uint32_t sync_interval{}; std::uint32_t flags{}; std::int32_t result{}; std::uint32_t reserved{}; };
 struct MemoryBudgetPayload final {
@@ -88,6 +88,7 @@ struct MemoryBudgetPayload final {
 };
 static_assert(sizeof(ExtendedBarrierPayload) <= kMaxEventPayloadBytes);
 static_assert(sizeof(ResourceCreatePayload) <= kMaxEventPayloadBytes);
+static_assert(sizeof(CountersPayload) <= kMaxEventPayloadBytes);
 
 struct HeapRecord final { HeapCreatePayload description{}; bool alive{}; };
 struct ViewRecord final { DescriptorWrittenPayload description{}; bool alive{true}; };
