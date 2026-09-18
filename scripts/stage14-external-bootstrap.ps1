@@ -298,7 +298,7 @@ if($raw){
     $gates.external_renderer_identity=([string]$raw.benchmark-eq'stage14_external_renderer' -and [string]$raw.integration-eq'microsoft_directx_graphics_samples_hello_texture')
     $gates.native_1080p=([int]$raw.native_width-eq1920 -and [int]$raw.native_height-eq1080)
     $gates.temporal_disabled=(-not[bool]$raw.temporal_used)
-    $gates.meaningful_baseline_pressure=($bmiss-ge0.25)
+    $gates.meaningful_baseline_pressure=($bmiss-ge0.45 -and $bmiss-le0.75)
     $gates.resource_lifecycle_observed=([int]$raw.host.resources-ge4)
     $gates.descriptor_path_observed=([int]$raw.host.descriptor_writes-ge3)
     $gates.command_submission_observed=([int]$raw.host.queue_submits-ge100 -and [int]$raw.host.resource_uses-ge300)
