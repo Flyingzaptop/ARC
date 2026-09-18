@@ -212,6 +212,63 @@ int main() {
         assert(controller.state().restore_guard_remaining >= 8);
     }
 
+    // A stale learned restore estimate must not create frame-by-frame probe
+    // chatter. Probes require sustained deep headroom; if the same step is
+    // reversed shortly afterwards it is quarantined before it may be probed
+    // again.
+    {
+        auto cfg = immediate_config();
+        cfg.optimizer.restoration_headroom_ms = 0.5;
+        cfg.restore_probe_samples_required = 3;
+        cfg.restore_probe_headroom_fraction = 0.20;
+        cfg.restore_reversal_window_samples = 4;
+        cfg.restore_backoff_base_samples = 5;
+        cfg.restore_backoff_max_samples = 20;
+        AdaptiveQualityController controller{cfg};
+
+        std::vector<QualityActionCandidate> candidates{
+            {31, QualityDomain::Lighting, "stale restore", 8.0, 0.05, 0.95, 0, true, false, 0},
+        };
+
+        auto degrade = controller.tick(lighting_sample(20.0, 10.0), candidates);
+        assert(degrade.kind == QualityDecisionKind::Degrade);
+        controller.note_action_applied(degrade.plan.actions.front(), degrade.kind, 20.0, 12.0, true);
+
+        // There is ordinary headroom, but not enough for a normal restore and
+        // not enough for the deep-headroom probe escape hatch.
+        for (int i = 0; i < 8; ++i) {
+            assert(controller.tick(lighting_sample(8.5, 10.0), candidates).kind == QualityDecisionKind::None);
+        }
+
+        QualityDecision probe{};
+        for (int i = 0; i < 3; ++i) {
+            probe = controller.tick(lighting_sample(7.0, 10.0), candidates);
+        }
+        assert(probe.kind == QualityDecisionKind::Restore);
+        assert(controller.state().restore_probes == 1);
+        controller.note_action_applied(probe.plan.actions.front(), probe.kind, 7.0, 10.5, true);
+
+        // The probe was too optimistic and is reversed inside the reversal
+        // window. That exact action must receive a cooldown.
+        auto reverse = controller.tick(lighting_sample(12.0, 10.0), candidates);
+        assert(reverse.kind == QualityDecisionKind::Degrade);
+        controller.note_action_applied(reverse.plan.actions.front(), reverse.kind, 12.0, 8.0, true);
+        assert(controller.state().restore_backoffs == 1);
+
+        for (int i = 0; i < 4; ++i) {
+            assert(controller.tick(lighting_sample(7.0, 10.0), candidates).kind == QualityDecisionKind::None);
+        }
+
+        // Once the bounded cooldown expires, sustained deep headroom may probe
+        // again instead of permanently deadlocking quality recovery.
+        QualityDecision retry{};
+        for (int i = 0; i < 4 && retry.kind == QualityDecisionKind::None; ++i) {
+            retry = controller.tick(lighting_sample(7.0, 10.0), candidates);
+        }
+        assert(retry.kind == QualityDecisionKind::Restore);
+        assert(controller.state().restore_probes == 2);
+    }
+
     std::cout << "adaptive-quality-controller-tests: PASS\n";
     return 0;
 }
