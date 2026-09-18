@@ -262,6 +262,7 @@ $gates=[ordered]@{
     external_renderer_identity=$false
     native_1080p=$false
     temporal_disabled=$false
+    gpu_timestamp_timing=$false
     meaningful_baseline_pressure=$false
     resource_lifecycle_observed=$false
     descriptor_path_observed=$false
@@ -298,6 +299,10 @@ if($raw){
     $gates.external_renderer_identity=([string]$raw.benchmark-eq'stage14_external_renderer' -and [string]$raw.integration-eq'microsoft_directx_graphics_samples_hello_texture')
     $gates.native_1080p=([int]$raw.native_width-eq1920 -and [int]$raw.native_height-eq1080)
     $gates.temporal_disabled=(-not[bool]$raw.temporal_used)
+    $gates.gpu_timestamp_timing=(
+        [string]$raw.timing_source-eq'gpu_timestamp' -and
+        [int64]$raw.gpu_timestamp_samples-ge([int64]$raw.baseline.samples+[int64]$raw.adaptive.samples)
+    )
     $gates.meaningful_baseline_pressure=($bmiss-ge0.45 -and $bmiss-le0.75)
     $gates.resource_lifecycle_observed=([int]$raw.host.resources-ge4)
     $gates.descriptor_path_observed=([int]$raw.host.descriptor_writes-ge3)
@@ -317,6 +322,7 @@ if($raw){
 
     $metrics=[ordered]@{
         target_frame_ms=[double]$raw.target_frame_ms
+        gpu_timestamp_samples=[int64]$raw.gpu_timestamp_samples
         baseline_p50_ms=$bp50
         adaptive_p50_ms=$ap50
         p50_reduction_fraction=$p50Reduction
@@ -363,6 +369,7 @@ $summary=@"
 - Verdict: **$verdict**
 - Native target: **1920x1080**
 - Temporal / upscaling / frame generation / dynamic resolution: **OFF**
+- Timing source: **D3D12 GPU timestamp queries**
 
 ## Integration
 - Exact pinned upstream: $($gates.exact_pinned_upstream)
@@ -373,6 +380,7 @@ $summary=@"
 - Presentation observed: $($gates.presentation_observed)
 - ResourceGraph clean: $($gates.resource_graph_clean)
 - Observation/control separation clean: $($gates.observation_control_separation_clean)
+- GPU timestamp timing: $($gates.gpu_timestamp_timing)
 
 ## Performance
 - Meaningful baseline pressure: $($gates.meaningful_baseline_pressure)
