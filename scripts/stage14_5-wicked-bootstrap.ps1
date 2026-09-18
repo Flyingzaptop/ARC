@@ -95,7 +95,7 @@ $msbuild = Find-MSBuild
 if (-not $msbuild) { throw 'MSBuild not found. Install Visual Studio / Build Tools with Desktop development with C++.' }
 $env:VSLANG = '1033'
 $msbuildVersionText = (& $msbuild -version -nologo | Select-Object -Last 1).Trim()
-if ($msbuildVersionText -notmatch '^(\\d+)\\.') { throw "Unable to parse MSBuild version: $msbuildVersionText" }
+if ($msbuildVersionText -notmatch '^(\d+)\.') { throw "Unable to parse MSBuild version: $msbuildVersionText" }
 $msbuildMajor = [int]$Matches[1]
 if ($msbuildMajor -ge 18) { $platformToolset = 'v145' }
 elseif ($msbuildMajor -ge 17) { $platformToolset = 'v143' }
