@@ -90,13 +90,15 @@ first; a binary hash alone is not proof of its source provenance.
 
 ## Recorded hardware result
 
-The final pinned capture at source `cf280cf35b499690186ae4ca3ed4431e6410925e`
+The final pinned capture at source `d2306e1f339882e1b11841ffd8bdff37e356180e`
 passed the independent validator. It contains 149 execution nodes, 839
 conservative dependency edges, 28 raster-bound observations, 64 measured GPU
 timestamp pairs and 24 recomputed Present ancestors. The graph reported zero
-capture errors and the native 4 MiB three-copy readback fixture passed.
+capture errors, observed 12 cooperative fence signal/wait events, and the native
+4 MiB three-copy readback fixture passed. The capture declares
+`queue_fences_observed=true`; shader-level bindless completeness remains false.
 
-The capture callback durations summed to 1.8913 ms for this sampled frame. This is
+The capture callback durations summed to 1.9213 ms for this sampled frame. This is
 diagnostic observer work across callbacks, not a frame critical-path measurement.
 The capture mode is therefore opt-in and samples one settled Water frame; it is
 not enabled in normal runs or in performance comparisons.
