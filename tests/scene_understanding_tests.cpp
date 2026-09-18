@@ -249,5 +249,28 @@ int main() {
     assert(multi_queue_window.active_resources == 1);
     assert(multi_queue_window.multi_queue_fraction > 0.99F);
 
+    arc::ResourceGraph reuse_window;
+    queue(reuse_window, 1);
+    create(reuse_window, 31, arc::ResourceKind::Texture2D, 1280, 720);
+    view(reuse_window, 31, 311, arc::ViewType::Rtv);
+    view(reuse_window, 31, 312, arc::ViewType::Srv);
+    present(reuse_window, 1);
+    use(reuse_window, 1100, 1, 31, true, 13000);
+    present(reuse_window, 21);
+    use(reuse_window, 1101, 1, 31, true, 13010);
+    present(reuse_window, 41);
+    use(reuse_window, 1102, 1, 31, true, 13020);
+
+    const auto reuse_checkpoint = infer.checkpoint(reuse_window);
+    for (arc::FrameId frame : {43ull, 45ull, 47ull, 49ull}) {
+        present(reuse_window, frame);
+        use(reuse_window, 1200 + frame, 1, 31, true, 14000 + frame * 10);
+    }
+    const auto dense_reuse_window = infer.summarize(reuse_window, reuse_checkpoint);
+    assert(dense_reuse_window.active_resources == 1);
+    assert(dense_reuse_window.known_resources == 1);
+    assert(dense_reuse_window.resource_fractions[
+        static_cast<std::size_t>(arc::InferredResourceSemantic::PersistentHistory)] > 0.99F);
+
     std::cout << "scene-understanding-tests: PASS\n";
 }
