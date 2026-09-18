@@ -56,7 +56,8 @@ void ARCWickedCopy(
 
 void ARCWickedCountCommand(
     ID3D12CommandList* command,
-    std::uint32_t kind) noexcept;
+    std::uint32_t kind,
+    std::uint64_t work_items) noexcept;
 
 void ARCWickedSubmit(
     ID3D12CommandQueue* queue,
