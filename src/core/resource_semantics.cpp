@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace arc {
 namespace {
@@ -15,6 +16,36 @@ float clamp01(double x) noexcept {
 bool has_view(const ResourceRecord& r, ViewType type) noexcept {
     return (r.evidence & (1U << static_cast<unsigned>(type))) != 0;
 }
+
+std::uint64_t saturating_mul(std::uint64_t a, std::uint64_t b) noexcept {
+    if (!a || !b) return 0;
+    if (a > std::numeric_limits<std::uint64_t>::max() / b)
+        return std::numeric_limits<std::uint64_t>::max();
+    return a * b;
+}
+
+std::uint64_t semantic_size_bytes(const ResourceCreatePayload& d) noexcept {
+    if (d.allocation_bytes) return d.allocation_bytes;
+    if (d.virtual_bytes) return d.virtual_bytes;
+    if (d.kind == ResourceKind::Buffer) return d.width;
+
+    // External/native resources intentionally carry no residency allocation
+    // ownership in ResourceGraph. Scene understanding still needs a stable
+    // size signal, so use a conservative base-surface estimate rather than
+    // treating every external texture as zero bytes.
+    std::uint64_t bytes = d.width;
+    bytes = saturating_mul(bytes, std::max<std::uint64_t>(1, d.height));
+    bytes = saturating_mul(bytes, std::max<std::uint64_t>(1, d.depth));
+    bytes = saturating_mul(bytes, std::max<std::uint64_t>(1, d.array_layers));
+    bytes = saturating_mul(bytes, std::max<std::uint64_t>(1, d.sample_count));
+    return saturating_mul(bytes, 4);
+}
+
+// D3D12 native resource capability flags retained by ResourceCreatePayload.
+// They are behavioral capabilities, not engine labels.
+constexpr std::uint32_t kNativeAllowRenderTarget = 0x1u;
+constexpr std::uint32_t kNativeAllowDepthStencil = 0x2u;
+constexpr std::uint32_t kNativeAllowUnorderedAccess = 0x4u;
 
 } // namespace
 
@@ -30,7 +61,7 @@ ResourceSemanticFeatures ResourceSemanticInferencer::extract(
     const auto& r = *found;
     const auto& d = r.description;
     f.kind = d.kind;
-    f.allocation_bytes = d.allocation_bytes;
+    f.allocation_bytes = semantic_size_bytes(d);
     f.width = d.width;
     f.height = d.height;
     f.depth = d.depth;
@@ -75,8 +106,11 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
     // 11 large 2D target, 12 persistent/recurrent.
     if (f.srv) out.evidence_mask |= bit(0);
     if (f.uav) out.evidence_mask |= bit(1);
-    if (f.rtv) out.evidence_mask |= bit(2);
-    if (f.dsv) out.evidence_mask |= bit(3);
+    const bool render_target_capable = f.rtv || (f.resource_flags & kNativeAllowRenderTarget) != 0;
+    const bool depth_capable = f.dsv || (f.resource_flags & kNativeAllowDepthStencil) != 0;
+    const bool storage_capable = f.uav || (f.resource_flags & kNativeAllowUnorderedAccess) != 0;
+    if (render_target_capable) out.evidence_mask |= bit(2);
+    if (depth_capable) out.evidence_mask |= bit(3);
 
     const bool texture =
         f.kind == ResourceKind::Texture1D ||
@@ -90,14 +124,14 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
     if (f.write_fraction >= 0.65) out.evidence_mask |= bit(8);
     if (f.reuse_interval_frames > 0.0 && f.reuse_interval_frames <= 2.5 && f.usage_bursts >= 2)
         out.evidence_mask |= bit(9);
-    if (f.dsv) out.evidence_mask |= bit(10);
+    if (depth_capable) out.evidence_mask |= bit(10);
     if (f.kind == ResourceKind::Texture2D && f.width >= 512 && f.height >= 512)
         out.evidence_mask |= bit(11);
     if (f.usage_bursts >= 4 || (f.reuse_interval_frames > 0.0 && f.reuse_interval_frames <= 3.0))
         out.evidence_mask |= bit(12);
 
     if (buffer) {
-        if (f.uav) {
+        if (storage_capable) {
             out.semantic = InferredResourceSemantic::StorageBuffer;
             out.confidence = clamp01(0.68 + 0.18 * std::max(f.read_fraction, f.write_fraction));
             return out;
@@ -129,12 +163,12 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
 
     if (!texture) return out;
 
-    if (f.dsv) {
+    if (depth_capable) {
         const bool shadow_shape =
             f.kind == ResourceKind::Texture2D &&
             f.width >= 256 && f.height >= 256 &&
             (f.width == f.height || f.array_layers > 1) &&
-            !f.rtv &&
+            !render_target_capable &&
             (f.srv || f.read_fraction > 0.15);
 
         if (shadow_shape) {
@@ -151,11 +185,11 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
         return out;
     }
 
-    if (f.rtv) {
+    if (render_target_capable) {
         if (f.srv && f.usage_bursts >= 3 && f.reuse_interval_frames > 0.0 && f.reuse_interval_frames <= 3.0) {
             out.semantic = InferredResourceSemantic::PersistentHistory;
             out.confidence = clamp01(0.58 + std::min(0.25, static_cast<double>(f.usage_bursts) / 20.0));
-        } else if (f.uav || f.write_fraction >= 0.55) {
+        } else if (storage_capable || f.write_fraction >= 0.55) {
             out.semantic = InferredResourceSemantic::TransientIntermediate;
             out.confidence = clamp01(0.66 + 0.18 * f.write_fraction);
         } else {
@@ -165,7 +199,7 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
         return out;
     }
 
-    if (f.uav) {
+    if (storage_capable) {
         out.semantic = InferredResourceSemantic::StorageTexture;
         out.confidence = clamp01(0.70 + 0.20 * f.write_fraction);
         return out;
