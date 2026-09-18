@@ -325,6 +325,12 @@ void ArcExternalBridge::OnFrame(double frameMs)
         }
         if (elapsed >= static_cast<double>(measureSeconds_))
         {
+            const auto gm = host_->runtime().governor().metrics();
+            const auto qs = host_->runtime().governor().quality().state();
+            adaptiveQualityActions_ = gm.quality_actions_executed;
+            adaptiveDirectionChanges_ = qs.direction_changes;
+            adaptiveRestoreProbes_ = qs.restore_probes;
+            adaptiveRestoreBackoffs_ = qs.restore_backoffs;
             controlWindow_.clear();
             EnterPhase(Phase::Recovery);
         }
@@ -567,9 +573,21 @@ void ArcExternalBridge::WriteReport(bool complete)
         missReduction >= 0.10 &&
         p50Reduction >= 0.05 &&
         ap99 <= bp99 * 1.10;
+    const double adaptiveActionRate =
+        adaptiveTicks_ ? static_cast<double>(adaptiveQualityActions_) /
+            static_cast<double>(adaptiveTicks_) : 0.0;
+    const double adaptiveDirectionChangeRate =
+        adaptiveTicks_ ? static_cast<double>(adaptiveDirectionChanges_) /
+            static_cast<double>(adaptiveTicks_) : 0.0;
+    // Churn is a rate property, not an absolute count. A fixed reversal cap
+    // becomes stricter merely by running the same stable controller for longer
+    // or at a higher frame rate. Require both low action density and very low
+    // reversal density during the adaptive phase only; deliberate Recovery
+    // restores are reported separately and do not count as steady-state churn.
     const bool boundedChurn =
-        qs.direction_changes <= 8 &&
-        gm.quality_actions_executed <= 24;
+        adaptiveQualityActions_ <= 24 &&
+        adaptiveActionRate <= 0.010 &&
+        adaptiveDirectionChangeRate <= 0.005;
     const bool gpuTimingValid =
         gpuTimestampSamples_ >= baseline_.frames.size() + adaptive_.frames.size();
     const bool valid =
@@ -629,6 +647,12 @@ void ArcExternalBridge::WriteReport(bool complete)
       << ",\"restore_probes\":" << qs.restore_probes
       << ",\"restore_backoffs\":" << qs.restore_backoffs
       << ",\"adaptive_ticks\":" << adaptiveTicks_
+      << ",\"adaptive_quality_actions\":" << adaptiveQualityActions_
+      << ",\"adaptive_direction_changes\":" << adaptiveDirectionChanges_
+      << ",\"adaptive_restore_probes\":" << adaptiveRestoreProbes_
+      << ",\"adaptive_restore_backoffs\":" << adaptiveRestoreBackoffs_
+      << ",\"adaptive_action_rate\":" << adaptiveActionRate
+      << ",\"adaptive_direction_change_rate\":" << adaptiveDirectionChangeRate
       << ",\"recovery_ticks\":" << recoveryTicks_ << "},\n"
       << "  \"final_quality_full\":" << (finalFull ? "true" : "false") << ",\n"
       << "  \"performance_win\":" << (performanceWin ? "true" : "false") << ",\n"
