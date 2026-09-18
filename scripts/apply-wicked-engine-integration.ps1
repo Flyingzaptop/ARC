@@ -18,6 +18,9 @@ function Write-Utf8Lf([string]$Path, [string]$Text) {
     [IO.File]::WriteAllText($Path, $Text, [Text.UTF8Encoding]::new($false))
 }
 function Replace-Once([string]$Text, [string]$Old, [string]$New, [string]$Label) {
+    $crlf = [string][char]13 + [string][char]10
+    $Old = $Old.Replace($crlf, $LF)
+    $New = $New.Replace($crlf, $LF)
     $i = $Text.IndexOf($Old, [StringComparison]::Ordinal)
     if ($i -lt 0) { throw "Patch anchor not found: $Label" }
     if ($Text.IndexOf($Old, $i + $Old.Length, [StringComparison]::Ordinal) -ge 0) {
