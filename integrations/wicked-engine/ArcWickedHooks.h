@@ -31,6 +31,14 @@ void ARCWickedObserveSampler(
     ID3D12DescriptorHeap* heap,
     std::uint32_t index) noexcept;
 
+void ARCWickedObserveRTV(
+    ID3D12Resource* resource,
+    const D3D12_RENDER_TARGET_VIEW_DESC* view) noexcept;
+
+void ARCWickedObserveDSV(
+    ID3D12Resource* resource,
+    const D3D12_DEPTH_STENCIL_VIEW_DESC* view) noexcept;
+
 void ARCWickedCommandBegin(
     ID3D12CommandList* command,
     D3D12_COMMAND_LIST_TYPE type) noexcept;
