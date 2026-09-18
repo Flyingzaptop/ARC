@@ -216,7 +216,7 @@ public:
     void ResourceDestroyed(ID3D12Resource* resource) noexcept
     {
         if (!host_ || !resource) return;
-        (void)host_->observe_resource_destroyed(resource);
+        if (host_->resource_id(resource)) (void)host_->observe_resource_destroyed(resource);
     }
 
     void ObserveSRV(
