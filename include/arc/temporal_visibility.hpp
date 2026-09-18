@@ -1,5 +1,7 @@
 #pragma once
 
+#include "arc/gpu_attribution.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -9,6 +11,16 @@
 namespace arc {
 
 using VisualTrackId = std::uint64_t;
+
+struct VisualTrackFingerprint {
+    VisualTrackId id{};
+    double confidence{};
+};
+
+// Stable-within-session, backend-neutral fingerprint derived only from observed
+// D3D12 work/resource structure. It is not an engine object identity.
+[[nodiscard]] VisualTrackFingerprint make_visual_track_fingerprint(
+    const WorkObservation& work) noexcept;
 
 enum class VisibilityPhase : std::uint8_t {
     Unknown,
@@ -49,6 +61,13 @@ struct VisibilityObservation {
     // Confidence of the strongest observation supplied by the caller.
     double confidence{0.5};
 };
+
+// Convert a Stage D execution node into weak potential-visibility evidence.
+// This never upgrades a raster upper bound into actual visibility.
+[[nodiscard]] VisibilityObservation make_potential_visibility_observation(
+    const AttributionNode& node,
+    std::uint64_t frame,
+    bool present_reachable) noexcept;
 
 struct TemporalVisibilityState {
     VisualTrackId id{};
