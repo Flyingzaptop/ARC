@@ -1,0 +1,13 @@
+﻿{
+    "schema":  1,
+    "source_sha":  "bb75dd9684d81c1ee041886a56061d74c69b2c0a",
+    "wicked_repository":  "turanszkij/WickedEngine",
+    "wicked_sha":  "0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+    "wicked_actual_sha":  "0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7",
+    "started_utc":  "2026-09-18T16:59:53.9384679Z",
+    "finished_utc":  "2026-09-18T17:02:55.9187734Z",
+    "seconds_per_measurement_phase":  60,
+    "benchmark_exit_code":  0,
+    "fatal_error":  null,
+    "crash_context_file":  null
+}
