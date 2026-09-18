@@ -1,0 +1,14 @@
+﻿ARC Stage 14.5 Wicked Engine truth test
+ARC source: be216d5847744e2d2aea059feecf5354d2d75467
+Wicked source: 0b4dd9ebe0025a4a6d8f17c52c943c40d96d62a7
+Executable: C:\Users\r3d_flzp\ARC-MegaC-Stage15\WickedEngine\BUILD\x64\Release\Tests\Tests.exe
+Exit code: 0
+Verdict: PASS
+Target: 2.618163 ms
+Baseline p50: 2.744832 ms
+Adaptive p50: 2.46272 ms
+Baseline miss: 60%
+Adaptive miss: 42.5%
+Scene wins: 3/5
+Quality actions/domains: 10/2
+Learned effects: 5
