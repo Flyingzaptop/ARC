@@ -48,3 +48,4 @@ if(WIN32)
 endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mega_stage_b.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mega_stage_c.cmake)
