@@ -61,6 +61,45 @@ int main() {
     auto storage=infer.classify(g,5);
     assert(storage.semantic==arc::InferredResourceSemantic::StorageTexture);
 
+    arc::ResourceSemanticFeatures storage_buffer{};
+    storage_buffer.resource = 100;
+    storage_buffer.kind = arc::ResourceKind::Buffer;
+    storage_buffer.uav = true;
+    storage_buffer.write_fraction = 0.95;
+    storage_buffer.read_fraction = 0.05;
+    storage_buffer.usage_count = 20;
+    assert(infer.classify(storage_buffer).semantic ==
+        arc::InferredResourceSemantic::StorageBuffer);
+
+    arc::ResourceSemanticFeatures upload_like{};
+    upload_like.resource = 101;
+    upload_like.kind = arc::ResourceKind::Buffer;
+    upload_like.cbv = true;
+    upload_like.read_fraction = 0.95;
+    upload_like.write_fraction = 0.05;
+    upload_like.usage_count = 20;
+    assert(infer.classify(upload_like).semantic ==
+        arc::InferredResourceSemantic::UploadLikeBuffer);
+
+    arc::ResourceSemanticFeatures readback_like{};
+    readback_like.resource = 102;
+    readback_like.kind = arc::ResourceKind::Buffer;
+    readback_like.read_fraction = 0.02;
+    readback_like.write_fraction = 0.98;
+    readback_like.usage_count = 20;
+    assert(infer.classify(readback_like).semantic ==
+        arc::InferredResourceSemantic::ReadbackLikeBuffer);
+
+    arc::ResourceSemanticFeatures geometry{};
+    geometry.resource = 103;
+    geometry.kind = arc::ResourceKind::Buffer;
+    geometry.srv = true;
+    geometry.read_fraction = 0.98;
+    geometry.write_fraction = 0.02;
+    geometry.usage_count = 20;
+    assert(infer.classify(geometry).semantic ==
+        arc::InferredResourceSemantic::GeometryBuffer);
+
     const auto all=infer.classify_all(g);
     assert(all.size()==5);
     std::cout<<"resource-semantics-tests: PASS\n";
