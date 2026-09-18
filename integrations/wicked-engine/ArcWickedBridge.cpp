@@ -45,6 +45,8 @@ struct CommandCounters
     std::uint64_t indexed_draws = 0;
     std::uint64_t dispatches = 0;
     std::uint64_t indirect = 0;
+    std::uint64_t draw_items = 0;
+    std::uint64_t dispatch_groups = 0;
 };
 
 struct CommandPending
@@ -185,10 +187,14 @@ void WriteSceneSemanticCapture(std::ostream& out, const SceneSemanticCapture& ca
         << ",\"indexed_draws\":" << signature.indexed_draws
         << ",\"dispatches\":" << signature.dispatches
         << ",\"indirect\":" << signature.indirect
+        << ",\"draw_items\":" << signature.draw_items
+        << ",\"dispatch_groups\":" << signature.dispatch_groups
         << ",\"copies\":" << signature.copies
         << ",\"resource_accesses_per_frame\":" << signature.resource_accesses_per_frame
         << ",\"draw_calls_per_frame\":" << signature.draw_calls_per_frame
+        << ",\"draw_items_per_frame\":" << signature.draw_items_per_frame
         << ",\"dispatches_per_frame\":" << signature.dispatches_per_frame
+        << ",\"dispatch_groups_per_frame\":" << signature.dispatch_groups_per_frame
         << ",\"indirect_per_frame\":" << signature.indirect_per_frame
         << ",\"submissions_per_frame\":" << signature.submissions_per_frame
         << ",\"copies_per_frame\":" << signature.copies_per_frame
@@ -363,17 +369,28 @@ public:
         else (void)host_->observe_copy_resource(command, source, destination, bytes);
     }
 
-    void Count(ID3D12CommandList* command, std::uint32_t kind) noexcept
+    void Count(ID3D12CommandList* command, std::uint32_t kind, std::uint64_t work_items) noexcept
     {
         if (!command) return;
         std::scoped_lock lock(pending_mutex_);
         auto& counters = pending_[command].counters;
         switch (kind)
         {
-        case 0: ++counters.draws; break;
-        case 1: ++counters.indexed_draws; break;
-        case 2: ++counters.dispatches; break;
-        default: ++counters.indirect; break;
+        case 0:
+            ++counters.draws;
+            counters.draw_items += work_items;
+            break;
+        case 1:
+            ++counters.indexed_draws;
+            counters.draw_items += work_items;
+            break;
+        case 2:
+            ++counters.dispatches;
+            counters.dispatch_groups += work_items;
+            break;
+        default:
+            ++counters.indirect;
+            break;
         }
     }
 
@@ -405,7 +422,8 @@ public:
             const auto& c = state.counters;
             if (c.draws || c.indexed_draws || c.dispatches || c.indirect)
                 (void)host_->observe_command_counters(
-                    command, c.draws, c.indexed_draws, c.dispatches, c.indirect);
+                    command, c.draws, c.indexed_draws, c.dispatches, c.indirect,
+                    c.draw_items, c.dispatch_groups);
 
             (void)host_->observe_command_list_closed(command);
         }
@@ -1330,10 +1348,11 @@ extern "C" void ARCWickedCopy(
 
 extern "C" void ARCWickedCountCommand(
     ID3D12CommandList* command,
-    std::uint32_t kind) noexcept
+    std::uint32_t kind,
+    std::uint64_t work_items) noexcept
 {
     ArcBreadcrumb(34);
-    if (auto* b = GetBridge()) b->Count(command, kind);
+    if (auto* b = GetBridge()) b->Count(command, kind, work_items);
 }
 
 extern "C" void ARCWickedSubmit(
