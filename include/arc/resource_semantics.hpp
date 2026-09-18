@@ -2,6 +2,7 @@
 
 #include "arc/resource_graph.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -20,6 +21,8 @@ enum class InferredResourceSemantic : std::uint8_t {
     TransientIntermediate,
     PersistentHistory,
 };
+
+inline constexpr std::size_t kInferredResourceSemanticCount = 11;
 
 struct ResourceSemanticFeatures {
     ResourceId resource{};
@@ -58,6 +61,9 @@ public:
     [[nodiscard]] ResourceSemanticFeatures extract(
         const ResourceGraph& graph,
         ResourceId resource) const noexcept;
+
+    [[nodiscard]] ResourceSemanticPrediction classify(
+        const ResourceSemanticFeatures& features) const noexcept;
 
     [[nodiscard]] ResourceSemanticPrediction classify(
         const ResourceGraph& graph,

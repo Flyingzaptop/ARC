@@ -56,14 +56,13 @@ ResourceSemanticFeatures ResourceSemanticInferencer::extract(
 }
 
 ResourceSemanticPrediction ResourceSemanticInferencer::classify(
-    const ResourceGraph& graph,
-    ResourceId id) const noexcept
+    const ResourceSemanticFeatures& features) const noexcept
 {
     ResourceSemanticPrediction out{};
-    out.resource = id;
-    out.features = extract(graph, id);
+    out.resource = features.resource;
+    out.features = features;
     const auto& f = out.features;
-    if (!id || f.kind == ResourceKind::Unknown) return out;
+    if (!f.resource || f.kind == ResourceKind::Unknown) return out;
 
     // Evidence bits are intentionally backend-neutral:
     // 0 SRV, 1 UAV, 2 RTV, 3 DSV, 4 texture, 5 buffer, 6 mip chain,
@@ -138,7 +137,7 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
     if (f.rtv) {
         if (f.srv && f.usage_bursts >= 3 && f.reuse_interval_frames > 0.0 && f.reuse_interval_frames <= 3.0) {
             out.semantic = InferredResourceSemantic::PersistentHistory;
-            out.confidence = clamp01(0.58 + std::min(0.25, f.usage_bursts / 20.0));
+            out.confidence = clamp01(0.58 + std::min(0.25, static_cast<double>(f.usage_bursts) / 20.0));
         } else if (f.uav || f.write_fraction >= 0.55) {
             out.semantic = InferredResourceSemantic::TransientIntermediate;
             out.confidence = clamp01(0.66 + 0.18 * f.write_fraction);
@@ -170,6 +169,13 @@ ResourceSemanticPrediction ResourceSemanticInferencer::classify(
     }
 
     return out;
+}
+
+ResourceSemanticPrediction ResourceSemanticInferencer::classify(
+    const ResourceGraph& graph,
+    ResourceId id) const noexcept
+{
+    return classify(extract(graph, id));
 }
 
 std::vector<ResourceSemanticPrediction> ResourceSemanticInferencer::classify_all(

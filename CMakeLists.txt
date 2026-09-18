@@ -22,6 +22,7 @@ add_library(arc-core STATIC
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
     src/core/resource_semantics.cpp
+    src/core/scene_understanding.cpp
     src/core/residency.cpp
     src/core/residency_candidates.cpp
     src/core/texture_quality.cpp
@@ -98,6 +99,10 @@ if(ARC_BUILD_TESTS)
     add_executable(arc-resource-semantics-tests tests/resource_semantics_tests.cpp)
     target_link_libraries(arc-resource-semantics-tests PRIVATE arc::core)
     add_test(NAME arc-resource-semantics-tests COMMAND arc-resource-semantics-tests)
+
+    add_executable(arc-scene-understanding-tests tests/scene_understanding_tests.cpp)
+    target_link_libraries(arc-scene-understanding-tests PRIVATE arc::core)
+    add_test(NAME arc-scene-understanding-tests COMMAND arc-scene-understanding-tests)
 
     add_executable(arc-residency-policy-tests tests/residency_policy_tests.cpp)
     target_link_libraries(arc-residency-policy-tests PRIVATE arc::core)
