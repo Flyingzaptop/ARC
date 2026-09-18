@@ -14,7 +14,10 @@ std::optional<double> raster_coverage_upper(const RasterRegion& r) noexcept {
     const double top=std::max({0.0,r.viewport.y,r.scissor.y});
     const double right=std::min({double(r.width),r.viewport.x+r.viewport.width,r.scissor.x+r.scissor.width});
     const double bottom=std::min({double(r.height),r.viewport.y+r.viewport.height,r.scissor.y+r.scissor.height});
-    return std::clamp(std::max(0.0,right-left)*std::max(0.0,bottom-top)/(double(r.width)*r.height),0.0,1.0);
+    if(right<=left || bottom<=top)return 0.0;
+    // Outward rounding keeps this conservative for fractional viewports and MSAA
+    // sample positions; continuous rectangle area can undercount touched pixels.
+    return std::clamp((std::ceil(right)-std::floor(left))*(std::ceil(bottom)-std::floor(top))/(double(r.width)*r.height),0.0,1.0);
 }
 std::optional<double> gpu_duration_ms(const GpuTimestampSample& s) noexcept {
     if(!s.completed || !s.frequency || s.end<s.begin) return {};

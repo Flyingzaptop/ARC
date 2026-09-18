@@ -50,6 +50,7 @@ int main(){
     g.clear();a=run(g,1,1,work(0,10));b=run(g,1,2,work(10,10));check(g.edges()[0].producer==a&&g.edges()[0].consumer==b,"read modify write");
     RasterRegion r{100,100,{0,0,100,100},{0,0,25,40},true};
     check(std::abs(*raster_coverage_upper(r)-.1)<1e-9,"clipped coverage");
+    r.scissor={0.1,0.1,0.1,0.1};check(std::abs(*raster_coverage_upper(r)-.0001)<1e-12,"subpixel coverage rounds outwards");
     r.scissor={200,0,1,1};check(*raster_coverage_upper(r)==0,"empty intersection");
     r.scissor={-10,-10,200,200};check(*raster_coverage_upper(r)==1,"target clamp");
     r.viewport.width=std::numeric_limits<double>::quiet_NaN();check(!raster_coverage_upper(r),"NaN unknown");

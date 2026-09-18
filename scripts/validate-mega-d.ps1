@@ -18,7 +18,8 @@ function Validate-Graph($Graph){
             $left=[math]::Max(0,[math]::Max($v[0],$s[0]));$top=[math]::Max(0,[math]::Max($v[1],$s[1]))
             $right=[math]::Min($n.raster.width,[math]::Min(($v[0]+$v[2]),($s[0]+$s[2])))
             $bottom=[math]::Min($n.raster.height,[math]::Min(($v[1]+$v[3]),($s[1]+$s[3])))
-            $bound=[math]::Max(0,$right-$left)*[math]::Max(0,$bottom-$top)/([double]$n.raster.width*$n.raster.height)
+            $bound=0.0
+            if($right -gt $left -and $bottom -gt $top){$bound=([math]::Ceiling($right)-[math]::Floor($left))*([math]::Ceiling($bottom)-[math]::Floor($top))/([double]$n.raster.width*$n.raster.height)}
             Require ([math]::Abs($bound-$n.local_raster_coverage_upper) -lt 0.00001) 'Coverage does not match raw raster state'
             ++$regions
         }
