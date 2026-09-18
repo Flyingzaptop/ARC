@@ -316,7 +316,12 @@ if($raw){
     $gates.miss_ratio_improved=($missReduction-ge0.10)
     $gates.p50_improved=($p50Reduction-ge0.05)
     $gates.p99_guard=($bp99-gt0 -and $ap99-le($bp99*1.10))
-    $gates.bounded_churn=([bool]$raw.bounded_churn -and [int]$raw.governor.quality_actions_executed-le24 -and [int]$raw.governor.direction_changes-le8)
+    $gates.bounded_churn=(
+        [bool]$raw.bounded_churn -and
+        [int]$raw.governor.adaptive_quality_actions-le24 -and
+        [double]$raw.governor.adaptive_action_rate-le0.010 -and
+        [double]$raw.governor.adaptive_direction_change_rate-le0.005
+    )
     $gates.full_quality_recovered=[bool]$raw.final_quality_full
     $gates.backend_clean=([int]$raw.governor.quality_backend_failures-eq0)
 
@@ -340,6 +345,10 @@ if($raw){
         events_drained=[int64]$raw.host.events_drained
         quality_actions=[int]$raw.governor.quality_actions_executed
         direction_changes=[int]$raw.governor.direction_changes
+        adaptive_quality_actions=[int]$raw.governor.adaptive_quality_actions
+        adaptive_direction_changes=[int]$raw.governor.adaptive_direction_changes
+        adaptive_action_rate=[double]$raw.governor.adaptive_action_rate
+        adaptive_direction_change_rate=[double]$raw.governor.adaptive_direction_change_rate
         learned_effects=[int]$raw.governor.learned_effects
         restore_probes=[int]$raw.governor.restore_probes
         restore_backoffs=[int]$raw.governor.restore_backoffs
@@ -389,7 +398,7 @@ $summary=@"
 - Miss ratio improved >= 10%: $($gates.miss_ratio_improved)
 - p50 improved >= 5%: $($gates.p50_improved)
 - p99 regression <= 10%: $($gates.p99_guard)
-- Bounded governor churn: $($gates.bounded_churn)
+- Bounded governor churn: $($gates.bounded_churn) (adaptive action rate <= 1.0%, direction-change rate <= 0.5% of control ticks)
 - Full quality recovered: $($gates.full_quality_recovered)
 - Backend clean: $($gates.backend_clean)
 "@
