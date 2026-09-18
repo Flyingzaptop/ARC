@@ -82,7 +82,8 @@ backend-neutral Stage D work structure:
 
 - work kind;
 - pipeline fingerprint when available;
-- resource dependency identity, preferring writes;
+- input and output resource dependency identity;
+- draw/dispatch/copy work magnitude;
 - raster target dimensions.
 
 It does not use engine object names, scene labels, Unreal/Unity/Wicked semantics
