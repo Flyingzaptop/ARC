@@ -15,6 +15,7 @@ enum class InferredResourceSemantic : std::uint8_t {
     DepthBuffer,
     ShadowMap,
     StorageTexture,
+    StorageBuffer,
     GeometryBuffer,
     UploadLikeBuffer,
     ReadbackLikeBuffer,
@@ -22,7 +23,7 @@ enum class InferredResourceSemantic : std::uint8_t {
     PersistentHistory,
 };
 
-inline constexpr std::size_t kInferredResourceSemanticCount = 11;
+inline constexpr std::size_t kInferredResourceSemanticCount = 12;
 
 struct ResourceSemanticFeatures {
     ResourceId resource{};
@@ -30,9 +31,14 @@ struct ResourceSemanticFeatures {
     std::uint64_t allocation_bytes{};
     std::uint64_t width{};
     std::uint32_t height{};
+    std::uint32_t depth{};
+    std::uint32_t format{};
+    std::uint32_t resource_flags{};
     std::uint16_t mip_levels{};
     std::uint16_t array_layers{};
     std::uint32_t sample_count{1};
+    std::uint8_t plane_count{1};
+    ResourceAllocationKind allocation_kind{ResourceAllocationKind::Committed};
     bool srv{};
     bool uav{};
     bool rtv{};
