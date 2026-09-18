@@ -117,6 +117,32 @@ std::wstring EnvString(const wchar_t* name)
     return value;
 }
 
+void WriteDeviceLossContext(HRESULT present_result, HRESULT device_reason) noexcept
+{
+    const auto path = EnvString(L"ARC_WICKED_CRASH_OUTPUT");
+    if (path.empty()) return;
+    HANDLE file = CreateFileW(
+        path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+
+    char buffer[512]{};
+    const int n = sprintf_s(
+        buffer, sizeof(buffer),
+        "device_loss=1\r\npresent_hresult=0x%08lX\r\ndevice_removed_reason=0x%08lX\r\nlast_hook=%u\r\nscene_index=%u\r\nphase=%u\r\n",
+        static_cast<unsigned long>(present_result),
+        static_cast<unsigned long>(device_reason),
+        g_arc_last_hook.load(std::memory_order_relaxed),
+        g_arc_last_scene.load(std::memory_order_relaxed),
+        g_arc_last_phase.load(std::memory_order_relaxed));
+    if (n > 0)
+    {
+        DWORD written = 0;
+        WriteFile(file, buffer, static_cast<DWORD>(n), &written, nullptr);
+    }
+    CloseHandle(file);
+}
+
 std::string Narrow(const std::wstring& value)
 {
     if (value.empty()) return {};
@@ -470,6 +496,7 @@ public:
             ++present_failures_;
             last_present_failure_ = result;
             device_removed_reason_ = device_ ? device_->GetDeviceRemovedReason() : result;
+            WriteDeviceLossContext(last_present_failure_, device_removed_reason_);
         }
         (void)host_->observe_present(swapchain_id, sync_interval, flags, result);
         (void)host_->poll_all_completions();
