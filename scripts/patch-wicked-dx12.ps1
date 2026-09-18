@@ -61,6 +61,11 @@ $dx = Replace-Nth $dx $copy ($copy + $LF + '				ARCWickedObserveSRV(device->desc
 $dx = Replace-Nth $dx $copy ($copy + $LF + '				ARCWickedObserveUAV(device->descriptorheap_res.heap_GPU.Get(), (uint32_t)index, res, &uav);') 3 'bindless UAV'
 $dx = Replace-Nth $dx $copy ($copy + $LF + '				ARCWickedObserveSampler(device->descriptorheap_sam.heap_GPU.Get(), (uint32_t)index);') 4 'bindless sampler'
 
+$rtvCreate = $T+$T+$T+'allocationhandler->device->CreateRenderTargetView(res, &rtv, handle);'
+$dx = Replace-Once $dx $rtvCreate ($rtvCreate + $LF + $T+$T+$T+'ARCWickedObserveRTV(res, &rtv);') 'RTV semantic observation'
+$dsvCreate = $T+$T+$T+'allocationhandler->device->CreateDepthStencilView(res, &dsv, handle);'
+$dx = Replace-Once $dx $dsvCreate ($dsvCreate + $LF + $T+$T+$T+'ARCWickedObserveDSV(res, &dsv);') 'DSV semantic observation'
+
 $bufferViews = $T + $T + '// Create resource views if needed'
 $dx = Replace-Once $dx $bufferViews ($T + $T + 'ARCWickedResourceCreated(internal_state->resource.Get());' + $LF + $LF + $bufferViews) 'buffer observation'
 
