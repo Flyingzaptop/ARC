@@ -110,3 +110,9 @@ The callback CPU metric sums instrumented observer method durations, including
 mutex wait, across threads. It excludes Present export/file I/O and outer host
 lookups; it is not a complete frame-critical-path overhead measurement. Capture
 defaults OFF, and exactly one settled frame is sampled when explicitly enabled.
+
+The renderer overlay also forwards cooperative semaphore signal/wait callbacks
+into the graph. Fence identity uses the native fence lifetime identity and owning
+queue; non-monotonic values or reuse by another queue fail closed. Cross-queue
+ordering can therefore be represented when the renderer emits these callbacks,
+while unknown shader-level bindless use remains explicitly incomplete.

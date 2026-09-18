@@ -198,6 +198,10 @@ $queryEnds=@(
 foreach($line in $queryEnds){$dx=Replace-Once $dx $line ($line+$LF+$T+$T+'ARCWickedAttributionQuery(commandlist.GetGraphicsCommandList(), false);') ('timestamp '+$line)}
 $close='dx12_check(commandlist.GetGraphicsCommandList()->Close());'
 $dx=Replace-Once $dx $close ('ARCWickedAttributionQuery(commandlist.GetGraphicsCommandList(), true);'+$LF+$T+$T+$T+$T+$T+$close) 'timestamp resolve before close'
+$signalLine = $T+$T+'dx12_check(queue->Signal(semaphore.fence.Get(), semaphore.fenceValue));'
+$dx = Replace-Once $dx $signalLine ($signalLine+$LF+$T+$T+'ARCWickedAttributionSignal(queue.Get(), semaphore.fence.Get(), semaphore.fenceValue);') 'attribution semaphore signal'
+$waitLine = $T+$T+'dx12_check(queue->Wait(semaphore.fence.Get(), semaphore.fenceValue));'
+$dx = Replace-Once $dx $waitLine ($waitLine+$LF+$T+$T+'ARCWickedAttributionWait(queue.Get(), semaphore.fence.Get(), semaphore.fenceValue);') 'attribution semaphore wait'
 
 $copyAnchor = $T+$T+'auto internal_state_dst = to_internal(pDst);'
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::CopyResource(' $copyAnchor ($LF+$T+$T+'ARCWickedCopy(commandlist.GetCommandList(), internal_state_src->resource.Get(), internal_state_dst->resource.Get(), 0, 0);') 'CopyResource'

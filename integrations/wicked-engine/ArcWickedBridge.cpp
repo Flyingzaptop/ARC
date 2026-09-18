@@ -604,6 +604,12 @@ public:
             else attribution_.end_work(host_->command_id(command),command);
         }
     }
+    void AttributionSignal(ID3D12CommandQueue* queue,ID3D12Fence* fence,std::uint64_t value) {
+        if(host_&&fence&&attribution_.active())attribution_.signal(host_->queue_id(queue),reinterpret_cast<std::uint64_t>(fence),value);
+    }
+    void AttributionWait(ID3D12CommandQueue* queue,ID3D12Fence* fence,std::uint64_t value) {
+        if(host_&&fence&&attribution_.active())attribution_.wait(host_->queue_id(queue),reinterpret_cast<std::uint64_t>(fence),value);
+    }
     void AttributionPresent(ID3D12CommandQueue* queue,ID3D12Resource* resource,bool success) {
         if(host_&&attribution_.enabled())attribution_.presented(host_->queue_id(queue),host_->resource_id(resource),success);
     }
@@ -1909,6 +1915,12 @@ extern "C" void ARCWickedAttributionTarget(ID3D12CommandList* command,ID3D12Reso
 }
 extern "C" void ARCWickedAttributionQuery(ID3D12GraphicsCommandList* command,bool resolve) noexcept {
     if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionQuery(command,resolve);
+}
+extern "C" void ARCWickedAttributionSignal(ID3D12CommandQueue* queue,ID3D12Fence* fence,std::uint64_t value) noexcept {
+    if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionSignal(queue,fence,value);
+}
+extern "C" void ARCWickedAttributionWait(ID3D12CommandQueue* queue,ID3D12Fence* fence,std::uint64_t value) noexcept {
+    if(g_hooks_enabled)if(auto* b=GetBridge())b->AttributionWait(queue,fence,value);
 }
 
 namespace arc_wicked {

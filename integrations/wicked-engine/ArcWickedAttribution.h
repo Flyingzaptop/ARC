@@ -39,6 +39,7 @@ class AttributionCapture {
     std::vector<Sample> samples_;
     unsigned next_query_{};
     bool pending_export_{},present_success_{};
+    std::uint64_t fence_events_{};
     arc::WorkId present_work_{};
     std::filesystem::path path_;
     std::string source_;
@@ -142,6 +143,12 @@ public:
         }
         graph_.retire_command(command);states_.erase(command);
     }
+    void signal(arc::QueueId queue,std::uint64_t fence,std::uint64_t value){
+        if(active() && queue && fence) { std::scoped_lock lock(mutex_); ++fence_events_; graph_.signal(queue,fence,value); }
+    }
+    void wait(arc::QueueId queue,std::uint64_t fence,std::uint64_t value){
+        if(active() && queue && fence) { std::scoped_lock lock(mutex_); ++fence_events_; graph_.wait(queue,fence,value); }
+    }
     void presented(arc::QueueId queue,arc::ResourceId backbuffer,bool success){
         if(path_.empty())return;std::scoped_lock lock(mutex_);++frames_;
         if(requested_.exchange(false)){graph_.clear();states_.clear();capture_frame_=frames_+1;active_.store(true,std::memory_order_relaxed);return;}
@@ -166,7 +173,7 @@ public:
         std::ofstream out(path_);
         out<<"{\"schema\":1,\"source_sha\":\""<<source_<<"\",\"scope\":\"sampled_frame_candidate_bindings\","
               "\"candidate_scope\":\"cumulative_since_command_reset\",\"shader_access_complete\":false,"
-              "\"queue_fences_observed\":false,\"timing_scope\":\"first_64_direct_draw_dispatch_in_sampled_frame\","
+              "\"queue_fences_observed\":"<<(fence_events_?"true":"false")<<",\"fence_events\":"<<fence_events_<<",\"timing_scope\":\"first_64_direct_draw_dispatch_in_sampled_frame\","
               "\"present_succeeded\":"<<(present_success_?"true":"false")<<",\"frame\":"<<capture_frame_<<",\"export_frame\":"<<frames_
            <<",\"present_work\":"<<present_work_<<",\"present_slice_complete\":"<<(slice.complete?"true":"false")
            <<",\"capture_callback_thread_ms\":"<<double(capture_cpu_ns_.load())/1000000.0
