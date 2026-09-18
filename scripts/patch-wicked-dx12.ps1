@@ -139,6 +139,16 @@ $vertex = $LF+$T+$T+'for (uint32_t arc_i = 0; arc_i < count; ++arc_i)'+$LF+
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindVertexBuffers(' $anchor $vertex 'BindVertexBuffers'
 $dx = Insert-AfterFunctionAnchor $dx 'void GraphicsDevice_DX12::BindIndexBuffer(' $anchor ($LF+$T+$T+'if (indexBuffer != nullptr && indexBuffer->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(indexBuffer)->resource.Get(), false);') 'BindIndexBuffer'
 
+# Render-pass attachments are not shader bindings, so they need explicit
+# behavioral observation. Without this, depth/render targets disappear from
+# scene windows and very different scenes collapse to the same signature.
+$renderPassMarker = 'void GraphicsDevice_DX12::RenderPassBegin(const RenderPassImage* images, uint32_t image_count, CommandList cmd, RenderPassFlags flags)'
+$renderPassAnchor = $T+$T+$T+'auto internal_state = to_internal(texture);'
+$renderPassUse = $LF+
+    $T+$T+$T+'const bool arc_write = image.type != RenderPassImage::Type::SHADING_RATE_SOURCE;'+$LF+
+    $T+$T+$T+'ARCWickedResourceUse(commandlist.GetCommandList(), internal_state->resource.Get(), arc_write);'
+$dx = Insert-AfterFunctionAnchor $dx $renderPassMarker $renderPassAnchor $renderPassUse 'RenderPass attachments'
+
 $counterHooks = @(
     @('void GraphicsDevice_DX12::Draw(',0),
     @('void GraphicsDevice_DX12::DrawIndexed(',1),
