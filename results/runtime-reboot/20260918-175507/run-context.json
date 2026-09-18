@@ -1,0 +1,9 @@
+{
+  "source_sha": "de1e1061f35246c0bb52720a6679fc6f20a223b5",
+  "source_checkout_head": "de1e1061f35246c0bb52720a6679fc6f20a223b5",
+  "executable_sha256": "0FAF0629A4963AA773928829953631DD5A1FDB2CF969A94F5399D000D5AA4578",
+  "boot_time": "2026-09-18T17:49:29.5000000+02:00",
+  "repetitions": 3,
+  "seconds_per_arm": 20,
+  "note": "Post-reboot repeat; no rebuild or driver-setting changes."
+}

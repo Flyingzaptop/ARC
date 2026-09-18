@@ -1,0 +1,9 @@
+{
+  "status": "STOPPED_BY_USER",
+  "reason": "Severe freezes after reboot; no more GPU runs without renewed instruction",
+  "time": "2026-09-18T17:57:01.7487699+02:00",
+  "completed_arms": [
+    "calibration"
+  ],
+  "comparison_complete": false
+}
