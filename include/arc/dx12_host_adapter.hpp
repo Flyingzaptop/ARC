@@ -40,6 +40,8 @@ struct NativeHostAdapterMetrics {
     std::uint64_t indexed_draws_observed{};
     std::uint64_t dispatches_observed{};
     std::uint64_t indirect_observed{};
+    std::uint64_t draw_items_observed{};
+    std::uint64_t dispatch_groups_observed{};
     std::uint64_t barriers_observed{};
     std::uint64_t copies_observed{};
     std::uint64_t queue_submits{};
@@ -126,7 +128,9 @@ public:
         std::uint64_t draws,
         std::uint64_t indexed_draws,
         std::uint64_t dispatches,
-        std::uint64_t indirect);
+        std::uint64_t indirect,
+        std::uint64_t draw_items = 0,
+        std::uint64_t dispatch_groups = 0);
     bool observe_transition_barrier(
         ID3D12CommandList* command,
         ID3D12Resource* resource,
