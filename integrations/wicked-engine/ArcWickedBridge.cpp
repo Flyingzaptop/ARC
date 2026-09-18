@@ -100,6 +100,12 @@ std::array<arc_wicked::HookTiming, 64> g_hook_timings{};
 std::atomic<bool> g_hooks_enabled{true};
 std::atomic<bool> g_hook_timing_enabled{true};
 std::atomic<std::uint64_t> g_present_failures{0};
+void SetVSyncProfiled()
+{
+    const auto begin = std::chrono::steady_clock::now();
+    wi::eventhandler::SetVSync(false);
+    ARCWickedCpuSample("SetVSync", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
+}
 
 void WriteHookTimings(std::ostream& out)
 {
@@ -313,6 +319,14 @@ public:
         const auto output = EnvString(L"ARC_WICKED_OUTPUT");
         if (!output.empty()) output_path_ = output;
         experiment_mode_ = Narrow(EnvString(L"ARC_WICKED_EXPERIMENT_MODE"));
+        const auto cpu_output = EnvString(L"ARC_WICKED_CPU_PROFILE");
+        if (!cpu_output.empty()) {
+            cpu_profile_.open(std::filesystem::path(cpu_output), std::ios::trunc);
+            cpu_profile_ << "elapsed_ms,frame,scene,event,ms\n";
+            cpu_profile_scene_ = EnvInt(L"ARC_WICKED_CPU_SCENE", 1, 0, 18);
+            cpu_profile_seconds_ = EnvInt(L"ARC_WICKED_CPU_SECONDS", 8, 2, 15);
+            cpu_profile_start_ = std::chrono::steady_clock::now();
+        }
         if (!experiment_mode_.empty() && experiment_mode_ != "off" &&
             experiment_mode_ != "observe" && experiment_mode_ != "adaptive")
         {
@@ -573,6 +587,21 @@ public:
     void HarnessUpdate(wi::gui::ComboBox& selector, std::uint32_t width, std::uint32_t height) noexcept
     {
         if (phase_ == Phase::Done) return;
+        if (cpu_profile_.is_open()) {
+            ++cpu_profile_frame_;
+            g_arc_last_scene.store(cpu_profile_scene_, std::memory_order_relaxed);
+            if (!cpu_profile_selected_) {
+                ForceFullQuality();
+                const auto begin = std::chrono::steady_clock::now();
+                selector.SetSelected(cpu_profile_scene_);
+                CpuSample("Scene switch", std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - begin).count());
+                cpu_profile_selected_ = true;
+            }
+            SetVSyncProfiled();
+            wi::renderer::SetTemporalAAEnabled(false);
+            wi::profiler::SetEnabled(true);
+            return;
+        }
         if (experiment_mode_ == "off" || experiment_mode_ == "observe" || experiment_mode_ == "adaptive")
         {
             ExperimentUpdate(selector, width, height);
@@ -584,7 +613,7 @@ public:
         g_arc_last_scene.store(static_cast<std::uint32_t>(current_scene_), std::memory_order_relaxed);
         width_ = width;
         height_ = height;
-        wi::eventhandler::SetVSync(false);
+        SetVSyncProfiled();
         wi::renderer::SetTemporalAAEnabled(false);
         wi::profiler::SetEnabled(true);
 
@@ -713,6 +742,25 @@ public:
 
     bool Finished() const noexcept { return phase_ == Phase::Done; }
 
+    void CpuSample(const char* name, double milliseconds) noexcept {
+        if (!cpu_profile_.is_open() || cpu_profile_rows_ >= 100000 || !std::isfinite(milliseconds)) return;
+        const auto elapsed = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - cpu_profile_start_).count();
+        cpu_profile_ << std::setprecision(9) << elapsed << ',' << cpu_profile_frame_ << ',' << cpu_profile_scene_ << ",\"";
+        for (const char* p = name; *p; ++p) { if (*p == '"') cpu_profile_ << '"'; cpu_profile_ << *p; }
+        cpu_profile_ << "\"," << milliseconds << '\n';
+        ++cpu_profile_rows_;
+    }
+
+    void PollCpuProfile() noexcept {
+        if (!cpu_profile_.is_open()) return;
+        if (std::chrono::duration<double>(std::chrono::steady_clock::now() - cpu_profile_start_).count() < cpu_profile_seconds_) return;
+        cpu_profile_.flush();
+        cpu_profile_.close();
+        phase_ = Phase::Done;
+        PostQuitMessage(0);
+    }
+
     void ForceFullQuality() noexcept
     {
         shadow_level_ = 0;
@@ -729,7 +777,7 @@ private:
         const auto now = std::chrono::steady_clock::now();
         width_ = width;
         height_ = height;
-        wi::eventhandler::SetVSync(false);
+        SetVSyncProfiled();
         wi::renderer::SetTemporalAAEnabled(false);
         wi::profiler::SetEnabled(true);
         const double cpu_ms = have_last_harness_update_ ?
@@ -897,7 +945,7 @@ private:
     void AfterSceneSwitch(std::chrono::steady_clock::time_point now)
     {
         settle_until_ = now + std::chrono::milliseconds(settle_milliseconds_);
-        wi::eventhandler::SetVSync(false);
+        SetVSyncProfiled();
         ApplyCurrentQuality();
         wi::profiler::SetEnabled(true);
         control_window_.clear();
@@ -1446,6 +1494,11 @@ private:
     std::size_t scene_offset_ = 0;
     std::array<Stats, kScenes.size()> experiment_cpu_{};
     std::uint64_t invalid_samples_ = 0;
+    std::ofstream cpu_profile_;
+    std::chrono::steady_clock::time_point cpu_profile_start_{};
+    int cpu_profile_scene_ = 1, cpu_profile_seconds_ = 8;
+    std::uint64_t cpu_profile_frame_ = 0, cpu_profile_rows_ = 0;
+    bool cpu_profile_selected_ = false;
     std::vector<arc::ResourceSemanticPrediction> measured_semantics_;
     arc::FrameId semantic_snapshot_frame_ = 0;
     Phase phase_ = Phase::Dormant;
@@ -1701,7 +1754,17 @@ extern "C" void ARCWickedPresent(
     if (auto* b = GetBridge()) b->Present(swapchain_id, sync_interval, flags, result);
 }
 
+extern "C" void ARCWickedCpuSample(const char* name, double milliseconds) noexcept
+{
+    if (auto* b = GetBridge()) b->CpuSample(name, milliseconds);
+}
+
 namespace arc_wicked {
+
+void PollCpuProfile() noexcept
+{
+    if (auto* b = GetBridge()) b->PollCpuProfile();
+}
 
 void HarnessUpdate(
     wi::gui::ComboBox& test_selector,

@@ -71,5 +71,8 @@ void ARCWickedPresent(
     std::uint32_t flags,
     HRESULT result) noexcept;
 
+// Main-thread diagnostic samples only; disabled unless explicitly requested.
+void ARCWickedCpuSample(const char* name, double milliseconds) noexcept;
+
 }
 #endif

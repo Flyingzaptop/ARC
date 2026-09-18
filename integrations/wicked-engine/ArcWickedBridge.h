@@ -11,5 +11,6 @@ void HarnessUpdate(
 
 void ForceFullQuality() noexcept;
 bool Finished() noexcept;
+void PollCpuProfile() noexcept;
 
 } // namespace arc_wicked

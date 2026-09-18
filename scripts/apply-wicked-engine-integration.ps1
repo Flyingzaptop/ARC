@@ -132,6 +132,7 @@ $proj = Replace-Once $proj '    <ClInclude Include="Tests.h" />' ('    <ClInclud
 $proj = Replace-Once $proj '    <ClCompile Include="Tests.cpp" />' ('    <ClCompile Include="Tests.cpp" />'+$LF+'    <ClCompile Include="ArcWickedBridge.cpp" />') 'bridge cpp project item'
 Write-Utf8Lf $projPath $proj
 
+& (Join-Path $ArcRoot 'scripts\patch-wicked-cpu-profile.ps1') -WickedRoot $WickedRoot
 Write-Host 'ARC Wicked Engine overlay applied.'
 Write-Host "Wicked SHA: $actual"
 Write-Host "ARC root: $ArcRoot"
