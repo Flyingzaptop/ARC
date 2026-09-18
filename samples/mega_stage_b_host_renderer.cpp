@@ -301,10 +301,13 @@ std::vector<SceneLoad> schedule() {
     using M = SceneLoad::MemoryMode;
     return {
         {"easy-0", D::Raster, 0, 0, 0, M::Normal, true},
-        {"bandwidth-heavy", D::Bandwidth, 6, 0, 0, M::Normal, false},
-        {"raster-moderate-memory", D::Raster, 0, 3, 0, M::Moderate, false},
-        {"lighting-heavy", D::Lighting, 0, 0, 28, M::Normal, false},
-        {"mixed-emergency", D::Raster, 4, 2, 14, M::Emergency, false},
+        {"bandwidth-heavy", D::Bandwidth, 12, 0, 0, M::Normal, false},
+        {"recover-bandwidth", D::Raster, 0, 0, 0, M::Normal, true},
+        {"raster-moderate-memory", D::Raster, 0, 6, 0, M::Moderate, false},
+        {"recover-raster", D::Raster, 0, 0, 0, M::Normal, true},
+        {"lighting-heavy", D::Lighting, 0, 0, 64, M::Normal, false},
+        {"recover-lighting", D::Raster, 0, 0, 0, M::Normal, true},
+        {"mixed-emergency", D::Raster, 6, 4, 24, M::Emergency, false},
         {"final-easy", D::Raster, 0, 0, 0, M::Normal, true},
     };
 }
@@ -764,10 +767,13 @@ int main(int argc, char** argv) {
     cfg.runtime.governor.quality.minimum_hold_samples_after_degrade = 3;
     cfg.runtime.governor.quality.frame_ewma_alpha = .55;
     cfg.runtime.governor.quality.overload_margin_ms = .03;
-    cfg.runtime.governor.quality.extra_restore_headroom_ms = .03;
+    // This renderer intentionally runs in the sub-millisecond range on modern
+    // laptop GPUs. Keep the recovery reserve proportional to that scale so an
+    // easy phase can actually restore previously degraded quality.
+    cfg.runtime.governor.quality.extra_restore_headroom_ms = .01;
     cfg.runtime.governor.quality.optimizer.minimum_gain_ms = .005;
     cfg.runtime.governor.quality.optimizer.minimum_confidence = .35;
-    cfg.runtime.governor.quality.optimizer.restoration_headroom_ms = .10;
+    cfg.runtime.governor.quality.optimizer.restoration_headroom_ms = .03;
     cfg.runtime.governor.arbitration.memory_pressure_enter = .85;
     cfg.runtime.governor.arbitration.memory_pressure_emergency = .95;
     cfg.runtime.governor.arbitration.allow_combined = true;
@@ -796,7 +802,7 @@ int main(int argc, char** argv) {
         arc::QualityDomain::Bandwidth, arc::QualityDomain::Raster, arc::QualityDomain::Lighting};
     const std::array<const char*, 3> labels{
         "texture sampling", "raster layers", "lighting iterations"};
-    const std::array<std::size_t, 3> scene_index{1, 2, 3};
+    const std::array<std::size_t, 3> scene_index{1, 3, 5};
     std::array<std::array<double, 3>, 3> gains{};
     std::cout << "Calibrating renderer quality ladders\n";
     for (std::size_t i = 0; i < 3; ++i) {
@@ -951,6 +957,10 @@ int main(int argc, char** argv) {
               << ", rejections: " << hm.bridge_rejections + bm.controller_rejections << "\n"
               << "Quality actions: " << gm.quality_actions_executed
               << ", domains: " << quality_domains
+              << " [bandwidth=" << ((quality_domain_mask & (1ull << static_cast<unsigned>(arc::QualityDomain::Bandwidth))) ? "yes" : "no")
+              << ", raster=" << ((quality_domain_mask & (1ull << static_cast<unsigned>(arc::QualityDomain::Raster))) ? "yes" : "no")
+              << ", lighting=" << ((quality_domain_mask & (1ull << static_cast<unsigned>(arc::QualityDomain::Lighting))) ? "yes" : "no")
+              << "]"
               << ", memory actions: " << host.runtime().coordinator().metrics().executed_actions
               << ", combined ticks: " << combined_ticks << "\n"
               << "Final quality full: " << (adaptive_state.full() ? "yes" : "no")
