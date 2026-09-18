@@ -150,19 +150,19 @@ $renderPassUse = $LF+
 $dx = Insert-AfterFunctionAnchor $dx $renderPassMarker $renderPassAnchor $renderPassUse 'RenderPass attachments'
 
 $counterHooks = @(
-    @('void GraphicsDevice_DX12::Draw(',0),
-    @('void GraphicsDevice_DX12::DrawIndexed(',1),
-    @('void GraphicsDevice_DX12::DrawInstanced(',0),
-    @('void GraphicsDevice_DX12::DrawIndexedInstanced(',1),
-    @('void GraphicsDevice_DX12::DrawInstancedIndirect(',3),
-    @('void GraphicsDevice_DX12::DrawIndexedInstancedIndirect(',3),
-    @('void GraphicsDevice_DX12::Dispatch(',2),
-    @('void GraphicsDevice_DX12::DispatchIndirect(',3),
-    @('void GraphicsDevice_DX12::DispatchMesh(',0),
-    @('void GraphicsDevice_DX12::DispatchMeshIndirect(',3)
+    @('void GraphicsDevice_DX12::Draw(',0,'vertexCount'),
+    @('void GraphicsDevice_DX12::DrawIndexed(',1,'indexCount'),
+    @('void GraphicsDevice_DX12::DrawInstanced(',0,'(uint64_t)vertexCount * (uint64_t)instanceCount'),
+    @('void GraphicsDevice_DX12::DrawIndexedInstanced(',1,'(uint64_t)indexCount * (uint64_t)instanceCount'),
+    @('void GraphicsDevice_DX12::DrawInstancedIndirect(',3,'0'),
+    @('void GraphicsDevice_DX12::DrawIndexedInstancedIndirect(',3,'0'),
+    @('void GraphicsDevice_DX12::Dispatch(',2,'(uint64_t)threadGroupCountX * (uint64_t)threadGroupCountY * (uint64_t)threadGroupCountZ'),
+    @('void GraphicsDevice_DX12::DispatchIndirect(',3,'0'),
+    @('void GraphicsDevice_DX12::DispatchMesh(',2,'(uint64_t)threadGroupCountX * (uint64_t)threadGroupCountY * (uint64_t)threadGroupCountZ'),
+    @('void GraphicsDevice_DX12::DispatchMeshIndirect(',3,'0')
 )
 foreach ($entry in $counterHooks) {
-    $dx = Insert-AfterFunctionAnchor $dx $entry[0] $anchor ($LF+$T+$T+"ARCWickedCountCommand(commandlist.GetCommandList(), $($entry[1]));") $entry[0]
+    $dx = Insert-AfterFunctionAnchor $dx $entry[0] $anchor ($LF+$T+$T+"ARCWickedCountCommand(commandlist.GetCommandList(), $($entry[1]), $($entry[2]));") $entry[0]
 }
 
 $copyAnchor = $T+$T+'auto internal_state_dst = to_internal(pDst);'
