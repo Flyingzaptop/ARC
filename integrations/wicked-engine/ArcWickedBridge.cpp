@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -79,6 +80,10 @@ enum class Phase
     Recovery,
     Done,
 };
+
+std::atomic<std::uint32_t> g_arc_last_hook{0};
+std::atomic<std::uint32_t> g_arc_last_scene{0};
+std::atomic<std::uint32_t> g_arc_last_phase{0};
 
 int EnvInt(const wchar_t* name, int fallback, int minimum, int maximum)
 {
@@ -390,6 +395,8 @@ public:
     {
         if (!host_ || phase_ == Phase::Done) return;
 
+        g_arc_last_phase.store(static_cast<std::uint32_t>(phase_), std::memory_order_relaxed);
+        g_arc_last_scene.store(static_cast<std::uint32_t>(current_scene_), std::memory_order_relaxed);
         width_ = width;
         height_ = height;
         wi::eventhandler::SetVSync(false);
@@ -997,9 +1004,6 @@ private:
 
 Bridge* g_bridge = nullptr;
 std::mutex g_bridge_mutex;
-std::atomic<std::uint32_t> g_arc_last_hook{0};
-std::atomic<std::uint32_t> g_arc_last_scene{0};
-std::atomic<std::uint32_t> g_arc_last_phase{0};
 
 void ArcBreadcrumb(std::uint32_t hook) noexcept
 {
