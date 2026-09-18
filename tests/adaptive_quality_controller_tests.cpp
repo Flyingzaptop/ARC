@@ -241,7 +241,7 @@ int main() {
         }
 
         QualityDecision probe{};
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 3 && probe.kind == QualityDecisionKind::None; ++i) {
             probe = controller.tick(lighting_sample(7.0, 10.0), candidates);
         }
         assert(probe.kind == QualityDecisionKind::Restore);
