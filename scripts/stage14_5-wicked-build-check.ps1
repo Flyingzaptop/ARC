@@ -50,11 +50,11 @@ try {
     if ($actual -ne $WickedSha) { throw "Wicked SHA mismatch: $actual" }
 
     Write-Host '=== Apply ARC Wicked overlay ==='
-    $overlayArgs = @(
-        '-WickedRoot', $wicked,
-        '-ArcRoot', $RepoRoot,
-        '-ArcBuildRoot', $arcBuild
-    )
+    $overlayArgs = @{
+        WickedRoot = $wicked
+        ArcRoot = $RepoRoot
+        ArcBuildRoot = $arcBuild
+    }
     & (Join-Path $RepoRoot 'scripts\apply-wicked-engine-integration.ps1') @overlayArgs
     if ($LASTEXITCODE -ne 0) { throw 'Wicked overlay failed.' }
 
