@@ -218,9 +218,13 @@ void ResourceGraph::use(ResourceId id, QueueId queue, std::uint64_t timestamp, b
     if (it == resources_.end() || !it->second.alive) { ++errors_; return; }
     auto& r = it->second;
     r.queues.insert(queue);
+    ++r.queue_use_counts[queue];
     if (r.read_count + r.write_count && presentation_frame_ > r.last_used_frame) {
-        const auto gap = static_cast<double>(presentation_frame_ - r.last_used_frame);
+        const auto gap_frames = presentation_frame_ - r.last_used_frame;
+        const auto gap = static_cast<double>(gap_frames);
         r.reuse_interval_frames = r.reuse_interval_frames == 0 ? gap : 0.875 * r.reuse_interval_frames + 0.125 * gap;
+        r.reuse_gap_frames_sum += gap_frames;
+        ++r.reuse_gap_samples;
         if (gap > 1) { ++r.usage_bursts; }
     }
     r.last_used_frame = presentation_frame_;
