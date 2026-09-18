@@ -22,30 +22,30 @@ std::uint32_t saturating_frames(std::uint64_t value) noexcept {
 }  // namespace
 
 VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work) noexcept {
-    std::vector<std::uint64_t> writes;
-    std::vector<std::uint64_t> reads;
-    bool observed_write = false;
+    std::vector<std::uint64_t> identity;
+    identity.reserve(work.accesses.size());
+    bool have_read = false;
+    bool have_write = false;
+    bool observed_access = false;
 
     for (const auto& access : work.accesses) {
         const std::uint64_t resource = static_cast<std::uint64_t>(access.resource);
         if (!resource) continue;
         const std::uint64_t encoded =
-            (resource << 2U) ^
-            (access.write ? 0x2ULL : 0x0ULL) ^
+            (resource << 3U) ^
+            (access.write ? 0x4ULL : 0x0ULL) ^
+            (access.full_overwrite ? 0x2ULL : 0x0ULL) ^
             (access.evidence == AccessEvidence::Observed ? 0x1ULL : 0x0ULL);
-        if (access.write) {
-            writes.push_back(encoded);
-            observed_write = observed_write || access.evidence == AccessEvidence::Observed;
-        } else {
-            reads.push_back(encoded);
-        }
+        identity.push_back(encoded);
+        have_write = have_write || access.write;
+        have_read = have_read || !access.write;
+        observed_access = observed_access || access.evidence == AccessEvidence::Observed;
     }
 
-    auto& identity = writes.empty() ? reads : writes;
     std::ranges::sort(identity);
     identity.erase(std::unique(identity.begin(), identity.end()), identity.end());
 
-    if (!work.pipeline && identity.empty()) return {};
+    if (!work.pipeline && identity.empty() && !work.items) return {};
 
     std::uint64_t hash = 1469598103934665603ULL;
     const auto mix = [&](std::uint64_t value) {
@@ -56,15 +56,19 @@ VisualTrackFingerprint make_visual_track_fingerprint(const WorkObservation& work
 
     mix(static_cast<std::uint64_t>(work.kind) + 1ULL);
     mix(work.pipeline);
+    mix(work.items);
+    mix(work.copy_bytes);
     mix(static_cast<std::uint64_t>(work.raster.width));
     mix(static_cast<std::uint64_t>(work.raster.height));
     for (const auto value : identity) mix(value);
     if (!hash) hash = 1;
 
-    double confidence = 0.30;
-    if (work.pipeline) confidence += 0.25;
-    if (!writes.empty()) confidence += 0.20;
-    if (observed_write) confidence += 0.10;
+    double confidence = 0.20;
+    if (work.pipeline) confidence += 0.20;
+    if (work.items || work.copy_bytes) confidence += 0.10;
+    if (have_read) confidence += 0.15;
+    if (have_write) confidence += 0.15;
+    if (observed_access) confidence += 0.05;
     if (work.raster.known) confidence += 0.05;
     if (work.bindings_complete) confidence += 0.05;
 
