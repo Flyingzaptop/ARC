@@ -313,6 +313,13 @@ int main() {
         assert(state.settle_remaining == 0);
         assert(controller.effects().find(candidates.front()).has_value());
 
+        // Simulate a mutation whose physical effect was still pending when the
+        // host crossed the Adaptive -> Recovery boundary. It must still be
+        // learned, but it must not recreate a steady-state restore guard.
+        controller.note_action_applied(
+            candidates.front(), QualityDecisionKind::Degrade, 12.0, 8.0, true);
+        assert(controller.state().restore_guard_remaining == 0);
+
         auto recovery = controller.tick(lighting_sample(4.0, 12.0), candidates);
         assert(recovery.kind == QualityDecisionKind::Restore);
     }
