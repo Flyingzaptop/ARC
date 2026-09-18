@@ -113,6 +113,10 @@ private:
     std::vector<double> controlWindow_{};
     std::uint64_t adaptiveTicks_{};
     std::uint64_t recoveryTicks_{};
+    std::uint64_t adaptiveQualityActions_{};
+    std::uint64_t adaptiveDirectionChanges_{};
+    std::uint64_t adaptiveRestoreProbes_{};
+    std::uint64_t adaptiveRestoreBackoffs_{};
     bool profileRegistered_{};
     bool shouldExit_{};
     bool finalized_{};
