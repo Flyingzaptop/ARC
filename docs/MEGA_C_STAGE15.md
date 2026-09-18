@@ -43,7 +43,7 @@ Scene comparison combines total-variation distance over resource and byte semant
 
 ## Wicked truth protocol
 
-The Wicked bridge captures one scene signature at the end of each baseline and adaptive scene slot. The bridge stores captures by slot for evaluation bookkeeping, but the scene index/name is never passed into the inferencer or clusterer.
+The Wicked bridge captures one scene signature at the end of each baseline and adaptive scene slot. Its checkpoint is armed only after the configured scene-settle interval, so resource loading and transition activity are excluded from the semantic measurement window just as they are excluded from frame-time sampling. The bridge stores captures by slot for evaluation bookkeeping, but the scene index/name is never passed into the inferencer or clusterer.
 
 The result JSON contains resource-semantic coverage, baseline/adaptive scene signatures, label-free cluster assignments, and a full baseline-to-adaptive distance matrix. It explicitly records `truth_labels_used_for_inference=false` and `semantic_labels_used_by_controller=false`.
 
