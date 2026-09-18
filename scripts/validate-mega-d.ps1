@@ -12,7 +12,16 @@ function Validate-Graph($Graph){
         Require ($n.id -gt 0 -and -not $nodes.ContainsKey([string]$n.id)) 'Duplicate/invalid work ID'
         $nodes[[string]$n.id]=$n
         if($null -ne $n.gpu_ms){Require (-not [double]::IsNaN([double]$n.gpu_ms) -and -not [double]::IsInfinity([double]$n.gpu_ms) -and $n.gpu_ms -ge 0) 'Invalid cost';++$timed}
-        if($null -ne $n.local_raster_coverage_upper){Require ($n.kind -eq 0 -and $n.local_raster_coverage_upper -ge 0 -and $n.local_raster_coverage_upper -le 1) 'Invalid region';++$regions}
+        if($null -ne $n.local_raster_coverage_upper){
+            Require ($n.kind -eq 0 -and $n.local_raster_coverage_upper -ge 0 -and $n.local_raster_coverage_upper -le 1 -and $n.raster.known -ceq $true -and $n.raster.width -gt 0 -and $n.raster.height -gt 0) 'Invalid region'
+            $v=$n.raster.viewport;$s=$n.raster.scissor
+            $left=[math]::Max(0,[math]::Max($v[0],$s[0]));$top=[math]::Max(0,[math]::Max($v[1],$s[1]))
+            $right=[math]::Min($n.raster.width,[math]::Min(($v[0]+$v[2]),($s[0]+$s[2])))
+            $bottom=[math]::Min($n.raster.height,[math]::Min(($v[1]+$v[3]),($s[1]+$s[3])))
+            $bound=[math]::Max(0,$right-$left)*[math]::Max(0,$bottom-$top)/([double]$n.raster.width*$n.raster.height)
+            Require ([math]::Abs($bound-$n.local_raster_coverage_upper) -lt 0.00001) 'Coverage does not match raw raster state'
+            ++$regions
+        }
     }
     foreach($e in $Graph.edges){Require ($nodes.ContainsKey([string]$e.producer) -and $nodes.ContainsKey([string]$e.consumer) -and $e.producer -lt $e.consumer) 'Invalid/cyclic dependency'}
     return [pscustomobject]@{nodes=$nodes;timed=$timed;regions=$regions}

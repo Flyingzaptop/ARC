@@ -136,6 +136,17 @@ void GpuAttributionGraph::write_json(std::ostream& out) const {
            <<",\"local_raster_coverage_upper\":";
         if(n.local_coverage_upper)out<<*n.local_coverage_upper;else out<<"null";
         out<<",\"gpu_ms\":";if(n.gpu_ms)out<<*n.gpu_ms;else out<<"null";
+        const auto& r=n.work.raster;
+        out<<",\"raster\":{\"known\":"<<(r.known?"true":"false")<<",\"width\":"<<r.width<<",\"height\":"<<r.height;
+        const auto rect=[&](const char* key,const ScreenRect& value){
+            out<<",\""<<key<<"\":[";bool first_value=true;
+            for(double component:{value.x,value.y,value.width,value.height}){
+                if(!first_value)out<<',';first_value=false;
+                if(std::isfinite(component))out<<component;else out<<"null";
+            }
+            out<<']';
+        };
+        rect("viewport",r.viewport);rect("scissor",r.scissor);out<<'}';
         out<<",\"accesses\":[";bool fa=true;
         for(const auto& a:n.work.accesses){if(!fa)out<<',';fa=false;out<<"{\"resource\":"<<a.resource<<",\"write\":"<<(a.write?"true":"false")<<",\"observed\":"<<(a.evidence==AccessEvidence::Observed?"true":"false")<<",\"full_overwrite\":"<<(a.full_overwrite?"true":"false")<<'}';}
         out<<"]}";

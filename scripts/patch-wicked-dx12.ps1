@@ -109,6 +109,7 @@ $old = @'
 '@
 $new = @'
 		ARCWickedCommandBegin(commandlist.GetCommandList(), queues[queue].desc.Type);
+		if (queue == QUEUE_GRAPHICS) ARCWickedAttributionRegion(commandlist.GetCommandList(), 1, 0, 0, 16384, 16384);
 		return cmd;
 	}
 	void GraphicsDevice_DX12::SubmitCommandLists()

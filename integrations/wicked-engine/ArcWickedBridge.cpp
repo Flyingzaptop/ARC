@@ -741,6 +741,7 @@ public:
                 (void)host_->drain();
                 scene_checkpoint_ = scene_understanding_.checkpoint(host_->graph());
                 scene_semantic_window_started_ = true;
+                if(phase_==Phase::Baseline && current_scene_==2)attribution_.arm();
                 return;
             }
 
@@ -924,6 +925,7 @@ private:
             return;
         }
         if (phase_ == Phase::Warmup || elapsed - desired * slot_s < settle_s) return;
+        if(scene==2)attribution_.arm();
         const double gpu_ms = static_cast<double>(wi::profiler::GetLastGPUFrameTimeMS());
         if (!std::isfinite(gpu_ms) || !std::isfinite(cpu_ms)) { ++invalid_samples_; return; }
         if (gpu_ms > 0.0)

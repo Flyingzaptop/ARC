@@ -48,7 +48,7 @@ measurement modes retain their behavior when capture is disabled.
 ## Pinned Wicked adapter
 
 Set `ARC_WICKED_ATTRIBUTION_OUTPUT` to an absolute JSON path to opt in. The adapter
-captures work recorded between Presents 240 and 241, preserving recording order
+captures one frame after the Water baseline scene has warmed up and settled, preserving recording order
 within command lists and actual submission order. Draw bindings are explicitly a
 conservative cumulative candidate set since reset, not an exact root-binding
 snapshot. Copies have observed endpoints. The exact presented backbuffer is
