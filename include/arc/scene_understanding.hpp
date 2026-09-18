@@ -21,12 +21,15 @@ struct SceneResourceUsageCheckpoint {
 
 struct SceneObservationCheckpoint {
     FrameId frame{};
+    std::size_t submission_count{};
+    std::size_t copy_count{};
     bool valid{};
     std::unordered_map<ResourceId, SceneResourceUsageCheckpoint> resources;
 };
 
 struct SceneSemanticSignature {
     FrameId frame{};
+    FrameId window_frames{};
     std::uint64_t active_resources{};
     std::uint64_t known_resources{};
     std::uint64_t active_bytes{};
@@ -36,6 +39,18 @@ struct SceneSemanticSignature {
     float read_fraction{};
     float write_fraction{};
     float multi_queue_fraction{};
+    std::uint64_t submissions{};
+    std::uint64_t draws{};
+    std::uint64_t indexed_draws{};
+    std::uint64_t dispatches{};
+    std::uint64_t indirect{};
+    std::uint64_t copies{};
+    float resource_accesses_per_frame{};
+    float draw_calls_per_frame{};
+    float dispatches_per_frame{};
+    float indirect_per_frame{};
+    float submissions_per_frame{};
+    float copies_per_frame{};
     std::array<float, kInferredResourceSemanticCount> resource_fractions{};
     std::array<float, kInferredResourceSemanticCount> byte_fractions{};
 };
