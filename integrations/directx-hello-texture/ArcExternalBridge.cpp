@@ -109,11 +109,11 @@ ArcExternalBridge::ArcExternalBridge(
     cfg.runtime.governor.quality.restore_backoff_base_samples = 128;
     cfg.runtime.governor.quality.restore_backoff_max_samples = 2048;
     cfg.runtime.governor.quality.frame_ewma_alpha = 0.40;
-    cfg.runtime.governor.quality.overload_margin_ms = 0.02;
-    cfg.runtime.governor.quality.extra_restore_headroom_ms = 0.03;
+    cfg.runtime.governor.quality.overload_margin_ms = 0.005;
+    cfg.runtime.governor.quality.extra_restore_headroom_ms = 0.02;
     cfg.runtime.governor.quality.optimizer.minimum_gain_ms = 0.01;
     cfg.runtime.governor.quality.optimizer.minimum_confidence = 0.30;
-    cfg.runtime.governor.quality.optimizer.restoration_headroom_ms = 0.04;
+    cfg.runtime.governor.quality.optimizer.restoration_headroom_ms = 0.03;
 
     host_ = std::make_unique<arc::dx12::NativeHostAdapter>(device, adapter_.Get(), cfg);
     host_->set_mode(arc::RuntimeMode::ObserveOnly);
