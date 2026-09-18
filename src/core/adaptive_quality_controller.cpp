@@ -185,7 +185,11 @@ QualityDecision AdaptiveQualityController::tick(
         auto available = next_degrade_candidates(candidates);
         std::vector<QualityActionCandidate> calibrated;
         calibrated.reserve(available.size());
-        for (const auto& candidate : available) calibrated.push_back(effects_.calibrate(candidate));
+        for (const auto& candidate : available) {
+            auto estimate = effects_.calibrate(candidate);
+            estimate = contextual_effects_.calibrate(estimate, filtered);
+            calibrated.push_back(estimate);
+        }
 
         out.plan = optimizer_.plan_degrade(filtered, calibrated);
         limit_plan(out.plan);
@@ -204,12 +208,23 @@ QualityDecision AdaptiveQualityController::tick(
         calibrated.reserve(restorable.size());
         for (const auto& action : restorable) {
             auto estimate = effects_.calibrate(action);
+            estimate = contextual_effects_.calibrate(estimate, filtered);
             if (const auto restore = restore_effects_.find(action)) {
                 const double sigma = std::sqrt(std::max(0.0, restore->variance_ms2));
                 const double conservative_restore_cost =
                     std::max(0.0, restore->mean_gain_ms + sigma);
                 estimate.expected_ms_gain =
                     std::max(estimate.expected_ms_gain, conservative_restore_cost);
+            }
+            if (const auto contextual_restore =
+                    contextual_restore_effects_.predict(action, filtered)) {
+                const double conservative_contextual_cost =
+                    std::max(
+                        0.0,
+                        contextual_restore->predicted_ms +
+                            contextual_restore->residual_sigma_ms);
+                estimate.expected_ms_gain =
+                    std::max(estimate.expected_ms_gain, conservative_contextual_cost);
             }
             calibrated.push_back(estimate);
         }
@@ -256,7 +271,8 @@ void AdaptiveQualityController::note_action_applied(
     QualityDecisionKind kind,
     double before_frame_ms,
     double after_frame_ms,
-    bool success) noexcept {
+    bool success,
+    const FrameBudgetSample* context) noexcept {
     if (!success || kind == QualityDecisionKind::None) return;
 
     const auto previous_kind = last_applied_kind_;
@@ -288,6 +304,7 @@ void AdaptiveQualityController::note_action_applied(
             ? std::max(0.0, before_frame_ms - after_frame_ms)
             : 0.0;
         effects_.record(action, observed_gain);
+        if (context) contextual_effects_.record(action, *context, observed_gain);
         ++degrade_actions_applied_;
 
         // A degrade immediately following a restore is evidence that the
@@ -310,6 +327,7 @@ void AdaptiveQualityController::note_action_applied(
         // conservative upper estimate of this cost instead of contaminating
         // the degradation-benefit model.
         restore_effects_.record(action, observed_cost);
+        if (context) contextual_restore_effects_.record(action, *context, observed_cost);
         if (!recovery_mode_) recent_restores_[key] = 0;
         ++restore_actions_applied_;
         if (recovery_mode_ && active_.empty()) recovery_mode_ = false;
@@ -346,6 +364,8 @@ void AdaptiveQualityController::reset() noexcept {
     recent_restores_.clear();
     effects_.clear();
     restore_effects_.clear();
+    contextual_effects_.clear();
+    contextual_restore_effects_.clear();
     filter_initialized_ = false;
     filtered_frame_ms_ = 0.0;
     overload_samples_ = 0;
