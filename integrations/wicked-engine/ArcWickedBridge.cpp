@@ -348,27 +348,29 @@ public:
         (void)host_->observe_execute_command_lists(
             queue, std::span<ID3D12CommandList* const>(commands, count));
 
-        QueueState* queue_state = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence;
+        std::uint64_t completion_value = 0;
         {
             std::scoped_lock lock(queue_mutex_);
             auto [it, inserted] = queues_.try_emplace(queue);
-            queue_state = &it->second;
-            queue_state->type = type;
+            auto& queue_state = it->second;
+            queue_state.type = type;
             if (inserted && device_)
             {
-                if (SUCCEEDED(device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queue_state->fence))))
-                    (void)host_->bind_completion_fence(queue, queue_state->fence.Get());
+                if (SUCCEEDED(device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queue_state.fence))))
+                    (void)host_->bind_completion_fence(queue, queue_state.fence.Get());
+            }
+            if (queue_state.fence)
+            {
+                completion_fence = queue_state.fence;
+                completion_value = ++queue_state.value;
             }
         }
 
-        if (queue_state && queue_state->fence)
+        if (completion_fence && SUCCEEDED(queue->Signal(completion_fence.Get(), completion_value)))
         {
-            const std::uint64_t value = ++queue_state->value;
-            if (SUCCEEDED(queue->Signal(queue_state->fence.Get(), value)))
-            {
-                (void)host_->observe_fence_signal(queue, queue_state->fence.Get(), value);
-                (void)host_->poll_completion(queue);
-            }
+            (void)host_->observe_fence_signal(queue, completion_fence.Get(), completion_value);
+            (void)host_->poll_completion(queue);
         }
     }
 
@@ -492,11 +494,7 @@ public:
         shadow_level_ = 0;
         geometry_level_ = 0;
         bandwidth_level_ = 0;
-        wi::renderer::SetShadowProps2D(2048);
-        wi::renderer::SetShadowPropsCube(1024);
-        wi::renderer::SetTessellationEnabled(true);
-        wi::renderer::SetDisableAlbedoMaps(false);
-        wi::renderer::SetTemporalAAEnabled(false);
+        ApplyCurrentQuality();
     }
 
 private:
@@ -513,11 +511,22 @@ private:
         }
     }
 
+    void ApplyCurrentQuality() noexcept
+    {
+        constexpr std::array<int, 4> res2d{2048, 1536, 1024, 512};
+        constexpr std::array<int, 4> cube{1024, 768, 512, 256};
+        wi::renderer::SetShadowProps2D(res2d[shadow_level_]);
+        wi::renderer::SetShadowPropsCube(cube[shadow_level_]);
+        wi::renderer::SetTessellationEnabled(geometry_level_ == 0);
+        wi::renderer::SetDisableAlbedoMaps(bandwidth_level_ != 0);
+        wi::renderer::SetTemporalAAEnabled(false);
+    }
+
     void AfterSceneSwitch(std::chrono::steady_clock::time_point now)
     {
         settle_until_ = now + std::chrono::milliseconds(settle_milliseconds_);
         wi::eventhandler::SetVSync(false);
-        wi::renderer::SetTemporalAAEnabled(false);
+        ApplyCurrentQuality();
         wi::profiler::SetEnabled(true);
         control_window_.clear();
     }
@@ -971,12 +980,12 @@ private:
     std::uint64_t adaptive_restore_backoffs_ = 0;
 };
 
-std::unique_ptr<Bridge> g_bridge;
+Bridge* g_bridge = nullptr;
 std::mutex g_bridge_mutex;
 
 Bridge* GetBridge() noexcept
 {
-    return g_bridge.get();
+    return g_bridge;
 }
 
 } // namespace
@@ -988,7 +997,7 @@ extern "C" void ARCWickedDeviceReady(
 {
     if (!device) return;
     std::scoped_lock lock(g_bridge_mutex);
-    if (!g_bridge) g_bridge = std::make_unique<Bridge>(device, resource_heap, sampler_heap);
+    if (!g_bridge) g_bridge = new Bridge(device, resource_heap, sampler_heap);
 }
 
 extern "C" void ARCWickedResourceCreated(ID3D12Resource* resource) noexcept
