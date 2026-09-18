@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -30,6 +31,17 @@ struct AdaptiveQualityControllerConfig {
     double overload_margin_ms{0.10};
     double extra_restore_headroom_ms{0.25};
     std::uint32_t minimum_hold_samples_after_degrade{8};
+
+    // Restore probes are only a deadlock escape hatch. They require sustained
+    // deep headroom; a probe that is reversed shortly afterwards receives an
+    // exponential per-action cooldown so scene-dependent effect estimates
+    // cannot ping-pong quality around the frame target.
+    std::uint32_t restore_probe_samples_required{12};
+    double restore_probe_headroom_fraction{0.08};
+    std::uint32_t restore_reversal_window_samples{24};
+    std::uint32_t restore_backoff_base_samples{48};
+    std::uint32_t restore_backoff_max_samples{768};
+
     std::uint32_t max_actions_per_decision{1};
     std::uint32_t max_active_actions{16};
 };
@@ -50,6 +62,8 @@ struct AdaptiveQualityControllerState {
     std::uint64_t degrade_actions_applied{};
     std::uint64_t restore_actions_applied{};
     std::uint64_t direction_changes{};
+    std::uint64_t restore_probes{};
+    std::uint64_t restore_backoffs{};
     QualityDecisionKind last_applied_kind{QualityDecisionKind::None};
 };
 
@@ -97,7 +111,14 @@ private:
     AdaptiveQualityControllerConfig config_{};
     AdaptiveQualityOptimizer optimizer_{};
     ActionEffectTracker effects_{};
+    struct RestorePenalty {
+        std::uint32_t failures{};
+        std::uint32_t cooldown{};
+    };
+
     std::unordered_map<Key, QualityActionCandidate, Hash> active_{};
+    std::unordered_map<Key, RestorePenalty, Hash> restore_penalties_{};
+    std::unordered_map<Key, std::uint32_t, Hash> recent_restores_{};
 
     bool filter_initialized_{};
     double filtered_frame_ms_{};
@@ -109,6 +130,8 @@ private:
     std::uint64_t degrade_actions_applied_{};
     std::uint64_t restore_actions_applied_{};
     std::uint64_t direction_changes_{};
+    std::uint64_t restore_probes_{};
+    std::uint64_t restore_backoffs_{};
     QualityDecisionKind last_applied_kind_{QualityDecisionKind::None};
 };
 
