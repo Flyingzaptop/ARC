@@ -409,7 +409,7 @@ public:
             ForceFullQuality();
             phase_ = Phase::Warmup;
             phase_start_ = now;
-            current_scene_ = 1;
+            current_scene_ = 0;
             selector.SetSelected(kScenes[current_scene_].combo_index);
             AfterSceneSwitch(now);
             return;
@@ -420,10 +420,25 @@ public:
 
         if (phase_ == Phase::Warmup)
         {
-            if (gpu_ms > 0.0 && now >= settle_until_) warmup_.frames.push_back(gpu_ms);
-            if (elapsed >= static_cast<double>(warmup_seconds_))
+            // Prewarm every measured scene before collecting baseline data.
+            // Otherwise baseline sees cold asset/resource/shader state while
+            // adaptive sees the same scenes already resident/cached, which
+            // makes per-scene comparisons order-dependent.
+            const double slot_s = static_cast<double>(warmup_seconds_);
+            const std::size_t desired = std::min<std::size_t>(
+                static_cast<std::size_t>(elapsed / slot_s), kScenes.size());
+
+            if (desired >= kScenes.size())
             {
                 EnterMeasuredPhase(Phase::Baseline, selector, now);
+                return;
+            }
+
+            if (desired != current_scene_)
+            {
+                current_scene_ = desired;
+                selector.SetSelected(kScenes[current_scene_].combo_index);
+                AfterSceneSwitch(now);
             }
             return;
         }
