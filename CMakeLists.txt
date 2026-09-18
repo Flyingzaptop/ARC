@@ -245,6 +245,7 @@ if(ARC_BUILD_TESTS)
 endif()
 
 include(cmake/stage5.cmake)
+include(cmake/mega_e.cmake)
 
 if(ARC_BUILD_TESTS)
     add_executable(arc-test-assertions-tests tests/test_assertions_tests.cpp)
