@@ -1,0 +1,21 @@
+{
+  "schema":1,
+  "valid":false,
+  "benchmark":"stage14_external_renderer",
+  "integration":"microsoft_directx_graphics_samples_hello_texture",
+  "upstream_sha":"213dd4fd4918ea009dd8f35adee1aff1f2ecaba4",
+  "arc_source_sha":"fae7a4fc19075429e6cc1461b90bf7af7fd38416",
+  "adapter":"NVIDIA GeForce RTX 3060 Laptop GPU",
+  "native_width":1920,
+  "native_height":1080,
+  "temporal_used":false,
+  "target_frame_ms":0.553336,
+  "baseline":{"samples":33817,"p50_ms":0.676900,"p99_ms":2.360904,"miss_ratio":1.000000,"mean_overshoot_ms":0.318360},
+  "adaptive":{"samples":36238,"p50_ms":0.649000,"p99_ms":2.134026,"miss_ratio":0.997213,"mean_overshoot_ms":0.260589},
+  "host":{"resources":4,"descriptor_writes":3,"resource_uses":221526,"queue_submits":73842,"fence_signals":73842,"completion_updates":76140,"presents":73842,"events_drained":814574,"failed_observations":0,"bridge_rejections":0},
+  "graph":{"resources":4,"errors":0},
+  "governor":{"quality_actions_executed":8,"pending_effects_resolved":8,"quality_backend_failures":0,"learned_effects":4,"direction_changes":1,"restore_probes":0,"restore_backoffs":0,"adaptive_ticks":2264,"recovery_ticks":34},
+  "final_quality_full":true,
+  "performance_win":false,
+  "bounded_churn":true
+}

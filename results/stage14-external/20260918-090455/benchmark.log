@@ -1,0 +1,16 @@
+﻿ARC Stage 14 external renderer acceptance
+ARC source: fae7a4fc19075429e6cc1461b90bf7af7fd38416
+Upstream: microsoft/DirectX-Graphics-Samples @ 213dd4fd4918ea009dd8f35adee1aff1f2ecaba4
+Executable: C:\Users\r3d_flzp\ARC-Stage14-External\DirectX-Graphics-Samples\Samples\Desktop\D3D12HelloWorld\src\HelloTexture\bin\x64\Release\D3D12HelloTexture.exe
+Exit code: 0
+Verdict: FAIL
+Adapter: NVIDIA GeForce RTX 3060 Laptop GPU
+Target: 0.553336 ms
+Baseline miss: 100%
+Adaptive miss: 99.7%
+Baseline p50: 0.6769 ms
+Adaptive p50: 0.649 ms
+Quality actions: 8
+Direction changes: 1
+Restore probes/backoffs: 0/0
+Full quality: True
