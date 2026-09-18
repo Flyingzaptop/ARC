@@ -346,6 +346,24 @@ public:
         (void)host_->observe_sampler(heap, index);
     }
 
+    void ObserveRTV(
+        ID3D12Resource* resource,
+        const D3D12_RENDER_TARGET_VIEW_DESC* view) noexcept
+    {
+        if (!host_ || !resource || !view) return;
+        if (!host_->resource_id(resource)) (void)host_->observe_external_resource(resource);
+        (void)host_->observe_rtv_unlocated(resource, *view);
+    }
+
+    void ObserveDSV(
+        ID3D12Resource* resource,
+        const D3D12_DEPTH_STENCIL_VIEW_DESC* view) noexcept
+    {
+        if (!host_ || !resource || !view) return;
+        if (!host_->resource_id(resource)) (void)host_->observe_external_resource(resource);
+        (void)host_->observe_dsv_unlocated(resource, *view);
+    }
+
     void CommandBegin(ID3D12CommandList* command, D3D12_COMMAND_LIST_TYPE type) noexcept
     {
         if (!host_ || !command) return;
@@ -1327,6 +1345,22 @@ extern "C" void ARCWickedObserveSampler(
 {
     ArcBreadcrumb(22);
     if (auto* b = GetBridge()) b->ObserveSampler(heap, index);
+}
+
+extern "C" void ARCWickedObserveRTV(
+    ID3D12Resource* resource,
+    const D3D12_RENDER_TARGET_VIEW_DESC* view) noexcept
+{
+    ArcBreadcrumb(23);
+    if (auto* b = GetBridge()) b->ObserveRTV(resource, view);
+}
+
+extern "C" void ARCWickedObserveDSV(
+    ID3D12Resource* resource,
+    const D3D12_DEPTH_STENCIL_VIEW_DESC* view) noexcept
+{
+    ArcBreadcrumb(24);
+    if (auto* b = GetBridge()) b->ObserveDSV(resource, view);
 }
 
 extern "C" void ARCWickedCommandBegin(
