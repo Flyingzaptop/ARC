@@ -1,6 +1,7 @@
 #pragma once
 
 #include "arc/action_effect_tracker.hpp"
+#include "arc/contextual_effect_model.hpp"
 #include "arc/adaptive_quality.hpp"
 
 #include <cstddef>
@@ -84,7 +85,8 @@ public:
         QualityDecisionKind kind,
         double before_frame_ms,
         double after_frame_ms,
-        bool success) noexcept;
+        bool success,
+        const FrameBudgetSample* context = nullptr) noexcept;
 
     // Enter an explicit recovery/rollback phase. Preserve active actions and
     // learned effects, but release temporary anti-chatter state that is only
@@ -96,6 +98,8 @@ public:
     [[nodiscard]] AdaptiveQualityControllerState state() const noexcept;
     [[nodiscard]] const ActionEffectTracker& effects() const noexcept { return effects_; }
     [[nodiscard]] const ActionEffectTracker& restore_effects() const noexcept { return restore_effects_; }
+    [[nodiscard]] const ContextualActionEffectTracker& contextual_effects() const noexcept { return contextual_effects_; }
+    [[nodiscard]] const ContextualActionEffectTracker& contextual_restore_effects() const noexcept { return contextual_restore_effects_; }
     [[nodiscard]] const AdaptiveQualityControllerConfig& config() const noexcept { return config_; }
 
 private:
@@ -117,6 +121,8 @@ private:
     AdaptiveQualityOptimizer optimizer_{};
     ActionEffectTracker effects_{};
     ActionEffectTracker restore_effects_{};
+    ContextualActionEffectTracker contextual_effects_{};
+    ContextualActionEffectTracker contextual_restore_effects_{};
     struct RestorePenalty {
         std::uint32_t failures{};
         std::uint32_t cooldown{};
