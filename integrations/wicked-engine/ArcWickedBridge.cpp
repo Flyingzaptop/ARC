@@ -158,6 +158,98 @@ std::uint64_t Delta(std::uint64_t now, std::uint64_t before)
     return now >= before ? now - before : 0;
 }
 
+const char* WorkloadName(arc::WorkloadClass value) noexcept
+{
+    switch (value)
+    {
+    case arc::WorkloadClass::Balanced: return "balanced";
+    case arc::WorkloadClass::RasterHeavy: return "raster";
+    case arc::WorkloadClass::GeometryHeavy: return "geometry";
+    case arc::WorkloadClass::ComputeHeavy: return "compute";
+    case arc::WorkloadClass::BandwidthHeavy: return "bandwidth";
+    case arc::WorkloadClass::ShadowHeavy: return "shadow";
+    case arc::WorkloadClass::Mixed: return "mixed";
+    default: return "unknown";
+    }
+}
+
+const char* CompatibilityName(arc::CompatibilityMode value) noexcept
+{
+    switch (value)
+    {
+    case arc::CompatibilityMode::ObserveOnly: return "observe_only";
+    case arc::CompatibilityMode::QualityOnly: return "quality_only";
+    case arc::CompatibilityMode::FullControl: return "full_control";
+    default: return "observe_only";
+    }
+}
+
+struct WorkloadAccum
+{
+    double raster{};
+    double geometry{};
+    double compute{};
+    double bandwidth{};
+    double shadow{};
+    double confidence{};
+    std::uint64_t samples{};
+
+    void add(const arc::WorkloadSignature& x) noexcept
+    {
+        raster += x.raster;
+        geometry += x.geometry;
+        compute += x.compute;
+        bandwidth += x.bandwidth;
+        shadow += x.shadow;
+        confidence += x.confidence;
+        ++samples;
+    }
+
+    [[nodiscard]] arc::WorkloadSignature average() const noexcept
+    {
+        arc::WorkloadSignature out{};
+        if (!samples) return out;
+        const double n = static_cast<double>(samples);
+        out.raster = raster / n;
+        out.geometry = geometry / n;
+        out.compute = compute / n;
+        out.bandwidth = bandwidth / n;
+        out.shadow = shadow / n;
+        out.confidence = confidence / n;
+        out.activity = std::max({out.raster, out.geometry, out.compute, out.bandwidth, out.shadow});
+
+        const std::array<double, 5> scores{
+            out.raster, out.geometry, out.compute, out.bandwidth, out.shadow
+        };
+        const std::array<arc::WorkloadClass, 5> classes{
+            arc::WorkloadClass::RasterHeavy,
+            arc::WorkloadClass::GeometryHeavy,
+            arc::WorkloadClass::ComputeHeavy,
+            arc::WorkloadClass::BandwidthHeavy,
+            arc::WorkloadClass::ShadowHeavy,
+        };
+        std::size_t best = 0;
+        std::size_t second = 0;
+        for (std::size_t i = 1; i < scores.size(); ++i)
+        {
+            if (scores[i] > scores[best])
+            {
+                second = best;
+                best = i;
+            }
+            else if (i != best && (second == best || scores[i] > scores[second]))
+            {
+                second = i;
+            }
+        }
+        if (scores[best] < 0.20) out.dominant = arc::WorkloadClass::Balanced;
+        else if (scores[best] - scores[second] < 0.10 && scores[second] > 0.35)
+            out.dominant = arc::WorkloadClass::Mixed;
+        else out.dominant = classes[best];
+        return out;
+    }
+};
+
 class Bridge final
 {
 public:
@@ -210,6 +302,7 @@ public:
         arc_source_sha_ = Narrow(EnvString(L"ARC_SOURCE_SHA"));
         const auto output = EnvString(L"ARC_WICKED_OUTPUT");
         if (!output.empty()) output_path_ = output;
+        else output_path_ = "mega-stage-c-wicked.json";
     }
 
     void ResourceCreated(ID3D12Resource* resource) noexcept
@@ -663,41 +756,37 @@ private:
         if (control_window_.empty()) return;
 
         const auto metrics = host_->metrics();
-        const double draws = static_cast<double>(
-            Delta(metrics.draws_observed, last_control_metrics_.draws_observed) +
-            Delta(metrics.indexed_draws_observed, last_control_metrics_.indexed_draws_observed));
-        const double dispatches = static_cast<double>(
-            Delta(metrics.dispatches_observed, last_control_metrics_.dispatches_observed));
-        const double uses = static_cast<double>(
-            Delta(metrics.resource_uses, last_control_metrics_.resource_uses));
-        const double descriptors = static_cast<double>(
-            Delta(metrics.descriptor_writes, last_control_metrics_.descriptor_writes));
-        const double barriers = static_cast<double>(
-            Delta(metrics.barriers_observed, last_control_metrics_.barriers_observed));
-
+        arc::WorkloadTelemetrySample telemetry{};
+        telemetry.frames = static_cast<std::uint64_t>(control_window_.size());
+        telemetry.gpu_ms = Percentile(control_window_, 0.50);
+        telemetry.target_ms = target;
+        telemetry.draws = Delta(metrics.draws_observed, last_control_metrics_.draws_observed);
+        telemetry.indexed_draws = Delta(
+            metrics.indexed_draws_observed, last_control_metrics_.indexed_draws_observed);
+        telemetry.dispatches = Delta(
+            metrics.dispatches_observed, last_control_metrics_.dispatches_observed);
+        telemetry.indirect = Delta(
+            metrics.indirect_observed, last_control_metrics_.indirect_observed);
+        telemetry.resource_uses = Delta(
+            metrics.resource_uses, last_control_metrics_.resource_uses);
+        telemetry.descriptor_writes = Delta(
+            metrics.descriptor_writes, last_control_metrics_.descriptor_writes);
+        telemetry.barriers = Delta(
+            metrics.barriers_observed, last_control_metrics_.barriers_observed);
+        telemetry.copies = Delta(
+            metrics.copies_observed, last_control_metrics_.copies_observed);
         last_control_metrics_ = metrics;
 
-        const double draw_pressure = std::clamp(draws / 1800.0, 0.0, 1.0);
-        const double dispatch_pressure = std::clamp(dispatches / 320.0, 0.0, 1.0);
-        const double use_pressure = std::clamp(uses / 2500.0, 0.0, 1.0);
-        const double descriptor_pressure = std::clamp(descriptors / 160.0, 0.0, 1.0);
-        const double barrier_pressure = std::clamp(barriers / 600.0, 0.0, 1.0);
+        const auto signature = arc::SceneUnderstandingModel::infer_workload(telemetry);
+        if (phase_ == Phase::Adaptive && current_scene_ < scene_workloads_.size())
+            scene_workloads_[current_scene_].add(signature);
 
         arc::FrameBudgetSample frame{};
-        frame.frame_ms = Percentile(control_window_, 0.50);
+        frame.frame_ms = telemetry.gpu_ms;
         frame.target_frame_ms = target;
-        frame.gpu_busy_fraction = std::clamp(frame.frame_ms / std::max(0.001, target), 0.0, 1.0);
-        // Keep the class-specific signals conservative. When the renderer is
-        // broadly GPU-bound, UnknownGpu should win over a guessed semantic
-        // bottleneck so ARC may compare all non-temporal quality domains.
-        // Stage 15 will replace these activity heuristics with automatic scene
-        // understanding.
-        frame.memory_bandwidth_fraction = std::min(0.70, std::max(use_pressure, descriptor_pressure));
-        frame.geometry_pressure = std::min(0.70, draw_pressure);
-        frame.lighting_pressure = std::min(0.70, std::max(dispatch_pressure, draw_pressure * 0.72));
-        frame.shadow_pressure = std::min(0.70, std::max(barrier_pressure, draw_pressure * 0.82));
-        frame.raster_pressure = std::min(
-            0.70, std::clamp(draw_pressure * 0.55 + use_pressure * 0.45, 0.0, 1.0));
+        frame.gpu_busy_fraction = std::clamp(
+            frame.frame_ms / std::max(0.001, target), 0.0, 1.0);
+        frame = arc::SceneUnderstandingModel::enrich_frame(frame, signature);
 
         control_window_.clear();
         (void)host_->frame_tick(frame, false);
@@ -997,6 +1086,7 @@ private:
     Stats adaptive_;
     std::array<Stats, kScenes.size()> baseline_scenes_{};
     std::array<Stats, kScenes.size()> adaptive_scenes_{};
+    std::array<WorkloadAccum, kScenes.size()> scene_workloads_{};
     std::vector<double> control_window_;
 
     double target_ms_ = 0.0;
