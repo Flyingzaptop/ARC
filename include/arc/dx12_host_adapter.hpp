@@ -107,6 +107,12 @@ public:
         std::uint32_t index,
         ID3D12Resource* resource,
         const D3D12_RENDER_TARGET_VIEW_DESC& view);
+    bool observe_rtv_unlocated(
+        ID3D12Resource* resource,
+        const D3D12_RENDER_TARGET_VIEW_DESC& view);
+    bool observe_dsv_unlocated(
+        ID3D12Resource* resource,
+        const D3D12_DEPTH_STENCIL_VIEW_DESC& view);
     bool observe_dsv(
         ID3D12DescriptorHeap* heap,
         std::uint32_t index,
