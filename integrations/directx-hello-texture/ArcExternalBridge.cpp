@@ -291,8 +291,9 @@ ComPtr<IDXGIAdapter3> ArcExternalBridge::FindAdapter(ID3D12Device* device)
 int ArcExternalBridge::EnvInt(const wchar_t* name, int fallback, int minimum, int maximum)
 {
     wchar_t buffer[64]{};
-    const DWORD count = GetEnvironmentVariableW(name, buffer, static_cast<DWORD>(std::size(buffer)));
-    if (count == 0 || count >= std::size(buffer)) return fallback;
+    const DWORD capacity = static_cast<DWORD>(_countof(buffer));
+    const DWORD count = GetEnvironmentVariableW(name, buffer, capacity);
+    if (count == 0 || count >= capacity) return fallback;
     const int value = _wtoi(buffer);
     return std::clamp(value, minimum, maximum);
 }
