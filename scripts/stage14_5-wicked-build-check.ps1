@@ -65,7 +65,7 @@ try {
     if (-not $msbuild) { throw 'MSBuild.exe not found.' }
 
     $msbuildVersionText = (& $msbuild -version -nologo | Select-Object -Last 1).Trim()
-    if ($msbuildVersionText -notmatch '^(\\d+)\\.') { throw "Unable to parse MSBuild version: $msbuildVersionText" }
+    if ($msbuildVersionText -notmatch '^(\d+)\.') { throw "Unable to parse MSBuild version: $msbuildVersionText" }
     $msbuildMajor = [int]$Matches[1]
     if ($msbuildMajor -ge 18) { $platformToolset = 'v145' }
     elseif ($msbuildMajor -ge 17) { $platformToolset = 'v143' }
