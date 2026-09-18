@@ -77,8 +77,14 @@ SceneObservationCheckpoint SceneUnderstandingInferencer::checkpoint(const Resour
     out.resources.reserve(graph.resources().size());
     for (const auto& [id, record] : graph.resources()) {
         if (!record.alive) continue;
-        out.resources.emplace(id, SceneResourceUsageCheckpoint{
-            record.read_count, record.write_count, record.usage_bursts});
+        SceneResourceUsageCheckpoint usage{};
+        usage.reads = record.read_count;
+        usage.writes = record.write_count;
+        usage.usage_bursts = record.usage_bursts;
+        usage.reuse_gap_frames_sum = record.reuse_gap_frames_sum;
+        usage.reuse_gap_samples = record.reuse_gap_samples;
+        usage.queue_use_counts = record.queue_use_counts;
+        out.resources.emplace(id, usage);
     }
     return out;
 }
@@ -115,15 +121,39 @@ SceneSemanticSignature SceneUnderstandingInferencer::summarize(
             std::uint64_t prior_reads = 0;
             std::uint64_t prior_writes = 0;
             std::uint64_t prior_bursts = 0;
+            std::uint64_t prior_gap_sum = 0;
+            std::uint64_t prior_gap_samples = 0;
+            const SceneResourceUsageCheckpoint* prior = nullptr;
             if (const auto it = checkpoint.resources.find(id); it != checkpoint.resources.end()) {
-                prior_reads = it->second.reads;
-                prior_writes = it->second.writes;
-                prior_bursts = it->second.usage_bursts;
+                prior = &it->second;
+                prior_reads = prior->reads;
+                prior_writes = prior->writes;
+                prior_bursts = prior->usage_bursts;
+                prior_gap_sum = prior->reuse_gap_frames_sum;
+                prior_gap_samples = prior->reuse_gap_samples;
             }
             delta_reads = record.read_count >= prior_reads ? record.read_count - prior_reads : record.read_count;
             delta_writes = record.write_count >= prior_writes ? record.write_count - prior_writes : record.write_count;
             delta_bursts = record.usage_bursts >= prior_bursts ?
                 record.usage_bursts - prior_bursts : record.usage_bursts;
+
+            const auto gap_sum = record.reuse_gap_frames_sum >= prior_gap_sum ?
+                record.reuse_gap_frames_sum - prior_gap_sum : record.reuse_gap_frames_sum;
+            const auto gap_samples = record.reuse_gap_samples >= prior_gap_samples ?
+                record.reuse_gap_samples - prior_gap_samples : record.reuse_gap_samples;
+            features.reuse_interval_frames = gap_samples ?
+                static_cast<double>(gap_sum) / static_cast<double>(gap_samples) : 0.0;
+
+            std::size_t active_queues = 0;
+            for (const auto& [queue, count] : record.queue_use_counts) {
+                std::uint64_t prior_count = 0;
+                if (prior) {
+                    if (const auto q = prior->queue_use_counts.find(queue); q != prior->queue_use_counts.end())
+                        prior_count = q->second;
+                }
+                if (count > prior_count) ++active_queues;
+            }
+            features.queue_count = active_queues;
         } else if (config_.active_window_frames > 0 &&
                    out.frame >= record.last_used_frame &&
                    out.frame - record.last_used_frame > config_.active_window_frames) {
@@ -243,11 +273,12 @@ SceneClusterAssignment SceneSemanticClusterer::observe(const SceneSemanticSignat
         }
     }
 
-    if (best == centroids_.size() || best_distance > config_.cluster_distance) {
+    const bool no_existing_cluster = best == centroids_.size();
+    if (no_existing_cluster || best_distance > config_.cluster_distance) {
         centroids_.push_back(signature);
         observations_.push_back(1);
         out.cluster = static_cast<std::uint32_t>(centroids_.size());
-        out.distance = best == centroids_.size() ? 1.0F : best_distance;
+        out.distance = no_existing_cluster ? 1.0F : best_distance;
         out.confidence = clamp01(std::min(signature.coverage, signature.mean_confidence));
         out.created = true;
         return out;
