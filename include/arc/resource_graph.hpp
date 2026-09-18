@@ -109,12 +109,15 @@ struct ResourceRecord final {
     Temperature temperature{Temperature::Unknown};
     FrameId last_used_frame{};
     std::unordered_set<QueueId> queues;
+    std::unordered_map<QueueId, std::uint64_t> queue_use_counts;
     bool alive{};
     std::uint32_t evidence{}; // historical view bits; descriptor overwrite does not erase history
     std::uint64_t create_sequence{};
     std::uint64_t destroy_sequence{};
     double reuse_interval_frames{};
     std::uint64_t usage_bursts{};
+    std::uint64_t reuse_gap_frames_sum{};
+    std::uint64_t reuse_gap_samples{};
 };
 
 // A slow-path backend-neutral view of resource life. It deliberately receives
