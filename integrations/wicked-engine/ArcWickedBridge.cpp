@@ -518,6 +518,14 @@ public:
             const double within_slot = elapsed - static_cast<double>(current_scene_) * slot_s;
             if (within_slot < settle_s || gpu_ms <= 0.0) return;
 
+            if (!scene_semantic_window_started_)
+            {
+                (void)host_->drain();
+                scene_checkpoint_ = scene_understanding_.checkpoint(host_->graph());
+                scene_semantic_window_started_ = true;
+                return;
+            }
+
             if (phase_ == Phase::Baseline)
             {
                 AddSample(baseline_, baseline_scenes_[current_scene_], gpu_ms);
@@ -572,7 +580,8 @@ private:
     void CaptureSceneSemantic(Phase phase, std::size_t scene)
     {
         if (!host_ || scene >= kScenes.size() ||
-            (phase != Phase::Baseline && phase != Phase::Adaptive))
+            (phase != Phase::Baseline && phase != Phase::Adaptive) ||
+            !scene_semantic_window_started_)
             return;
 
         auto& capture = phase == Phase::Baseline ?
@@ -622,11 +631,8 @@ private:
         ApplyCurrentQuality();
         wi::profiler::SetEnabled(true);
         control_window_.clear();
-        if (host_)
-        {
-            (void)host_->drain();
-            scene_checkpoint_ = scene_understanding_.checkpoint(host_->graph());
-        }
+        scene_semantic_window_started_ = false;
+        scene_checkpoint_ = {};
     }
 
     void EnterMeasuredPhase(
@@ -1146,6 +1152,7 @@ private:
     arc::SceneUnderstandingInferencer scene_understanding_{};
     arc::SceneSemanticClusterer scene_clusters_{};
     arc::SceneObservationCheckpoint scene_checkpoint_{};
+    bool scene_semantic_window_started_ = false;
     std::array<SceneSemanticCapture, kScenes.size()> baseline_scene_semantics_{};
     std::array<SceneSemanticCapture, kScenes.size()> adaptive_scene_semantics_{};
 
