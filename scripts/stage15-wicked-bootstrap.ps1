@@ -52,11 +52,17 @@ if ($ExpectedSha -and $sourceSha -ne $ExpectedSha) {
 }
 
 $stage14 = Join-Path $arc 'scripts\stage14_5-wicked-bootstrap.ps1'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stage14 -RepoUrl $RepoUrl -Branch $Branch -WorkRoot $WorkRoot -ExpectedSha $sourceSha -Seconds $Seconds -NoPublish
-$stage14Exit = $LASTEXITCODE
+$stage14Log = Join-Path $archiveRoot ('bootstrap-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.log')
+Start-Transcript -Path $stage14Log -Force | Out-Null
+try {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stage14 -RepoUrl $RepoUrl -Branch $Branch -WorkRoot $WorkRoot -ExpectedSha $sourceSha -Seconds $Seconds -NoPublish
+    $stage14Exit = $LASTEXITCODE
+} finally {
+    Stop-Transcript | Out-Null
+}
 
 $localRoot = Join-Path $arc 'results\stage14_5-wicked-local'
-$run = Get-ChildItem -LiteralPath $localRoot -Directory |
+$run = Get-ChildItem -LiteralPath $localRoot -Directory -ErrorAction SilentlyContinue |
     Sort-Object Name -Descending |
     Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'wicked-engine.json') } |
     Select-Object -First 1
@@ -65,7 +71,7 @@ if (-not $run) {
         $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
         Copy-Item -LiteralPath $localRoot -Destination (Join-Path $archiveRoot ("incomplete-" + $stamp)) -Recurse -Force
     }
-    throw "Stage 14.5 did not produce a local Wicked result. Preserved diagnostics under $archiveRoot"
+    throw "Stage 14.5 exited $stage14Exit without a local Wicked result. Build/run log: $stage14Log. Preserved diagnostics under $archiveRoot"
 }
 
 $archiveRun = Join-Path $archiveRoot $run.Name

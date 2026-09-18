@@ -102,17 +102,34 @@ elseif ($msbuildMajor -ge 17) { $platformToolset = 'v143' }
 else { throw "MSBuild $msbuildVersionText is too old for the Stage 14.5 C++23 bridge." }
 Write-Host "MSBuild: $msbuildVersionText / $platformToolset"
 
-Step 'Building ARC with Wicked-compatible static CRT'
+Step 'Building and running ARC deterministic regressions with standard CRT'
+# Test executables use the same CRT configuration as the normal Windows CI.
+# Only libraries linked into Wicked need /MT; do not propagate that host ABI
+# requirement into every standalone test/tool executable.
+$validationBuild = Join-Path $arc 'build-validation'
+& $cmake -S $arc -B $validationBuild -A x64 -DARC_BUILD_TESTS=ON -DARC_GPU_TESTS=OFF -DARC_STRESS_TESTS=OFF
+if ($LASTEXITCODE -ne 0) { throw "ARC test configure failed: $LASTEXITCODE" }
+$regressionTargets = @(
+    'arc-test-assertions-tests', 'arc-wicked-telemetry-tests',
+    'arc-resource-semantics-tests', 'arc-scene-understanding-tests',
+    'arc-adaptive-quality-tests', 'arc-adaptive-quality-controller-tests',
+    'arc-closed-loop-quality-sim-tests', 'arc-dx12-host-adapter-tests',
+    'arc-dx12-host-adapter-surface-tests', 'arc-runtime-event-bridge-tests',
+    'arc-runtime-integration-tests', 'arc-global-action-arbiter-tests',
+    'arc-unified-runtime-governor-tests'
+)
+& $cmake --build $validationBuild --config Release --parallel 4 --target @regressionTargets
+if ($LASTEXITCODE -ne 0) { throw "ARC regression build failed: $LASTEXITCODE" }
+& $ctest --test-dir $validationBuild -C Release -R 'arc-(test-assertions-tests|wicked-telemetry-tests|stage15-validation-tests|resource-semantics-tests|scene-understanding-tests|adaptive-quality-tests|adaptive-quality-controller-tests|closed-loop-quality-sim-tests|dx12-host-adapter-tests|dx12-host-adapter-surface-tests|runtime-event-bridge-tests|runtime-integration-tests|global-action-arbiter-tests|unified-runtime-governor-tests)' --output-on-failure --timeout 60
+if ($LASTEXITCODE -ne 0) { throw "ARC deterministic regressions failed: $LASTEXITCODE" }
+
+Step 'Building ARC libraries with Wicked-compatible static CRT'
 $arcBuild = Join-Path $arc 'build-wicked'
 if (Test-Path -LiteralPath $arcBuild) { Remove-Item -LiteralPath $arcBuild -Recurse -Force }
-& $cmake -S $arc -B $arcBuild -A x64 -DARC_BUILD_TESTS=ON -DARC_GPU_TESTS=OFF -DARC_STRESS_TESTS=OFF '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded'
+& $cmake -S $arc -B $arcBuild -A x64 -DARC_BUILD_TESTS=OFF -DARC_GPU_TESTS=OFF -DARC_STRESS_TESTS=OFF '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded'
 if ($LASTEXITCODE -ne 0) { throw "ARC configure failed: $LASTEXITCODE" }
-& $cmake --build $arcBuild --config Release
+& $cmake --build $arcBuild --config Release --parallel 4 --target arc-core arc-dx12-observer
 if ($LASTEXITCODE -ne 0) { throw "ARC Release build failed: $LASTEXITCODE" }
-
-Step 'Running ARC deterministic regressions'
-& $ctest --test-dir $arcBuild -C Release -R 'arc-(test-assertions-tests|wicked-telemetry-tests|stage15-validation-tests|resource-semantics-tests|scene-understanding-tests|adaptive-quality-tests|adaptive-quality-controller-tests|closed-loop-quality-sim-tests|dx12-host-adapter-tests|dx12-host-adapter-surface-tests|runtime-event-bridge-tests|runtime-integration-tests|global-action-arbiter-tests|unified-runtime-governor-tests)' --output-on-failure --timeout 60
-if ($LASTEXITCODE -ne 0) { throw "ARC deterministic regressions failed: $LASTEXITCODE" }
 
 Step 'Preparing pinned Wicked Engine'
 if (-not (Test-Path -LiteralPath (Join-Path $wicked '.git'))) {
