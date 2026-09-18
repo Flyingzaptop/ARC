@@ -20,19 +20,7 @@ Write-Host '=== Stage 18 + 19 deterministic validation ===' -ForegroundColor Cya
 if ($LASTEXITCODE -ne 0) { throw "Mega E deterministic validation failed: $LASTEXITCODE" }
 
 Write-Host '=== Native D3D12 Stage 18 + attribution foundation smoke ===' -ForegroundColor Cyan
-& ctest --test-dir $build -C Release --output-on-failure -R '^(arc-gpu-attribution-native|arc-temporal-visibility-native)
-
-Write-Host ''
-Write-Host 'Mega E Stage 18 + 19 validation PASS.' -ForegroundColor Green
-
-if (-not $NoVisual) {
-    $exe = Join-Path $build 'Release\arc-mega-e-visual-fps.exe'
-    if (-not (Test-Path -LiteralPath $exe)) { throw "Visual debugger missing: $exe" }
-    Write-Host 'Launching ARC Mega E visual debugger...' -ForegroundColor Green
-    Write-Host 'Controls: WASD, Shift, arrows or hold RMB and move mouse, Esc.' -ForegroundColor DarkGray
-    Start-Process -FilePath $exe -WorkingDirectory $repo
-}
-
+& ctest --test-dir $build -C Release --output-on-failure -R '^(arc-gpu-attribution-native|arc-temporal-visibility-native)$'
 if ($LASTEXITCODE -ne 0) { throw "Native D3D12 Mega E foundation test failed: $LASTEXITCODE" }
 
 Write-Host ''
