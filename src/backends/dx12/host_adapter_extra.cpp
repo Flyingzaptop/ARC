@@ -50,7 +50,9 @@ bool NativeHostAdapter::observe_command_counters(
     const std::uint64_t draws,
     const std::uint64_t indexed_draws,
     const std::uint64_t dispatches,
-    const std::uint64_t indirect) {
+    const std::uint64_t indirect,
+    const std::uint64_t draw_items,
+    const std::uint64_t dispatch_groups) {
     if (!command) return false;
     std::scoped_lock lock(mutex_);
     const auto it = commands_.find(command);
@@ -61,12 +63,16 @@ bool NativeHostAdapter::observe_command_counters(
         .indexed_draws = indexed_draws,
         .dispatches = dispatches,
         .indirect = indirect,
+        .draw_items = draw_items,
+        .dispatch_groups = dispatch_groups,
     };
     if (!emit_locked(EventType::CommandCounters, &payload, sizeof(payload))) return false;
     metrics_.draws_observed += draws;
     metrics_.indexed_draws_observed += indexed_draws;
     metrics_.dispatches_observed += dispatches;
     metrics_.indirect_observed += indirect;
+    metrics_.draw_items_observed += draw_items;
+    metrics_.dispatch_groups_observed += dispatch_groups;
     return true;
 }
 
