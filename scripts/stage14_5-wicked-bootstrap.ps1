@@ -160,6 +160,7 @@ $localRoot = Join-Path $arc 'results\stage14_5-wicked-local'
 $runDir = Join-Path $localRoot $stamp
 New-Item -ItemType Directory -Force $runDir | Out-Null
 $rawJson = Join-Path $runDir 'wicked-engine.json'
+$crashTxt = Join-Path $runDir 'crash-context.txt'
 $manifestJson = Join-Path $runDir 'manifest.json'
 $acceptanceJson = Join-Path $runDir 'acceptance.json'
 $summaryMd = Join-Path $runDir 'SUMMARY.md'
@@ -185,6 +186,7 @@ $env:ARC_WICKED_RECOVERY_SECONDS = '20'
 $env:ARC_WICKED_SCENE_SETTLE_MS = '1500'
 $env:ARC_WICKED_CONTROL_FRAMES = '16'
 $env:ARC_WICKED_OUTPUT = $rawJson
+$env:ARC_WICKED_CRASH_OUTPUT = $crashTxt
 
 $started = [DateTime]::UtcNow.ToString('o')
 $exit = -1
@@ -197,7 +199,13 @@ try {
         $fatal = "Wicked acceptance timed out after $timeoutSeconds seconds."
     } else {
         $exit = $process.ExitCode
-        if ($exit -ne 0) { $fatal = "Wicked Tests exit code $exit" }
+        if ($exit -ne 0) {
+            $fatal = "Wicked Tests exit code $exit"
+            if (Test-Path -LiteralPath $crashTxt) {
+                $crashContext = (Get-Content -LiteralPath $crashTxt -Raw).Trim()
+                if ($crashContext) { $fatal += " | $($crashContext -replace '[\r\n]+','; ')" }
+            }
+        }
     }
 } catch {
     $fatal = $_.Exception.Message
@@ -232,6 +240,7 @@ $manifest = [ordered]@{
     seconds_per_measurement_phase = $Seconds
     benchmark_exit_code = $exit
     fatal_error = $fatal
+    crash_context_file = $(if (Test-Path -LiteralPath $crashTxt) { 'crash-context.txt' } else { $null })
 }
 Json-Write $manifest $manifestJson
 
