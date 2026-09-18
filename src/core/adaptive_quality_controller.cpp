@@ -264,9 +264,10 @@ void AdaptiveQualityController::note_action_applied(
     if (kind == QualityDecisionKind::Degrade) {
         active_[key] = action;
 
-        if (const auto recent = recent_restores_.find(key);
-            recent != recent_restores_.end() &&
-            recent->second <= config_.restore_reversal_window_samples) {
+        if (!recovery_mode_) {
+            if (const auto recent = recent_restores_.find(key);
+                recent != recent_restores_.end() &&
+                recent->second <= config_.restore_reversal_window_samples) {
             auto& penalty = restore_penalties_[key];
             penalty.failures = bump_saturating(penalty.failures);
             std::uint32_t cooldown = config_.restore_backoff_base_samples;
@@ -278,8 +279,9 @@ void AdaptiveQualityController::note_action_applied(
                     multiply_saturating(cooldown, 2));
             }
             penalty.cooldown = std::max(penalty.cooldown, cooldown);
-            recent_restores_.erase(recent);
-            ++restore_backoffs_;
+                recent_restores_.erase(recent);
+                ++restore_backoffs_;
+            }
         }
 
         const double observed_gain = std::isfinite(before_frame_ms) && std::isfinite(after_frame_ms)
@@ -291,10 +293,12 @@ void AdaptiveQualityController::note_action_applied(
         // A degrade immediately following a restore is evidence that the
         // restore estimate was optimistic or that we are hovering near the
         // frame target. Extend the normal hold window to prevent ping-pong.
-        const auto hold = previous_kind == QualityDecisionKind::Restore
-            ? multiply_saturating(config_.minimum_hold_samples_after_degrade, 4)
-            : config_.minimum_hold_samples_after_degrade;
-        restore_guard_remaining_ = std::max(restore_guard_remaining_, hold);
+        if (!recovery_mode_) {
+            const auto hold = previous_kind == QualityDecisionKind::Restore
+                ? multiply_saturating(config_.minimum_hold_samples_after_degrade, 4)
+                : config_.minimum_hold_samples_after_degrade;
+            restore_guard_remaining_ = std::max(restore_guard_remaining_, hold);
+        }
     } else if (kind == QualityDecisionKind::Restore) {
         active_.erase(key);
         const double observed_cost = std::isfinite(before_frame_ms) && std::isfinite(after_frame_ms)
@@ -306,8 +310,9 @@ void AdaptiveQualityController::note_action_applied(
         // conservative upper estimate of this cost instead of contaminating
         // the degradation-benefit model.
         restore_effects_.record(action, observed_cost);
-        recent_restores_[key] = 0;
+        if (!recovery_mode_) recent_restores_[key] = 0;
         ++restore_actions_applied_;
+        if (recovery_mode_ && active_.empty()) recovery_mode_ = false;
     }
 
     if (previous_kind != QualityDecisionKind::None && previous_kind != kind) {
@@ -323,6 +328,7 @@ void AdaptiveQualityController::begin_recovery() noexcept {
     // Deliberate recovery is not a steady-state restore probe. Keep the active
     // quality ladder and learned directional effects, but discard temporary
     // hysteresis/backoff state accumulated while defending the adaptive target.
+    recovery_mode_ = true;
     restore_penalties_.clear();
     recent_restores_.clear();
     overload_samples_ = 0;
@@ -334,6 +340,7 @@ void AdaptiveQualityController::begin_recovery() noexcept {
 }
 
 void AdaptiveQualityController::reset() noexcept {
+    recovery_mode_ = false;
     active_.clear();
     restore_penalties_.clear();
     recent_restores_.clear();
