@@ -49,6 +49,49 @@ ArcExternalBridge::ArcExternalBridge(
         if (SUCCEEDED(adapter_->GetDesc2(&desc))) adapterName_ = Narrow(desc.Description);
     }
 
+    // Measure the workload on the GPU itself. Wall-clock time around Present
+    // and WaitForPreviousFrame contains CPU/driver/fence latency and can hide
+    // the effect of a physical quality mutation.
+    if (device && queue_ &&
+        SUCCEEDED(queue_->GetTimestampFrequency(&timestampFrequency_)) &&
+        timestampFrequency_ > 0)
+    {
+        D3D12_QUERY_HEAP_DESC queryDesc{};
+        queryDesc.Count = 2;
+        queryDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+        if (SUCCEEDED(device->CreateQueryHeap(&queryDesc, IID_PPV_ARGS(&timestampHeap_))))
+        {
+            D3D12_HEAP_PROPERTIES heapProps{};
+            heapProps.Type = D3D12_HEAP_TYPE_READBACK;
+            heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+            heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+            heapProps.CreationNodeMask = 1;
+            heapProps.VisibleNodeMask = 1;
+
+            D3D12_RESOURCE_DESC readbackDesc{};
+            readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            readbackDesc.Width = 2 * sizeof(std::uint64_t);
+            readbackDesc.Height = 1;
+            readbackDesc.DepthOrArraySize = 1;
+            readbackDesc.MipLevels = 1;
+            readbackDesc.Format = DXGI_FORMAT_UNKNOWN;
+            readbackDesc.SampleDesc.Count = 1;
+            readbackDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+            if (FAILED(device->CreateCommittedResource(
+                    &heapProps,
+                    D3D12_HEAP_FLAG_NONE,
+                    &readbackDesc,
+                    D3D12_RESOURCE_STATE_COPY_DEST,
+                    nullptr,
+                    IID_PPV_ARGS(&timestampReadback_))))
+            {
+                timestampHeap_.Reset();
+                timestampFrequency_ = 0;
+            }
+        }
+    }
+
     arc::dx12::NativeHostAdapterConfig cfg{};
     cfg.event_capacity = 32768;
     cfg.runtime.coordinator.mode = arc::RuntimeMode::ObserveOnly;
@@ -134,6 +177,52 @@ void ArcExternalBridge::OnCommandReset()
     if (host_) (void)host_->observe_command_list_reset(commandList_);
 }
 
+void ArcExternalBridge::OnGpuFrameBegin()
+{
+    timestampRecorded_ = false;
+    if (!commandList_ || !timestampHeap_ || !timestampReadback_ || timestampFrequency_ == 0) return;
+    commandList_->EndQuery(timestampHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
+}
+
+void ArcExternalBridge::OnGpuFrameEnd()
+{
+    if (!commandList_ || !timestampHeap_ || !timestampReadback_ || timestampFrequency_ == 0) return;
+    commandList_->EndQuery(timestampHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1);
+    commandList_->ResolveQueryData(
+        timestampHeap_.Get(),
+        D3D12_QUERY_TYPE_TIMESTAMP,
+        0,
+        2,
+        timestampReadback_.Get(),
+        0);
+    timestampRecorded_ = true;
+}
+
+double ArcExternalBridge::ConsumeGpuFrameMs(double fallbackMs) noexcept
+{
+    if (!timestampRecorded_ || !timestampReadback_ || timestampFrequency_ == 0) return fallbackMs;
+
+    const D3D12_RANGE readRange{0, 2 * sizeof(std::uint64_t)};
+    void* mapped = nullptr;
+    if (FAILED(timestampReadback_->Map(0, &readRange, &mapped)) || !mapped) return fallbackMs;
+
+    const auto* timestamps = static_cast<const std::uint64_t*>(mapped);
+    const std::uint64_t begin = timestamps[0];
+    const std::uint64_t end = timestamps[1];
+    const D3D12_RANGE writtenRange{0, 0};
+    timestampReadback_->Unmap(0, &writtenRange);
+    timestampRecorded_ = false;
+
+    if (end <= begin) return fallbackMs;
+    const double ms =
+        (static_cast<double>(end - begin) * 1000.0) /
+        static_cast<double>(timestampFrequency_);
+    if (!(ms > 0.0) || !std::isfinite(ms)) return fallbackMs;
+
+    ++gpuTimestampSamples_;
+    return ms;
+}
+
 void ArcExternalBridge::ObserveTransition(ID3D12Resource* resource, const D3D12_RESOURCE_BARRIER& barrier)
 {
     if (host_) (void)host_->observe_transition_barrier(commandList_, resource, barrier);
@@ -183,7 +272,9 @@ void ArcExternalBridge::OnPresent(HRESULT result)
 
 void ArcExternalBridge::OnFrame(double frameMs)
 {
-    if (!host_ || finalized_ || !(frameMs > 0.0) || !std::isfinite(frameMs)) return;
+    if (!host_ || finalized_) return;
+    frameMs = ConsumeGpuFrameMs(frameMs);
+    if (!(frameMs > 0.0) || !std::isfinite(frameMs)) return;
 
     const auto elapsed = std::chrono::duration<double>(
         std::chrono::steady_clock::now() - phaseStart_).count();
@@ -479,9 +570,12 @@ void ArcExternalBridge::WriteReport(bool complete)
     const bool boundedChurn =
         qs.direction_changes <= 8 &&
         gm.quality_actions_executed <= 24;
+    const bool gpuTimingValid =
+        gpuTimestampSamples_ >= baseline_.frames.size() + adaptive_.frames.size();
     const bool valid =
         complete &&
         profileRegistered_ &&
+        gpuTimingValid &&
         hostClean &&
         finalFull &&
         gm.quality_actions_executed >= 2 &&
@@ -503,6 +597,8 @@ void ArcExternalBridge::WriteReport(bool complete)
       << "  \"native_width\":1920,\n"
       << "  \"native_height\":1080,\n"
       << "  \"temporal_used\":false,\n"
+      << "  \"timing_source\":\"gpu_timestamp\",\n"
+      << "  \"gpu_timestamp_samples\":" << gpuTimestampSamples_ << ",\n"
       << "  \"target_frame_ms\":" << targetMs_ << ",\n"
       << "  \"target_calibration\":\"baseline_p40\",\n"
       << "  \"baseline\":{\"samples\":" << baseline_.frames.size()
