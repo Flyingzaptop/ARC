@@ -34,6 +34,16 @@ AdaptiveQualityController::AdaptiveQualityController(AdaptiveQualityControllerCo
     config_.frame_ewma_alpha = std::clamp(config_.frame_ewma_alpha, 0.01, 1.0);
     config_.overload_margin_ms = std::max(0.0, config_.overload_margin_ms);
     config_.extra_restore_headroom_ms = std::max(0.0, config_.extra_restore_headroom_ms);
+    config_.restore_probe_samples_required = std::max<std::uint32_t>(
+        config_.headroom_samples_required, config_.restore_probe_samples_required);
+    config_.restore_probe_headroom_fraction = std::clamp(
+        config_.restore_probe_headroom_fraction, 0.0, 0.95);
+    config_.restore_reversal_window_samples = std::max<std::uint32_t>(
+        1, config_.restore_reversal_window_samples);
+    config_.restore_backoff_base_samples = std::max<std::uint32_t>(
+        1, config_.restore_backoff_base_samples);
+    config_.restore_backoff_max_samples = std::max(
+        config_.restore_backoff_base_samples, config_.restore_backoff_max_samples);
     config_.max_actions_per_decision = std::max<std::uint32_t>(1, config_.max_actions_per_decision);
     config_.max_active_actions = std::max<std::uint32_t>(1, config_.max_active_actions);
 }
@@ -82,7 +92,12 @@ std::vector<QualityActionCandidate> AdaptiveQualityController::next_restore_cand
 
     std::vector<QualityActionCandidate> out;
     out.reserve(highest.size());
-    for (const auto& [_, action] : highest) out.push_back(action);
+    for (const auto& [_, action] : highest) {
+        const Key key{action.id, action.sequence};
+        const auto penalty = restore_penalties_.find(key);
+        if (penalty != restore_penalties_.end() && penalty->second.cooldown > 0) continue;
+        out.push_back(action);
+    }
     return out;
 }
 
@@ -130,6 +145,21 @@ QualityDecision AdaptiveQualityController::tick(
 
     if (restore_guard_remaining_ > 0) --restore_guard_remaining_;
 
+    for (auto& [_, penalty] : restore_penalties_) {
+        if (penalty.cooldown > 0) --penalty.cooldown;
+    }
+    for (auto it = recent_restores_.begin(); it != recent_restores_.end();) {
+        it->second = bump_saturating(it->second);
+        if (it->second > config_.restore_reversal_window_samples) {
+            // A restore that survives the reversal window is considered stable;
+            // forgive any older backoff history for that action.
+            restore_penalties_.erase(it->first);
+            it = recent_restores_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     if (settle_remaining_ > 0) {
         --settle_remaining_;
         overload_samples_ = 0;
@@ -176,6 +206,32 @@ QualityDecision AdaptiveQualityController::tick(
 
         out.plan = optimizer_.plan_restore(filtered, calibrated);
         limit_plan(out.plan);
+
+        if (out.plan.actions.empty() &&
+            headroom_samples_ >= config_.restore_probe_samples_required &&
+            filtered_frame_ms_ <= sample.target_frame_ms *
+                (1.0 - config_.restore_probe_headroom_fraction) &&
+            !calibrated.empty()) {
+            // A stale scene-dependent estimate can otherwise make the final
+            // reversible step impossible to restore. Probe exactly one cheap
+            // step, but only after sustained deep headroom. Failed probes are
+            // quarantined by the per-action reversal backoff below.
+            const auto probe = std::min_element(
+                calibrated.begin(), calibrated.end(), [](const auto& a, const auto& b) {
+                    if (a.expected_ms_gain != b.expected_ms_gain) return a.expected_ms_gain < b.expected_ms_gain;
+                    if (a.visual_cost != b.visual_cost) return a.visual_cost > b.visual_cost;
+                    if (a.id != b.id) return a.id < b.id;
+                    return a.sequence > b.sequence;
+                });
+            if (probe != calibrated.end()) {
+                out.plan.actions.push_back(*probe);
+                out.plan.planned_gain_ms = probe->expected_ms_gain;
+                out.plan.estimated_visual_cost = probe->visual_cost;
+                out.plan.planned_memory_freed_bytes = probe->memory_freed_bytes;
+                ++restore_probes_;
+            }
+        }
+
         if (!out.plan.actions.empty()) {
             out.kind = QualityDecisionKind::Restore;
             headroom_samples_ = 0;
@@ -197,6 +253,25 @@ void AdaptiveQualityController::note_action_applied(
     const Key key{action.id, action.sequence};
     if (kind == QualityDecisionKind::Degrade) {
         active_[key] = action;
+
+        if (const auto recent = recent_restores_.find(key);
+            recent != recent_restores_.end() &&
+            recent->second <= config_.restore_reversal_window_samples) {
+            auto& penalty = restore_penalties_[key];
+            penalty.failures = bump_saturating(penalty.failures);
+            std::uint32_t cooldown = config_.restore_backoff_base_samples;
+            for (std::uint32_t i = 1;
+                 i < penalty.failures && cooldown < config_.restore_backoff_max_samples;
+                 ++i) {
+                cooldown = std::min(
+                    config_.restore_backoff_max_samples,
+                    multiply_saturating(cooldown, 2));
+            }
+            penalty.cooldown = std::max(penalty.cooldown, cooldown);
+            recent_restores_.erase(recent);
+            ++restore_backoffs_;
+        }
+
         const double observed_gain = std::isfinite(before_frame_ms) && std::isfinite(after_frame_ms)
             ? std::max(0.0, before_frame_ms - after_frame_ms)
             : 0.0;
@@ -219,6 +294,7 @@ void AdaptiveQualityController::note_action_applied(
         // opposite directions. Feeding both observations back prevents a
         // stale heavy-scene gain from causing repeated restore probes forever.
         effects_.record(action, observed_cost);
+        recent_restores_[key] = 0;
         ++restore_actions_applied_;
     }
 
@@ -233,6 +309,8 @@ void AdaptiveQualityController::note_action_applied(
 
 void AdaptiveQualityController::reset() noexcept {
     active_.clear();
+    restore_penalties_.clear();
+    recent_restores_.clear();
     effects_.clear();
     filter_initialized_ = false;
     filtered_frame_ms_ = 0.0;
@@ -243,6 +321,8 @@ void AdaptiveQualityController::reset() noexcept {
     degrade_actions_applied_ = 0;
     restore_actions_applied_ = 0;
     direction_changes_ = 0;
+    restore_probes_ = 0;
+    restore_backoffs_ = 0;
     last_applied_kind_ = QualityDecisionKind::None;
 }
 
@@ -269,6 +349,8 @@ AdaptiveQualityControllerState AdaptiveQualityController::state() const noexcept
     out.degrade_actions_applied = degrade_actions_applied_;
     out.restore_actions_applied = restore_actions_applied_;
     out.direction_changes = direction_changes_;
+    out.restore_probes = restore_probes_;
+    out.restore_backoffs = restore_backoffs_;
     out.last_applied_kind = last_applied_kind_;
     return out;
 }
