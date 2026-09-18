@@ -99,7 +99,7 @@ $windowOld = @'
 '@
 $windowNew = @'
    RECT arcClient = { 0, 0, 1920, 1080 };
-   AdjustWindowRectEx(&arcClient, WS_OVERLAPPEDWINDOW, TRUE, 0);
+   AdjustWindowRectEx(&arcClient, WS_OVERLAPPEDWINDOW, FALSE, 0);
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, arcClient.right - arcClient.left, arcClient.bottom - arcClient.top,
       nullptr, nullptr, hInstance, nullptr);
