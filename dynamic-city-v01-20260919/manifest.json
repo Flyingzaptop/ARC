@@ -1,0 +1,10 @@
+{
+  "source_commit": "a916bb7",
+  "main_renderer_binary": "arc-dynamic-city.exe inside raw-evidence.zip",
+  "main_renderer_source": "measured-source inside raw-evidence.zip",
+  "diagnostic_renderer": "arc-dynamic-city-offscreen.exe and diagnostic-source inside raw-evidence.zip",
+  "archive_sha256": "CD505DF7BA95AEAA0E920DF76D27D4C342D10DC6934D5A4112C5B804EFF34E5C",
+  "game_tests_user_owned": true,
+  "image_guard_pass": false,
+  "goal_2x_achieved": false
+}
