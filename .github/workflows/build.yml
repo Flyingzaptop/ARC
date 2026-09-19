@@ -25,7 +25,7 @@ jobs:
             }
           }
           if ($failed) { exit 1 }
-      - run: cmake -S . -B build -A x64
+      - run: cmake -S . -B build -A x64 -DARC_GENERIC_DX12_PROBE=ON
       - run: cmake --build build --config ${{ matrix.configuration }}
       - run: ctest --test-dir build -C ${{ matrix.configuration }} --output-on-failure --timeout 60
       - name: Build pinned Microsoft external renderer integration

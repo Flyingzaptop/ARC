@@ -28,13 +28,13 @@ Use Stage 18 predictions for early restoration. Learn only from validated trial
 outcomes, with bounded capacity, cooldown, rejection quarantine, versioned/resettable
 state and explicit confidence. Learning must never relax image/safety gates.
 
-## Portability (next)
+## Portability (validated on an independent Microsoft raster renderer)
 
 Run the same core on two independently implemented renderer adapters. Preserve
 raw images, timings, actions and rollback results. Compare host code and core hash;
 do not claim portability from two differently named instances of one fixture.
 
-## Third-party DX12 connection (pending portability)
+## Third-party DX12 connection (read-only prototype exercised in a real game)
 
 Implement a generic D3D12/DXGI observation/interception boundary, enumerate actual
 capabilities and validate on an installed suitable target. No engine knobs or
@@ -51,3 +51,11 @@ pixel/timestamp/forecast recomputation. Full Release run was 63/64; the unchange
 legacy Mega B smoke failed its lighting-domain requirement with a 0.003 ms first
 calibration gain, then passed an isolated rerun with all three domains. Both
 results are retained; no threshold was changed and the first FAIL is not hidden.
+
+Final checkpoint: full Release 65/65 and Debug non-GPU 45/45 passed, plus the added
+native HRESULT-forwarding test. Independent Microsoft raster validation passed
+with the same core. FPV.SkyDive DX12 observation was exercised after manual Steam
+sign-in: one initial Present invalid-call remains unresolved; a later 346-second
+window passed with zero errors. Real-game optimization is still disabled until
+generic live-graph, reference and mutation capabilities are established. See
+PERCEPTUAL_DELIVERY_20260919.md for exact scope and retained evidence.

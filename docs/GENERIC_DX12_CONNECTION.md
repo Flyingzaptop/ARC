@@ -38,12 +38,19 @@ Presents/submissions and hundreds of thousands of draw calls with no hook or
 Present failures. Its first launcher attempt exposed transient Windows module-
 snapshot `ERROR_BAD_LENGTH`; retry now handles that documented transient.
 
-An installed FPV.SkyDive launch selected DX12 through the game's standard player
-argument. The engine-neutral probe observed real game draw/indexed/resource and
-queue calls, but Steam initialization failed and the game exited before a sustained
-run. Steam subsequently exposed a sign-in window. This is **partial startup evidence,
-not sustained game validation**. No login dialog is automated and no game DRM or
-authentication code is modified.
+An initial FPV.SkyDive launch observed real DX12 calls but exited because Steam
+initialization failed. After the user signed in manually, the game was launched
+normally through Steam and the probe attached to the explicit game PID. Solo
+freestyle on Abandoned Factory produced sustained game Present, submission and
+indexed-draw observations without any engine-specific runtime code.
+
+The first 238-second scene window observed one `0x887a0001` Present failure while
+the game continued running; its strict zero-error acceptance is retained as FAIL.
+An uninstrumented control and a later instrumented run did not reproduce it,
+including windowed/fullscreen transitions. The original failure is not relabeled
+PASS or attributed to the game without proof. Native HRESULT/flags/device-reason
+diagnostics were added for a future recurrence. No login dialog is automated and
+no game DRM or authentication code is modified.
 
 The Unity launch argument selects the application's existing graphics backend;
 there are no Unity APIs or engine names in the observer or core. Other DX12 targets
