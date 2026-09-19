@@ -13,6 +13,9 @@
 namespace {
 std::atomic<bool> initialized{},initializing{},recording{};
 std::atomic<unsigned long long> presents{},present_failures{},submits{},lists{},draws{},indexed{},dispatches{},resources{},hook_failures{};
+std::atomic<long> last_present_error{},last_device_reason{};
+std::atomic<UINT> last_present_sync{},last_present_flags{};
+std::atomic<bool> device_reason_available{};
 std::filesystem::path output;
 HMODULE module{};
 using PresentFn=decltype(IDXGISwapChainVtbl::Present);
@@ -25,13 +28,24 @@ using ResourceFn=decltype(ID3D12DeviceVtbl::CreateCommittedResource);
 PresentFn original_present{};Present1Fn original_present1{};ExecuteFn original_execute{};
 DrawFn original_draw{};IndexedFn original_indexed{};DispatchFn original_dispatch{};ResourceFn original_resource{};
 thread_local bool inside_present{};
+void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
+    if(!recording.load(std::memory_order_relaxed)||(flags&DXGI_PRESENT_TEST))return;
+    presents.fetch_add(1,std::memory_order_relaxed);
+    if(FAILED(result)){
+        present_failures.fetch_add(1,std::memory_order_relaxed);last_present_error=result;last_present_sync=sync;last_present_flags=flags;
+        ID3D12Device* device=nullptr;
+        const auto query=IDXGISwapChain_GetDevice(self,IID_ID3D12Device,reinterpret_cast<void**>(&device));
+        device_reason_available=SUCCEEDED(query)&&device;
+        if(device){last_device_reason=ID3D12Device_GetDeviceRemovedReason(device);ID3D12Device_Release(device);}
+    }
+}
 HRESULT STDMETHODCALLTYPE present(IDXGISwapChain* self,UINT sync,UINT flags){
     const bool outer=!inside_present;inside_present=true;const HRESULT result=original_present(self,sync,flags);inside_present=!outer;
-    if(outer&&recording.load(std::memory_order_relaxed)&&!(flags&DXGI_PRESENT_TEST)){presents.fetch_add(1,std::memory_order_relaxed);if(FAILED(result))present_failures.fetch_add(1,std::memory_order_relaxed);}return result;
+    if(outer)observe_present(self,sync,flags,result);return result;
 }
 HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1* self,UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS* parameters){
     const bool outer=!inside_present;inside_present=true;const HRESULT result=original_present1(self,sync,flags,parameters);inside_present=!outer;
-    if(outer&&recording.load(std::memory_order_relaxed)&&!(flags&DXGI_PRESENT_TEST)){presents.fetch_add(1,std::memory_order_relaxed);if(FAILED(result))present_failures.fetch_add(1,std::memory_order_relaxed);}return result;
+    if(outer)observe_present(reinterpret_cast<IDXGISwapChain*>(self),sync,flags,result);return result;
 }
 void STDMETHODCALLTYPE execute(ID3D12CommandQueue* self,UINT count,ID3D12CommandList* const* commands){
     original_execute(self,count,commands);if(recording.load(std::memory_order_relaxed)){submits.fetch_add(1,std::memory_order_relaxed);lists.fetch_add(count,std::memory_order_relaxed);}
@@ -69,6 +83,8 @@ void snapshot(){
           "\"replay_reference_available\":false,\"safe_mutation_capability\":false,\"quality_mutations\":0,"
           "\"policy_abstained\":"<<(!proposal?"true":"false")<<",\"present_calls\":"<<presents.load()
         <<",\"present_failures\":"<<present_failures.load()<<",\"queue_submits\":"<<submits.load()
+        <<",\"last_present_hresult\":"<<last_present_error.load()<<",\"last_present_sync\":"<<last_present_sync.load()<<",\"last_present_flags\":"<<last_present_flags.load()
+        <<",\"device_reason_available\":"<<(device_reason_available.load()?"true":"false")<<",\"last_device_removed_reason\":"<<last_device_reason.load()
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
