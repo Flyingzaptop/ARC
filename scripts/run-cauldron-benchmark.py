@@ -12,7 +12,7 @@ parser=argparse.ArgumentParser()
 parser.add_argument("sdk",type=Path)
 parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
-parser.add_argument("--mode",choices=["vrs","observe","profile"],default="vrs")
+parser.add_argument("--mode",choices=["vrs","observe","profile","compute-neutral","compute-2x1","compute-1x2","compute-2x2"],default="vrs")
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--process-sampler",type=Path)
 args=parser.parse_args()
@@ -25,6 +25,16 @@ env["ARC_BENCH_FRAMES"]=str(args.frames)
 env.pop("ARC_BENCH_DLL",None)
 env["ARC_BENCH_MODE"]=args.mode
 if args.dll: env["ARC_BENCH_DLL"]=str(args.dll.resolve())
+for key in ("ARC_OPTIMIZER_WORKER","ARC_OPTIMIZER_COMPILER","ARC_OPTIMIZER_CACHE"):
+    env.pop(key,None)
+if args.dll and args.mode.startswith("compute-"):
+    worker=Path(__file__).resolve().parents[1]/"build/Release/arc-shader-tool.exe"
+    compiler=sdk/"framework/cauldron/framework/libs/dxc/bin/x64/dxcompiler.dll"
+    if not worker.is_file() or not compiler.is_file():
+        raise RuntimeError("Compute experiment requires built ARC shader worker and pinned DXC")
+    env["ARC_OPTIMIZER_WORKER"]=str(worker)
+    env["ARC_OPTIMIZER_COMPILER"]=str(compiler)
+    env["ARC_OPTIMIZER_CACHE"]=str(output/"shader-cache")
 command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.frames+120}",f"path={output}","json","-screenshot"]
 hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,

@@ -42,6 +42,10 @@ struct Layout {
         UINT shader_register, UINT space, D3D12_SHADER_VISIBILITY stage) const noexcept;
 };
 
+// Append b0 in an unused space without changing existing parameter indices,
+// range flags, static samplers, or root flags. Empty result means unsupported.
+std::vector<std::byte> append_control_cbv(std::span<const std::byte> original, UINT space);
+
 struct Argument {
     D3D12_ROOT_PARAMETER_TYPE type{};
     UINT64 address{};
@@ -61,6 +65,7 @@ public:
     bool constants(UINT parameter, UINT offset, std::span<const UINT> words) noexcept;
     void invalidate_tables() noexcept;
     [[nodiscard]] std::optional<Argument> argument(UINT parameter) const noexcept;
+    [[nodiscard]] std::optional<Argument> raw_argument(UINT parameter) const noexcept;
     [[nodiscard]] std::optional<Location> locate(D3D12_DESCRIPTOR_RANGE_TYPE type,
         UINT shader_register, UINT space, D3D12_SHADER_VISIBILITY stage) const noexcept;
     [[nodiscard]] std::uint64_t identity() const noexcept { return identity_; }

@@ -34,7 +34,9 @@ ComPtr<IDxcBlob> result(IDxcOperationResult* operation) {
 int wmain(int argc, wchar_t** argv) try {
     if (argc != 5) throw std::runtime_error("Usage: arc-shader-tool dump|assemble|roundtrip|coarse2x2|coarse1x2|coarse2x1|neutral INPUT NEW_OUTPUT ABSOLUTE_DXCOMPILER_DLL");
     const std::wstring mode = argv[1];
-    const bool controlled = mode == L"controlled";
+    const bool controlled = mode == L"controlled" || mode.starts_with(L"controlled:");
+    unsigned requested_space=UINT32_MAX;
+    if(mode.starts_with(L"controlled:")){std::size_t used{};const auto suffix=mode.substr(11);const auto value=std::stoul(suffix,&used);if(used!=suffix.size()||value>=65536)throw std::runtime_error("Control space must be 0..65535");requested_space=static_cast<unsigned>(value);}
     const bool transform = mode == L"coarse2x2" || mode == L"coarse1x2" || mode == L"coarse2x1" || mode == L"neutral" || controlled;
     if (mode != L"dump" && mode != L"assemble" && mode != L"roundtrip" && !transform) throw std::runtime_error("Unknown operation");
     const std::filesystem::path input = argv[2], output = argv[3], compiler_path = argv[4];
@@ -56,13 +58,15 @@ int wmain(int argc, wchar_t** argv) try {
         else source = text;
     }
     unsigned control_space=UINT32_MAX;
+    arc::dx12::shader::Transform contract;
     if (transform) {
         const auto transformed = arc::dx12::shader::coarse_compute(
             {static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},
             mode == L"coarse2x2" || mode == L"coarse2x1" ? 2 : 1,
-            mode == L"coarse2x2" || mode == L"coarse1x2" ? 2 : 1, controlled);
+            mode == L"coarse2x2" || mode == L"coarse1x2" ? 2 : 1, controlled, requested_space);
         if (!transformed.admitted) throw std::runtime_error("Shader declined: " + transformed.reason);
         control_space=transformed.control_space;
+        contract=transformed;contract.ir.clear();
         source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(transformed.ir.data(), static_cast<UINT32>(transformed.ir.size()), CP_UTF8, &source), "Create transformed blob");
     }
     if (mode != L"dump") {
@@ -75,6 +79,14 @@ int wmain(int argc, wchar_t** argv) try {
     }
     std::ofstream target(output, std::ios::binary); target.write(static_cast<const char*>(generated->GetBufferPointer()), generated->GetBufferSize()); target.close();
     if (!target) throw std::runtime_error("Write shader output");
+    if(transform){
+        auto manifest_path=output;manifest_path+=L".contract";
+        if(std::filesystem::exists(manifest_path))throw std::runtime_error("Fresh contract output required");
+        std::ofstream manifest(manifest_path);
+        manifest<<"ARC_SHADER_CONTRACT_1\n"<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<'\n';
+        for(const auto& r:contract.resources)manifest<<r.resource_class<<' '<<r.range_id<<' '<<r.shader_register<<' '<<r.space<<' '<<r.count<<' '<<r.kind<<'\n';
+        manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
+    }
     std::cout << "{\"input_bytes\":" << bytes.size() << ",\"output_bytes\":" << generated->GetBufferSize()
         << ",\"control_space\":" << control_space << ",\"validated\":" << (mode == L"dump" ? "false" : "true") << "}\n";
     return 0;

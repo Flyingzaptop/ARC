@@ -6,9 +6,20 @@
 #include <vector>
 
 namespace arc {
+// Optional exact native-view metadata. Stored in the interned value, not in
+// every heap slot, so large bindless heaps still cost four bytes per slot.
+// Legacy observations leave known=false and cannot authorize mutations.
+struct DescriptorShape {
+    std::uint32_t format{}, dimension{}, first_slice{}, slices{}, plane{}, flags{};
+    std::uint32_t elements{}, stride{}, component_mapping{};
+    std::uint64_t byte_offset{}, byte_size{}, first_element{}, counter_resource{};
+    bool known{};
+    auto operator<=>(const DescriptorShape&)const=default;
+};
 struct DescriptorValue {
     std::uint64_t resource{};
     std::uint32_t kind{},first_mip{},mips{};
+    DescriptorShape shape{};
     auto operator<=>(const DescriptorValue&)const=default;
 };
 struct DescriptorLedgerLimits {

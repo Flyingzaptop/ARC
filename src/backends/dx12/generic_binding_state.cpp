@@ -114,6 +114,28 @@ std::optional<Location> Layout::locate(D3D12_DESCRIPTOR_RANGE_TYPE type,
     return found;
 }
 
+std::vector<std::byte> append_control_cbv(std::span<const std::byte> original,UINT space) {
+    const auto parsed=Layout::parse(original);
+    if(!parsed.complete||parsed.dwords>62||parsed.parameters.size()>=64)return {};
+    for(const auto& p:parsed.parameters){
+        if(p.type==D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE){
+            for(const auto& r:p.ranges)if(r.type==D3D12_DESCRIPTOR_RANGE_TYPE_CBV&&r.space==space&&r.first_register==0)return {};
+        }else if((p.type==D3D12_ROOT_PARAMETER_TYPE_CBV||p.type==D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS)&&p.space==space&&p.shader_register==0)return {};
+    }
+    Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> decoder;
+    if(FAILED(D3D12CreateVersionedRootSignatureDeserializer(original.data(),original.size(),IID_PPV_ARGS(&decoder))))return {};
+    const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* description{};
+    if(FAILED(decoder->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1,&description)))return {};
+    auto augmented=*description;std::vector<D3D12_ROOT_PARAMETER1> parameters;
+    if(augmented.Desc_1_1.NumParameters)parameters.assign(augmented.Desc_1_1.pParameters,augmented.Desc_1_1.pParameters+augmented.Desc_1_1.NumParameters);
+    D3D12_ROOT_PARAMETER1 control{};control.ParameterType=D3D12_ROOT_PARAMETER_TYPE_CBV;
+    control.Descriptor={0,space,D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE};control.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
+    parameters.push_back(control);augmented.Desc_1_1.NumParameters=static_cast<UINT>(parameters.size());augmented.Desc_1_1.pParameters=parameters.data();
+    Microsoft::WRL::ComPtr<ID3DBlob> blob,error;
+    if(FAILED(D3D12SerializeVersionedRootSignature(&augmented,&blob,&error)))return {};
+    const auto* begin=static_cast<const std::byte*>(blob->GetBufferPointer());return {begin,begin+blob->GetBufferSize()};
+}
+
 void Arguments::reset() noexcept { identity_ = 0; layout_.reset(); arguments_ = {}; }
 void Arguments::signature(std::uint64_t identity, std::shared_ptr<const Layout> layout) {
     if (identity && identity == identity_) return;
@@ -148,6 +170,10 @@ void Arguments::invalidate_tables() noexcept {
 }
 std::optional<Argument> Arguments::argument(UINT parameter) const noexcept {
     if (!layout_ || !layout_->complete || parameter >= layout_->parameters.size() || !arguments_[parameter].initialized) return {};
+    return arguments_[parameter];
+}
+std::optional<Argument> Arguments::raw_argument(UINT parameter) const noexcept {
+    if(!layout_||!layout_->complete||parameter>=layout_->parameters.size())return {};
     return arguments_[parameter];
 }
 std::optional<Location> Arguments::locate(D3D12_DESCRIPTOR_RANGE_TYPE type,

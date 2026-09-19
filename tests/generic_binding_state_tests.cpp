@@ -1,4 +1,5 @@
 #include "generic_binding_state.hpp"
+#include "generic_binding_admission.hpp"
 #include <wrl/client.h>
 #include <cassert>
 #include <iostream>
@@ -28,7 +29,9 @@ std::shared_ptr<Layout> make_layout(bool unbounded = false) {
     desc.Desc_1_1 = {3, parameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_NONE};
     ComPtr<ID3DBlob> blob, error;
     assert(SUCCEEDED(D3D12SerializeVersionedRootSignature(&desc, &blob, &error)));
-    return std::make_shared<Layout>(Layout::parse({static_cast<const std::byte*>(blob->GetBufferPointer()), blob->GetBufferSize()}));
+    const std::span<const std::byte> bytes{static_cast<const std::byte*>(blob->GetBufferPointer()), blob->GetBufferSize()};
+    if(!unbounded){const auto extended=append_control_cbv(bytes,13);assert(!extended.empty());const auto check=Layout::parse(extended);assert(check.complete&&check.dwords==9&&check.parameters.size()==4);assert(check.locate(D3D12_DESCRIPTOR_RANGE_TYPE_CBV,0,13,D3D12_SHADER_VISIBILITY_ALL)->parameter==3);}
+    return std::make_shared<Layout>(Layout::parse(bytes));
 }
 
 int main() {
@@ -68,5 +71,37 @@ int main() {
     UINT words[64]{}; words[63] = 123;
     assert(state.constants(0, 0, words)); assert(state.argument(0)->words[63] == 123);
     assert(state.constants(0, 64, {}));
+    // Bindings are resolved from the current descriptor contents at submission,
+    // not from values cached when a command was recorded.
+    Arguments submitted;submitted.signature(7,root);assert(submitted.table(0,{0x10000}));
+    arc::DescriptorLedger ledger;assert(ledger.register_heap(1,0x1000,32,32));
+    std::vector<DescriptorHeap> heaps{{1,0x1000,0x10000,32,32,D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV}};
+    std::map<std::uint64_t,Allocation> allocations;
+    D3D12_RESOURCE_DESC image{};image.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;image.Width=61;image.Height=37;
+    image.DepthOrArraySize=image.MipLevels=image.SampleDesc.Count=1;image.Format=DXGI_FORMAT_R32G32B32A32_FLOAT;
+    for(UINT id=1;id<=5;++id)allocations[id]={id,0,0,65536,0,AllocationKind::Committed,image};
+    auto view=[&](UINT id,UINT kind){arc::DescriptorValue v{id,kind,0,1};v.shape.known=true;v.shape.format=image.Format;
+        v.shape.dimension=kind==1?static_cast<UINT>(D3D12_SRV_DIMENSION_TEXTURE2D):static_cast<UINT>(D3D12_UAV_DIMENSION_TEXTURE2D);return v;};
+    for(UINT i=0;i<3;++i)assert(ledger.write(0x1000+(4+i)*32,view(i+1,1)));
+    assert(ledger.write(0x1000+7*32,view(4,2)));assert(ledger.write(0x1000+8*32,view(5,2)));
+    arc::dx12::shader::Transform transform;transform.admitted=true;transform.threads={8,8,1};
+    transform.resources={{0,0,7,2,3,2},{1,0,5,3,1,2},{1,1,6,3,1,2}};
+    auto admit=[&]{return admit_compute(submitted,transform,ledger,heaps,allocations,8,5,1);};
+    assert(admit().admitted);
+    assert(ledger.write(0x1000+7*32,view(1,2)));
+    assert(!admit().admitted&&admit().reason=="input_output_alias");
+    assert(ledger.write(0x1000+7*32,view(4,2)));
+    allocations[1].kind=allocations[4].kind=AllocationKind::Placed;
+    allocations[1].heap=allocations[4].heap=99;allocations[4].offset=32768;
+    assert(!admit().admitted&&admit().reason=="input_output_alias");
+    allocations[4].offset=65536;assert(admit().admitted);
+    allocations[4].kind=AllocationKind::Reserved;assert(!admit().admitted);
+    allocations[4].kind=AllocationKind::Placed;
+    auto incomplete=view(4,2);incomplete.shape.known=false;assert(ledger.write(0x1000+7*32,incomplete));assert(!admit().admitted);
+    assert(ledger.write(0x1000+7*32,view(4,2)));assert(admit().admitted);
+    assert(!admit_compute(submitted,transform,ledger,heaps,allocations,7,5,1).admitted);
+    assert(!admit_compute(submitted,transform,ledger,heaps,allocations,8,5,2).admitted);
+    assert(ledger.write(0x1000+4*32,view(0,1)));assert(admit().admitted); // explicit null SRV is known
+    submitted.invalidate_tables();assert(!admit().admitted);
     std::cout << "Root ranges, spaces, APPEND, visibility, constants and invalidation passed\n";
 }

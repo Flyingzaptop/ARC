@@ -61,3 +61,30 @@ Evidence (outside source tree):
 contains `shader-inventory`, `native-transform-01`, `native-transform-02`, and
 the assembled lighting diagnostic variants. Do not publish vendor shader
 binaries as ARC-owned redistributable source.
+
+## Checkpoint 2 (experimental process actuator, not scope completion)
+
+The opt-in process interceptor now prepares shader variants in an external
+compiler worker, appends a control CBV to a compatible root signature, preserves
+application root arguments, and validates actual descriptor/allocation bindings
+at each submission. Placed-heap overlap and missing descriptors prevent coarse
+execution. GPU command epilogues restore controls to neutral, including cached
+replays. The native injected-DLL test (`generic-native-02`) verifies every pixel,
+dynamic descriptor-array indexing, all rates and bit-exact cached rollback with
+zero D3D12 debug errors. Observer/profiler regressions and 48 non-GPU tests pass.
+
+Explicit diagnostic environment: `ARC_OPTIMIZER_WORKER` (absolute shader-tool
+exe), `ARC_OPTIMIZER_COMPILER` (absolute pinned DXC DLL), `ARC_OPTIMIZER_CACHE`
+(absolute private cache). `ArcExperimentalCompute` selects neutral/2x1/1x2/2x2/off.
+Automatic quality admission remains false; this is not an accepted policy.
+
+First external measurement (`compute-first`): baseline 78.318 FPS, neutral
+77.839 FPS, diagnostic 2x1 78.244 FPS. No meaningful gain. Five shader variants
+prepare, but the expensive lighting variant is declined on an unknown t12
+descriptor: its declared 15-element array is not fully populated. Next work is
+generic uniform control-flow/resource-index analysis; never assume an unknown
+array entry is unused, and never hardcode this shader's layout or hash.
+
+Descriptor volatility is handled at submission, not just recording; see the
+[D3D12 descriptor contract](https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-version-1-1).
+Captured application shader bytecode/IR caches remain local, outside Git.

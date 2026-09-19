@@ -23,5 +23,6 @@ struct Transform {
 // This proves a shader-local property ONLY. Admission at execution additionally
 // requires complete physical bindings, no input/output aliasing and quality
 // evidence. It never authorizes a dispatch based on reflection alone.
-Transform coarse_compute(std::string_view dxil_ir, unsigned x_rate, unsigned y_rate, bool runtime_control = false);
+Transform coarse_compute(std::string_view dxil_ir, unsigned x_rate, unsigned y_rate, bool runtime_control = false,
+    unsigned requested_control_space = UINT32_MAX);
 }

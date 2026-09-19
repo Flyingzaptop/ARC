@@ -39,6 +39,9 @@ inline void initialize(){
         s.profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));
         s.stop_profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopGpuProfile"));
         if(!s.profile||!s.stop_profile)throw std::runtime_error("GPU profile export unavailable");
+    }else if(experiment.rfind(L"compute-",0)==0){
+        s.mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalCompute"));
+        auto rate=experiment.substr(8);if(!s.mode||rate.empty()||s.mode(&rate[0]))throw std::runtime_error("ARC compute mode refused");
     }else if(experiment!=L"observe"){
         wchar_t enable[]=L"2x2";if(s.mode(enable))throw std::runtime_error("ARC VRS mode refused");
     }

@@ -38,7 +38,7 @@ std::string code(std::string line) {
     return trim(line);
 }
 }
-Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,bool runtime_control) {
+Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,bool runtime_control,unsigned requested_control_space) {
     Transform out;
     auto reject=[&](std::string reason){out.reason=std::move(reason);out.ir.clear();return out;};
     try {
@@ -126,6 +126,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         if(runtime_control){
             unsigned space=0;
             while(space<65536&&std::any_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.space==space;}))++space;
+            if(requested_control_space!=UINT32_MAX){space=requested_control_space;if(std::any_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.space==space;}))return reject("control_space_collision");}
             if(space==65536)return reject("control_register_space");out.control_space=space;
             for(const auto& r:out.resources)if(r.resource_class==2){if(r.range_id==UINT32_MAX)return reject("control_range");control_range=std::max(control_range,r.range_id+1);}
             const auto root_id=named.at("dx.resources");auto resource_lists=metadata.at(root_id);
@@ -146,6 +147,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             else lines[i]=std::regex_replace(lines[i],local,"%arc_coarse_orig_$1");
         }
         std::ostringstream generated;
+        const bool needs_bounds=runtime_control||x_rate>1||y_rate>1;
+        if(needs_bounds&&!runtime_control){
+            if(text.find("%dx.types.Dimensions = type")==text.npos)generated<<"%dx.types.Dimensions = type { i32, i32, i32, i32 }\n";
+            if(text.find("declare %dx.types.Dimensions @dx.op.getDimensions(")==text.npos)generated<<"declare %dx.types.Dimensions @dx.op.getDimensions(i32, %dx.types.Handle, i32)\n";
+        }
         if(runtime_control){
             generated<<"%arc_coarse_control_buffer = type { i32, i32, i32, i32 }\n";
             if(text.find("%dx.types.CBufRet.i32 = type")==text.npos)generated<<"%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }\n";
@@ -158,10 +164,20 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 generated<<"arc_coarse_entry:\n";
                 if(runtime_control){
                     generated<<"  %arc_coarse_control = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<control_range<<", i32 0, i1 false)\n"
-                        <<"  %arc_coarse_values = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 0)\n";
+                        <<"  %arc_coarse_values = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 0)\n"
+                        <<"  %arc_coarse_width = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 2\n"
+                        <<"  %arc_coarse_height = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 3\n";
                     for(unsigned d=0;d<2;++d){const char a=d?'y':'x';generated<<"  %arc_coarse_requested_"<<a<<" = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, "<<d<<"\n"
                         <<"  %arc_coarse_enabled_"<<a<<" = icmp eq i32 %arc_coarse_requested_"<<a<<", 2\n"
                         <<"  %arc_coarse_rate_"<<a<<" = select i1 %arc_coarse_enabled_"<<a<<", i32 2, i32 1\n";}
+                }else if(needs_bounds){
+                    const auto& first=stores.front().args[1];const auto handle=handles.at(first.substr(first.find_last_of(' ')+1));
+                    const auto resource=std::find_if(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==1&&r.range_id==handle.range;});
+                    if(resource==out.resources.end())return reject("output_extent_handle");
+                    generated<<"  %arc_coarse_extent_handle = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 "<<handle.range<<", i32 "<<resource->shader_register<<", i1 false)\n"
+                        <<"  %arc_coarse_dimensions = call %dx.types.Dimensions @dx.op.getDimensions(i32 72, %dx.types.Handle %arc_coarse_extent_handle, i32 undef)\n"
+                        <<"  %arc_coarse_width = extractvalue %dx.types.Dimensions %arc_coarse_dimensions, 0\n"
+                        <<"  %arc_coarse_height = extractvalue %dx.types.Dimensions %arc_coarse_dimensions, 1\n";
                 }
                 for(unsigned d=0;d<2;++d){const auto rate=d?y_rate:x_rate,group=out.threads[d];const char axis=d?'y':'x';
                     const auto rate_value=runtime_control?std::string("%arc_coarse_rate_")+axis:std::to_string(rate);
@@ -174,8 +190,16 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                         <<"  %arc_coarse_scaled_"<<axis<<" = mul i32 %arc_coarse_local_"<<axis<<", "<<rate_value<<"\n"
                         <<"  %arc_coarse_coord_"<<axis<<" = add i32 %arc_coarse_base_"<<axis<<", %arc_coarse_scaled_"<<axis<<"\n";
                 }
-                generated<<"  %arc_coarse_active = and i1 %arc_coarse_active_x, %arc_coarse_active_y\n"
-                    <<"  br i1 %arc_coarse_active, label %arc_coarse_orig_0, label %arc_coarse_exit\n"
+                generated<<"  %arc_coarse_group_active = and i1 %arc_coarse_active_x, %arc_coarse_active_y\n";
+                if(needs_bounds){
+                    generated<<"  %arc_coarse_inside_x = icmp ult i32 %arc_coarse_coord_x, %arc_coarse_width\n"
+                        <<"  %arc_coarse_inside_y = icmp ult i32 %arc_coarse_coord_y, %arc_coarse_height\n"
+                        <<"  %arc_coarse_inside = and i1 %arc_coarse_inside_x, %arc_coarse_inside_y\n";
+                    if(runtime_control)generated<<"  %arc_coarse_is_coarse = or i1 %arc_coarse_enabled_x, %arc_coarse_enabled_y\n"
+                        <<"  %arc_coarse_bounded = select i1 %arc_coarse_is_coarse, i1 %arc_coarse_inside, i1 true\n";
+                    generated<<"  %arc_coarse_active = and i1 %arc_coarse_group_active, "<<(runtime_control?"%arc_coarse_bounded":"%arc_coarse_inside")<<"\n";
+                }else generated<<"  %arc_coarse_active = and i1 %arc_coarse_group_active, true\n";
+                generated<<"  br i1 %arc_coarse_active, label %arc_coarse_orig_0, label %arc_coarse_exit\n"
                     <<"arc_coarse_exit:\n  ret void\narc_coarse_orig_0:\n";
             }
         }
