@@ -1,0 +1,921 @@
+{
+  "schema": 1,
+  "runs": {
+    "baseline-a": {
+      "fps": 68.30566255764087,
+      "p99_ms": 18.755777,
+      "one_percent_low_fps": 50.89196653344281,
+      "cpu_record_mean_ms": 5.366633666666667,
+      "first_16_frame_ms": 14.7405375,
+      "first_16_cpu_record_ms": 5.6619875
+    },
+    "observe": {
+      "fps": 68.58165781961377,
+      "p99_ms": 18.020695999999997,
+      "one_percent_low_fps": 52.8279227268365,
+      "cpu_record_mean_ms": 5.359948833333333,
+      "first_16_frame_ms": 14.82976875,
+      "first_16_cpu_record_ms": 5.01296875
+    },
+    "profile-a": {
+      "fps": 68.25156973491522,
+      "p99_ms": 19.310131999999992,
+      "one_percent_low_fps": 47.57381473805065,
+      "cpu_record_mean_ms": 5.898238,
+      "first_16_frame_ms": 15.27054375,
+      "first_16_cpu_record_ms": 7.33778125
+    },
+    "profile-b": {
+      "fps": 68.03208034606831,
+      "p99_ms": 18.776041999999997,
+      "one_percent_low_fps": 48.675617571897945,
+      "cpu_record_mean_ms": 5.627859,
+      "first_16_frame_ms": 15.43905625,
+      "first_16_cpu_record_ms": 6.95538125
+    },
+    "baseline-b": {
+      "fps": 67.04477161572883,
+      "p99_ms": 18.990736000000002,
+      "one_percent_low_fps": 51.45696096903749,
+      "cpu_record_mean_ms": 5.462709333333334,
+      "first_16_frame_ms": 15.231399999999999,
+      "first_16_cpu_record_ms": 4.908987499999999
+    }
+  },
+  "profiles": {
+    "profile-a": {
+      "interval_count": 1088,
+      "compute_shaders": 47,
+      "mean_captured_gpu_ms": 14.945932000000013,
+      "mean_frame_timeline_coverage": 0.9890657636157559,
+      "categories_ms": {
+        "raster_depth": 4.0803840000000005,
+        "raster_color": 1.677696,
+        "compute": 9.187852000000014
+      },
+      "top_compute": [
+        {
+          "sha256": "1635f15fb9c56f3f8ea97264138e477e4f5531273729bd5d435d2c71f27d43ee",
+          "mean_ms_per_window": 3.958208,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              240,
+              135,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 16,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 1479,
+          "validation_only_host_labels": {
+            "Deferred Lighting": 16
+          },
+          "validation_only_mean_interval_iou": 0.9998298229819459
+        },
+        {
+          "sha256": "26bc5e38aafea9890b7c34e07ee7623c28495078d520beacc9ce269a30254719",
+          "mean_ms_per_window": 0.5792,
+          "interval_count": 32,
+          "threads": [
+            32,
+            1,
+            1
+          ],
+          "direct_dispatches": [],
+          "indirect_api_calls": 32,
+          "declared_binding_count": 10,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 8,
+          "instruction_metadata": 678,
+          "validation_only_host_labels": {
+            "Brixelizer Update": 25,
+            "ComputeSkinning": 7
+          },
+          "validation_only_mean_interval_iou": 0.17571660773815034
+        },
+        {
+          "sha256": "a26e3d77ba0fdabb5812c23b2823f03ad208e35db0ea9d2147b88f21c4f887ed",
+          "mean_ms_per_window": 0.531328,
+          "interval_count": 16,
+          "threads": [
+            8,
+            4,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              136,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 18,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 280576,
+          "instruction_metadata": 1121,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.18035893114779403
+        },
+        {
+          "sha256": "7616b3f35f01ee3b8ebe52c01325c8f9ced0ba0df1a54ca001c192712a2bd491",
+          "mean_ms_per_window": 0.424768,
+          "interval_count": 16,
+          "threads": [
+            8,
+            4,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              30,
+              34,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 12,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 16384,
+          "instruction_metadata": 1048,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.13412636663465966
+        },
+        {
+          "sha256": "e973fdfdddb47d8a281ddaaaafe20f0e3cb806d0e19cdade9419413bb3e3bbb2",
+          "mean_ms_per_window": 0.39264,
+          "interval_count": 32,
+          "threads": [
+            256,
+            1,
+            1
+          ],
+          "direct_dispatches": [],
+          "indirect_api_calls": 32,
+          "declared_binding_count": 15,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 8,
+          "instruction_metadata": 651,
+          "validation_only_host_labels": {
+            "Brixelizer Update": 32
+          },
+          "validation_only_mean_interval_iou": 0.11704954222245272
+        },
+        {
+          "sha256": "6a259334ce0e1f2f12c09b5030d4ce4f6e8ed4134b6f0dba5b501b252b6360fa",
+          "mean_ms_per_window": 0.392448,
+          "interval_count": 32,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 7,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 412,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 32
+          },
+          "validation_only_mean_interval_iou": 0.06743243773675853
+        },
+        {
+          "sha256": "e907000cfc351d208a1e3dd5433653f383fa8e449b41f113989f7c8b8433c137",
+          "mean_ms_per_window": 0.357568,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              240,
+              135,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 11,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 160,
+          "validation_only_host_labels": {
+            "Copy History Resource:Normals": 14,
+            "Brixelizer GI Update": 1,
+            "Copy History Resource:Depth": 1
+          },
+          "validation_only_mean_interval_iou": 0.20538572156578627
+        },
+        {
+          "sha256": "191d9a9393113b11bd8a4bb30deb48aa576e87510af077bbc103aadaedeb71ea",
+          "mean_ms_per_window": 0.298944,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 6,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 264192,
+          "instruction_metadata": 390,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.09092178889587195
+        },
+        {
+          "sha256": "0147f5bb50023bd7511d03c0a27cb9bf77b32f19e2066457c2890c619e17bb64",
+          "mean_ms_per_window": 0.247168,
+          "interval_count": 16,
+          "threads": [
+            16,
+            16,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 8,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 549,
+          "validation_only_host_labels": {
+            "TAA": 16
+          },
+          "validation_only_mean_interval_iou": 0.742236800496281
+        },
+        {
+          "sha256": "e61ecddcda52926eb7d7c80d4585255c6b9861ae480ca47957dd3f658974d611",
+          "mean_ms_per_window": 0.235712,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 11,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 16384,
+          "instruction_metadata": 1081,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.08516949902456053
+        },
+        {
+          "sha256": "e16a2d9bcad9e9d0fc33c675b30c0471d07f170c7391f3b7c7fb6a997ff87405",
+          "mean_ms_per_window": 0.235392,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 14,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 264192,
+          "instruction_metadata": 1523,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.08498733618231578
+        },
+        {
+          "sha256": "edd97b9037adf3045df0368bbbe4b0698158628385292061ec888dcd9574957d",
+          "mean_ms_per_window": 0.175936,
+          "interval_count": 16,
+          "threads": [
+            8,
+            4,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              135,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 14,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 2048,
+          "instruction_metadata": 609,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.05010675631714576
+        }
+      ],
+      "frame_alignment": [
+        {
+          "present_epoch": 0,
+          "host_buffered_row": 4,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 1,
+          "host_buffered_row": 5,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 2,
+          "host_buffered_row": 6,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 3,
+          "host_buffered_row": 7,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 4,
+          "host_buffered_row": 8,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 5,
+          "host_buffered_row": 9,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 6,
+          "host_buffered_row": 10,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 7,
+          "host_buffered_row": 11,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 8,
+          "host_buffered_row": 12,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 9,
+          "host_buffered_row": 13,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 10,
+          "host_buffered_row": 14,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 11,
+          "host_buffered_row": 15,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 12,
+          "host_buffered_row": 16,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 13,
+          "host_buffered_row": 17,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 15,
+          "host_buffered_row": 19,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 14,
+          "host_buffered_row": 18,
+          "timeline_overlap_fraction": 1.0
+        }
+      ],
+      "indirect_api_calls": 224,
+      "captured_timestamp_bytes": 17408,
+      "raw_counters": {
+        "schema": 1,
+        "engine_labels_used": false,
+        "shader_mutations": 0,
+        "image_readbacks": 0,
+        "resource_dependencies_complete": false,
+        "present_windows_requested": 16,
+        "present_windows": 16,
+        "timed_out": false,
+        "recordings": 208,
+        "submissions": 128,
+        "capacity_declines": 0,
+        "unsupported_segments": 0,
+        "cached_replay_samples_dropped": 0,
+        "dropped_intervals": 0,
+        "faults": 0,
+        "pending_gpu_jobs": 0
+      }
+    },
+    "profile-b": {
+      "interval_count": 1088,
+      "compute_shaders": 47,
+      "mean_captured_gpu_ms": 14.643040000000019,
+      "mean_frame_timeline_coverage": 0.9920378696416805,
+      "categories_ms": {
+        "raster_depth": 3.916416,
+        "raster_color": 1.551104,
+        "compute": 9.175520000000018
+      },
+      "top_compute": [
+        {
+          "sha256": "1635f15fb9c56f3f8ea97264138e477e4f5531273729bd5d435d2c71f27d43ee",
+          "mean_ms_per_window": 4.312064,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              240,
+              135,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 16,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 1479,
+          "validation_only_host_labels": {
+            "Deferred Lighting": 16
+          },
+          "validation_only_mean_interval_iou": 0.9998695425690342
+        },
+        {
+          "sha256": "26bc5e38aafea9890b7c34e07ee7623c28495078d520beacc9ce269a30254719",
+          "mean_ms_per_window": 0.596672,
+          "interval_count": 32,
+          "threads": [
+            32,
+            1,
+            1
+          ],
+          "direct_dispatches": [],
+          "indirect_api_calls": 32,
+          "declared_binding_count": 10,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 8,
+          "instruction_metadata": 678,
+          "validation_only_host_labels": {
+            "Brixelizer Update": 21,
+            "ComputeSkinning": 11
+          },
+          "validation_only_mean_interval_iou": 0.1891286477294899
+        },
+        {
+          "sha256": "a26e3d77ba0fdabb5812c23b2823f03ad208e35db0ea9d2147b88f21c4f887ed",
+          "mean_ms_per_window": 0.4416,
+          "interval_count": 16,
+          "threads": [
+            8,
+            4,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              136,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 18,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 280576,
+          "instruction_metadata": 1121,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.17665591003722805
+        },
+        {
+          "sha256": "e973fdfdddb47d8a281ddaaaafe20f0e3cb806d0e19cdade9419413bb3e3bbb2",
+          "mean_ms_per_window": 0.412032,
+          "interval_count": 32,
+          "threads": [
+            256,
+            1,
+            1
+          ],
+          "direct_dispatches": [],
+          "indirect_api_calls": 32,
+          "declared_binding_count": 15,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 8,
+          "instruction_metadata": 651,
+          "validation_only_host_labels": {
+            "Brixelizer Update": 32
+          },
+          "validation_only_mean_interval_iou": 0.12227528888577557
+        },
+        {
+          "sha256": "e907000cfc351d208a1e3dd5433653f383fa8e449b41f113989f7c8b8433c137",
+          "mean_ms_per_window": 0.399808,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              240,
+              135,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 11,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 160,
+          "validation_only_host_labels": {
+            "Copy History Resource:Normals": 15,
+            "Brixelizer GI Update": 1
+          },
+          "validation_only_mean_interval_iou": 0.19322215934805384
+        },
+        {
+          "sha256": "0147f5bb50023bd7511d03c0a27cb9bf77b32f19e2066457c2890c619e17bb64",
+          "mean_ms_per_window": 0.31648,
+          "interval_count": 16,
+          "threads": [
+            16,
+            16,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 8,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 549,
+          "validation_only_host_labels": {
+            "TAA": 16
+          },
+          "validation_only_mean_interval_iou": 0.7129636971227187
+        },
+        {
+          "sha256": "6a259334ce0e1f2f12c09b5030d4ce4f6e8ed4134b6f0dba5b501b252b6360fa",
+          "mean_ms_per_window": 0.314944,
+          "interval_count": 32,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 7,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 412,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 32
+          },
+          "validation_only_mean_interval_iou": 0.06302794771361556
+        },
+        {
+          "sha256": "7616b3f35f01ee3b8ebe52c01325c8f9ced0ba0df1a54ca001c192712a2bd491",
+          "mean_ms_per_window": 0.291776,
+          "interval_count": 16,
+          "threads": [
+            8,
+            4,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              30,
+              34,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 12,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 16384,
+          "instruction_metadata": 1048,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.1167384670098546
+        },
+        {
+          "sha256": "e16a2d9bcad9e9d0fc33c675b30c0471d07f170c7391f3b7c7fb6a997ff87405",
+          "mean_ms_per_window": 0.261504,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 14,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 264192,
+          "instruction_metadata": 1523,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.09897282853856271
+        },
+        {
+          "sha256": "e61ecddcda52926eb7d7c80d4585255c6b9861ae480ca47957dd3f658974d611",
+          "mean_ms_per_window": 0.236032,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 11,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 16384,
+          "instruction_metadata": 1081,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.0926357710796662
+        },
+        {
+          "sha256": "d5d84b92ffcc68a43e26997963a17fac87174dec99dbe0b3a48a92ae874f0df4",
+          "mean_ms_per_window": 0.1808,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              240,
+              135,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 3,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 21,
+          "validation_only_host_labels": {
+            "TAA Sharpening Pass": 16
+          },
+          "validation_only_mean_interval_iou": 0.9923931450010859
+        },
+        {
+          "sha256": "dd51d5119062090e6630759b19584a136d1220f77962c6f5db127d731b8bc95a",
+          "mean_ms_per_window": 0.174752,
+          "interval_count": 16,
+          "threads": [
+            8,
+            8,
+            1
+          ],
+          "direct_dispatches": [
+            [
+              120,
+              68,
+              1
+            ]
+          ],
+          "indirect_api_calls": 0,
+          "declared_binding_count": 16,
+          "reflection_available": true,
+          "unbounded_bindings": false,
+          "requires_flags": 0,
+          "instruction_metadata": 91,
+          "validation_only_host_labels": {
+            "Brixelizer GI Update": 16
+          },
+          "validation_only_mean_interval_iou": 0.06995810396844092
+        }
+      ],
+      "frame_alignment": [
+        {
+          "present_epoch": 0,
+          "host_buffered_row": 4,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 1,
+          "host_buffered_row": 5,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 2,
+          "host_buffered_row": 6,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 3,
+          "host_buffered_row": 7,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 4,
+          "host_buffered_row": 8,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 5,
+          "host_buffered_row": 9,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 6,
+          "host_buffered_row": 10,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 7,
+          "host_buffered_row": 11,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 8,
+          "host_buffered_row": 12,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 9,
+          "host_buffered_row": 13,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 10,
+          "host_buffered_row": 14,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 11,
+          "host_buffered_row": 15,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 12,
+          "host_buffered_row": 16,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 13,
+          "host_buffered_row": 17,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 14,
+          "host_buffered_row": 18,
+          "timeline_overlap_fraction": 1.0
+        },
+        {
+          "present_epoch": 15,
+          "host_buffered_row": 19,
+          "timeline_overlap_fraction": 1.0
+        }
+      ],
+      "indirect_api_calls": 224,
+      "captured_timestamp_bytes": 17408,
+      "raw_counters": {
+        "schema": 1,
+        "engine_labels_used": false,
+        "shader_mutations": 0,
+        "image_readbacks": 0,
+        "resource_dependencies_complete": false,
+        "present_windows_requested": 16,
+        "present_windows": 16,
+        "timed_out": false,
+        "recordings": 208,
+        "submissions": 128,
+        "capacity_declines": 0,
+        "unsupported_segments": 0,
+        "cached_replay_samples_dropped": 0,
+        "dropped_intervals": 0,
+        "faults": 0,
+        "pending_gpu_jobs": 0
+      }
+    }
+  },
+  "baseline_combined_fps": 67.66934401366109,
+  "baseline_repeat_drift_fraction": 0.01880670053048895,
+  "repeat_image_error": {
+    "mean_linear": 0.0002928753674495965,
+    "peak_linear": 0.12657088041305542
+  },
+  "profile_image_error": {
+    "mean_linear": 0.00030094297835603356,
+    "peak_linear": 0.09511081129312515
+  },
+  "single_top_kernel_zero_cost_upper_bound": 1.3602391177645154,
+  "hypothetical_savings_for_2x_ms": 7.472966000000007,
+  "optimization_gain_claim": false,
+  "resource_contracts_proven": false,
+  "shader_or_quality_changes": false
+}

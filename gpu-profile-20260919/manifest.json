@@ -1,0 +1,13 @@
+{
+  "source_commit": "4c22d8ab7137938759737e3319fd7177da3a239e",
+  "source_branch": "codex_den/generic-dx12-runtime",
+  "evidence_branch": "codex_den/results-gpu-profile-20260919",
+  "archive_sha256": "5c11a3a297960b23d16f3b78e76806c664bac2d178c279d3766ba5615a9b444e",
+  "archive_bytes": 19155560,
+  "archive_entries": 222,
+  "comparison_dll_sha256": "e832a00cc3bf6fd2db2ae4495ce120b4feaf5c784885611df605030704911889",
+  "release_dll_sha256": "55f285174f73a536055c0189deb6b56412ee7be468868fdf5c0b2dbee869e07c",
+  "binary_difference": "The release adds an early decline for linked multi-node devices. The single-node comparison binary is preserved as measured/measured-probe.dll. Release confirmation and native tests are included.",
+  "vendor_distribution": "Vendor host/assets excluded. Rebuild the official pinned SDK with the checked-in host adapter; each run pins the exact host hash.",
+  "verdict": "Engine-independent GPU cost capture and shader identification validated. No shader/quality changes, FPS optimization or 2x claim."
+}
