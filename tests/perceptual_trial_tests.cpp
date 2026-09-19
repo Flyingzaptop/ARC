@@ -70,6 +70,10 @@ int main(){
     const auto calls=host.applies;check(ctrl.trial(host,cap).status==TrialStatus::Faulted&&host.applies==calls,"fault prevents further actions");
     host.fail_restore=false;check(ctrl.recover(host)&&!host.changed&&!ctrl.faulted(),"recovery requires real restore");
     host=Host{};cap.importance.score=.9;check(ctrl.trial(host,cap).status==TrialStatus::NotAdmitted&&host.applies==0,"important work protected");
+    cap.capability.isolated_probe=true;
+    check(ctrl.trial(host,cap).status==TrialStatus::Retained,"isolated high-importance investigation still uses the critic");
+    check(ctrl.restore(host),"isolated trial restore");host=Host{};host.damaged=true;
+    check(ctrl.trial(host,cap).status==TrialStatus::Rejected&&!host.changed,"isolation never bypasses damage guard");
     cap=candidate();cap.capability.supported=false;check(!ctrl.choose(std::span(&cap,1)),"capability required");
     bool rejected_config=false;try{PerceptualGuardConfig cfg;cfg.minimum_timing_samples=0;PerceptualCritic bad(cfg);}catch(const std::invalid_argument&){rejected_config=true;}
     check(rejected_config,"invalid guard configuration");

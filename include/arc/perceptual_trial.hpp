@@ -12,6 +12,9 @@ struct PerceptualCapability {
     std::uint64_t action{}, target{}, generation{};
     PerceptualMechanism mechanism{PerceptualMechanism::HostDefined};
     bool supported{}, reversible{}, synchronized{}, reference_capture{};
+    // Stronger host contract: exploratory changes cannot affect a live displayed
+    // frame or shared game state. Defaults false for all existing adapters.
+    bool isolated_probe{};
 };
 struct PerceptualCandidate {
     PerceptualCapability capability;

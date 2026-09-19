@@ -69,7 +69,7 @@ PerceptualTrialController::PerceptualTrialController(PerceptualGuardConfig c):cr
 bool PerceptualTrialController::admitted(const PerceptualCandidate& c) const noexcept {
     const auto& k=c.capability;const auto& cfg=critic_.config();
     return k.action&&k.target&&k.generation&&k.supported&&k.reversible&&k.synchronized&&k.reference_capture&&
-        c.importance.id&&probability(c.importance.score)&&c.importance.score<=cfg.maximum_importance&&
+        c.importance.id&&probability(c.importance.score)&&(k.isolated_probe||c.importance.score<=cfg.maximum_importance)&&
         probability(c.importance.confidence)&&c.importance.confidence>=cfg.minimum_confidence&&
         std::isfinite(c.measured_cost_ms)&&c.measured_cost_ms>0&&std::isfinite(c.expected_gain_ms)&&c.expected_gain_ms>0&&
         c.expected_gain_ms<=c.measured_cost_ms;

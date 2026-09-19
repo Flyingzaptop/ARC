@@ -4,3 +4,4 @@
 *.md text eol=lf
 *.ps1 text eol=crlf
 *.rgb32f binary
+*.rgb8 binary
