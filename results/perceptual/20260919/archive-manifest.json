@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "source_branch": "codex_den/mega-f-perceptual",
+  "final_core_source": "4e5b0dde1d0a91d52b7246f9c4384d5387cd3f49",
+  "diagnostic_source": "af44bbf",
+  "report_source": "b1a90cdfb31fa2c27c66c4cd13ae0a8e67c1ae03",
+  "full_release": "65/65",
+  "debug_non_gpu": "45/45",
+  "additional_native_forwarding": "PASS",
+  "real_game_optimization_enabled": false,
+  "full_player_logs_included": false,
+  "early_portability_failure": "Missing compiled upstream shader assets; then zero-duration draw query led to InvalidTiming rejection. Negative raw capture retained."
+}

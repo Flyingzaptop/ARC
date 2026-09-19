@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "verdict": "PASS",
+  "scope": "controlled native DX12 SRV probe; pixel guard, not human-perception equivalence",
+  "positive": {
+    "image_accepted": true,
+    "timing_stable": true,
+    "benefit_accepted": true,
+    "mean_error": 3.201033299167951e-07,
+    "peak_error": 0.0002690553665161133,
+    "tile_error": 2.7944644292195637e-05,
+    "gain_ms": 0.48640000000000005,
+    "before_ms": 0.57856,
+    "modified_ms": 0.091136,
+    "after_ms": 0.577536
+  },
+  "negative": {
+    "image_accepted": false,
+    "timing_stable": true,
+    "benefit_accepted": true,
+    "mean_error": 0.007496085619398703,
+    "peak_error": 0.5628907382488251,
+    "tile_error": 0.4797884126504262,
+    "gain_ms": 0.53248,
+    "before_ms": 0.574464,
+    "modified_ms": 0.041984,
+    "after_ms": 0.575488
+  },
+  "predictive": {
+    "verdict": "PASS",
+    "raw_coverage": 0.0244140625,
+    "predicted_8f": 0.030654296875,
+    "restored_mip": 0
+  }
+}

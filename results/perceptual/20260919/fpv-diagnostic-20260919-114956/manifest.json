@@ -1,0 +1,10 @@
+{
+  "source_sha": "af44bbfc4008231baa40154a2a6f798ed67e7efc",
+  "probe_sha256": "8CF8BCDF9A65010A925A3D4677182E617E859E65CCA17DA8D48AA4B3A0019803",
+  "start_utc": "2026-09-19T09:49:57.1515291Z",
+  "pid": 19080,
+  "scene": "Abandoned Factory",
+  "mode": "observe_only",
+  "control_before_attach": "fpv-control-20260919-114425",
+  "mutations_enabled": false
+}

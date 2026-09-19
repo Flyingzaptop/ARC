@@ -1,0 +1,12 @@
+{
+  "start_utc": "2026-09-19T09:39:52.2383433Z",
+  "pid": 9904,
+  "scene": "Abandoned Factory",
+  "mode": "solo freestyle",
+  "source_sha": "4e5b0dde1d0a91d52b7246f9c4384d5387cd3f49",
+  "core_sha256": "6EF2A1CFB78E7CBB82A555E37E00A2D77A1978EED86B20A92363FE933D233652",
+  "probe_sha256": "BBF509809141EF96A33B80AF9F54F9973DCE4447CDDCF8203BC1DFB0AD787FAE",
+  "game_api": "Direct3D 12",
+  "game_version": "2.9.1b",
+  "quality_mutations_enabled": false
+}

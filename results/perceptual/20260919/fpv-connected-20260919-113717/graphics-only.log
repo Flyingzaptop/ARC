@@ -1,0 +1,8 @@
+Forcing GfxDevice: Direct3D 12
+GfxDevice: creating device client; threaded=1; jobified=0
+Direct3D:
+    Version:         Direct3D 12 [level 12.1]
+    Renderer:        NVIDIA GeForce RTX 3060 Laptop GPU (ID=0x2520)
+Direct3D: detected that using refresh rate causes time drift. Will stop trusting refresh rate until the game window is moved.
+Direct3D: detected that vsync is broken (it does not limit frame rate properly). Delta time will now be calculated using cpu-side time stampling until the game window is moved.
+d3d12: swapchain present failed (887a0001).

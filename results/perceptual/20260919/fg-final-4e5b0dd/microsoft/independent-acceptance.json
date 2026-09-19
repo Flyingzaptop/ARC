@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "verdict": "PASS",
+  "scope": "same portable core on independent Microsoft raster renderer; rejection is valid when no gain exists",
+  "evidence": {
+    "image_accepted": true,
+    "timing_stable": true,
+    "benefit_accepted": false,
+    "mean_error": 0.0,
+    "peak_error": 0.0,
+    "tile_error": 0,
+    "gain_ms": 0.0010240000000000006,
+    "before_ms": 0.01536,
+    "modified_ms": 0.014336,
+    "after_ms": 0.016384
+  },
+  "controller": {
+    "renderer": "Microsoft D3D12HelloTexture",
+    "status": 4,
+    "reason": 6,
+    "importance": 0.13552879972742163,
+    "gain_ms": 0.0010240000000000006,
+    "image_mean": 0,
+    "image_peak": 0,
+    "restored": true
+  }
+}

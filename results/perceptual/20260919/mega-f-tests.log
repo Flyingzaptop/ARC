@@ -1,0 +1,164 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+      Start  1: arc-gpu-attribution-tests
+ 1/64 Test  #1: arc-gpu-attribution-tests .........................   Passed    0.04 sec
+      Start  2: arc-core-tests
+ 2/64 Test  #2: arc-core-tests ....................................   Passed    0.16 sec
+      Start  3: arc-resource-semantics-tests
+ 3/64 Test  #3: arc-resource-semantics-tests ......................   Passed    0.03 sec
+      Start  4: arc-scene-understanding-tests
+ 4/64 Test  #4: arc-scene-understanding-tests .....................   Passed    0.04 sec
+      Start  5: arc-residency-policy-tests
+ 5/64 Test  #5: arc-residency-policy-tests ........................   Passed    0.03 sec
+      Start  6: arc-residency-autonomous-sim-tests
+ 6/64 Test  #6: arc-residency-autonomous-sim-tests ................   Passed    0.03 sec
+      Start  7: arc-residency-invariant-stress
+ 7/64 Test  #7: arc-residency-invariant-stress ....................   Passed    0.11 sec
+      Start  8: arc-residency-workload-matrix-tests
+ 8/64 Test  #8: arc-residency-workload-matrix-tests ...............   Passed    0.03 sec
+      Start  9: arc-texture-quality-policy-tests
+ 9/64 Test  #9: arc-texture-quality-policy-tests ..................   Passed    0.03 sec
+      Start 10: arc-texture-quality-invariant-stress
+10/64 Test #10: arc-texture-quality-invariant-stress ..............   Passed    0.38 sec
+      Start 11: arc-memory-arbiter-tests
+11/64 Test #11: arc-memory-arbiter-tests ..........................   Passed    0.03 sec
+      Start 12: arc-memory-planner-tests
+12/64 Test #12: arc-memory-planner-tests ..........................   Passed    0.04 sec
+      Start 13: arc-candidate-surface-tests
+13/64 Test #13: arc-candidate-surface-tests .......................   Passed    0.03 sec
+      Start 14: arc-global-memory-scenario-tests
+14/64 Test #14: arc-global-memory-scenario-tests ..................   Passed    0.04 sec
+      Start 15: arc-transition-predictor-tests
+15/64 Test #15: arc-transition-predictor-tests ....................   Passed    0.03 sec
+      Start 16: arc-live-runtime-tests
+16/64 Test #16: arc-live-runtime-tests ............................   Passed    0.04 sec
+      Start 17: arc-runtime-event-bridge-tests
+17/64 Test #17: arc-runtime-event-bridge-tests ....................   Passed    0.04 sec
+      Start 18: arc-runtime-coordinator-tests
+18/64 Test #18: arc-runtime-coordinator-tests .....................   Passed    0.03 sec
+      Start 19: arc-runtime-integration-tests
+19/64 Test #19: arc-runtime-integration-tests .....................   Passed    0.03 sec
+      Start 20: arc-multisession-stress
+20/64 Test #20: arc-multisession-stress ...........................   Passed    4.45 sec
+      Start 21: arc-dx12-view-tests
+21/64 Test #21: arc-dx12-view-tests ...............................   Passed    0.03 sec
+      Start 22: arc-gpu-attribution-native
+22/64 Test #22: arc-gpu-attribution-native ........................   Passed    0.35 sec
+      Start 23: arc-dx12-enhanced-tests
+23/64 Test #23: arc-dx12-enhanced-tests ...........................   Passed    0.33 sec
+      Start 24: dx12-memory-pressure
+24/64 Test #24: dx12-memory-pressure ..............................   Passed    0.49 sec
+      Start 25: dx12-texture-pressure
+25/64 Test #25: dx12-texture-pressure .............................   Passed    0.53 sec
+      Start 26: dx12-mixed-resources
+26/64 Test #26: dx12-mixed-resources ..............................   Passed    0.57 sec
+      Start 27: dx12-residency-lab-baseline
+27/64 Test #27: dx12-residency-lab-baseline .......................   Passed    2.35 sec
+      Start 28: dx12-residency-lab-arc
+28/64 Test #28: dx12-residency-lab-arc ............................   Passed    2.34 sec
+      Start 29: dx12-residency-lab-auto
+29/64 Test #29: dx12-residency-lab-auto ...........................   Passed    2.34 sec
+      Start 30: dx12-tiled-texture-lab
+30/64 Test #30: dx12-tiled-texture-lab ............................   Passed    0.73 sec
+      Start 31: dx12-global-memory-lab
+31/64 Test #31: dx12-global-memory-lab ............................   Passed    0.92 sec
+      Start 32: dx12-live-runtime-lab
+32/64 Test #32: dx12-live-runtime-lab .............................   Passed    0.65 sec
+      Start 33: dx12-runtime-event-bridge-lab
+33/64 Test #33: dx12-runtime-event-bridge-lab .....................   Passed    0.33 sec
+      Start 34: dx12-runtime-backend-lab
+34/64 Test #34: dx12-runtime-backend-lab ..........................   Passed    0.31 sec
+      Start 35: arc-steam-library-tests
+35/64 Test #35: arc-steam-library-tests ...........................   Passed    0.04 sec
+      Start 36: arc-adaptive-quality-tests
+36/64 Test #36: arc-adaptive-quality-tests ........................   Passed    0.03 sec
+      Start 37: arc-action-effect-tracker-tests
+37/64 Test #37: arc-action-effect-tracker-tests ...................   Passed    0.03 sec
+      Start 38: arc-adaptive-quality-controller-tests
+38/64 Test #38: arc-adaptive-quality-controller-tests .............   Passed    0.03 sec
+      Start 39: arc-quality-profile-tests
+39/64 Test #39: arc-quality-profile-tests .........................   Passed    0.04 sec
+      Start 40: dx12-adaptive-quality-benchmark-smoke
+40/64 Test #40: dx12-adaptive-quality-benchmark-smoke .............   Passed    6.38 sec
+      Start 41: dx12-mixed-graphics-benchmark-smoke
+41/64 Test #41: dx12-mixed-graphics-benchmark-smoke ...............   Passed    8.42 sec
+      Start 42: arc-closed-loop-quality-sim-tests
+42/64 Test #42: arc-closed-loop-quality-sim-tests .................   Passed    0.03 sec
+      Start 43: arc-quality-restore-memory-pressure-tests
+43/64 Test #43: arc-quality-restore-memory-pressure-tests .........   Passed    0.03 sec
+      Start 44: dx12-closed-loop-mixed-graphics-benchmark-smoke
+44/64 Test #44: dx12-closed-loop-mixed-graphics-benchmark-smoke ...   Passed   13.13 sec
+      Start 45: arc-quality-admission-tests
+45/64 Test #45: arc-quality-admission-tests .......................   Passed    0.03 sec
+      Start 46: arc-global-action-arbiter-tests
+46/64 Test #46: arc-global-action-arbiter-tests ...................   Passed    0.03 sec
+      Start 47: arc-unified-runtime-governor-tests
+47/64 Test #47: arc-unified-runtime-governor-tests ................   Passed    0.03 sec
+      Start 48: dx12-mega-stage-a-benchmark-smoke
+48/64 Test #48: dx12-mega-stage-a-benchmark-smoke .................   Passed   61.07 sec
+      Start 49: arc-dx12-host-adapter-tests
+49/64 Test #49: arc-dx12-host-adapter-tests .......................   Passed    0.09 sec
+      Start 50: arc-dx12-host-adapter-surface-tests
+50/64 Test #50: arc-dx12-host-adapter-surface-tests ...............   Passed    0.07 sec
+      Start 51: dx12-mega-stage-b-host-renderer-smoke
+51/64 Test #51: dx12-mega-stage-b-host-renderer-smoke .............***Failed   54.70 sec
+ARC Mega Stage B native host renderer on NVIDIA GeForce RTX 3060 Laptop GPU
+Target: 0.937 ms, native 1920x1080, temporal OFF
+Calibrating renderer quality ladders
+  texture sampling: 0.121, 0.114, 0.102 ms
+  raster layers: 0.151, 0.132, 0.153 ms
+  lighting iterations: 0.003, 0.162, 0.137 ms
+Baseline renderer schedule: 3 s/phase
+Adaptive native-host schedule
+  easy-0
+  bandwidth-heavy
+  recover-bandwidth
+  raster-moderate-memory
+  recover-raster
+  lighting-heavy
+  recover-lighting
+  mixed-emergency
+  final-easy
+Baseline miss: 27.410%  ARC: 21.552%
+Host resources: 6, submits: 44794, presents: 44794, rejections: 0
+Quality actions: 18, domains: 2 [bandwidth=yes, raster=yes, lighting=no], memory actions: 8, combined ticks: 0
+Final quality full: yes, residency restored: yes
+Report: traces/mega-stage-b-smoke.json
+
+      Start 52: arc-temporal-visibility-tests
+52/64 Test #52: arc-temporal-visibility-tests .....................   Passed    0.03 sec
+      Start 53: arc-visual-importance-tests
+53/64 Test #53: arc-visual-importance-tests .......................   Passed    0.03 sec
+      Start 54: arc-mega-e-scenario-tests
+54/64 Test #54: arc-mega-e-scenario-tests .........................   Passed    0.03 sec
+      Start 55: arc-temporal-visibility-native
+55/64 Test #55: arc-temporal-visibility-native ....................   Passed    0.34 sec
+      Start 56: arc-perceptual-trial-tests
+56/64 Test #56: arc-perceptual-trial-tests ........................   Passed    0.01 sec
+      Start 57: arc-perceptual-native
+57/64 Test #57: arc-perceptual-native .............................   Passed    0.47 sec
+      Start 58: arc-lifecycle-tests
+58/64 Test #58: arc-lifecycle-tests ...............................   Passed    0.05 sec
+      Start 59: arc-test-assertions-tests
+59/64 Test #59: arc-test-assertions-tests .........................   Passed    0.03 sec
+      Start 60: arc-wicked-telemetry-tests
+60/64 Test #60: arc-wicked-telemetry-tests ........................   Passed    0.03 sec
+      Start 61: arc-mega-d-validation-tests
+61/64 Test #61: arc-mega-d-validation-tests .......................   Passed    0.99 sec
+      Start 62: arc-wicked-audit-boundary-tests
+62/64 Test #62: arc-wicked-audit-boundary-tests ...................   Passed    0.80 sec
+      Start 63: arc-wicked-presentation-contract-tests
+63/64 Test #63: arc-wicked-presentation-contract-tests ............   Passed    0.65 sec
+      Start 64: arc-stage15-validation-tests
+64/64 Test #64: arc-stage15-validation-tests ......................   Passed    0.88 sec
+
+98% tests passed, 1 tests failed out of 64
+
+Label Time Summary:
+gpu       = 156.75 sec*proc (20 tests)
+stress    =   4.45 sec*proc (1 test)
+
+Total Test time (real) = 167.54 sec
+
+The following tests FAILED:
+	 51 - dx12-mega-stage-b-host-renderer-smoke (Failed)    gpu
+Errors while running CTest

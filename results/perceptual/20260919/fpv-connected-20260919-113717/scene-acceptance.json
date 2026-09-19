@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "verdict": "FAIL",
+  "scope": "read-only game connection; strict zero-Present-error gate",
+  "elapsed_seconds": 238.0770628,
+  "present_delta": 13798,
+  "queue_delta": 56876,
+  "indexed_delta": 15146115,
+  "present_failures": 1,
+  "hook_failures": 0,
+  "quality_mutations": 0,
+  "process_alive": true,
+  "observed_hresult": "0x887a0001",
+  "note": "Game remained running. Cause not yet isolated."
+}

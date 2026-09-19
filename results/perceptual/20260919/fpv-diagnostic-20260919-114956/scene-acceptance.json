@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "verdict": "PASS",
+  "scope": "this read-only observation window only; no universal compatibility or optimization claim",
+  "elapsed_seconds": 346.6759731,
+  "present_calls": 47056,
+  "queue_submits": 188096,
+  "indexed_draw_calls": 59670413,
+  "present_failures": 0,
+  "hook_failures": 0,
+  "quality_mutations": 0,
+  "display_transitions_tested": true,
+  "earlier_unresolved_present_error": "fpv-connected-20260919-113717 retained FAIL"
+}
