@@ -1,10 +1,12 @@
 {
-  "source_commit": "9eba66a1fd747d7ba73f00f992ca8e3158b40d5d",
+  "source_commit": "90a45cecddc6ca6b2585ae6056a93e486611c4de",
   "source_branch": "codex_den/generic-dx12-runtime",
   "evidence_branch": "codex_den/results-cauldron-heavy-20260919",
-  "archive_sha256": "06a41fe26f9661b625c6fb36d7a84a084648931b5450564de0329ac7c2adecd3",
-  "archive_bytes": 18640219,
+  "archive_sha256": "601c56dab9e70b5d48f1da92fc3946425dd31010154c9024436a5504bbaad24b",
+  "archive_bytes": 18653108,
   "archive_entries": 169,
+  "capture_fence_after_copy": true,
+  "supersedes": "2724c70: preliminary image captures used the vendor screenshot fence-before-copy race; complete matrix repeated after fixing it. Original data remains in Git history.",
   "renderer_distribution": "Vendor host/assets excluded; rebuild from pinned official SDK with the checked-in adapter. Exact host hash is in each run manifest.",
   "tests": "47 non-GPU CTests; VRS debug-layer rollback/in-flight-generation tests; resource/readback/lifetime test with lean-mode GPU analysis; invalid-call preservation; all passed.",
   "verdict": "CPU duplicate recording fixed; heavy native DX12 benchmark integrated; no reliable quality-preserving net FPS gain or 2x claim."
