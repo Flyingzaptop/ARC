@@ -3,11 +3,13 @@
   "source_branch": "codex_den/mega-f-perceptual",
   "final_core_source": "4e5b0dde1d0a91d52b7246f9c4384d5387cd3f49",
   "diagnostic_source": "af44bbf",
-  "report_source": "b1a90cdfb31fa2c27c66c4cd13ae0a8e67c1ae03",
+  "report_source": "474d58ba5e6587d7e130558528f1cd6ffa41db1a",
   "full_release": "65/65",
   "debug_non_gpu": "45/45",
   "additional_native_forwarding": "PASS",
   "real_game_optimization_enabled": false,
   "full_player_logs_included": false,
-  "early_portability_failure": "Missing compiled upstream shader assets; then zero-duration draw query led to InvalidTiming rejection. Negative raw capture retained."
+  "early_portability_failure": "Missing compiled upstream shader assets; then zero-duration draw query led to InvalidTiming rejection. Negative raw capture retained.",
+  "transport": "Byte-preserved attributes; Git blob SHA-256 verified",
+  "supersedes_transport_only": "results/perceptual-20260919 at 57f20df; original retained, measurements unchanged"
 }

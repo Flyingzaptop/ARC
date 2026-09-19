@@ -1,8 +1,13 @@
 [
   {
+    "file": ".gitattributes",
+    "bytes": 24,
+    "sha256": "4613743C7A7AE4F92D453C0CF80C17B693FF348D55004A1182DA64A971CE4833"
+  },
+  {
     "file": "archive-manifest.json",
-    "bytes": 591,
-    "sha256": "CD3CFF17F3229FCC0F0932CD9B952083187AE0DD9E80BE9E310ABA6B5146C2D8"
+    "bytes": 780,
+    "sha256": "1485BC6785BE41BF633CAB5466F18A991F180662759C1205BD265BA168CD635A"
   },
   {
     "file": "fg-final-debug-tests.log",
@@ -36,8 +41,8 @@
   },
   {
     "file": "REPORT.md",
-    "bytes": 6203,
-    "sha256": "F06B94D1F681C5225180FF6178506FC27D41113A469CB23F3D5E9B2322FC4E03"
+    "bytes": 6425,
+    "sha256": "340D95C6FFF14CF300ACF43055EEF9BA6892E4FB8D224A130C509B1CAD8E124F"
   },
   {
     "file": "fg-final-4e5b0dd\\manifest.json",
@@ -358,5 +363,20 @@
     "file": "mega-f-portability-20260919-110054\\summary.json",
     "bytes": 156,
     "sha256": "CB2D5103B0D9A49A5FDDF26253943452256E0E59A1577D20AB4D309D5CD4A158"
+  },
+  {
+    "file": "tools\\validate-perceptual-native.py",
+    "bytes": 5209,
+    "sha256": "11ED1ECBB033AEF73DF0FF0A675556DD464E30644FFF685F4C09EDF216223F81"
+  },
+  {
+    "file": "tools\\validate-perceptual-portability.py",
+    "bytes": 1407,
+    "sha256": "C79FD56A8C6FC2BEF459C59BAACAF715938F6A2BEA2DA031BDBBA90032D63178"
+  },
+  {
+    "file": "tools\\verify-evidence-archive.py",
+    "bytes": 911,
+    "sha256": "1DC95E465E7771777F3E9D16AC1BD42B1BFC6349204D90C59839B3EE86006754"
   }
 ]

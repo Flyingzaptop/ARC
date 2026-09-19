@@ -94,7 +94,10 @@ rerun and the final full suite passed. Both outcomes are retained; no gate was l
 Early portability startup/timer-resolution failures and the first real-game Present
 failure are also retained.
 
-[Raw evidence archive](https://github.com/Flyingzaptop/ARC/tree/results/perceptual-20260919/results/perceptual/20260919).
+[Raw evidence archive](https://github.com/Flyingzaptop/ARC/tree/results/perceptual-20260919-verified/results/perceptual/20260919).
+Archive attributes disable line-ending conversion; checksums are verified against
+actual Git blobs, including the raw float32 images. The earlier archive branch is
+retained but superseded for transport integrity.
 
 ## Remaining product work
 
