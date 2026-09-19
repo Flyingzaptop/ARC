@@ -10,7 +10,7 @@ class FrameTimingWindow {
 public:
     explicit FrameTimingWindow(std::uint64_t duration_ns=60'000'000'000ULL,
                                std::size_t capacity=65536);
-    void present(std::uint64_t timestamp_ns,std::uint64_t swapchain,bool visible_success);
+    void present(std::uint64_t timestamp_ns,std::uint64_t swapchain,bool visible_success,bool foreground=true);
     void expire() noexcept;
     [[nodiscard]] bool done()const noexcept {return reason_!=Reason::Pending;}
     [[nodiscard]] bool valid()const noexcept {return reason_==Reason::Complete;}
@@ -24,6 +24,7 @@ private:
     std::uint64_t duration_,first_{},last_{},swapchain_{},ignored_{};
     std::size_t capacity_;
     bool started_{};
+    std::uint64_t foreground_{},background_{};
     std::vector<std::uint64_t> intervals_;
 };
 }

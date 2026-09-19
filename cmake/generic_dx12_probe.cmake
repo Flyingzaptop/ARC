@@ -15,7 +15,7 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_readback.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_command_mirror.cpp)
     target_compile_definitions(arc-dx12-probe PRIVATE UNICODE _UNICODE NOMINMAX)
-    target_link_libraries(arc-dx12-probe PRIVATE arc::core arc-minhook d3d12 dxgi dxguid user32)
+    target_link_libraries(arc-dx12-probe PRIVATE arc::core arc-minhook d3d12 dxgi dxguid user32 d3dcompiler)
     add_executable(arc-dx12-probe-launch ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/dx12_probe_launch.cpp)
     target_compile_definitions(arc-dx12-probe-launch PRIVATE UNICODE _UNICODE NOMINMAX)
     if(ARC_BUILD_TESTS)

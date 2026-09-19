@@ -60,6 +60,11 @@ add_executable(arc-trace-viewer src/tools/trace_viewer.cpp)
 target_link_libraries(arc-trace-viewer PRIVATE arc::core)
 
 if(WIN32)
+    add_executable(arc-dynamic-city samples/dynamic_city.cpp)
+    target_compile_definitions(arc-dynamic-city PRIVATE UNICODE _UNICODE NOMINMAX)
+    target_link_libraries(arc-dynamic-city PRIVATE d3d12 dxgi d3dcompiler user32 ole32 windowscodecs)
+    add_executable(arc-process-sample src/tools/process_sample.cpp)
+    target_compile_definitions(arc-process-sample PRIVATE UNICODE _UNICODE NOMINMAX)
     add_library(arc-dx12-observer STATIC
         src/backends/dx12/dx12_observer.cpp
         src/backends/dx12/views.cpp

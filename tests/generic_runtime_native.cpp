@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <vector>
+#include <cmath>
 using Microsoft::WRL::ComPtr;
 void hr(HRESULT r){if(FAILED(r))throw std::runtime_error("Native HRESULT "+std::to_string(r));}
 void check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
@@ -106,6 +107,28 @@ int wmain(int argc,wchar_t** argv)try{
     check(rgb.size()==61*37*4,"Readback removes row padding");
     for(std::size_t i=0;i<rgb.size();i+=4)check(rgb[i]==51&&rgb[i+1]==102&&rgb[i+2]==153&&rgb[i+3]==255,"Native clear pixels must match the intercepted image exactly");
     check(request_image(image_path.data())!=0,"Existing evidence cannot be overwritten");
+    const auto request_features=reinterpret_cast<Api>(GetProcAddress(dll,"ArcRequestFeatures"));check(request_features!=nullptr,"GPU feature export");
+    auto feature_path=(directory/L"features.json").wstring();check(request_features(feature_path.data())==0,"Request GPU feature reduction");
+    hr(swap->Present(0,0));
+    for(int i=0;i<30&&!std::filesystem::exists(feature_path);++i)Sleep(100);
+    check(std::filesystem::exists(feature_path),"Asynchronous GPU feature export");
+    check(!std::filesystem::exists(feature_path+L".pixels"),"Features must not transfer or save a full image");
+    std::ifstream feature_file(feature_path+L".tiles",std::ios::binary);std::vector<float> features(12*4);
+    feature_file.read(reinterpret_cast<char*>(features.data()),features.size()*sizeof(float));check(feature_file.gcount()==12*16,"Only 12 float4 tiles cross to CPU");
+    double pixel_count=0;for(std::size_t i=0;i<features.size();i+=4){check(std::abs(features[i]-.37192f)<.00002f&&features[i+1]<.000001f&&features[i+2]<.000001f,"GPU statistics must match known clear color");pixel_count+=features[i+3];}
+    check(pixel_count==61*37,"Edge tiles count actual pixels, not padding");
+    hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));const auto edge_index=swap->GetCurrentBackBufferIndex();
+    barrier.Transition={backs[edge_index].Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET};list->ResourceBarrier(1,&barrier);
+    auto edge_rtv=rtvs->GetCPUDescriptorHandleForHeapStart();edge_rtv.ptr+=edge_index*device->GetDescriptorHandleIncrementSize(rh.Type);
+    const FLOAT white[]{1,1,1,1};const D3D12_RECT half{0,0,30,37};list->ClearRenderTargetView(edge_rtv,white,1,&half);
+    std::swap(barrier.Transition.StateBefore,barrier.Transition.StateAfter);list->ResourceBarrier(1,&barrier);hr(list->Close());queue->ExecuteCommandLists(1,commands);
+    auto edge_path=(directory/L"features-edge.json").wstring();check(request_features(edge_path.data())==0,"Request second GPU analysis");hr(swap->Present(0,0));
+    for(int i=0;i<30&&!std::filesystem::exists(edge_path);++i)Sleep(100);
+    check(read(edge_path).find("\"reused_storage\":true")!=std::string::npos,"Feature storage must be reused after fence completion");
+    std::ifstream edge_file(edge_path+L".tiles",std::ios::binary);edge_file.read(reinterpret_cast<char*>(features.data()),features.size()*sizeof(float));check(edge_file.gcount()==12*16,"Second feature payload");
+    double weighted=0,max_edge=0,max_variance=0;pixel_count=0;
+    for(std::size_t i=0;i<features.size();i+=4){weighted+=features[i]*features[i+3];pixel_count+=features[i+3];max_edge=std::max(max_edge,double(features[i+2]));max_variance=std::max(max_variance,double(features[i+1]));}
+    check(std::abs(weighted/pixel_count-(.37192+(1-.37192)*30/61))<.00002&&std::abs(max_edge-(1-.37192))<.00002&&max_variance>.01,"GPU analysis must detect changed content, edges and mixed tiles on reused storage");
     backs[0].Reset();backs[1].Reset();rtvs.Reset();swap.Reset();base.Reset();factory.Reset();DestroyWindow(window);UnregisterClassW(wc.lpszClassName,wc.hInstance);
     heap.Reset();source.Reset();middle.Reset();destination.Reset();list.Reset();queue.Reset();
     fence.Reset();

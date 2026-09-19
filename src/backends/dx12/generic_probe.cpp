@@ -11,12 +11,16 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <array>
 
 namespace {
 namespace runtime=arc::dx12::generic;
 namespace mirror=arc::dx12::mirror;
 std::atomic<bool> mirror_hooks_ready{};
 std::atomic<bool> detailed_tracking{true};
+std::atomic<bool> passive_hooks{};
+std::array<void*,256> installed_targets{};std::size_t installed_count{};
+std::mutex hook_mode_mutex;
 std::atomic<bool> initialized{},initializing{},recording{};
 std::atomic<unsigned long long> presents{},present_failures{},submits{},lists{},draws{},indexed{},dispatches{},resources{},hook_failures{};
 std::atomic<long> last_present_error{},last_device_reason{};
@@ -190,10 +194,17 @@ struct ExtraCommandHook<Tag,R(STDMETHODCALLTYPE*)(Self*,Args...),Copy>{
 template<class T>bool install(T target,T replacement,T* original){
     // Trampolines outlive the bootstrap device; keep the owning runtime module
     // loaded for the process lifetime, just like the probe itself.
-    HMODULE owner{};
+    if(installed_count>=installed_targets.size()){++hook_failures;return false;}HMODULE owner{};
     if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(target),&owner)){++hook_failures;return false;}
     const auto status=MH_CreateHook(reinterpret_cast<void*>(target),reinterpret_cast<void*>(replacement),reinterpret_cast<void**>(original));
-    if(status!=MH_OK){++hook_failures;return false;}return true;
+    if(status!=MH_OK){++hook_failures;return false;}installed_targets[installed_count++]=reinterpret_cast<void*>(target);return true;
+}
+bool set_passive_hooks(bool passive){
+    std::lock_guard lock(hook_mode_mutex);if(passive_hooks==passive)return true;
+    // The first two installed hooks are Present and Present1. Keep those for
+    // cadence measurement; remove all render-call trampolines from the baseline.
+    for(std::size_t i=2;i<installed_count;++i){const auto result=passive?MH_QueueDisableHook(installed_targets[i]):MH_QueueEnableHook(installed_targets[i]);if(result!=MH_OK)return false;}
+    if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;return true;
 }
 
 template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;return install(target,Hook::call,&Hook::original);}
@@ -217,7 +228,7 @@ void snapshot(){
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
         <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);
-    file<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
+    file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 DWORD WINAPI logger(void*){
@@ -386,13 +397,16 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcEndCapture(void* path){if(!path
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSnapshot(void*){try{snapshot();return 0;}catch(...){return 1;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFrame(void* path){if(!path)return 1;if(!detailed_tracking)return 4;try{return runtime::request_frame(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestImage(void* path){if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFeatures(void* path){if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path),true)?0:2;}catch(...){return 3;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestTiming(void* path){if(!path)return 1;try{std::wstring request=static_cast<const wchar_t*>(path);UINT seconds=60;const auto split=request.find(L'|');if(split!=std::wstring::npos){std::size_t used=0;const auto value=std::stoul(request.substr(0,split),&used);if(used!=split||value<1||value>60)return 4;seconds=static_cast<UINT>(value);request=request.substr(split+1);}return runtime::request_timing(request,seconds)?0:2;}catch(...){return 3;}}
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){
     if(!value)return 1;const auto* mode=static_cast<const wchar_t*>(value);
     if(wcscmp(mode,L"off")==0)return mirror::configure(0)?0:2;
     if(wcscmp(mode,L"2x2")!=0||!mirror_hooks_ready)return 3;
+    if(!set_passive_hooks(false))return 5;
     return mirror::configure(D3D12_SHADING_RATE_2X2)?0:4;
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcUseLeanMode(void*){detailed_tracking=false;runtime::observation_mode_changed();return 0;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcUsePassiveMode(void*){mirror::configure(0);detailed_tracking=false;runtime::observation_mode_changed();return set_passive_hooks(true)?0:1;}

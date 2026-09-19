@@ -12,10 +12,11 @@ FrameTimingWindow::FrameTimingWindow(std::uint64_t duration,std::size_t capacity
         throw std::invalid_argument("Frame window must be bounded to 60 seconds and 65536 intervals");
     intervals_.reserve(capacity);
 }
-void FrameTimingWindow::present(std::uint64_t time,std::uint64_t swap,bool visible){
+void FrameTimingWindow::present(std::uint64_t time,std::uint64_t swap,bool visible,bool foreground){
     if(done())return;
     if(started_&&swap!=swapchain_){++ignored_;return;}
     if(!visible||!swap){reason_=Reason::Interrupted;return;}
+    if(foreground)++foreground_;else ++background_;
     if(!started_){first_=last_=time;swapchain_=swap;started_=true;return;}
     if(time<=last_){reason_=Reason::InvalidTimestamp;return;}
     if(intervals_.size()==capacity_){reason_=Reason::Capacity;return;}
@@ -43,7 +44,8 @@ void FrameTimingWindow::write_json(std::ostream& out)const{
         out<<",\"p50_ms\":"<<quantile(.50)<<",\"p95_ms\":"<<quantile(.95)<<",\"p99_ms\":"<<quantile(.99)
            <<",\"one_percent_low_fps\":"<<double(tail)*1e9/sum;
     }
-    out<<",\"gpu_frame_timing_available\":false,\"displayed_fps_verified\":false,\"dynamic_traversal_verified\":false,\"intervals_ns\":[";
+    out<<",\"foreground_presents\":"<<foreground_<<",\"background_presents\":"<<background_<<",\"foreground_only\":"<<(foreground_&&!background_?"true":"false")
+       <<",\"gpu_frame_timing_available\":false,\"displayed_fps_verified\":false,\"dynamic_traversal_verified\":false,\"intervals_ns\":[";
     for(std::size_t i=0;i<intervals_.size();++i){if(i)out<<',';out<<intervals_[i];}out<<"]}";
 }
 }

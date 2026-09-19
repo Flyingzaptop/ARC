@@ -21,5 +21,7 @@ int main(){
     arc::FrameTimingWindow lost;lost.present(0,1,true);lost.present(1,1,false);check(lost.done()&&!lost.valid(),"occlusion/failure cannot count as fast frames");
     arc::FrameTimingWindow empty;empty.expire();check(empty.done()&&!empty.valid(),"no presents cannot produce FPS");
     arc::FrameTimingWindow short_run;short_run.present(0,1,true);short_run.present(10,1,true);short_run.expire();check(!short_run.valid(),"partial run cannot satisfy full window");
+    arc::FrameTimingWindow background(100);background.present(0,1,true,false);background.present(100,1,true,true);
+    std::ostringstream focus;background.write_json(focus);check(focus.str().find("\"foreground_only\":false")!=std::string::npos,"background throttling must remain visible in measurements");
     std::cout<<"Frame cadence: duration, slow-tail, multiple swapchains, capacity, occlusion and timeout PASS\n";
 }

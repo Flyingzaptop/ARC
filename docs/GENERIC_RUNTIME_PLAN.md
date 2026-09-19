@@ -1,10 +1,11 @@
 # Generic runtime: closing the application adapter gap
 
-The user requests automatic optimization in third-party DX12 applications and
-authorizes Bodycam and FPV game tests. Use 60-second test windows with movement
-and camera turns; short taps do not prove a continuous traversal. Development
-validation also uses native DX12 applications without cooperative ARC
-resource/action callbacks. No subagents.
+The user requests automatic optimization in third-party DX12 applications. The
+latest instruction reserves game testing for the user: do not launch game tests
+autonomously. Development now uses the standalone dynamic city scene and native
+DX12 fixtures without cooperative ARC resource/action callbacks. Keep each run
+short (under 60 seconds), compare the unmodified baseline with the actual current
+optimizer, and report FPS, image quality, bottlenecks and next steps. No subagents.
 
 The present probe observes object lifetimes, descriptors and bounded work graphs.
 This is not yet the requested optimizer.

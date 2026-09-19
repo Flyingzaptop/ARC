@@ -34,11 +34,13 @@ DWORD remote_call(HANDLE process,void* function,const std::wstring& argument){
 int wmain(int argc,wchar_t** argv)try{
     const bool vrs_on=argc>1&&std::wstring(argv[1])==L"--vrs-2x2";
     const bool vrs_off=argc>1&&std::wstring(argv[1])==L"--vrs-off";
+    const bool passive=argc>1&&std::wstring(argv[1])==L"--passive";
     const bool lean=argc>1&&std::wstring(argv[1])==L"--lean";
-    const bool experiment=lean||vrs_on||vrs_off;
+    const bool experiment=passive||lean||vrs_on||vrs_off;
+    const bool features=argc>1&&std::wstring(argv[1])==L"--features";
     const bool image=argc>1&&std::wstring(argv[1])==L"--image";
     const bool timing=argc>1&&std::wstring(argv[1])==L"--measure";
-    const bool capture=experiment||image||timing||(argc>1&&std::wstring(argv[1])==L"--capture");
+    const bool capture=experiment||features||image||timing||(argc>1&&std::wstring(argv[1])==L"--capture");
     const bool attach=capture||(argc>1&&std::wstring(argv[1])==L"--attach");
     if(argc<(experiment?4:attach?5:4)){std::wcerr<<L"Usage: arc-dx12-probe-launch <owned executable> <probe DLL> <output JSON> [application args...]\nOr: --attach <explicit authorized PID> <probe DLL> <output JSON>\n";return 2;}
     const auto dll=std::filesystem::absolute(argv[attach?3:2]);
@@ -64,10 +66,10 @@ int wmain(int argc,wchar_t** argv)try{
     if(capture){
         const auto remote_base=remote_module(info.dwProcessId,dll.filename().wstring());require(remote_base!=0,"Target must already have the observer attached");
         HMODULE local=LoadLibraryExW(dll.c_str(),nullptr,DONT_RESOLVE_DLL_REFERENCES);require(local!=nullptr,"read capture export");
-        auto request=GetProcAddress(local,lean?"ArcUseLeanMode":experiment?"ArcExperimentalVrs":timing?"ArcRequestTiming":image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");
+        auto request=GetProcAddress(local,features?"ArcRequestFeatures":passive?"ArcUsePassiveMode":lean?"ArcUseLeanMode":experiment?"ArcExperimentalVrs":timing?"ArcRequestTiming":image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");
         const auto argument=experiment?std::wstring(vrs_on?L"2x2":L"off"):timing&&argc>5?std::wstring(argv[5])+L"|"+output.wstring():output.wstring();
         const auto code=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),argument);
-        require(code==0,"Capture request refused");std::wcout<<(experiment?(lean?L"Detailed observation disabled":vrs_on?L"Experimental VRS enabled":L"Original command execution restored"):timing?L"Bounded Present cadence":image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
+        require(code==0,"Capture request refused");std::wcout<<(features?L"GPU tile features":experiment?(passive?L"Only Present hooks retained":lean?L"Detailed observation disabled":vrs_on?L"Experimental VRS enabled":L"Original command execution restored"):timing?L"Bounded Present cadence":image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
     }
     require(remote_module(info.dwProcessId,dll.filename().wstring())==0,"probe already loaded; use --capture or restart the target");
     void* remote_load=reinterpret_cast<void*>(base+(reinterpret_cast<std::uintptr_t>(load)-reinterpret_cast<std::uintptr_t>(owner)));

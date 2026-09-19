@@ -100,6 +100,7 @@ int wmain(int argc,wchar_t** argv)try{
         std::ofstream json(root/(std::wstring(name)+L".json"));json<<"{\"width\":1280,\"height\":720,\"gpu_ms\":[";for(std::size_t i=0;i<ms.size();++i){if(i)json<<',';json<<ms[i];}json<<"]}";
         return result;};
     record(false);auto baseline=run(L"baseline");
+    if(options.find(L"passive")!=std::wstring::npos){auto passive=reinterpret_cast<Api>(GetProcAddress(module,"ArcUsePassiveMode"));check(passive&&passive(nullptr)==0,"Disable render hooks for passive baseline");check(run(L"passive-original")==baseline,"Removing instrumentation must preserve cached original pixels");}
     wchar_t enable[]=L"2x2",disable[]=L"off";check(mode(enable)==0,"All mirror hook coverage required before enabling");record(false);auto modified=run(L"modified");
     check(mode(disable)==0,"Disable mirror");auto restored=run(L"restored-cached-list");
     check(baseline==restored,"Rollback must restore exact pixels without rerecording the cached original list");

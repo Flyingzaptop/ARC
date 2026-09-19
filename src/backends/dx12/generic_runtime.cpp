@@ -33,7 +33,9 @@ struct State {
     std::map<std::uint64_t,std::uint64_t> swapchain_queues;
     std::map<std::uint64_t,Microsoft::WRL::ComPtr<ID3D12CommandQueue>> image_queues;
     std::filesystem::path image_path;
+    bool image_features{};
     std::unique_ptr<ImageReadback> image;
+    std::unique_ptr<ImageReadback> image_spare;
     std::uint64_t image_swapchain{},images_completed{},images_failed{};
     std::atomic<bool> image_pending{};
     bool image_writing{};
@@ -212,8 +214,8 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
     if(!state().capturing&&!state().image_pending)return 0;std::uint64_t resource=0;
     safe([&]{auto& s=state();if(!s.image_pending||s.image)return;const auto id=swapchain_id(swap);const auto queue=s.image_queues.find(id);
         if(queue==s.image_queues.end()){++s.images_failed;s.image_pending=false;return;}
-        s.image=std::make_unique<ImageReadback>();s.image_swapchain=id;
-        if(!s.image->enqueue(swap,queue->second.Get(),s.image_path,mirror::modified_draws(),mirror::requested_rate())){++s.images_failed;s.image_pending=false;if(!s.image->submitted())s.image.reset();}
+        s.image=s.image_spare?std::move(s.image_spare):std::make_unique<ImageReadback>();s.image_swapchain=id;
+        if(!s.image->enqueue(swap,queue->second.Get(),s.image_path,mirror::modified_draws(),mirror::requested_rate(),s.image_features)){++s.images_failed;s.image_pending=false;if(!s.image->submitted())s.image.reset();}
     });
     if(!state().capturing)return 0;
     safe([&]{auto& s=state();if(s.capture_swapchain&&s.capture_swapchain!=swapchain_id(swap)){invalidate();return;}IDXGISwapChain3* current=nullptr;
@@ -225,7 +227,7 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
 void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UINT flags)noexcept{
     if(flags&DXGI_PRESENT_TEST)return;
     const auto now=std::chrono::steady_clock::now();
-    safe([&]{auto& s=state();if(s.timing){if(s.timing_rate!=mirror::requested_rate())s.timing->expire();s.timing->present(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count(),swapchain_id(swap),result==S_OK);}});
+    safe([&]{auto& s=state();if(s.timing){if(s.timing_rate!=mirror::requested_rate())s.timing->expire();DWORD foreground_pid=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);s.timing->present(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count(),swapchain_id(swap),result==S_OK,foreground_pid==GetCurrentProcessId());}});
     safe([&]{auto& s=state();if(s.image&&s.image_swapchain==swapchain_id(swap))s.image->presented(result);});
     safe([&]{auto& s=state();if(s.armed&&!s.capturing){if(FAILED(result))return;begin_capture();s.capture_swapchain=swapchain_id(swap);s.armed=false;return;}
         if(!s.capturing||s.requested_path.empty())return;
@@ -237,7 +239,17 @@ void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UI
     });
 }
 bool request_frame(const std::filesystem::path& path)noexcept{bool accepted=false;safe([&]{auto& s=state();if(s.capturing||s.armed||s.ready||!path.is_absolute()||std::filesystem::exists(path))return;s.requested_path=path;s.armed=true;s.capture_swapchain=0;accepted=true;});return accepted;}
-bool request_image(const std::filesystem::path& path)noexcept{bool accepted=false;safe([&]{auto& s=state();if(s.image_pending||s.image||s.image_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels"))return;s.image_path=path;s.image_pending=true;accepted=true;});return accepted;}
+bool request_image(const std::filesystem::path& path,bool features)noexcept{
+    bool accepted=false;
+    if(features){
+        std::vector<Microsoft::WRL::ComPtr<ID3D12CommandQueue>> queues;
+        safe([&]{auto& s=state();if(s.image_pending||s.image||s.image_writing)return;for(const auto& [id,queue]:s.image_queues){(void)id;if(queues.size()>=4)break;queues.push_back(queue);}});
+        if(queues.empty())return false;
+        try{mirror::InternalCall guard;for(const auto& queue:queues){Microsoft::WRL::ComPtr<ID3D12Device> device;if(FAILED(queue->GetDevice(IID_PPV_ARGS(&device)))||!ImageReadback::prepare_feature_device(device.Get()))return false;}}catch(...){return false;}
+    }
+    safe([&]{auto& s=state();if(s.image_pending||s.image||s.image_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels")||std::filesystem::exists(path.wstring()+L".tiles"))return;s.image_path=path;s.image_features=features;s.image_pending=true;accepted=true;});return accepted;
+}
+
 bool request_timing(const std::filesystem::path& path,UINT seconds)noexcept{bool accepted=false;safe([&]{auto& s=state();if(!seconds||seconds>60||s.timing||s.timing_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path))return;s.timing=std::make_unique<FrameTimingWindow>(UINT64(seconds)*1'000'000'000);s.timing_path=path;s.timing_rate=mirror::requested_rate();s.timing_deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds+5);accepted=true;});return accepted;}
 void observation_mode_changed()noexcept{safe([&]{auto& s=state();if(s.timing)s.timing->expire();if(s.capturing||s.armed)invalidate();});}
 void flush_timing()noexcept{
@@ -251,7 +263,8 @@ void flush_image()noexcept{
     std::unique_ptr<ImageReadback> image;
     safe([&]{auto& s=state();if(s.image&&s.image->ready()){image=std::move(s.image);s.image_pending=false;s.image_writing=true;}});
     if(!image)return;bool ok=false;try{ok=image->write();}catch(...){}
-    safe([&]{state().image_writing=false;if(ok)++state().images_completed;else ++state().images_failed;});
+    if(ok)image->release_queue_for_cache();
+    safe([&]{state().image_writing=false;if(ok){++state().images_completed;state().image_spare=std::move(image);}else ++state().images_failed;});
 }
 void flush_capture()noexcept{safe([&]{auto& s=state();if(!s.ready)return;end_capture(s.requested_path);s.ready=false;s.requested_path.clear();});}
 void unsupported()noexcept{state().unsupported_calls.fetch_add(1,std::memory_order_relaxed);if(state().capturing.load(std::memory_order_relaxed))safe([]{invalidate();});}
