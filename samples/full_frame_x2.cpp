@@ -26,16 +26,16 @@ class FrameExperiment final:public arc::PerceptualProbeHost {
     ComPtr<ID3D12GraphicsCommandList> list;
     ComPtr<ID3D12Fence> fence;
     ComPtr<ID3D12DescriptorHeap> heap;
-    ComPtr<ID3D12Resource> texture,output,lighting,pixels,times;
+    ComPtr<ID3D12Resource> texture,output,lighting,shadows,pixels,times;
     ComPtr<IDXGISwapChain3> swap;
     std::array<ComPtr<ID3D12Resource>,2> backbuffers;
     HWND window{};
-    UINT material_samples=16,light_steps=16,scenario=0;
+    UINT material_samples=16,light_steps=16,shadow_rays=4,scenario=0,action_mask=0;
     bool isolated=true;
-    struct Frame {double wall{};std::array<UINT64,5> ticks{};};
+    struct Frame {double wall{};std::array<UINT64,6> ticks{};};
     std::vector<Frame> last_frames;
     static double median(std::vector<double> v){std::sort(v.begin(),v.end());return v[v.size()/2];}
-    double gpu(const Frame& f)const{return double(f.ticks[4]-f.ticks[0])*1000/double(frequency);}
+    double gpu(const Frame& f)const{return double(f.ticks[5]-f.ticks[0])*1000/double(frequency);}
     void barrier(ID3D12Resource* r){D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;b.UAV.pResource=r;list->ResourceBarrier(1,&b);}
     ComPtr<ID3D12RootSignature> root;
     ComPtr<ID3D12PipelineState> pso;
@@ -83,7 +83,7 @@ public:
         hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)));
         hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)));
         hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));event=CreateEventW(nullptr,FALSE,FALSE,nullptr);if(!event)throw std::runtime_error("event");
-        D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=3;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+        D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=4;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&heap)));descriptor_stride=device->GetDescriptorHandleIncrementSize(hd.Type);
         D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;
         D3D12_RESOURCE_DESC td{};td.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;td.Width=texture_side;td.Height=texture_side;td.DepthOrArraySize=1;td.MipLevels=mip_count;td.Format=DXGI_FORMAT_R8G8B8A8_UNORM;td.SampleDesc.Count=1;
@@ -107,21 +107,23 @@ public:
         transition(texture.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         td.Width=width;td.Height=height;td.MipLevels=1;td.Format=DXGI_FORMAT_R8G8B8A8_UNORM;td.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(&output)));
-        UINT64 bytes{};device->GetCopyableFootprints(&td,0,1,0,&output_footprint,nullptr,nullptr,&bytes);pixels=buffer(bytes,D3D12_HEAP_TYPE_READBACK);times=buffer(5*sizeof(UINT64),D3D12_HEAP_TYPE_READBACK);
+        UINT64 bytes{};device->GetCopyableFootprints(&td,0,1,0,&output_footprint,nullptr,nullptr,&bytes);pixels=buffer(bytes,D3D12_HEAP_TYPE_READBACK);times=buffer(6*sizeof(UINT64),D3D12_HEAP_TYPE_READBACK);
         D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};uav.Format=td.Format;uav.ViewDimension=D3D12_UAV_DIMENSION_TEXTURE2D;auto handle=heap->GetCPUDescriptorHandleForHeapStart();handle.ptr+=descriptor_stride;device->CreateUnorderedAccessView(output.Get(),nullptr,&uav,handle);
         td.Format=DXGI_FORMAT_R32G32B32A32_FLOAT;
         hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(&lighting)));
         uav.Format=td.Format;handle.ptr+=descriptor_stride;device->CreateUnorderedAccessView(lighting.Get(),nullptr,&uav,handle);
-        D3D12_DESCRIPTOR_RANGE ranges[2]{};ranges[0]={D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0,0,0};ranges[1]={D3D12_DESCRIPTOR_RANGE_TYPE_UAV,2,0,0,1};
+        hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&td,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(&shadows)));
+        handle.ptr+=descriptor_stride;device->CreateUnorderedAccessView(shadows.Get(),nullptr,&uav,handle);
+        D3D12_DESCRIPTOR_RANGE ranges[2]{};ranges[0]={D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0,0,0};ranges[1]={D3D12_DESCRIPTOR_RANGE_TYPE_UAV,3,0,0,1};
         D3D12_ROOT_PARAMETER parameter{};parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameter.DescriptorTable={2,ranges};parameter.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
         D3D12_STATIC_SAMPLER_DESC sampler{};sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_WRAP;sampler.ComparisonFunc=D3D12_COMPARISON_FUNC_ALWAYS;sampler.MaxLOD=D3D12_FLOAT32_MAX;sampler.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
-        D3D12_ROOT_PARAMETER parameters[2]{parameter,{}};parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=4;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
+        D3D12_ROOT_PARAMETER parameters[2]{parameter,{}};parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=6;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
         D3D12_ROOT_SIGNATURE_DESC rd{};rd.NumParameters=2;rd.pParameters=parameters;rd.NumStaticSamplers=1;rd.pStaticSamplers=&sampler;
         ComPtr<ID3DBlob> blob,errors;hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&blob,&errors));hr(device->CreateRootSignature(0,blob->GetBufferPointer(),blob->GetBufferSize(),IID_PPV_ARGS(&root)));
         const char* shader=R"(
 Texture2D<float4> source:register(t0); RWTexture2D<float4> output_image:register(u0);
-RWTexture2D<float4> light_image:register(u1); SamplerState linear_sampler:register(s0);
-cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_steps;uint detailed;};
+RWTexture2D<float4> light_image:register(u1); RWTexture2D<float4> shadow_image:register(u2); SamplerState linear_sampler:register(s0);
+cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_steps;uint detailed;uint shadow_rays;uint shadow_scale;};
 [numthreads(8,8,1)] void main(uint3 tid:SV_DispatchThreadID) {
  if(tid.x>=1920||tid.y>=1080)return;
  float2 uv=(float2(tid.xy)+.5)/float2(1920,1080);
@@ -144,13 +146,34 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
   }
   output_image[tid.xy]=float4((sum/material_samples)*light_image[tid.xy].rgb,1);return;
  }
- float3 color=output_image[tid.xy].rgb;
+ if(stage==2){
+  uint2 extent=uint2((1920+shadow_scale-1)/shadow_scale,(1080+shadow_scale-1)/shadow_scale);
+  if(any(tid.xy>=extent))return;
+  float2 screen=(float2(tid.xy)+.5)/float2(extent);
+  float3 origin=float3((screen.x-.5)*12,0,(screen.y-.5)*8);
+  float visibility=0;
+  [loop]for(uint ray=0;ray<shadow_rays;++ray){
+   float2 sample_pos=frac(float2(ray*.6180339+.17,ray*.4142135+.31));
+   float3 target=float3(-2+sample_pos.x*4,6,1+sample_pos.y*3);
+   float3 direction=normalize(target-origin);float maximum=length(target-origin);bool blocked=false;
+   [unroll]for(uint object=0;object<8;++object){
+    float3 center=float3(-4+(object%4)*2.5,.6+(object%3)*.2,-2+(object/4)*3.5);
+    float radius=.45+.12*(object%3);float3 offset=origin-center;
+    float b=dot(offset,direction);float discriminant=b*b-dot(offset,offset)+radius*radius;
+    if(discriminant>0){float t=-b-sqrt(discriminant);blocked=blocked||(t>0&&t<maximum);}
+   }
+   visibility+=blocked?0:1;
+  }
+  shadow_image[tid.xy]=float4(visibility/shadow_rays,0,0,1);return;
+ }
+ float visibility=shadow_image[tid.xy/shadow_scale].x;
+ float3 color=output_image[tid.xy].rgb*(.3+.7*visibility);
  float vignette=1-.2*dot(uv-.5,uv-.5);
  output_image[tid.xy]=float4(saturate(color*vignette),1);
 })";
         hr(D3DCompile(shader,std::strlen(shader),"portable-probe",nullptr,nullptr,"main","cs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&blob,&errors));
         D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=root.Get();pd.CS={blob->GetBufferPointer(),blob->GetBufferSize()};hr(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&pso)));
-        D3D12_QUERY_HEAP_DESC qh{};qh.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;qh.Count=5;hr(device->CreateQueryHeap(&qh,IID_PPV_ARGS(&queries)));
+        D3D12_QUERY_HEAP_DESC qh{};qh.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;qh.Count=6;hr(device->CreateQueryHeap(&qh,IID_PPV_ARGS(&queries)));
         execute();set_mip(0);
         WNDCLASSW wc{};wc.lpfnWndProc=DefWindowProcW;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"ARCFullFrameTest";RegisterClassW(&wc);
         window=CreateWindowW(wc.lpszClassName,L"ARC 1080p full-frame test",WS_OVERLAPPEDWINDOW,0,0,width,height,nullptr,nullptr,wc.hInstance,nullptr);
@@ -158,7 +181,7 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         DXGI_SWAP_CHAIN_DESC1 sd{};sd.Width=width;sd.Height=height;sd.Format=DXGI_FORMAT_R8G8B8A8_UNORM;sd.SampleDesc.Count=1;sd.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;sd.BufferCount=2;sd.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
         ComPtr<IDXGISwapChain1> base;hr(factory->CreateSwapChainForHwnd(queue.Get(),window,&sd,nullptr,nullptr,&base));hr(base.As(&swap));
         for(UINT i=0;i<2;++i)hr(swap->GetBuffer(i,IID_PPV_ARGS(&backbuffers[i])));
-    
+
     }
     ~FrameExperiment(){if(event)CloseHandle(event);swap.Reset();if(window)DestroyWindow(window);}
     Frame render(){
@@ -166,12 +189,16 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         const auto start=std::chrono::steady_clock::now();
         reset();list->SetPipelineState(pso.Get());list->SetComputeRootSignature(root.Get());
         ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
-        for(UINT stage=0;stage<3;++stage){
+        for(UINT stage=0;stage<4;++stage){
             list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,stage);
-            const UINT params[]{stage,material_samples,light_steps,scenario==2?1u:0u};
-            list->SetComputeRoot32BitConstants(1,4,params,0);list->Dispatch((width+7)/8,(height+7)/8,1);barrier(stage==0?lighting.Get():output.Get());
+            const UINT scale=1u<<((action_mask>>12)&3u);
+            const UINT params[]{stage,material_samples,std::max(1u,light_steps>>( (action_mask>>4)&3u)),scenario==2?1u:0u,std::max(1u,shadow_rays>>((action_mask>>8)&3u)),scale};
+            list->SetComputeRoot32BitConstants(1,6,params,0);
+            const UINT divisor=stage==2?scale:1;
+            list->Dispatch(((width+divisor-1)/divisor+7)/8,((height+divisor-1)/divisor+7)/8,1);
+            barrier(stage==0?lighting.Get():stage==2?shadows.Get():output.Get());
         }
-        list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,3);
+        list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,4);
         // Isolated critic probes do not alter the displayed swapchain.
         if(!isolated){
             auto* back=backbuffers[swap->GetCurrentBackBufferIndex()].Get();
@@ -181,12 +208,12 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
             transition(back,D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_PRESENT);
             transition(output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
-        list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,4);
-        list->ResolveQueryData(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,5,times.Get(),0);execute();
+        list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,5);
+        list->ResolveQueryData(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,6,times.Get(),0);execute();
         if(!isolated)hr(swap->Present(0,0));
         Frame f;f.wall=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
-        void* data{};hr(times->Map(0,nullptr,&data));std::copy_n(static_cast<UINT64*>(data),5,f.ticks.begin());D3D12_RANGE empty{0,0};times->Unmap(0,&empty);
-        for(UINT i=1;i<5;++i)if(f.ticks[i]<f.ticks[i-1])throw std::runtime_error("timestamp order");return f;
+        void* data{};hr(times->Map(0,nullptr,&data));std::copy_n(static_cast<UINT64*>(data),6,f.ticks.begin());D3D12_RANGE empty{0,0};times->Unmap(0,&empty);
+        for(UINT i=1;i<6;++i)if(f.ticks[i]<f.ticks[i-1])throw std::runtime_error("timestamp order");return f;
     }
     arc::ProbeCapture read_image(){
         reset();transition(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -204,8 +231,8 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         for(float x:p.rgb){const unsigned char byte=static_cast<unsigned char>(std::lround(x*255));file.write(reinterpret_cast<const char*>(&byte),1);}
     }
     void timings(const std::string& name,const std::vector<Frame>& frames){
-        std::ofstream file(directory/(name+".json"));file<<std::setprecision(17)<<"{\"width\":"<<width<<",\"height\":"<<height<<",\"frequency\":"<<frequency<<",\"mip\":"<<mip<<",\"isolated\":"<<(isolated?"true":"false")<<",\"material_samples\":"<<material_samples<<",\"light_steps\":"<<light_steps<<",\"frames\":[";
-        for(std::size_t i=0;i<frames.size();++i){if(i)file<<',';const auto& f=frames[i];file<<"{\"wall_ms\":"<<f.wall<<",\"ticks\":[";for(UINT k=0;k<5;++k){if(k)file<<',';file<<f.ticks[k];}file<<"]}";}file<<"]}";
+        std::ofstream file(directory/(name+".json"));file<<std::setprecision(17)<<"{\"width\":"<<width<<",\"height\":"<<height<<",\"frequency\":"<<frequency<<",\"mip\":"<<mip<<",\"isolated\":"<<(isolated?"true":"false")<<",\"material_samples\":"<<material_samples<<",\"light_steps\":"<<light_steps<<",\"shadow_rays\":"<<shadow_rays<<",\"action_mask\":"<<action_mask<<",\"frames\":[";
+        for(std::size_t i=0;i<frames.size();++i){if(i)file<<',';const auto& f=frames[i];file<<"{\"wall_ms\":"<<f.wall<<",\"ticks\":[";for(UINT k=0;k<6;++k){if(k)file<<',';file<<f.ticks[k];}file<<"]}";}file<<"]}";
     }
     void warmup(){
         // Equal elapsed warmup for all arms avoids short cheap-arm warmup and
@@ -214,24 +241,24 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         do{render();}while(std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count()<1.0);
     }
     void calibrate(){
-        isolated=false;set_mip(0);std::ofstream log(directory/"calibration.csv");log<<"material_samples,light_steps,wall_ms,lighting_ms,material_ms\n";
+        isolated=false;set_mip(0);std::ofstream log(directory/"calibration.csv");log<<"material_samples,light_steps,shadow_rays,wall_ms,lighting_ms,material_ms\n";
         // Only baseline timings guide calibration; no degraded trial has run yet.
-        material_samples=scenario==1?2:16;light_steps=scenario==1?256:16;
+        material_samples=(scenario==1||scenario==3)?2:16;light_steps=scenario==1?256:16;shadow_rays=scenario==3?128:4;
         for(UINT pass=0;pass<5;++pass){
             warmup();std::vector<Frame> frames;std::vector<double> wall;
             for(int i=0;i<7;++i){frames.push_back(render());wall.push_back(frames.back().wall);}
             const double ms=median(wall);const auto& f=frames[3];
-            log<<material_samples<<','<<light_steps<<','<<ms<<','<<double(f.ticks[1]-f.ticks[0])*1000/frequency<<','<<double(f.ticks[2]-f.ticks[1])*1000/frequency<<'\n';log.flush();
+            log<<material_samples<<','<<light_steps<<','<<shadow_rays<<','<<ms<<','<<double(f.ticks[1]-f.ticks[0])*1000/frequency<<','<<double(f.ticks[2]-f.ticks[1])*1000/frequency<<'\n';log.flush();
             if(ms>=30&&ms<=36)break;
-            auto& knob=scenario==1?light_steps:material_samples;
+            auto& knob=scenario==1?light_steps:scenario==3?shadow_rays:material_samples;
             const auto next=std::clamp<UINT>(static_cast<UINT>(std::lround(knob*33.3/std::max(.1,ms))),1,scenario==1?8192u:2048u);
             if(next==knob)break;knob=next;
         }
         isolated=true;
     }
     bool prepare(const arc::PerceptualCapability& c)override {isolated=true;++trial_index;return c.generation==1&&c.target==1&&mip==0;}
-    bool apply(const arc::PerceptualCapability& c)override {if(c.generation!=1||c.target!=1)return false;set_mip(2);return true;}
-    bool restore(const arc::PerceptualCapability& c)noexcept override {try{if(c.generation!=1||c.target!=1)return false;set_mip(0);return true;}catch(...){return false;}}
+    bool apply(const arc::PerceptualCapability& c)override {if(c.generation!=1||c.target!=1||!c.action||c.action>0x3333)return false;action_mask=static_cast<UINT>(c.action);set_mip(action_mask&3u);return true;}
+    bool restore(const arc::PerceptualCapability& c)noexcept override {try{if(c.generation!=1||c.target!=1)return false;action_mask=0;set_mip(0);return true;}catch(...){return false;}}
     void finish()noexcept override{}
     std::optional<arc::ProbeCapture> capture(arc::ProbePhase phase)override {
         warmup();last_frames.clear();for(int i=0;i<21;++i)last_frames.push_back(render());
@@ -239,31 +266,50 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         const auto name="probe-"+std::to_string(trial_index)+"-"+std::to_string(int(phase));save(name,p);timings(name,last_frames);return p;
     }
     void run(){
-        calibrate();arc::PerceptualCandidate c;c.capability={1,1,1,arc::PerceptualMechanism::SrvMipRange,true,true,true,true,true};
+        calibrate();arc::PerceptualCandidate c;c.capability={2,1,1,arc::PerceptualMechanism::SrvMipRange,true,true,true,true,true};
         c.importance.id=1;c.importance.score=1;c.importance.confidence=1;
         c.measured_cost_ms=gpu(render());c.expected_gain_ms=c.measured_cost_ms*.5;
         arc::PerceptualTrialController controller;
-        const auto begin=std::chrono::steady_clock::now();const auto trial=controller.trial(*this,c);
+        const auto begin=std::chrono::steady_clock::now();
+        arc::PerceptualTrialResult trial;UINT selected_mask=0,selected_probe=1;
+        std::array<UINT,4> domain_best{};std::array<double,4> domain_gain{};
+        std::vector<UINT> actions{2,3,0x10,0x20,0x100,0x200,0x1000,0x2000};
+        std::ofstream candidates(directory/"candidates.json");candidates<<"[";
+        for(std::size_t index=0;index<actions.size();++index){
+            const UINT action=actions[index];c.capability.action=action;
+            c.capability.mechanism=(action<=3)?arc::PerceptualMechanism::SrvMipRange:arc::PerceptualMechanism::HostDefined;
+            const auto result=controller.trial(*this,c);
+            if(!controller.restore(*this))throw std::runtime_error("rollback failure");
+            if(index==0 || (result.status==arc::TrialStatus::Retained &&
+                (trial.status!=arc::TrialStatus::Retained||result.verdict.gain_ms>trial.verdict.gain_ms))){trial=result;selected_mask=action;selected_probe=trial_index;}
+            if(index<8 && result.status==arc::TrialStatus::Retained){
+                const auto domain=index/2;if(result.verdict.gain_ms>domain_gain[domain]){domain_best[domain]=action;domain_gain[domain]=result.verdict.gain_ms;}
+            }
+            if(index)candidates<<',';
+            candidates<<std::setprecision(17)<<"{\"probe\":"<<trial_index<<",\"action_mask\":"<<action<<",\"status\":"<<int(result.status)<<",\"reason\":"<<int(result.verdict.reason)<<",\"gain_ms\":"<<result.verdict.gain_ms<<'}';
+            candidates.flush();
+            if(index==7){UINT combined=0,count=0;for(auto best:domain_best)if(best){combined|=best;++count;}if(count>1)actions.push_back(combined);}
+        }
+        candidates<<"]";candidates.close();
         const double trial_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count();
-        if(!controller.restore(*this))throw std::runtime_error("rollback failure");
         // Counterbalanced capacity measurement, even if the critic rejected it:
         // rejected modified images are never presented to a game/user workload.
         for(UINT round=0;round<3;++round)for(UINT arm=0;arm<4;++arm){
             const bool modified=round%2?(arm==0||arm==3):(arm==1||arm==2);
-            set_mip(modified?2:0);isolated=false;warmup();
+            action_mask=modified?selected_mask:0;set_mip(action_mask&3u);isolated=false;warmup();
             std::vector<Frame> frames;for(int i=0;i<21;++i)frames.push_back(render());
             timings("round-"+std::to_string(round)+"-arm-"+std::to_string(arm),frames);
             if(round==0&&(arm==0||arm==1||arm==3))save("frame-arm-"+std::to_string(arm),read_image());
         }
-        set_mip(0);isolated=false;render();
-        std::ofstream summary(directory/"trial.json");summary<<std::setprecision(17)<<"{\"scenario\":"<<scenario<<",\"status\":"<<int(trial.status)<<",\"reason\":"<<int(trial.verdict.reason)<<",\"probe_wall_ms\":"<<trial_ms<<",\"image_mean\":"<<trial.verdict.modified_mean<<",\"image_peak\":"<<trial.verdict.modified_peak<<",\"image_tile\":"<<trial.verdict.modified_tile<<",\"restored\":true,\"resolution\":[1920,1080],\"present_sync\":0,\"game_fps_claim\":false}";
+        action_mask=0;set_mip(0);isolated=false;render();
+        std::ofstream summary(directory/"trial.json");summary<<std::setprecision(17)<<"{\"scenario\":"<<scenario<<",\"selected_probe\":"<<selected_probe<<",\"selected_mip\":"<<(selected_mask&3u)<<",\"selected_action\":"<<selected_mask<<",\"status\":"<<int(trial.status)<<",\"reason\":"<<int(trial.verdict.reason)<<",\"probe_wall_ms\":"<<trial_ms<<",\"image_mean\":"<<trial.verdict.modified_mean<<",\"image_peak\":"<<trial.verdict.modified_peak<<",\"image_tile\":"<<trial.verdict.modified_tile<<",\"restored\":true,\"resolution\":[1920,1080],\"present_sync\":0,\"game_fps_claim\":false}";
         std::cout<<"scenario="<<scenario<<" samples="<<material_samples<<" light="<<light_steps<<" decision="<<int(trial.status)<<" reason="<<int(trial.verdict.reason)<<std::endl;
     }
 };
 }
 int main(int argc,char** argv)try{
-    if(argc!=3)throw std::runtime_error("Usage: arc-full-frame-x2 <new output directory> <scenario 0..2>");
-    const int scenario=std::stoi(argv[2]);if(scenario<0||scenario>2)throw std::runtime_error("scenario");
+    if(argc!=3)throw std::runtime_error("Usage: arc-full-frame-x2 <new output directory> <scenario 0..3>");
+    const int scenario=std::stoi(argv[2]);if(scenario<0||scenario>3)throw std::runtime_error("scenario");
     if(std::filesystem::exists(argv[1]))throw std::runtime_error("Use a new evidence directory");
     FrameExperiment experiment(argv[1],static_cast<UINT>(scenario));experiment.run();return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}

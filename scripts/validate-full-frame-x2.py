@@ -29,17 +29,20 @@ def timing(path):
     j = json.loads(path.read_text())
     if j["width"] != 1920 or j["height"] != 1080 or j["frequency"] <= 0 or len(j["frames"]) < 11:
         raise ValueError("Invalid frame evidence")
-    walls, gpu, passes = [], [], [[], [], [], []]
+    count = len(j["frames"][0]["ticks"])
+    if count not in (5, 6):
+        raise ValueError("Unknown pass layout")
+    walls, gpu, passes = [], [], [[] for _ in range(count - 1)]
     for frame in j["frames"]:
         ticks = frame["ticks"]
-        if len(ticks) != 5 or any(y < x for x, y in zip(ticks, ticks[1:])):
+        if len(ticks) != count or any(y < x for x, y in zip(ticks, ticks[1:])):
             raise ValueError("Invalid query ordering")
         wall = frame["wall_ms"]
         if not math.isfinite(wall) or wall <= 0:
             raise ValueError("Invalid wall frame time")
         walls.append(wall)
         gpu.append((ticks[-1] - ticks[0]) * 1000 / j["frequency"])
-        for i in range(4):
+        for i in range(count - 1):
             passes[i].append((ticks[i + 1] - ticks[i]) * 1000 / j["frequency"])
     return j, {"wall_p50_ms": stats.median(walls), "wall_p95_ms": float(np.percentile(walls, 95)),
                "gpu_p50_ms": stats.median(gpu), "pass_p50_ms": [stats.median(x) for x in passes]}, walls
@@ -48,15 +51,18 @@ def timing(path):
 def validate(root):
     trial = json.loads((root / "trial.json").read_text())
     scene = trial["scenario"]
-    quality = compare(*(image(root / f"probe-1-{i}.rgb8") for i in range(3)))
+    selected_probe = trial.get("selected_probe", 1)
+    selected_mip = trial.get("selected_mip", 2)
+    selected_action = trial.get("selected_action", selected_mip)
+    quality = compare(*(image(root / f"probe-{selected_probe}-{i}.rgb8") for i in range(3)))
     for field in ("mean", "peak", "tile"):
         if abs(quality[field] - trial[f"image_{field}"]) > 1e-7:
             raise ValueError("Core/independent critic mismatch")
-    probes = [timing(root / f"probe-1-{i}.json")[1] for i in range(3)]
+    probes = [timing(root / f"probe-{selected_probe}-{i}.json")[1] for i in range(3)]
     before, changed, after = [p["gpu_p50_ms"] for p in probes]
     stable_probe = abs(before - after) / min(before, after) <= .10
     benefit = min(before, after) - changed
-    expected = 3 if not quality["pass"] else 5 if not stable_probe else 6 if benefit < .02 or benefit / min(before, after) < .02 else 0
+    expected = 2 if quality["reference_mean"] > .0005 or quality["reference_peak"] > .004 else 3 if not quality["pass"] else 5 if not stable_probe else 6 if benefit < .02 or benefit / min(before, after) < .02 else 0
     if trial["reason"] != expected or trial["status"] != (5 if expected == 0 else 4) or not trial["restored"]:
         raise ValueError("Trial decision or restoration inconsistent with evidence")
     rounds, baseline, modified = [], [], []
@@ -65,14 +71,16 @@ def validate(root):
         arms = []
         for arm in range(4):
             j, metrics, samples = timing(root / f"round-{round_index}-arm-{arm}.json")
-            expected_mip = 2 if (arm in (0, 3) if round_index % 2 else arm in (1, 2)) else 0
-            if j["isolated"] or j["mip"] != expected_mip or len(samples) != 21:
+            is_modified = arm in (0, 3) if round_index % 2 else arm in (1, 2)
+            expected_mip = selected_mip if is_modified else 0
+            if (j["isolated"] or j["mip"] != expected_mip or len(samples) != 21 or
+                j.get("action_mask", j["mip"]) != (selected_action if is_modified else 0)):
                 raise ValueError("Incorrect counterbalance/presentation evidence")
-            settings.add((j["material_samples"], j["light_steps"]))
-            (modified if expected_mip else baseline).extend(samples)
-            arms.append({"mip": expected_mip, **metrics})
-        off = [a["wall_p50_ms"] for a in arms if a["mip"] == 0]
-        on = [a["wall_p50_ms"] for a in arms if a["mip"] == 2]
+            settings.add((j["material_samples"], j["light_steps"], j.get("shadow_rays", 0)))
+            (modified if is_modified else baseline).extend(samples)
+            arms.append({"mip": expected_mip, "modified": is_modified, **metrics})
+        off = [a["wall_p50_ms"] for a in arms if not a["modified"]]
+        on = [a["wall_p50_ms"] for a in arms if a["modified"]]
         rounds.append({"arms": arms, "conservative_speedup": min(off) / max(on),
                        "baseline_stable": abs(off[0] - off[1]) / min(off) <= .10})
     if len(settings) != 1:
@@ -89,7 +97,32 @@ def validate(root):
               "probe_cost_ms": trial["probe_wall_ms"],
               "probe_amortization_frames": math.ceil(trial["probe_wall_ms"] / (off - on)) if off > on else None,
               "quality": quality, "presented_quality": presented_quality, "trial": trial, "rounds": rounds}
-    if scene == 2:
+    candidates_path = root / "candidates.json"
+    if "selected_action" in trial and candidates_path.exists():
+        candidates = json.loads(candidates_path.read_text())
+        result["candidates"] = []
+        for candidate in candidates:
+            probe = candidate["probe"]
+            q = compare(*(image(root / f"probe-{probe}-{i}.rgb8") for i in range(3)))
+            captures = [timing(root / f"probe-{probe}-{i}.json") for i in range(3)]
+            if any((j["material_samples"], j["light_steps"], j["shadow_rays"]) not in settings for j, _, _ in captures):
+                raise ValueError("Probe used a different workload")
+            if [j["action_mask"] for j, _, _ in captures] != [0, candidate["action_mask"], 0]:
+                raise ValueError("Probe did not restore all domains")
+            ta, tb, tc = [m["gpu_p50_ms"] for _, m, _ in captures]
+            stable = abs(ta - tc) / min(ta, tc) <= .10
+            gain = min(ta, tc) - tb
+            reason = 2 if q["reference_mean"] > .0005 or q["reference_peak"] > .004 else 3 if not q["pass"] else 5 if not stable else 6 if gain < .02 or gain / min(ta, tc) < .02 else 0
+            if candidate["reason"] != reason or candidate["status"] != (5 if reason == 0 else 4):
+                raise ValueError("Independent candidate verdict mismatch")
+            result["candidates"].append({**candidate, "quality": q, "independent_gain_ms": gain})
+        accepted = [c for c in candidates if c["status"] == 5]
+        best = max(accepted, key=lambda c: c["gain_ms"]) if accepted else candidates[0]
+        if best["probe"] != selected_probe:
+            raise ValueError("Selected action inconsistent with validated gains")
+        if scene == 2:
+            result["detail_protection"] = "PASS" if all(c["reason"] == 3 for c in candidates if c["action_mask"] in (2, 3)) else "FAIL"
+    elif scene == 2:
         result["negative_control"] = "PASS" if expected == 3 and not presented_quality["pass"] else "FAIL"
     elif scene == 1:
         result["negative_control"] = "PASS" if not x2 and off / on < 2 else "FAIL"

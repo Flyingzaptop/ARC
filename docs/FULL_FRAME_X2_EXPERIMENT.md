@@ -48,6 +48,40 @@ calibration cap is 2048 samples (same rule in all material scenarios); arm param
 are frozen thereafter. This change targets test duration, not a chosen speedup.
 The final verdict uses this spatial workload, not the earlier easier positive case.
 
+## Multi-domain extension requested by the user
+
+The texture-only spatial experiment measured 31.4 -> 61.6 serialized throughput
+FPS (1.96x), retained as formal FAIL against the predeclared >=2x gate. The next
+experiment changes the available actions, not the quality/benefit thresholds:
+
+| Action mask | Action |
+| --- | --- |
+| 2, 3 | Finest accessible texture mip 2 or 3 |
+| 0x10, 0x20 | Lighting integration samples divided by 2 or 4 |
+| 0x100, 0x200 | Shadow visibility rays divided by 2 or 4 |
+| 0x1000, 0x2000 | Shadow buffer dimensions divided by 2 or 4 |
+
+Four passes generate lighting, materials, visibility shadows and composition;
+the final image is copied to the swapchain. Shadow rays test intersections with
+eight spheres and sample an area light in a compute shader. This is actual ray
+intersection work, not hardware DXR or a commercial-engine implementation.
+All light samples represent integration of the same field: changing their count
+does not delete scene lights. Coarse shadow images are sampled in composition.
+
+Test workloads emphasize material cost, lighting cost, fine material detail, or
+shadow-ray cost. Every candidate goes through full/modified/full image and timing
+verification. Only independently accepted per-domain actions are proposed as a
+combination, and the combination must pass its own fresh critic evaluation.
+Selection uses measured gain; the core contains no renderer labels or scene IDs.
+The CPU experiment driver chooses candidate masks and supplies isolated captures;
+this is not a new generic game interception capability.
+
+Each workload is calibrated ONCE using full quality. It then stays fixed through
+all candidates and three ABBA/BAAB/ABBA verification rounds. Failed candidates,
+raw final images, per-pass ticks and workload parameters are retained. The
+lighting-dominated case becomes an optimizable scenario once lighting actions
+are available; it remains an Amdahl control for texture-only actions.
+
 Scope: procedural multipass compute renderer and swapchain, not a polygonal game
 scene. Explicit LOD-zero baseline models excessive texture detail; a renderer
 already choosing an appropriate mip may have no such reserve. Hundreds of texture
