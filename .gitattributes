@@ -3,3 +3,4 @@
 *.hpp text eol=lf
 *.md text eol=lf
 *.ps1 text eol=crlf
+*.rgb32f binary
