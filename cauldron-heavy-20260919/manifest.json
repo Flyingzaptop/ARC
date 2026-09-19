@@ -1,0 +1,11 @@
+{
+  "source_commit": "9eba66a1fd747d7ba73f00f992ca8e3158b40d5d",
+  "source_branch": "codex_den/generic-dx12-runtime",
+  "evidence_branch": "codex_den/results-cauldron-heavy-20260919",
+  "archive_sha256": "06a41fe26f9661b625c6fb36d7a84a084648931b5450564de0329ac7c2adecd3",
+  "archive_bytes": 18640219,
+  "archive_entries": 169,
+  "renderer_distribution": "Vendor host/assets excluded; rebuild from pinned official SDK with the checked-in adapter. Exact host hash is in each run manifest.",
+  "tests": "47 non-GPU CTests; VRS debug-layer rollback/in-flight-generation tests; resource/readback/lifetime test with lean-mode GPU analysis; invalid-call preservation; all passed.",
+  "verdict": "CPU duplicate recording fixed; heavy native DX12 benchmark integrated; no reliable quality-preserving net FPS gain or 2x claim."
+}

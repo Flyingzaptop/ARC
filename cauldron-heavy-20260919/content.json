@@ -1,0 +1,24 @@
+[
+  {
+    "file": "media\\Toyshop_TeddyGI\\Toyshop_Teddy_animation\\Toyshop_Teddy_animation.gltf",
+    "sha256": "61052fa513a7a088c5fcb7bb996330cebbb41c52fbfc907893444214d92769ca",
+    "meshes": 92,
+    "mesh_instances": 98,
+    "instanced_triangles": 570372,
+    "materials": 43,
+    "textures": 109,
+    "images": 66,
+    "animations": 1
+  },
+  {
+    "file": "media\\Toyshop_TeddyGI\\Toyshop_Teddy_static\\Toyshop_Teddy_static.gltf",
+    "sha256": "32cc0b38f8f9cf06b374927ef696cfcad52d7f617b30e5df7c193b5d96865bbc",
+    "meshes": 204,
+    "mesh_instances": 639,
+    "instanced_triangles": 3088967,
+    "materials": 123,
+    "textures": 334,
+    "images": 231,
+    "animations": 0
+  }
+]
