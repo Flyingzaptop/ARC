@@ -12,6 +12,7 @@ parser=argparse.ArgumentParser()
 parser.add_argument("sdk",type=Path)
 parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
+parser.add_argument("--mode",choices=["vrs","observe","profile"],default="vrs")
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--process-sampler",type=Path)
 args=parser.parse_args()
@@ -22,11 +23,12 @@ env=os.environ.copy()
 env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_FRAMES"]=str(args.frames)
 env.pop("ARC_BENCH_DLL",None)
+env["ARC_BENCH_MODE"]=args.mode
 if args.dll: env["ARC_BENCH_DLL"]=str(args.dll.resolve())
 command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.frames+120}",f"path={output}","json","-screenshot"]
 hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,
-          "command":command,"measured_frames":args.frames,"warmup_frames":120,
+          "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))

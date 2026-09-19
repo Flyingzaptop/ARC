@@ -85,12 +85,12 @@ int wmain(int argc,wchar_t** argv)try{
         commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);commands->SetGraphicsRootSignature(roots.Get());commands->SetPipelineState(pso.Get());
         D3D12_VIEWPORT viewport{0,0,1280,720,0,1};D3D12_RECT scissor{0,0,1280,720};commands->RSSetViewports(1,&viewport);commands->RSSetScissorRects(1,&scissor);
         ComPtr<ID3D12GraphicsCommandList4> pass;
-        if(stream_pass){hr(commands.As(&pass));D3D12_RENDER_PASS_RENDER_TARGET_DESC target_desc{};target_desc.cpuDescriptor=rtv;target_desc.BeginningAccess.Type=D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;target_desc.EndingAccess.Type=D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;pass->BeginRenderPass(1,&target_desc,nullptr,D3D12_RENDER_PASS_FLAG_NONE);}
+        if(stream_pass){hr(commands.As(&pass));D3D12_RENDER_PASS_RENDER_TARGET_DESC target_desc{};target_desc.cpuDescriptor=rtv;target_desc.BeginningAccess.Type=D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;target_desc.EndingAccess.Type=D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;pass->BeginRenderPass(1,&target_desc,nullptr,options.find(L"suspend")!=std::wstring::npos?D3D12_RENDER_PASS_FLAG_SUSPENDING_PASS:D3D12_RENDER_PASS_FLAG_NONE);}
         else commands->OMSetRenderTargets(1,&rtv,FALSE,nullptr);commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         ComPtr<ID3D12GraphicsCommandList5> v5;hr(commands.As(&v5));v5->RSSetShadingRate(app_coarse?D3D12_SHADING_RATE_2X1:D3D12_SHADING_RATE_1X1,nullptr);
         if(indirect)commands->ExecuteIndirect(indirect_signature.Get(),1,indirect_arguments.Get(),0,nullptr,0);else commands->DrawInstanced(3,1,0,0);
         if(change_rate_after_draw){v5->RSSetShadingRate(D3D12_SHADING_RATE_2X1,nullptr);commands->DrawInstanced(3,1,0,0);}
-        if(pass)pass->EndRenderPass();if(late_unsupported)commands->ClearState(pso.Get());commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);commands->ResolveQueryData(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,times.Get(),0);
+        if(pass){pass->EndRenderPass();if(options.find(L"suspend")!=std::wstring::npos){D3D12_RENDER_PASS_RENDER_TARGET_DESC resumed{};resumed.cpuDescriptor=rtv;resumed.BeginningAccess.Type=D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;resumed.EndingAccess.Type=D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;pass->BeginRenderPass(1,&resumed,nullptr,D3D12_RENDER_PASS_FLAG_RESUMING_PASS);pass->EndRenderPass();}}if(late_unsupported)commands->ClearState(pso.Get());commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);commands->ResolveQueryData(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,times.Get(),0);
         D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition={target.Get(),0,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_SOURCE};commands->ResourceBarrier(1,&b);
         D3D12_TEXTURE_COPY_LOCATION src{},dst{};src.pResource=target.Get();src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;dst.pResource=pixels.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=footprint;
         commands->CopyTextureRegion(&dst,0,0,0,&src,nullptr);std::swap(b.Transition.StateBefore,b.Transition.StateAfter);commands->ResourceBarrier(1,&b);hr(commands->Close());};
@@ -104,6 +104,13 @@ int wmain(int argc,wchar_t** argv)try{
         std::ofstream json(root/(std::wstring(name)+L".json"));json<<"{\"width\":1280,\"height\":720,\"gpu_ms\":[";for(std::size_t i=0;i<ms.size();++i){if(i)json<<',';json<<ms[i];}json<<"]}";
         return result;};
     record(false);auto baseline=run(L"baseline");
+    if(options.find(L"profile")!=std::wstring::npos){
+        auto request=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));auto stop=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopGpuProfile"));
+        auto path=(root/L"profile.json").wstring();auto argument=L"1|"+path;check(request&&stop&&request(argument.data())==0,"Request graphics cost profile");
+        record(false);check(run(L"profiled-reference")==baseline,"Timestamp instrumentation must preserve exact raster pixels");check(stop(nullptr)==0,"Stop graphics profile");
+        for(int i=0;i<500&&!std::filesystem::exists(path);++i)Sleep(10);std::ifstream file(path);std::string result((std::istreambuf_iterator<char>(file)),{});
+        check(result.find("\"faults\":0")!=std::string::npos&&(options.find(L"suspend")!=std::wstring::npos?result.find("\"unsupported_segments\":1")!=std::string::npos:result.find("\"kind\":\"raster_color\"")!=std::string::npos),"Raster/render-pass timing must complete without faults");
+    }
     if(options.find(L"passive")!=std::wstring::npos){auto passive=reinterpret_cast<Api>(GetProcAddress(module,"ArcUsePassiveMode"));check(passive&&passive(nullptr)==0,"Disable render hooks for passive baseline");check(run(L"passive-original")==baseline,"Removing instrumentation must preserve cached original pixels");}
     wchar_t enable[]=L"2x2",disable[]=L"off";check(mode(enable)==0,"All mirror hook coverage required before enabling");record(false);auto modified=run(L"modified");
     check(mode(disable)==0,"Disable mirror");auto restored=run(L"restored-cached-list");

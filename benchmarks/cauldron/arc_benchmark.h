@@ -16,7 +16,7 @@ struct State {
     std::ofstream rows;
     Clock::time_point frame_start,previous_start,previous_end,ready_start;
     double period_ms{},present_ms{},submit_ms{},wait_ms{},allocator_ms{};
-    Api mode{},snapshot{};
+    Api mode{},snapshot{},profile{},stop_profile{};bool profile_requested{};
 };
 inline State& state(){static State s;return s;}
 inline double ms(Clock::duration d){return std::chrono::duration<double,std::milli>(d).count();}
@@ -34,7 +34,21 @@ inline void initialize(){
     s.snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));
     auto telemetry=s.output+L"/arc.json";
     if(!init||!lean||!s.mode||!s.snapshot||init(&telemetry[0])||lean(nullptr))throw std::runtime_error("ARC initialization failed");
-    wchar_t enable[]=L"2x2";if(s.mode(enable))throw std::runtime_error("ARC VRS mode refused");
+    const auto experiment=env(L"ARC_BENCH_MODE");
+    if(experiment==L"profile"){
+        s.profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));
+        s.stop_profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopGpuProfile"));
+        if(!s.profile||!s.stop_profile)throw std::runtime_error("GPU profile export unavailable");
+    }else if(experiment!=L"observe"){
+        wchar_t enable[]=L"2x2";if(s.mode(enable))throw std::runtime_error("ARC VRS mode refused");
+    }
 }
-inline void finish(){auto& s=state();s.rows.close();if(s.mode){wchar_t off[]=L"off";if(s.mode(off))throw std::runtime_error("ARC rollback request failed");}if(s.snapshot)s.snapshot(nullptr);}
+inline void before_frame(){auto& s=state();if(s.profile&&!s.profile_requested&&s.ready&&s.tick==s.warmup){
+    auto argument=L"16|"+s.output+L"/gpu-profile.json";if(s.profile(&argument[0]))throw std::runtime_error("GPU profile request refused");s.profile_requested=true;
+}}
+inline void finish(){auto& s=state();s.rows.close();if(s.profile_requested){
+    s.stop_profile(nullptr);const auto path=s.output+L"/gpu-profile.json";const auto until=GetTickCount64()+5000;
+    while(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES&&GetTickCount64()<until)Sleep(10);
+    if(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES)throw std::runtime_error("GPU profile publication timed out");
+}if(s.mode){wchar_t off[]=L"off";if(s.mode(off))throw std::runtime_error("ARC rollback request failed");}if(s.snapshot)s.snapshot(nullptr);}
 }

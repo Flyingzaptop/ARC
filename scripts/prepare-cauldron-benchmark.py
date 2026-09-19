@@ -45,7 +45,7 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
             bench.ready=m_pScene->IsReady()&&!m_pContentManager->IsCurrentlyLoading();
             for(auto* module:m_RenderModules)if(module->ModuleEnabled()&&!module->ModuleReady())bench.ready=false;
             if(bench.ready&&bench.tick==0)bench.ready_start=now;
-            m_Config.LimitFPS=false;m_Config.GPULimitFPS=false;
+            m_Config.LimitFPS=false;m_Config.GPULimitFPS=false;arc_bench::before_frame();
         }'''),
     ('                compMgrIter->second->UpdateComponents(m_DeltaTime);', '                if(!bench.enabled||bench.ready)compMgrIter->second->UpdateComponents(m_DeltaTime);'),
     ('        if (m_pScene->IsReady())', '        if (m_pScene->IsReady()&&(!bench.enabled||bench.ready))'),
@@ -58,7 +58,10 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
                 row["present_ms"]=bench.present_ms;row["submit_ms"]=bench.submit_ms;
                 row["swapchain_wait_ms"]=bench.wait_ms;row["allocator_wait_ms"]=bench.allocator_ms;
                 for(const auto& timing:m_pProfiler->GetCPUTimings())row["cpu_ms"][WStringToString(timing.Label)]=double(timing.GetDuration().count())/1000000.;
-                for(const auto& timing:m_pProfiler->GetGPUTimings())row["gpu_ms"][WStringToString(timing.Label)]=double(timing.GetDuration().count())/1000000.;
+                for(const auto& timing:m_pProfiler->GetGPUTimings()){
+                    const auto label=WStringToString(timing.Label);row["gpu_ms"][label]=double(timing.GetDuration().count())/1000000.;
+                    row["gpu_intervals"][label]={{"begin_ns",timing.StartTime.count()},{"end_ns",timing.EndTime.count()}};
+                }
                 row["gpu_span_ms"]=double(m_pProfiler->GetGPUFrameTicks())/1000000.;
                 if(!m_pProfiler->GetGPUTimings().empty()){
                     row["gpu_begin_ns"]=m_pProfiler->GetGPUTimings().front().StartTime.count();

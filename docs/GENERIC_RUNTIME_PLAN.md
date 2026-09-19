@@ -37,3 +37,5 @@ No automatic game mutation is claimed until the actual generic capability/refere
 path reaches the existing independent critic and rollback controller.
 
 Current benchmark and single-recording VRS results: [Cauldron heavy benchmark](CAULDRON_HEAVY_BENCHMARK.md). The CPU duplication is removed; reliable net FPS improvement and quality acceptance are not yet established on the heavy scene.
+
+Engine-independent GPU cost attribution is now implemented and independently checked: [GPU profile results](GPU_PROFILE_RESULTS.md). Shader fingerprints and declared bindings are available; actual resource contracts and safe compute/shadow replacements remain outstanding.
