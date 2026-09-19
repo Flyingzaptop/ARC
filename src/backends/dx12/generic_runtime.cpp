@@ -8,17 +8,23 @@
 #include <algorithm>
 #include <source_location>
 #include <iomanip>
+#include <bit>
 
 namespace arc::dx12::generic {
 namespace {
 constexpr GUID token_guid{0xa337b583,0x9b46,0x46bc,{0x94,0x10,0x61,0x5f,0x3a,0x41,0x29,0x6d}};
 enum class Kind {Resource, Heap, Command, Pipeline, Queue, RootSignature, Fence, Swapchain};
-struct Object {std::uint64_t id{};Kind kind{};D3D12_RESOURCE_DESC resource{};D3D12_DESCRIPTOR_HEAP_DESC heap{};UINT stride{};UINT64 cpu{},gpu{},gpu_address{};};
+struct Object {std::uint64_t id{};Kind kind{};D3D12_RESOURCE_DESC resource{};D3D12_DESCRIPTOR_HEAP_DESC heap{};UINT stride{};UINT64 cpu{},gpu{},gpu_address{};std::vector<std::uint64_t> null_slots;};
 struct View {std::uint64_t resource{},heap{};UINT kind{},first_mip{},mips{};};
 struct Recording {std::uint64_t id{},pipeline{},graphics_root{},compute_root{};std::vector<std::uint64_t> targets,heaps;std::map<UINT,UINT64> graphics_tables,compute_tables;RasterRegion raster{};bool viewport{},scissor{},started{};};
 struct State {
     std::recursive_mutex mutex;
     std::map<std::uintptr_t,Object> objects;
+    std::map<std::uint64_t,Object*> by_id;
+    std::map<UINT64,std::uint64_t> cpu_heaps,gpu_heaps;
+    std::multimap<UINT64,std::uint64_t> gpu_buffers;
+    UINT64 maximum_buffer_width{};
+    std::size_t null_words{},null_descriptors{};
     std::map<UINT64,View> views;
     std::map<std::uint64_t,Recording> commands;
     std::map<std::uint64_t,std::uint64_t> swapchain_queues;
@@ -36,10 +42,16 @@ void invalidate(std::source_location location=std::source_location::current()){a
 void retire(std::uintptr_t address,std::uint64_t id) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);auto it=s.objects.find(address);
     if(it==s.objects.end()||it->second.id!=id)return;
+    if(it->second.kind==Kind::Heap){
+        for(auto word:it->second.null_slots)s.null_descriptors-=std::popcount(word);s.null_words-=it->second.null_slots.size();
+        const auto cpu=s.cpu_heaps.find(it->second.cpu);if(cpu!=s.cpu_heaps.end()&&cpu->second==id)s.cpu_heaps.erase(cpu);
+        const auto gpu=s.gpu_heaps.find(it->second.gpu);if(gpu!=s.gpu_heaps.end()&&gpu->second==id)s.gpu_heaps.erase(gpu);
+    }
+    if(it->second.gpu_address){auto [first,last]=s.gpu_buffers.equal_range(it->second.gpu_address);for(auto cursor=first;cursor!=last;){if(cursor->second==id)cursor=s.gpu_buffers.erase(cursor);else ++cursor;}}
     if(it->second.kind==Kind::Heap)std::erase_if(s.views,[&](const auto& entry){return entry.second.heap==id;});
     if(it->second.kind==Kind::Resource)std::erase_if(s.views,[&](const auto& entry){return entry.second.resource==id;});
     s.swapchain_queues.erase(id);if(it->second.kind==Kind::Queue)std::erase_if(s.swapchain_queues,[&](const auto& pair){return pair.second==id;});
-    s.commands.erase(id);s.graph.retire_command(id);s.objects.erase(it);++s.retired;
+    s.commands.erase(id);s.graph.retire_command(id);s.by_id.erase(id);s.objects.erase(it);++s.retired;
 }
 class Lifetime final:public IUnknown {
     std::atomic<ULONG> references{1};std::uintptr_t address;std::uint64_t id;
@@ -54,32 +66,54 @@ std::uint64_t identify(ID3D12Object* object,Kind kind){
     auto& s=state();const auto key=reinterpret_cast<std::uintptr_t>(object);
     if(const auto found=s.objects.find(key);found!=s.objects.end())return found->second.id;
     if(s.objects.size()>=16384){invalidate();return 0;}
-    const auto id=s.next++;s.objects.emplace(key,Object{id,kind});
+    const auto id=s.next++;auto inserted=s.objects.emplace(key,Object{id,kind});s.by_id[id]=&inserted.first->second;
     auto* token=new Lifetime(key,id);const auto hr=object->SetPrivateDataInterface(token_guid,token);token->Release();
-    if(FAILED(hr)){s.objects.erase(key);invalidate();return 0;}
+    if(FAILED(hr)){s.by_id.erase(id);s.objects.erase(key);invalidate();return 0;}
     ++s.created;return id;
 }
-Object* find_id(std::uint64_t id){auto& s=state();for(auto& [key,value]:s.objects){(void)key;if(value.id==id)return &value;}return nullptr;}
+Object* find_id(std::uint64_t id){auto& s=state();const auto it=s.by_id.find(id);return it==s.by_id.end()?nullptr:it->second;}
 std::uint64_t swapchain_id(IDXGISwapChain* swap){
     auto& s=state();const auto key=reinterpret_cast<std::uintptr_t>(swap);if(const auto it=s.objects.find(key);it!=s.objects.end())return it->second.id;
-    if(s.objects.size()>=16384){invalidate();return 0;}const auto id=s.next++;s.objects.emplace(key,Object{id,Kind::Swapchain});
-    auto* token=new Lifetime(key,id);const auto hr=swap->SetPrivateDataInterface(token_guid,token);token->Release();if(FAILED(hr)){s.objects.erase(key);invalidate();return 0;}++s.created;return id;
+    if(s.objects.size()>=16384){invalidate();return 0;}const auto id=s.next++;auto inserted=s.objects.emplace(key,Object{id,Kind::Swapchain});s.by_id[id]=&inserted.first->second;
+    auto* token=new Lifetime(key,id);const auto hr=swap->SetPrivateDataInterface(token_guid,token);token->Release();if(FAILED(hr)){s.by_id.erase(id);s.objects.erase(key);invalidate();return 0;}++s.created;return id;
 }
 std::uint64_t resource_id(ID3D12Resource* resource){
     if(!resource)return 0;const auto id=identify(resource,Kind::Resource);
-    if(id){auto& object=state().objects.at(reinterpret_cast<std::uintptr_t>(resource));object.resource=resource->GetDesc();if(object.resource.Dimension==D3D12_RESOURCE_DIMENSION_BUFFER)object.gpu_address=resource->GetGPUVirtualAddress();}return id;
+    if(id){auto& s=state();auto& object=s.objects.at(reinterpret_cast<std::uintptr_t>(resource));if(object.resource.Width)return id;object.resource=resource->GetDesc();if(object.resource.Dimension==D3D12_RESOURCE_DIMENSION_BUFFER){object.gpu_address=resource->GetGPUVirtualAddress();if(object.gpu_address)s.gpu_buffers.emplace(object.gpu_address,id);s.maximum_buffer_width=std::max(s.maximum_buffer_width,object.resource.Width);}}return id;
 }
 Object* heap_at(UINT64 handle,bool gpu){
-    for(auto& [key,o]:state().objects){(void)key;if(o.kind!=Kind::Heap||!o.stride)continue;
-        const UINT64 base=gpu?o.gpu:o.cpu;if(!base||handle<base)continue;const auto delta=handle-base;
-        if(delta/o.stride<o.heap.NumDescriptors&&delta%o.stride==0)return &o;
-    }return nullptr;
+    auto& index=gpu?state().gpu_heaps:state().cpu_heaps;auto it=index.upper_bound(handle);if(it==index.begin())return nullptr;--it;
+    auto* o=find_id(it->second);if(!o||!o->stride)return nullptr;const auto delta=handle-it->first;
+    return delta/o->stride<o->heap.NumDescriptors&&delta%o->stride==0?o:nullptr;
 }
 Recording* command(ID3D12GraphicsCommandList* native){
     const auto id=identify(native,Kind::Command);if(!id)return nullptr;auto& s=state();
     if(!s.commands.contains(id)){if(s.commands.size()>=256){invalidate();return nullptr;}s.commands.emplace(id,Recording{id});}
     return &s.commands.at(id);
 }
+bool is_null(Object* heap,UINT64 address){if(!heap||heap->null_slots.empty())return false;const auto index=(address-heap->cpu)/heap->stride;return (heap->null_slots[index/64]>>(index%64))&1;}
+bool null_bit(Object* heap,UINT64 address,bool value){
+    if(!heap)return false;auto& s=state();
+    if(value&&heap->null_slots.empty()){
+        const std::size_t words=(std::size_t(heap->heap.NumDescriptors)+63)/64;
+        if(words>65536||s.null_words+words>65536){invalidate();return false;}heap->null_slots.resize(words);s.null_words+=words;
+    }
+    if(heap->null_slots.empty())return true;
+    const auto index=(address-heap->cpu)/heap->stride;const auto mask=std::uint64_t(1)<<(index%64);auto& word=heap->null_slots[index/64];
+    if(bool(word&mask)!=value){if(value){word|=mask;++s.null_descriptors;}else{word&=~mask;--s.null_descriptors;}}return true;
+}
+std::optional<View> descriptor(UINT64 address){
+    auto& s=state();const auto it=s.views.find(address);if(it!=s.views.end())return it->second;
+    auto* heap=heap_at(address,false);if(is_null(heap,address))return View{0,heap->id,0,0,0};return {};
+}
+void assign(UINT64 address,View value){
+    auto& s=state();auto* heap=heap_at(address,false);
+    if(!value.kind&&heap){s.views.erase(address);null_bit(heap,address,true);++s.descriptor_writes;return;}
+    null_bit(heap,address,false);
+    if(s.views.size()>=65536&&!s.views.contains(address)){invalidate();return;}
+    value.heap=heap?heap->id:0;s.views[address]=value;++s.descriptor_writes;if(!heap)++s.untracked_heap_writes;
+}
+void forget(UINT64 address){state().views.erase(address);null_bit(heap_at(address,false),address,false);}
 template<class F>void safe(F&& action)noexcept{try{auto& s=state();std::lock_guard lock(s.mutex);action();}catch(...){auto& s=state();std::lock_guard lock(s.mutex);invalidate();}}
 void add_access(WorkObservation& w,std::uint64_t id,bool write,AccessEvidence evidence,bool full=false){
     if(!id)return;
@@ -95,31 +129,28 @@ void record(Recording& c,WorkObservation w){
 }
 void observe_resource(ID3D12Resource* r)noexcept{safe([&]{resource_id(r);});}
 void observe_heap(ID3D12DescriptorHeap* h)noexcept{safe([&]{
-    const auto id=identify(h,Kind::Heap);if(!id)return;auto& o=state().objects.at(reinterpret_cast<std::uintptr_t>(h));o.heap=h->GetDesc();o.cpu=h->GetCPUDescriptorHandleForHeapStart().ptr;
+    const auto id=identify(h,Kind::Heap);if(!id)return;auto& s=state();auto& o=s.objects.at(reinterpret_cast<std::uintptr_t>(h));if(o.stride)return;o.heap=h->GetDesc();o.cpu=h->GetCPUDescriptorHandleForHeapStart().ptr;
     if(o.heap.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)o.gpu=h->GetGPUDescriptorHandleForHeapStart().ptr;
     ID3D12Device* device=nullptr;if(SUCCEEDED(h->GetDevice(IID_PPV_ARGS(&device)))){o.stride=device->GetDescriptorHandleIncrementSize(o.heap.Type);device->Release();}else invalidate();
+    if(o.cpu)s.cpu_heaps[o.cpu]=id;if(o.gpu)s.gpu_heaps[o.gpu]=id;
 });}
 void observe_view(ID3D12Resource* r,D3D12_CPU_DESCRIPTOR_HANDLE handle,UINT kind,UINT first,UINT mips)noexcept{safe([&]{
-    auto& s=state();const auto id=resource_id(r);auto* heap=heap_at(handle.ptr,false);
-    if(!heap)++s.untracked_heap_writes;
-    if(s.views.size()>=65536&&!s.views.contains(handle.ptr)){invalidate();return;}
-    s.views[handle.ptr]={id,heap?heap->id:0,kind,first,mips};++s.descriptor_writes;
+    const auto id=resource_id(r);assign(handle.ptr,{id,0,(!r&&kind!=5)?0:kind,first,mips});
 });}
 void observe_cbv(const D3D12_CONSTANT_BUFFER_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{safe([&]{
     auto& s=state();std::uint64_t id=0;
-    if(desc)for(const auto& [address,o]:s.objects){(void)address;if(o.kind!=Kind::Resource||!o.gpu_address||desc->BufferLocation<o.gpu_address)continue;
-        const auto offset=desc->BufferLocation-o.gpu_address;if(offset<=o.resource.Width&&desc->SizeInBytes<=o.resource.Width-offset){if(id){id=0;break;}id=o.id;}}
-    if(s.views.size()>=65536&&!s.views.contains(handle.ptr)){invalidate();return;}auto* heap=heap_at(handle.ptr,false);if(!heap)++s.untracked_heap_writes;
-    s.views[handle.ptr]={id,heap?heap->id:0,6,0,0};++s.descriptor_writes;
+    if(desc){auto begin=s.gpu_buffers.lower_bound(desc->BufferLocation>s.maximum_buffer_width?desc->BufferLocation-s.maximum_buffer_width:0),end=s.gpu_buffers.upper_bound(desc->BufferLocation);
+        for(auto it=begin;it!=end;++it){const auto* o=find_id(it->second);if(!o)continue;const auto offset=desc->BufferLocation-it->first;
+            if(offset<=o->resource.Width&&desc->SizeInBytes<=o->resource.Width-offset){if(id){id=0;break;}id=o->id;}}}
+    assign(handle.ptr,{id,0,desc?6u:0u,0,0});
 });}
 void copy_descriptors(UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dst,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type,UINT stride)noexcept{safe([&]{
     if(count>4096){invalidate();return;}auto* source=heap_at(src.ptr,false);auto* destination=heap_at(dst.ptr,false);
     if(!stride||(source&&source->heap.Type!=type)||(destination&&destination->heap.Type!=type)){invalidate();return;}
-    auto& s=state();std::vector<View> copies;copies.reserve(count);
+    std::vector<View> copies;copies.reserve(count);
     for(UINT i=0;i<count;++i){auto* sh=heap_at(src.ptr+UINT64(i)*stride,false);auto* dh=heap_at(dst.ptr+UINT64(i)*stride,false);if((source&&sh!=source)||(destination&&dh!=destination)){invalidate();return;}
-        auto it=s.views.find(src.ptr+UINT64(i)*stride);if(it==s.views.end()){for(UINT k=0;k<count;++k)s.views.erase(dst.ptr+UINT64(k)*stride);invalidate();return;}copies.push_back(it->second);}
-    if(s.views.size()+count>65536){invalidate();return;}
-    for(UINT i=0;i<count;++i){auto v=copies[i];v.heap=destination?destination->id:0;s.views[dst.ptr+UINT64(i)*stride]=v;++s.descriptor_writes;if(!destination)++s.untracked_heap_writes;}
+        const auto value=descriptor(src.ptr+UINT64(i)*stride);if(!value){for(UINT k=0;k<count;++k)forget(dst.ptr+UINT64(k)*stride);invalidate();return;}copies.push_back(*value);}
+    for(UINT i=0;i<count;++i)assign(dst.ptr+UINT64(i)*stride,copies[i]);
 });}
 void descriptor_ranges(UINT dst_count,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* dst_sizes,UINT src_count,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* src_sizes,D3D12_DESCRIPTOR_HEAP_TYPE type,UINT stride)noexcept{safe([&]{
     if(!stride||dst_count>1024||src_count>1024){invalidate();return;}std::vector<UINT64> destinations;std::vector<View> sources;
@@ -129,10 +160,10 @@ void descriptor_ranges(UINT dst_count,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,con
     }
     for(UINT range=0;range<src_count;++range){auto* h=heap_at(src[range].ptr,false);const UINT count=src_sizes?src_sizes[range]:1;
         if((h&&h->heap.Type!=type)||count>4096||sources.size()+count>4096){invalidate();return;}
-        for(UINT i=0;i<count;++i){const auto address=src[range].ptr+UINT64(i)*stride;auto it=state().views.find(address);if((h&&heap_at(address,false)!=h)||it==state().views.end()){for(auto target:destinations)state().views.erase(target);invalidate();return;}sources.push_back(it->second);}
+        for(UINT i=0;i<count;++i){const auto address=src[range].ptr+UINT64(i)*stride;const auto value=descriptor(address);if((h&&heap_at(address,false)!=h)||!value){for(auto target:destinations)forget(target);invalidate();return;}sources.push_back(*value);}
     }
-    auto& s=state();if(sources.size()!=destinations.size()||s.views.size()+destinations.size()>65536){invalidate();return;}
-    for(std::size_t i=0;i<sources.size();++i){auto* heap=heap_at(destinations[i],false);sources[i].heap=heap?heap->id:0;s.views[destinations[i]]=sources[i];++s.descriptor_writes;if(!heap)++s.untracked_heap_writes;}
+    if(sources.size()!=destinations.size()){invalidate();return;}
+    for(std::size_t i=0;i<sources.size();++i)assign(destinations[i],sources[i]);
 });}
 void begin(ID3D12GraphicsCommandList* n)noexcept{safe([&]{if(auto* c=command(n)){const auto id=c->id;*c=Recording{id};c->started=state().capturing;if(c->started&&!state().graph.begin(id))invalidate();}});}
 void close(ID3D12GraphicsCommandList* n)noexcept{safe([&]{if(state().capturing)if(auto* c=command(n)){if(!c->started||!state().graph.close(c->id))invalidate();}});}
@@ -159,8 +190,8 @@ void work(ID3D12GraphicsCommandList* n,UINT kind,std::uint64_t items)noexcept{
         // is a possible candidate; never claim complete shader access.
         for(const auto& [parameter,handle]:(kind==2?c->compute_tables:c->graphics_tables)){(void)parameter;auto* h=heap_at(handle,true);
             if(!h||std::find(c->heaps.begin(),c->heaps.end(),h->id)==c->heaps.end()){++state().unknown_tables;continue;}
-            const auto it=state().views.find(h->cpu+handle-h->gpu);if(it==state().views.end()){++state().unknown_tables;continue;}
-            const auto& v=it->second;add_access(w,v.resource,v.kind==2,AccessEvidence::Possible);
+            const auto value=descriptor(h->cpu+handle-h->gpu);if(!value){++state().unknown_tables;continue;}
+            add_access(w,value->resource,value->kind==2,AccessEvidence::Possible);
         }
         if(kind!=2)for(auto id:c->targets)add_access(w,id,true,AccessEvidence::Possible);
         record(*c,std::move(w));
@@ -199,7 +230,7 @@ void flush_capture()noexcept{safe([&]{auto& s=state();if(!s.ready)return;end_cap
 void unsupported()noexcept{safe([]{invalidate();});}
 void snapshot(std::ostream& out){auto& s=state();std::lock_guard lock(s.mutex);std::size_t resources=0,heaps=0,mipped=0;
     for(const auto& [key,o]:s.objects){(void)key;if(o.kind==Kind::Resource){++resources;if(o.resource.MipLevels>1)++mipped;}if(o.kind==Kind::Heap)++heaps;}
-    out<<"{\"objects_alive\":"<<s.objects.size()<<",\"resources_alive\":"<<resources<<",\"mipped_resources_alive\":"<<mipped<<",\"heaps_alive\":"<<heaps<<",\"objects_created\":"<<s.created<<",\"objects_retired\":"<<s.retired<<",\"descriptors_alive\":"<<s.views.size()<<",\"untracked_heap_writes\":"<<s.untracked_heap_writes<<",\"descriptor_writes\":"<<s.descriptor_writes<<",\"command_records\":"<<s.commands.size()<<",\"captured_work\":"<<s.captured<<",\"captured_submissions\":"<<s.submitted<<",\"unknown_tables\":"<<s.unknown_tables<<",\"errors\":"<<s.errors<<",\"capturing\":"<<(s.capturing?"true":"false")<<",\"mutation_capability\":false,\"resource_records\":[";
+    out<<"{\"objects_alive\":"<<s.objects.size()<<",\"resources_alive\":"<<resources<<",\"mipped_resources_alive\":"<<mipped<<",\"heaps_alive\":"<<heaps<<",\"objects_created\":"<<s.created<<",\"objects_retired\":"<<s.retired<<",\"null_descriptors\":"<<s.null_descriptors<<",\"null_bitmap_bytes\":"<<s.null_words*8<<",\"descriptors_alive\":"<<s.views.size()<<",\"untracked_heap_writes\":"<<s.untracked_heap_writes<<",\"descriptor_writes\":"<<s.descriptor_writes<<",\"command_records\":"<<s.commands.size()<<",\"captured_work\":"<<s.captured<<",\"captured_submissions\":"<<s.submitted<<",\"unknown_tables\":"<<s.unknown_tables<<",\"errors\":"<<s.errors<<",\"capturing\":"<<(s.capturing?"true":"false")<<",\"mutation_capability\":false,\"resource_records\":[";
     std::size_t exported=0;for(const auto& [address,o]:s.objects){(void)address;if(o.kind!=Kind::Resource)continue;if(exported>=64)break;if(exported++)out<<',';out<<"{\"id\":"<<o.id<<",\"width\":"<<o.resource.Width<<",\"height\":"<<o.resource.Height<<",\"mips\":"<<o.resource.MipLevels<<",\"format\":"<<o.resource.Format<<",\"flags\":"<<o.resource.Flags<<'}';}
     out<<"],\"resource_records_truncated\":"<<(resources>exported?"true":"false")<<",\"coverage_gap_sites\":[";
     bool first=true;for(const auto& [line,site]:s.error_sites){if(!first)out<<',';first=false;out<<"{\"line\":"<<line<<",\"where\":"<<std::quoted(site.function)<<",\"count\":"<<site.count<<'}';}out<<"]}";

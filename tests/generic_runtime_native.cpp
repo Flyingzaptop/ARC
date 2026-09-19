@@ -7,6 +7,8 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <chrono>
+#include <vector>
 using Microsoft::WRL::ComPtr;
 void hr(HRESULT r){if(FAILED(r))throw std::runtime_error("Native HRESULT "+std::to_string(r));}
 void check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
@@ -40,6 +42,27 @@ int wmain(int argc,wchar_t** argv)try{
     for(int i=0;i<1000;++i){auto temporary=buffer(D3D12_HEAP_TYPE_DEFAULT);}
     check(snapshot(nullptr)==0,"Churn snapshot");json=read(metrics);check(json.find("\"resources_alive\":3")!=std::string::npos,"Resource lifetime leaked during churn");
     std::filesystem::copy_file(metrics,directory/L"churn.json");
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC large_desc=hd;large_desc.NumDescriptors=131072;ComPtr<ID3D12DescriptorHeap> large;
+        hr(device->CreateDescriptorHeap(&large_desc,IID_PPV_ARGS(&large)));const auto begin=large->GetCPUDescriptorHandleForHeapStart();
+        const auto stride=device->GetDescriptorHandleIncrementSize(large_desc.Type);
+        D3D12_SHADER_RESOURCE_VIEW_DESC null_view{};null_view.Format=DXGI_FORMAT_R8G8B8A8_UNORM;null_view.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;null_view.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;null_view.Texture2D.MipLevels=1;
+        for(UINT i=0;i<large_desc.NumDescriptors;++i){auto h=begin;h.ptr+=UINT64(i)*stride;device->CreateShaderResourceView(nullptr,&null_view,h);}
+        snapshot(nullptr);auto state=read(metrics);
+        check(state.find("\"null_descriptors\":131072")!=std::string::npos&&state.find("\"descriptors_alive\":2")!=std::string::npos,"Null initialization consumed sparse descriptor budget");
+        std::filesystem::copy_file(metrics,directory/L"null-bitmap.json");
+        device->CopyDescriptorsSimple(1,second,begin,hd.Type);snapshot(nullptr);state=read(metrics);
+        check(state.find("\"descriptors_alive\":1")!=std::string::npos&&state.find("\"null_descriptors\":131073")!=std::string::npos,"Null copy did not invalidate previous resource view");
+        device->CopyDescriptorsSimple(1,second,first,hd.Type);
+    }
+    {
+        std::vector<ComPtr<ID3D12Resource>> live;for(int i=0;i<1500;++i)live.push_back(buffer(D3D12_HEAP_TYPE_DEFAULT));
+        const auto t=std::chrono::steady_clock::now();
+        for(int i=0;i<20000;++i)device->CopyDescriptorsSimple(1,second,first,hd.Type);
+        const auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();
+        std::ofstream(directory/L"descriptor-cost.json")<<"{\"live_extra_resources\":1500,\"copies\":20000,\"cpu_ms\":"<<ms<<'}';
+        std::cout<<"Descriptor observation cost (1500 live resources, 20000 copies): "<<ms<<" ms\n";
+    }
     // Request a frame through the injected module; no resources, bindings or
     // semantic labels are passed to ARC by this application.
     const auto request=reinterpret_cast<Api>(GetProcAddress(dll,"ArcRequestFrame"));check(request!=nullptr,"Frame request export");
@@ -56,7 +79,7 @@ int wmain(int argc,wchar_t** argv)try{
         hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));const auto index=swap->GetCurrentBackBufferIndex();
         barrier.Transition={backs[index].Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET};list->ResourceBarrier(1,&barrier);
         auto h=rtvs->GetCPUDescriptorHandleForHeapStart();h.ptr+=index*device->GetDescriptorHandleIncrementSize(rh.Type);const FLOAT color[]{.2f,.4f,.6f,1};list->ClearRenderTargetView(h,color,0,nullptr);
-        std::swap(barrier.Transition.StateBefore,barrier.Transition.StateAfter);list->ResourceBarrier(1,&barrier);hr(list->Close());queue->ExecuteCommandLists(1,commands);hr(queue->Signal(fence.Get(),frame+2));hr(fence->SetEventOnCompletion(frame+2,frame_event));check(WaitForSingleObject(frame_event,30000)==WAIT_OBJECT_0,"frame completion");hr(swap->Present(0,0));
+        std::swap(barrier.Transition.StateBefore,barrier.Transition.StateAfter);list->ResourceBarrier(1,&barrier);hr(list->Close());queue->ExecuteCommandLists(1,commands);if(frame==1)queue->ExecuteCommandLists(1,commands);hr(queue->Signal(fence.Get(),frame+2));hr(fence->SetEventOnCompletion(frame+2,frame_event));check(WaitForSingleObject(frame_event,30000)==WAIT_OBJECT_0,"frame completion");hr(swap->Present(0,0));
     }
     CloseHandle(frame_event);
     for(int i=0;i<30&&!std::filesystem::exists(frame_path);++i)Sleep(100);
