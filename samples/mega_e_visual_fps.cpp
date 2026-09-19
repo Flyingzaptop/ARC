@@ -25,9 +25,15 @@
 namespace {
 
 constexpr double kPi = 3.14159265358979323846;
+constexpr double kNear = 0.18;
 
 struct Vec3 {
     double x{}, y{}, z{};
+};
+
+struct Vec2 {
+    double x{}, y{};
+    bool valid{};
 };
 
 struct RectD {
@@ -38,19 +44,35 @@ struct RectD {
     double area() const noexcept { return width() * height(); }
 };
 
+enum class MotionType : std::uint8_t {
+    Static,
+    OscillateX,
+    OscillateZ,
+    Orbit,
+    Bob,
+};
+
 struct WorldObject {
     arc::ResourceId output_resource{};
     std::uint64_t pipeline{};
     const wchar_t* name{};
+    Vec3 base_center{};
     Vec3 center{};
     Vec3 size{};
+    double base_yaw{};
+    double yaw{};
     COLORREF color{};
+    MotionType motion{MotionType::Static};
+    double motion_radius{};
+    double motion_speed{};
+    double motion_phase{};
 };
 
 struct ProjectedObject {
     const WorldObject* object{};
     arc::VisualTrackId track_id{};
     RectD rect{};
+    std::array<Vec2, 8> corners{};
     double depth{};
     double upper_coverage{};
     double visible_coverage{};
@@ -84,11 +106,50 @@ double intersection_area(const RectD& a, const RectD& b) noexcept {
     return std::max(0.0, right - left) * std::max(0.0, bottom - top);
 }
 
+Vec3 rotate_y(const Vec3& p, double yaw) noexcept {
+    const double s = std::sin(yaw);
+    const double c = std::cos(yaw);
+    return {
+        p.x * c + p.z * s,
+        p.y,
+        -p.x * s + p.z * c
+    };
+}
+
+std::array<Vec3, 8> world_corners(const WorldObject& object) noexcept {
+    const double hx = object.size.x * 0.5;
+    const double hy = object.size.y * 0.5;
+    const double hz = object.size.z * 0.5;
+    const std::array<Vec3, 8> local{{
+        {-hx, -hy, -hz}, { hx, -hy, -hz},
+        { hx, -hy,  hz}, {-hx, -hy,  hz},
+        {-hx,  hy, -hz}, { hx,  hy, -hz},
+        { hx,  hy,  hz}, {-hx,  hy,  hz},
+    }};
+
+    std::array<Vec3, 8> result{};
+    for (std::size_t i = 0; i < local.size(); ++i) {
+        const auto r = rotate_y(local[i], object.yaw);
+        result[i] = {
+            object.center.x + r.x,
+            object.center.y + r.y,
+            object.center.z + r.z
+        };
+    }
+    return result;
+}
+
 bool collide(const Player& p, const WorldObject& o, double radius = 0.28) noexcept {
+    const double dx = p.x - o.center.x;
+    const double dz = p.z - o.center.z;
+    const double s = std::sin(-o.yaw);
+    const double c = std::cos(-o.yaw);
+    const double lx = dx * c + dz * s;
+    const double lz = -dx * s + dz * c;
     const double hx = o.size.x * 0.5 + radius;
     const double hz = o.size.z * 0.5 + radius;
-    return std::abs(p.x - o.center.x) < hx &&
-           std::abs(p.z - o.center.z) < hz &&
+    return std::abs(lx) < hx &&
+           std::abs(lz) < hz &&
            p.y > o.center.y - o.size.y * 0.5 - 0.5 &&
            p.y < o.center.y + o.size.y * 0.5 + 1.0;
 }
@@ -104,6 +165,17 @@ const wchar_t* phase_name(arc::VisibilityPhase phase) noexcept {
     return L"UNKNOWN";
 }
 
+const wchar_t* motion_name(MotionType motion) noexcept {
+    switch (motion) {
+    case MotionType::Static: return L"S";
+    case MotionType::OscillateX:
+    case MotionType::OscillateZ:
+    case MotionType::Orbit:
+    case MotionType::Bob: return L"M";
+    }
+    return L"?";
+}
+
 COLORREF importance_color(double value) noexcept {
     value = clamp01(value);
     if (value >= 0.66) return RGB(255, 90, 70);
@@ -111,57 +183,93 @@ COLORREF importance_color(double value) noexcept {
     return RGB(80, 230, 120);
 }
 
+bool project_point(
+    const Vec3& world,
+    const Player& player,
+    int width,
+    int height,
+    Vec2& out,
+    double* out_depth = nullptr) noexcept {
+    const double dx = world.x - player.x;
+    const double dz = world.z - player.z;
+    const double dy = world.y - player.y;
+    const double s = std::sin(player.yaw);
+    const double c = std::cos(player.yaw);
+    const double camera_x = dx * c - dz * s;
+    const double camera_z = dx * s + dz * c;
+
+    if (out_depth) *out_depth = camera_z;
+    if (camera_z <= kNear) {
+        out = {};
+        return false;
+    }
+
+    const double fov = 78.0 * kPi / 180.0;
+    const double focal = static_cast<double>(width) / (2.0 * std::tan(fov * 0.5));
+    out.x = static_cast<double>(width) * 0.5 + camera_x * focal / camera_z;
+    out.y = static_cast<double>(height) * 0.5 - dy * focal / camera_z;
+    out.valid = true;
+    return true;
+}
+
 RectD project_object(
     const WorldObject& object,
     const Player& player,
     int width,
     int height,
+    std::array<Vec2, 8>& projected_corners,
     double& depth,
     double& screen_x,
     double& screen_y,
     bool& on_screen) noexcept {
-    const double dx = object.center.x - player.x;
-    const double dz = object.center.z - player.z;
-    const double s = std::sin(player.yaw);
-    const double c = std::cos(player.yaw);
+    const auto corners = world_corners(object);
 
-    const double camera_x = dx * c - dz * s;
-    const double camera_z = dx * s + dz * c;
-    const double camera_y = object.center.y - player.y;
-    depth = camera_z;
+    double min_x = static_cast<double>(width);
+    double min_y = static_cast<double>(height);
+    double max_x = 0.0;
+    double max_y = 0.0;
+    bool have_projected = false;
 
-    if (camera_z <= 0.18) {
+    for (std::size_t i = 0; i < corners.size(); ++i) {
+        double corner_depth{};
+        if (!project_point(corners[i], player, width, height, projected_corners[i], &corner_depth)) {
+            continue;
+        }
+        have_projected = true;
+        min_x = std::min(min_x, projected_corners[i].x);
+        min_y = std::min(min_y, projected_corners[i].y);
+        max_x = std::max(max_x, projected_corners[i].x);
+        max_y = std::max(max_y, projected_corners[i].y);
+    }
+
+    Vec2 center_screen{};
+    if (!project_point(object.center, player, width, height, center_screen, &depth)) {
+        depth = -1.0;
+    }
+
+    if (!have_projected) {
         on_screen = false;
         screen_x = 0.0;
         screen_y = 0.0;
         return {};
     }
 
-    const double fov = 78.0 * kPi / 180.0;
-    const double focal = static_cast<double>(width) / (2.0 * std::tan(fov * 0.5));
-    const double sx = static_cast<double>(width) * 0.5 + camera_x * focal / camera_z;
-    const double sy = static_cast<double>(height) * 0.5 - camera_y * focal / camera_z;
-    const double apparent_w = std::max(object.size.x, object.size.z) * focal / camera_z;
-    const double apparent_h = object.size.y * focal / camera_z;
-
     RectD rect{
-        sx - apparent_w * 0.5,
-        sy - apparent_h * 0.5,
-        sx + apparent_w * 0.5,
-        sy + apparent_h * 0.5
+        std::clamp(min_x, 0.0, static_cast<double>(width)),
+        std::clamp(min_y, 0.0, static_cast<double>(height)),
+        std::clamp(max_x, 0.0, static_cast<double>(width)),
+        std::clamp(max_y, 0.0, static_cast<double>(height))
     };
 
-    RectD clipped{
-        std::clamp(rect.left, 0.0, static_cast<double>(width)),
-        std::clamp(rect.top, 0.0, static_cast<double>(height)),
-        std::clamp(rect.right, 0.0, static_cast<double>(width)),
-        std::clamp(rect.bottom, 0.0, static_cast<double>(height))
-    };
-
-    on_screen = clipped.area() > 0.0;
-    screen_x = std::clamp((sx / std::max(1, width)) * 2.0 - 1.0, -1.0, 1.0);
-    screen_y = std::clamp((sy / std::max(1, height)) * 2.0 - 1.0, -1.0, 1.0);
-    return clipped;
+    on_screen = rect.area() > 0.0;
+    if (center_screen.valid) {
+        screen_x = std::clamp((center_screen.x / std::max(1, width)) * 2.0 - 1.0, -1.0, 1.0);
+        screen_y = std::clamp((center_screen.y / std::max(1, height)) * 2.0 - 1.0, -1.0, 1.0);
+    } else {
+        screen_x = 0.0;
+        screen_y = 0.0;
+    }
+    return rect;
 }
 
 void draw_text(HDC dc, int x, int y, COLORREF color, const wchar_t* text) {
@@ -200,6 +308,29 @@ void draw_floor_grid(HDC dc, const RECT& client, const Player& player) {
     draw_text(dc, 18, h - 28, RGB(160, 170, 185), pos);
 }
 
+void draw_oriented_box(HDC dc, const ProjectedObject& p) {
+    static constexpr std::array<std::array<int, 2>, 12> edges{{
+        {{0,1}}, {{1,2}}, {{2,3}}, {{3,0}},
+        {{4,5}}, {{5,6}}, {{6,7}}, {{7,4}},
+        {{0,4}}, {{1,5}}, {{2,6}}, {{3,7}},
+    }};
+
+    const COLORREF debug_color = importance_color(p.importance.score);
+    HPEN pen = CreatePen(PS_SOLID, p.importance.score > .66 ? 3 : 2, debug_color);
+    auto old_pen = SelectObject(dc, pen);
+
+    for (const auto& edge : edges) {
+        const auto& a = p.corners[edge[0]];
+        const auto& b = p.corners[edge[1]];
+        if (!a.valid || !b.valid) continue;
+        MoveToEx(dc, static_cast<int>(std::lround(a.x)), static_cast<int>(std::lround(a.y)), nullptr);
+        LineTo(dc, static_cast<int>(std::lround(b.x)), static_cast<int>(std::lround(b.y)));
+    }
+
+    SelectObject(dc, old_pen);
+    DeleteObject(pen);
+}
+
 LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     switch (msg) {
     case WM_CLOSE:
@@ -219,15 +350,30 @@ class Demo final {
 public:
     explicit Demo(HWND hwnd) : hwnd_(hwnd) {
         objects_ = {
-            {101, 1001, L"Near pillar", {-2.0, 1.0, 2.0}, {1.0, 2.0, 1.0}, RGB(80, 150, 240)},
-            {102, 1001, L"Center crate", {1.2, 0.8, 4.0}, {1.4, 1.6, 1.4}, RGB(230, 150, 70)},
-            {103, 1002, L"Far wall", {0.0, 1.5, 12.0}, {8.0, 3.0, 0.7}, RGB(130, 105, 175)},
-            {104, 1001, L"Left small", {-5.0, 0.7, 7.0}, {0.8, 1.4, 0.8}, RGB(90, 200, 160)},
-            {105, 1003, L"Right tower", {5.5, 2.0, 8.0}, {1.3, 4.0, 1.3}, RGB(210, 90, 120)},
-            {106, 1001, L"Occluded box", {1.2, 0.65, 6.4}, {1.1, 1.3, 1.1}, RGB(80, 200, 220)},
-            {107, 1004, L"Rear object", {0.0, 1.0, -11.0}, {2.0, 2.0, 2.0}, RGB(200, 110, 220)},
-            {108, 1003, L"Thin marker", {-0.8, 1.0, 9.0}, {0.25, 2.0, 0.25}, RGB(220, 220, 90)},
+            {101, 1001, L"Near pillar",   {-2.0, 1.0,  2.0}, {}, {1.0, 2.0, 1.0}, 0.0, {}, RGB(80,150,240)},
+            {102, 1001, L"Center crate",  { 1.2, 0.8,  4.0}, {}, {1.4, 1.6, 1.4}, 0.35,{}, RGB(230,150,70)},
+            {103, 1002, L"Far wall",      { 0.0, 1.5, 12.0}, {}, {8.0, 3.0, 0.35},0.0, {}, RGB(130,105,175)},
+            {104, 1002, L"Left wall",     {-6.0, 1.5,  6.0}, {}, {7.0, 3.0, 0.35},kPi/2.0,{},RGB(105,125,175)},
+            {105, 1002, L"Right wall",    { 6.0, 1.5,  6.0}, {}, {7.0, 3.0, 0.35},kPi/2.0,{},RGB(105,125,175)},
+            {106, 1003, L"Right tower",   { 4.8, 2.0,  8.0}, {}, {1.3, 4.0, 1.3},-0.2,{}, RGB(210,90,120)},
+            {107, 1001, L"Occluded box",  { 1.2, 0.65, 6.4}, {}, {1.1, 1.3, 1.1},0.2, {}, RGB(80,200,220)},
+            {108, 1003, L"Thin marker",   {-0.8, 1.0,  9.0}, {}, {0.25,2.0, 0.25},0.0,{}, RGB(220,220,90)},
+            {109, 1001, L"Left crate",    {-3.8, 0.7,  5.0}, {}, {1.2, 1.4, 1.2},0.6, {}, RGB(110,200,130)},
+            {110, 1003, L"Back column",   { 3.0, 1.5, 11.0}, {}, {0.8, 3.0, 0.8},0.0, {}, RGB(190,110,210)},
+            {111, 1004, L"Rear object",   { 0.0, 1.0,-11.0}, {}, {2.0, 2.0, 2.0},0.0, {}, RGB(200,110,220)},
+            {112, 1001, L"Corner crate",  {-4.8, 0.6,10.0}, {}, {1.0, 1.2, 1.0},0.8, {}, RGB(120,190,210)},
+            {201, 2001, L"Mover X",       { 0.0, 0.75, 7.2}, {}, {0.8, 1.5, 0.8},0.0, {}, RGB(255,120,80), MotionType::OscillateX, 3.0, 0.75, 0.0},
+            {202, 2002, L"Mover Z",       {-2.8, 0.6, 8.5}, {}, {0.9, 1.2, 0.9},0.0, {}, RGB(90,235,180), MotionType::OscillateZ, 3.0, 0.55, 1.2},
+            {203, 2003, L"Orbit drone",   { 0.0, 2.4, 8.0}, {}, {0.7, 0.45,0.7},0.0, {}, RGB(255,210,80), MotionType::Orbit, 3.8, 0.42, 0.3},
+            {204, 2004, L"Bob drone",     { 3.8, 2.0, 5.0}, {}, {0.6, 0.6, 0.6},0.0, {}, RGB(100,200,255), MotionType::Bob, 1.4, 1.1, 0.6},
+            {205, 2005, L"Patrol cube",   { 0.0, 0.55,10.5}, {}, {0.9, 1.1, 0.9},0.0, {}, RGB(255,110,190), MotionType::OscillateX, 4.2, 0.38, 2.0},
+            {206, 2006, L"Side mover",    { 4.5, 0.65, 4.0}, {}, {0.8, 1.3, 0.8},0.0, {}, RGB(180,240,100), MotionType::OscillateZ, 2.4, 0.68, 0.8},
         };
+
+        for (auto& object : objects_) {
+            object.center = object.base_center;
+            object.yaw = object.base_yaw;
+        }
     }
 
     int run() {
@@ -254,6 +400,7 @@ public:
                 0.0,
                 0.05);
             previous = now;
+            elapsed_ += dt;
 
             update(dt);
             render();
@@ -280,14 +427,48 @@ private:
     std::vector<ProjectedObject> projected_{};
     std::uint64_t frame_{};
     double fps_{};
+    double elapsed_{};
     POINT last_mouse_{};
     bool have_mouse_{};
+
+    void animate_world() {
+        for (auto& object : objects_) {
+            object.center = object.base_center;
+            object.yaw = object.base_yaw;
+
+            const double t = elapsed_ * object.motion_speed + object.motion_phase;
+            switch (object.motion) {
+            case MotionType::Static:
+                break;
+            case MotionType::OscillateX:
+                object.center.x += std::sin(t) * object.motion_radius;
+                object.yaw += 0.35 * std::sin(t * 0.7);
+                break;
+            case MotionType::OscillateZ:
+                object.center.z += std::sin(t) * object.motion_radius;
+                object.yaw += 0.45 * std::sin(t * 0.6);
+                break;
+            case MotionType::Orbit:
+                object.center.x += std::cos(t) * object.motion_radius;
+                object.center.z += std::sin(t) * object.motion_radius;
+                object.yaw = -t + kPi * 0.5;
+                break;
+            case MotionType::Bob:
+                object.center.y += std::sin(t * 1.7) * object.motion_radius;
+                object.center.x += std::sin(t * 0.55) * 0.7;
+                object.yaw += t;
+                break;
+            }
+        }
+    }
 
     void update(double dt) {
         if (key_down(VK_ESCAPE)) {
             running_ = false;
             return;
         }
+
+        animate_world();
 
         double yaw_delta = 0.0;
         if (key_down(VK_LEFT)) yaw_delta -= 1.8 * dt;
@@ -322,6 +503,7 @@ private:
         candidate.z += dz;
         bool blocked = false;
         for (const auto& object : objects_) {
+            if (object.motion != MotionType::Static) continue;
             if (collide(candidate, object)) {
                 blocked = true;
                 break;
@@ -340,7 +522,16 @@ private:
         for (const auto& object : objects_) {
             ProjectedObject p{};
             p.object = &object;
-            p.rect = project_object(object, player_, width, height, p.depth, p.screen_x, p.screen_y, p.on_screen);
+            p.rect = project_object(
+                object,
+                player_,
+                width,
+                height,
+                p.corners,
+                p.depth,
+                p.screen_x,
+                p.screen_y,
+                p.on_screen);
             const double screen_area = static_cast<double>(width) * static_cast<double>(height);
             p.upper_coverage = p.on_screen ? clamp01(p.rect.area() / screen_area) : 0.0;
             projected_.push_back(p);
@@ -355,10 +546,11 @@ private:
         std::vector<RectD> nearer;
         for (const auto index : depth_order) {
             auto& p = projected_[index];
-            if (!p.on_screen || p.depth <= 0.18) {
+            if (!p.on_screen || p.depth <= kNear) {
                 p.visible_coverage = 0.0;
                 continue;
             }
+
             double visible_area = p.rect.area();
             for (const auto& occluder : nearer) {
                 visible_area -= intersection_area(p.rect, occluder);
@@ -377,6 +569,7 @@ private:
             arc::WorkObservation work{};
             work.kind = arc::GpuWorkKind::Draw;
             work.pipeline = p.object->pipeline;
+            work.items = 36;
             work.raster = {
                 static_cast<std::uint32_t>(width),
                 static_cast<std::uint32_t>(height),
@@ -391,6 +584,7 @@ private:
                 true
             });
             work.bindings_complete = true;
+
             const auto fingerprint = arc::make_visual_track_fingerprint(work);
             p.track_id = fingerprint.id;
 
@@ -399,7 +593,7 @@ private:
             observation.frame = frame_;
             observation.local_coverage_upper = p.upper_coverage;
             observation.visible_coverage = p.visible_coverage;
-            observation.present_reachable = p.on_screen && p.depth > 0.18;
+            observation.present_reachable = p.on_screen && p.depth > kNear;
             observation.confidence = std::min(0.96, fingerprint.confidence);
             temporal_.observe(observation);
 
@@ -411,8 +605,6 @@ private:
                     hint.screen_y = p.screen_y;
                 }
                 hint.composition_relevance = 1.0;
-                // Deliberately omit semantic/perceptual object labels. Unknown
-                // sensitivity defaults conservatively in the Stage 19 model.
                 p.importance = importance_.evaluate(*state, hint);
             }
         }
@@ -448,7 +640,7 @@ private:
 
         for (const auto index : painter) {
             const auto& p = projected_[index];
-            if (!p.on_screen || p.depth <= 0.18) continue;
+            if (!p.on_screen || p.depth <= kNear) continue;
 
             RECT r{
                 static_cast<LONG>(p.rect.left),
@@ -461,65 +653,71 @@ private:
             FillRect(dc, &r, fill);
             DeleteObject(fill);
 
-            const COLORREF debug_color = importance_color(p.importance.score);
-            HPEN pen = CreatePen(PS_SOLID, p.importance.score > .66 ? 3 : 2, debug_color);
-            auto old_pen = SelectObject(dc, pen);
-            SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
-            Rectangle(dc, r.left, r.top, r.right, r.bottom);
-            SelectObject(dc, old_pen);
-            DeleteObject(pen);
+            draw_oriented_box(dc, p);
 
             wchar_t label[260]{};
             swprintf_s(
                 label,
-                L"%s  IMP %.2f  vis %.2f%%  pred8 %.2f%%  %s",
+                L"%s %s  IMP %.2f  vis %.2f%%  pred8 %.2f%%  %s",
+                motion_name(p.object->motion),
                 p.object->name,
                 p.importance.score,
                 p.temporal.estimated_visible_coverage * 100.0,
                 p.temporal.predicted_8f * 100.0,
                 phase_name(p.temporal.phase));
-            const int tx = std::clamp(r.left, 4L, static_cast<LONG>(std::max(4, width - 500)));
-            const int ty = std::clamp(r.top - 20, 4L, static_cast<LONG>(std::max(4, height - 24)));
-            draw_text(dc, tx, ty, debug_color, label);
+            const int tx = std::clamp(r.left, 4L, static_cast<LONG>(std::max(4, width - 520)));
+            const int ty = std::clamp(r.top - 18, 4L, static_cast<LONG>(std::max(4, height - 22)));
+            draw_text(dc, tx, ty, importance_color(p.importance.score), label);
         }
 
         HFONT font = CreateFontW(
-            -17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            -13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
             CLEARTYPE_QUALITY, FF_DONTCARE, L"Consolas");
         auto old_font = SelectObject(dc, font);
         SetBkMode(dc, TRANSPARENT);
 
+        const int row_h = 14;
+        const int panel_h = 90 + row_h * static_cast<int>(projected_.size()) + 10;
         HBRUSH panel = CreateSolidBrush(RGB(10, 12, 16));
-        RECT panel_rect{12, 12, std::min(width - 12, 610), std::min(height - 12, 230)};
+        RECT panel_rect{10, 10, std::min(width - 10, 690), std::min(height - 10, panel_h)};
         FillRect(dc, &panel_rect, panel);
         DeleteObject(panel);
 
         wchar_t header[256]{};
-        swprintf_s(header, L"ARC Mega E visual debugger   FPS %.1f", fps_);
-        draw_text(dc, 24, 22, RGB(235, 240, 250), header);
-        draw_text(dc, 24, 45, RGB(185, 195, 210), L"WASD move | Shift sprint | arrows / RMB mouse look | Esc exit");
-        draw_text(dc, 24, 68, RGB(185, 195, 210), L"Boxes = ARC tracked contribution. Border = Visual Importance.");
-        draw_text(dc, 24, 91, RGB(185, 195, 210), L"vis = estimated visible screen coverage | pred8 = 8-frame prediction");
+        swprintf_s(
+            header,
+            L"ARC Mega E debugger | FPS %.1f | objects %zu | M=moving S=static",
+            fps_,
+            projected_.size());
+        draw_text(dc, 18, 16, RGB(235, 240, 250), header);
+        draw_text(dc, 18, 32, RGB(185, 195, 210), L"WASD move | Shift sprint | arrows / RMB mouse look | Esc exit");
+        draw_text(dc, 18, 48, RGB(185, 195, 210), L"World-space oriented boxes: walls no longer billboard toward the camera.");
+        draw_text(dc, 18, 64, RGB(185, 195, 210), L"TY NAME            PHASE     VIS%   P8%   IMP   CONF");
 
-        int y = 120;
         auto sorted = projected_;
         std::sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) {
-            return a.importance.score > b.importance.score;
+            if (a.object->output_resource != b.object->output_resource) {
+                return a.object->output_resource < b.object->output_resource;
+            }
+            return a.object->pipeline < b.object->pipeline;
         });
+
+        int y = 80;
         for (const auto& p : sorted) {
-            wchar_t line[280]{};
+            wchar_t line[320]{};
             swprintf_s(
                 line,
-                L"#%llu %-14s imp %.3f  conf %.2f  %-8s",
-                static_cast<unsigned long long>(p.track_id),
+                L"%s  %-15s %-9s %5.2f %5.2f %5.3f %5.2f",
+                motion_name(p.object->motion),
                 p.object->name,
+                phase_name(p.temporal.phase),
+                p.temporal.estimated_visible_coverage * 100.0,
+                p.temporal.predicted_8f * 100.0,
                 p.importance.score,
-                p.importance.confidence,
-                phase_name(p.temporal.phase));
-            draw_text(dc, 24, y, importance_color(p.importance.score), line);
-            y += 19;
-            if (y > panel_rect.bottom - 20) break;
+                p.importance.confidence);
+            draw_text(dc, 18, y, importance_color(p.importance.score), line);
+            y += row_h;
         }
 
         SelectObject(dc, old_font);
@@ -555,8 +753,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        1400,
-        820,
+        1500,
+        900,
         nullptr,
         nullptr,
         instance,
