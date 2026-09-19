@@ -22,6 +22,7 @@ add_library(arc-core STATIC
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
     src/core/descriptor_ledger.cpp
+    src/core/frame_timing_window.cpp
     src/core/resource_semantics.cpp
     src/core/scene_understanding.cpp
     src/core/gpu_attribution.cpp
@@ -94,6 +95,9 @@ endif()
 
 if(ARC_BUILD_TESTS)
     enable_testing()
+    add_executable(arc-frame-timing-window-tests tests/frame_timing_window_tests.cpp)
+    target_link_libraries(arc-frame-timing-window-tests PRIVATE arc::core)
+    add_test(NAME arc-frame-timing-window-tests COMMAND arc-frame-timing-window-tests)
     add_executable(arc-descriptor-ledger-tests tests/descriptor_ledger_tests.cpp)
     target_link_libraries(arc-descriptor-ledger-tests PRIVATE arc::core)
     add_test(NAME arc-descriptor-ledger-tests COMMAND arc-descriptor-ledger-tests)

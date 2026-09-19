@@ -10,7 +10,7 @@ namespace arc::dx12::generic {
 // Call under the runtime mutex; native calls must suppress our own hooks.
 class ImageReadback {
 public:
-    bool enqueue(IDXGISwapChain*, ID3D12CommandQueue*, const std::filesystem::path&);
+    bool enqueue(IDXGISwapChain*, ID3D12CommandQueue*, const std::filesystem::path&,std::uint64_t mutations=0,UINT experimental_rate=0);
     void presented(HRESULT result) noexcept {if(!present_seen_){present_result_=result;present_seen_=true;}}
     bool ready() const noexcept;
     bool write(); // worker only, after ready(); false reports GPU/IO failure
@@ -31,5 +31,6 @@ private:
     HRESULT signal_result_{E_PENDING},present_result_{E_PENDING};
     bool submitted_{},present_seen_{};
     double enqueue_cpu_ms_{};
+    std::uint64_t mutations_{};UINT experimental_rate_{};
 };
 }

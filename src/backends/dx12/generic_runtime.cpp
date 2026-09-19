@@ -1,7 +1,9 @@
 #include "generic_runtime.hpp"
 #include "generic_readback.hpp"
+#include "generic_command_mirror.hpp"
 #include "arc/gpu_attribution.hpp"
 #include "arc/descriptor_ledger.hpp"
+#include "arc/frame_timing_window.hpp"
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -35,6 +37,12 @@ struct State {
     std::uint64_t image_swapchain{},images_completed{},images_failed{};
     std::atomic<bool> image_pending{};
     bool image_writing{};
+    std::unique_ptr<FrameTimingWindow> timing;
+    std::filesystem::path timing_path;
+    std::chrono::steady_clock::time_point timing_deadline;
+    bool timing_writing{};
+    UINT timing_rate{};
+    std::uint64_t timing_completed{},timing_failed{};
     std::atomic<std::uint64_t> unsupported_calls{};
     std::filesystem::path requested_path;
     std::uint64_t capture_swapchain{},present_resource{},present_queue{};
@@ -205,7 +213,7 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
     safe([&]{auto& s=state();if(!s.image_pending||s.image)return;const auto id=swapchain_id(swap);const auto queue=s.image_queues.find(id);
         if(queue==s.image_queues.end()){++s.images_failed;s.image_pending=false;return;}
         s.image=std::make_unique<ImageReadback>();s.image_swapchain=id;
-        if(!s.image->enqueue(swap,queue->second.Get(),s.image_path)){++s.images_failed;s.image_pending=false;if(!s.image->submitted())s.image.reset();}
+        if(!s.image->enqueue(swap,queue->second.Get(),s.image_path,mirror::modified_draws(),mirror::requested_rate())){++s.images_failed;s.image_pending=false;if(!s.image->submitted())s.image.reset();}
     });
     if(!state().capturing)return 0;
     safe([&]{auto& s=state();if(s.capture_swapchain&&s.capture_swapchain!=swapchain_id(swap)){invalidate();return;}IDXGISwapChain3* current=nullptr;
@@ -216,6 +224,8 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
 }
 void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UINT flags)noexcept{
     if(flags&DXGI_PRESENT_TEST)return;
+    const auto now=std::chrono::steady_clock::now();
+    safe([&]{auto& s=state();if(s.timing){if(s.timing_rate!=mirror::requested_rate())s.timing->expire();s.timing->present(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count(),swapchain_id(swap),result==S_OK);}});
     safe([&]{auto& s=state();if(s.image&&s.image_swapchain==swapchain_id(swap))s.image->presented(result);});
     safe([&]{auto& s=state();if(s.armed&&!s.capturing){if(FAILED(result))return;begin_capture();s.capture_swapchain=swapchain_id(swap);s.armed=false;return;}
         if(!s.capturing||s.requested_path.empty())return;
@@ -228,6 +238,15 @@ void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UI
 }
 bool request_frame(const std::filesystem::path& path)noexcept{bool accepted=false;safe([&]{auto& s=state();if(s.capturing||s.armed||s.ready||!path.is_absolute()||std::filesystem::exists(path))return;s.requested_path=path;s.armed=true;s.capture_swapchain=0;accepted=true;});return accepted;}
 bool request_image(const std::filesystem::path& path)noexcept{bool accepted=false;safe([&]{auto& s=state();if(s.image_pending||s.image||s.image_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels"))return;s.image_path=path;s.image_pending=true;accepted=true;});return accepted;}
+bool request_timing(const std::filesystem::path& path,UINT seconds)noexcept{bool accepted=false;safe([&]{auto& s=state();if(!seconds||seconds>60||s.timing||s.timing_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path))return;s.timing=std::make_unique<FrameTimingWindow>(UINT64(seconds)*1'000'000'000);s.timing_path=path;s.timing_rate=mirror::requested_rate();s.timing_deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds+5);accepted=true;});return accepted;}
+void observation_mode_changed()noexcept{safe([&]{auto& s=state();if(s.timing)s.timing->expire();if(s.capturing||s.armed)invalidate();});}
+void flush_timing()noexcept{
+    std::unique_ptr<FrameTimingWindow> completed;std::filesystem::path path;UINT rate=0;
+    safe([&]{auto& s=state();if(!s.timing)return;if(std::chrono::steady_clock::now()>=s.timing_deadline)s.timing->expire();if(s.timing->done()){completed=std::move(s.timing);path=s.timing_path;rate=s.timing_rate;s.timing_writing=true;}});
+    if(!completed)return;bool written=false;
+    try{const auto temporary=std::filesystem::path(path.wstring()+L".tmp");std::ofstream out(temporary);out<<"{\"experimental_vrs_rate\":"<<rate<<",\"measurement\":";completed->write_json(out);out<<'}';out.close();if(out){std::filesystem::rename(temporary,path);written=true;}}catch(...){}
+    safe([&]{auto& s=state();s.timing_writing=false;if(written&&completed->valid())++s.timing_completed;else ++s.timing_failed;});
+}
 void flush_image()noexcept{
     std::unique_ptr<ImageReadback> image;
     safe([&]{auto& s=state();if(s.image&&s.image->ready()){image=std::move(s.image);s.image_pending=false;s.image_writing=true;}});

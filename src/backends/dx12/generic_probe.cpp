@@ -6,6 +6,7 @@
 #include "MinHook.h"
 #include "arc/perceptual_trial.hpp"
 #include "generic_runtime.hpp"
+#include "generic_command_mirror.hpp"
 #include <atomic>
 #include <filesystem>
 #include <fstream>
@@ -13,6 +14,9 @@
 
 namespace {
 namespace runtime=arc::dx12::generic;
+namespace mirror=arc::dx12::mirror;
+std::atomic<bool> mirror_hooks_ready{};
+std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> initialized{},initializing{},recording{};
 std::atomic<unsigned long long> presents{},present_failures{},submits{},lists{},draws{},indexed{},dispatches{},resources{},hook_failures{};
 std::atomic<long> last_present_error{},last_device_reason{};
@@ -30,7 +34,7 @@ using ResourceFn=decltype(ID3D12DeviceVtbl::CreateCommittedResource);
 PresentFn original_present{};Present1Fn original_present1{};ExecuteFn original_execute{};
 DrawFn original_draw{};IndexedFn original_indexed{};DispatchFn original_dispatch{};ResourceFn original_resource{};
 thread_local bool inside_present{};
-bool observe_api() noexcept {return recording.load(std::memory_order_relaxed)&&!inside_present;}
+bool observe_api() noexcept {return recording.load(std::memory_order_relaxed)&&!inside_present&&!mirror::internal();}
 void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
     if(!recording.load(std::memory_order_relaxed)||(flags&DXGI_PRESENT_TEST))return;
     presents.fetch_add(1,std::memory_order_relaxed);
@@ -53,22 +57,22 @@ HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1* self,UINT sync,UINT flags,co
     if(outer){observe_present(base,sync,flags,result);if(recording)runtime::after_present(base,resource,result,flags);}return result;
 }
 void STDMETHODCALLTYPE execute(ID3D12CommandQueue* self,UINT count,ID3D12CommandList* const* commands){
-    original_execute(self,count,commands);if(observe_api()){submits.fetch_add(1,std::memory_order_relaxed);lists.fetch_add(count,std::memory_order_relaxed);runtime::submit(self,count,commands);}
+    if(!observe_api()||!mirror::execute(self,count,commands))original_execute(self,count,commands);if(observe_api()){submits.fetch_add(1,std::memory_order_relaxed);lists.fetch_add(count,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::submit(self,count,commands);}
 }
 void STDMETHODCALLTYPE draw(ID3D12GraphicsCommandList* self,UINT vertices,UINT instances,UINT start,UINT instance){
-    original_draw(self,vertices,instances,start,instance);if(observe_api()){draws.fetch_add(1,std::memory_order_relaxed);runtime::work(self,0,UINT64(vertices)*instances);}
+    original_draw(self,vertices,instances,start,instance);if(observe_api()){auto shadow=mirror::acquire_draw(self);if(shadow.list){mirror::InternalCall guard;const bool changed=mirror::before_draw(shadow);original_draw(shadow.list,vertices,instances,start,instance);if(changed)mirror::after_draw(shadow);}}if(observe_api()){draws.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,0,UINT64(vertices)*instances);}
 }
 void STDMETHODCALLTYPE draw_indexed(ID3D12GraphicsCommandList* self,UINT indices,UINT instances,UINT start,INT base,UINT instance){
-    original_indexed(self,indices,instances,start,base,instance);if(observe_api()){indexed.fetch_add(1,std::memory_order_relaxed);runtime::work(self,1,UINT64(indices)*instances);}
+    original_indexed(self,indices,instances,start,base,instance);if(observe_api()){auto shadow=mirror::acquire_draw(self);if(shadow.list){mirror::InternalCall guard;const bool changed=mirror::before_draw(shadow);original_indexed(shadow.list,indices,instances,start,base,instance);if(changed)mirror::after_draw(shadow);}}if(observe_api()){indexed.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,1,UINT64(indices)*instances);}
 }
 void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* self,UINT x,UINT y,UINT z){
-    original_dispatch(self,x,y,z);if(observe_api()){dispatches.fetch_add(1,std::memory_order_relaxed);runtime::work(self,2,UINT64(x)*y*z);}
+    original_dispatch(self,x,y,z);if(observe_api())mirror::record(original_dispatch,self,x,y,z);if(observe_api()){dispatches.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,2,UINT64(x)*y*z);}
 }
 HRESULT STDMETHODCALLTYPE resource(ID3D12Device* self,const D3D12_HEAP_PROPERTIES* heap,D3D12_HEAP_FLAGS flags,const D3D12_RESOURCE_DESC* desc,D3D12_RESOURCE_STATES state,const D3D12_CLEAR_VALUE* clear,REFIID iid,void** out){
     const HRESULT result=original_resource(self,heap,flags,desc,state,clear,iid,out);
     if(SUCCEEDED(result)&&out&&*out&&observe_api()){
         resources.fetch_add(1,std::memory_order_relaxed);ID3D12Resource* r=nullptr;
-        if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12Resource,reinterpret_cast<void**>(&r)))){runtime::observe_resource(r);ID3D12Resource_Release(r);}
+        if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12Resource,reinterpret_cast<void**>(&r)))){if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_resource(r);ID3D12Resource_Release(r);}
     }return result;
 }
 
@@ -104,42 +108,85 @@ HRESULT STDMETHODCALLTYPE swap_hwnd(IDXGIFactory2* f,IUnknown* d,HWND window,con
 HRESULT STDMETHODCALLTYPE create_swap(IDXGIFactory* f,IUnknown* d,DXGI_SWAP_CHAIN_DESC* desc,IDXGISwapChain** out){const auto result=original_swap(f,d,desc,out);if(observe_api()&&SUCCEEDED(result)&&out&&*out)runtime::observe_swapchain(*out,d);return result;}
 HRESULT STDMETHODCALLTYPE heap(ID3D12Device* d,const D3D12_DESCRIPTOR_HEAP_DESC* desc,REFIID iid,void** out){
     const auto result=original_heap(d,desc,iid,out);
-    if(SUCCEEDED(result)&&out&&*out&&observe_api()){ID3D12DescriptorHeap* h=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12DescriptorHeap,reinterpret_cast<void**>(&h)))){runtime::observe_heap(h);ID3D12DescriptorHeap_Release(h);}}return result;
+    if(SUCCEEDED(result)&&out&&*out&&observe_api()){ID3D12DescriptorHeap* h=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12DescriptorHeap,reinterpret_cast<void**>(&h)))){if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_heap(h);ID3D12DescriptorHeap_Release(h);}}return result;
 }
-void STDMETHODCALLTYPE srv(ID3D12Device* d,ID3D12Resource* r,const D3D12_SHADER_RESOURCE_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_srv(d,r,v,h);if(observe_api())runtime::observe_view(r,h,1,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MostDetailedMip:0,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MipLevels:0);}
-void STDMETHODCALLTYPE uav(ID3D12Device* d,ID3D12Resource* r,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_uav(d,r,counter,v,h);if(observe_api())runtime::observe_view(r,h,2,v&&v->ViewDimension==D3D12_UAV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
-void STDMETHODCALLTYPE rtv(ID3D12Device* d,ID3D12Resource* r,const D3D12_RENDER_TARGET_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_rtv(d,r,v,h);if(observe_api())runtime::observe_view(r,h,3,v&&v->ViewDimension==D3D12_RTV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
-void STDMETHODCALLTYPE dsv(ID3D12Device* d,ID3D12Resource* r,const D3D12_DEPTH_STENCIL_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_dsv(d,r,v,h);if(observe_api())runtime::observe_view(r,h,4,v&&v->ViewDimension==D3D12_DSV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
-void STDMETHODCALLTYPE sampler(ID3D12Device* d,const D3D12_SAMPLER_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_sampler(d,v,h);if(observe_api())runtime::observe_view(nullptr,h,5,0,0);}
-void STDMETHODCALLTYPE cbv(ID3D12Device* d,const D3D12_CONSTANT_BUFFER_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_cbv(d,v,h);if(observe_api())runtime::observe_cbv(v,h);}
-void STDMETHODCALLTYPE descriptors(ID3D12Device* d,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dst,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type){original_descriptors(d,count,dst,src,type);if(observe_api())runtime::copy_descriptors(count,dst,src,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
-void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* ds,UINT sc,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* ss,D3D12_DESCRIPTOR_HEAP_TYPE type){original_descriptor_ranges(d,dc,dst,ds,sc,src,ss,type);if(observe_api())runtime::descriptor_ranges(dc,dst,ds,sc,src,ss,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
-HRESULT STDMETHODCALLTYPE signal(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_signal(q,f,value);if(observe_api()&&SUCCEEDED(result))runtime::fence(q,f,value,false);return result;}
-HRESULT STDMETHODCALLTYPE wait(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_wait(q,f,value);if(observe_api()&&SUCCEEDED(result))runtime::fence(q,f,value,true);return result;}
-void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignature* signature,UINT count,ID3D12Resource* arguments,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){original_indirect(c,signature,count,arguments,offset,counts,count_offset);if(observe_api())runtime::unsupported();}
-void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* c,ID3D12GraphicsCommandList* b){original_bundle(c,b);if(observe_api())runtime::unsupported();}
-void STDMETHODCALLTYPE barriers(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RESOURCE_BARRIER* b){original_barriers(c,count,b);if(observe_api())for(UINT i=0;i<count;++i)if(b[i].Type==D3D12_RESOURCE_BARRIER_TYPE_ALIASING)runtime::unsupported();}
-HRESULT STDMETHODCALLTYPE reset(ID3D12GraphicsCommandList* c,ID3D12CommandAllocator* a,ID3D12PipelineState* p){const auto result=original_reset(c,a,p);if(SUCCEEDED(result)&&observe_api()){runtime::begin(c);runtime::pipeline(c,p);}return result;}
+void STDMETHODCALLTYPE srv(ID3D12Device* d,ID3D12Resource* r,const D3D12_SHADER_RESOURCE_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_srv(d,r,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,1,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MostDetailedMip:0,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MipLevels:0);}
+void STDMETHODCALLTYPE uav(ID3D12Device* d,ID3D12Resource* r,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_uav(d,r,counter,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,2,v&&v->ViewDimension==D3D12_UAV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
+void STDMETHODCALLTYPE rtv(ID3D12Device* d,ID3D12Resource* r,const D3D12_RENDER_TARGET_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_rtv(d,r,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,3,v&&v->ViewDimension==D3D12_RTV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
+void STDMETHODCALLTYPE dsv(ID3D12Device* d,ID3D12Resource* r,const D3D12_DEPTH_STENCIL_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_dsv(d,r,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,4,v&&v->ViewDimension==D3D12_DSV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
+void STDMETHODCALLTYPE sampler(ID3D12Device* d,const D3D12_SAMPLER_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_sampler(d,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(nullptr,h,5,0,0);}
+void STDMETHODCALLTYPE cbv(ID3D12Device* d,const D3D12_CONSTANT_BUFFER_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){original_cbv(d,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_cbv(v,h);}
+void STDMETHODCALLTYPE descriptors(ID3D12Device* d,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dst,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type){original_descriptors(d,count,dst,src,type);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::copy_descriptors(count,dst,src,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
+void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* ds,UINT sc,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* ss,D3D12_DESCRIPTOR_HEAP_TYPE type){original_descriptor_ranges(d,dc,dst,ds,sc,src,ss,type);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::descriptor_ranges(dc,dst,ds,sc,src,ss,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
+HRESULT STDMETHODCALLTYPE signal(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_signal(q,f,value);if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,false);return result;}
+HRESULT STDMETHODCALLTYPE wait(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_wait(q,f,value);if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,true);return result;}
+void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignature* signature,UINT count,ID3D12Resource* arguments,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){
+    original_indirect(c,signature,count,arguments,offset,counts,count_offset);
+    if(observe_api()){
+        if(mirror::requested_rate()){
+            if(mirror::raster_indirect(signature)){auto shadow=mirror::acquire_draw(c);if(shadow.list){mirror::InternalCall guard;const bool changed=mirror::before_draw(shadow);original_indirect(shadow.list,signature,count,arguments,offset,counts,count_offset);if(changed)mirror::after_draw(shadow);}}
+            else mirror::invalidate(c);
+        }
+        if(detailed_tracking)runtime::unsupported();
+    }
+}
+
+void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* c,ID3D12GraphicsCommandList* b){original_bundle(c,b);if(observe_api()){mirror::invalidate(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}}
+void STDMETHODCALLTYPE barriers(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RESOURCE_BARRIER* b){original_barriers(c,count,b);if(observe_api())mirror::record(original_barriers,c,count,b);if(observe_api())for(UINT i=0;i<count;++i)if(b[i].Type==D3D12_RESOURCE_BARRIER_TYPE_ALIASING)if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}
+HRESULT STDMETHODCALLTYPE reset(ID3D12GraphicsCommandList* c,ID3D12CommandAllocator* a,ID3D12PipelineState* p){const auto result=original_reset(c,a,p);if(SUCCEEDED(result)&&observe_api()){mirror::begin(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::begin(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);}return result;}
 HRESULT STDMETHODCALLTYPE create_command(ID3D12Device* d,UINT node,D3D12_COMMAND_LIST_TYPE type,ID3D12CommandAllocator* a,ID3D12PipelineState* p,REFIID iid,void** out){
     const auto result=original_create_command(d,node,type,a,p,iid,out);
     if(SUCCEEDED(result)&&observe_api()&&out&&*out){ID3D12GraphicsCommandList* c=nullptr;
         if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12GraphicsCommandList,reinterpret_cast<void**>(&c)))){
-            runtime::begin(c);runtime::pipeline(c,p);ID3D12GraphicsCommandList_Release(c);
+            mirror::begin(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::begin(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);ID3D12GraphicsCommandList_Release(c);
         }}return result;
 }
-HRESULT STDMETHODCALLTYPE close(ID3D12GraphicsCommandList* c){const auto result=original_close(c);if(SUCCEEDED(result)&&observe_api())runtime::close(c);return result;}
-void STDMETHODCALLTYPE pipeline(ID3D12GraphicsCommandList* c,ID3D12PipelineState* p){original_pipeline(c,p);if(observe_api())runtime::pipeline(c,p);}
-void STDMETHODCALLTYPE targets(ID3D12GraphicsCommandList* c,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* h,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth){original_targets(c,count,h,contiguous,depth);if(observe_api())runtime::targets(c,count,h,contiguous,depth);}
-void STDMETHODCALLTYPE viewport(ID3D12GraphicsCommandList* c,UINT count,const D3D12_VIEWPORT* v){original_viewport(c,count,v);if(observe_api())runtime::viewport(c,count,v);}
-void STDMETHODCALLTYPE scissor(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RECT* v){original_scissor(c,count,v);if(observe_api())runtime::scissor(c,count,v);}
-void STDMETHODCALLTYPE bind_heaps(ID3D12GraphicsCommandList* c,UINT count,ID3D12DescriptorHeap*const* h){original_bind_heaps(c,count,h);if(observe_api())runtime::descriptor_heaps(c,count,h);}
-void STDMETHODCALLTYPE graphics_table(ID3D12GraphicsCommandList* c,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE h){original_graphics_table(c,parameter,h);if(observe_api())runtime::root_table(c,false,parameter,h);}
-void STDMETHODCALLTYPE compute_table(ID3D12GraphicsCommandList* c,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE h){original_compute_table(c,parameter,h);if(observe_api())runtime::root_table(c,true,parameter,h);}
-void STDMETHODCALLTYPE copy(ID3D12GraphicsCommandList* c,ID3D12Resource* dst,ID3D12Resource* src){original_copy(c,dst,src);if(observe_api())runtime::copy(c,src,dst,0,true);}
-void STDMETHODCALLTYPE copy_buffer(ID3D12GraphicsCommandList* c,ID3D12Resource* dst,UINT64 dst_offset,ID3D12Resource* src,UINT64 src_offset,UINT64 bytes){original_copy_buffer(c,dst,dst_offset,src,src_offset,bytes);if(observe_api())runtime::copy(c,src,dst,bytes,false);}
-void STDMETHODCALLTYPE clear(ID3D12GraphicsCommandList* c,D3D12_CPU_DESCRIPTOR_HANDLE h,const FLOAT color[4],UINT count,const D3D12_RECT* rects){original_clear(c,h,color,count,rects);if(observe_api())runtime::clear_target(c,h,count==0);}
-void STDMETHODCALLTYPE graphics_root(ID3D12GraphicsCommandList* c,ID3D12RootSignature* root){original_graphics_root(c,root);if(observe_api())runtime::root_signature(c,false,root);}
-void STDMETHODCALLTYPE compute_root(ID3D12GraphicsCommandList* c,ID3D12RootSignature* root){original_compute_root(c,root);if(observe_api())runtime::root_signature(c,true,root);}
+HRESULT STDMETHODCALLTYPE close(ID3D12GraphicsCommandList* c){const auto result=original_close(c);if(SUCCEEDED(result)&&observe_api()){mirror::close(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::close(c);}return result;}
+void STDMETHODCALLTYPE pipeline(ID3D12GraphicsCommandList* c,ID3D12PipelineState* p){original_pipeline(c,p);if(observe_api())mirror::record(original_pipeline,c,p);if(observe_api()){mirror::pipeline(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);}}
+void STDMETHODCALLTYPE targets(ID3D12GraphicsCommandList* c,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* h,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth){original_targets(c,count,h,contiguous,depth);if(observe_api())mirror::record(original_targets,c,count,h,contiguous,depth);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::targets(c,count,h,contiguous,depth);}
+void STDMETHODCALLTYPE viewport(ID3D12GraphicsCommandList* c,UINT count,const D3D12_VIEWPORT* v){original_viewport(c,count,v);if(observe_api())mirror::record(original_viewport,c,count,v);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::viewport(c,count,v);}
+void STDMETHODCALLTYPE scissor(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RECT* v){original_scissor(c,count,v);if(observe_api())mirror::record(original_scissor,c,count,v);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::scissor(c,count,v);}
+void STDMETHODCALLTYPE bind_heaps(ID3D12GraphicsCommandList* c,UINT count,ID3D12DescriptorHeap*const* h){original_bind_heaps(c,count,h);if(observe_api())mirror::record(original_bind_heaps,c,count,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::descriptor_heaps(c,count,h);}
+void STDMETHODCALLTYPE graphics_table(ID3D12GraphicsCommandList* c,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE h){original_graphics_table(c,parameter,h);if(observe_api())mirror::record(original_graphics_table,c,parameter,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::root_table(c,false,parameter,h);}
+void STDMETHODCALLTYPE compute_table(ID3D12GraphicsCommandList* c,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE h){original_compute_table(c,parameter,h);if(observe_api())mirror::record(original_compute_table,c,parameter,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::root_table(c,true,parameter,h);}
+void STDMETHODCALLTYPE copy(ID3D12GraphicsCommandList* c,ID3D12Resource* dst,ID3D12Resource* src){original_copy(c,dst,src);if(observe_api())mirror::record(original_copy,c,dst,src);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::copy(c,src,dst,0,true);}
+void STDMETHODCALLTYPE copy_buffer(ID3D12GraphicsCommandList* c,ID3D12Resource* dst,UINT64 dst_offset,ID3D12Resource* src,UINT64 src_offset,UINT64 bytes){original_copy_buffer(c,dst,dst_offset,src,src_offset,bytes);if(observe_api())mirror::record(original_copy_buffer,c,dst,dst_offset,src,src_offset,bytes);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::copy(c,src,dst,bytes,false);}
+void STDMETHODCALLTYPE clear(ID3D12GraphicsCommandList* c,D3D12_CPU_DESCRIPTOR_HANDLE h,const FLOAT color[4],UINT count,const D3D12_RECT* rects){original_clear(c,h,color,count,rects);if(observe_api())mirror::record(original_clear,c,h,color,count,rects);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::clear_target(c,h,count==0);}
+void STDMETHODCALLTYPE graphics_root(ID3D12GraphicsCommandList* c,ID3D12RootSignature* root){original_graphics_root(c,root);if(observe_api())mirror::record(original_graphics_root,c,root);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::root_signature(c,false,root);}
+void STDMETHODCALLTYPE compute_root(ID3D12GraphicsCommandList* c,ID3D12RootSignature* root){original_compute_root(c,root);if(observe_api())mirror::record(original_compute_root,c,root);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::root_signature(c,true,root);}
+
+using SignatureFn=decltype(ID3D12DeviceVtbl::CreateCommandSignature);SignatureFn original_signature{};
+HRESULT STDMETHODCALLTYPE command_signature(ID3D12Device* d,const D3D12_COMMAND_SIGNATURE_DESC* desc,ID3D12RootSignature* root,REFIID iid,void** out){
+    const auto result=original_signature(d,desc,root,iid,out);
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12CommandSignature* signature=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12CommandSignature,reinterpret_cast<void**>(&signature)))){mirror::signature_created(signature,desc);ID3D12CommandSignature_Release(signature);}}return result;
+}
+using GraphicsPsoFn=decltype(ID3D12DeviceVtbl::CreateGraphicsPipelineState);GraphicsPsoFn original_graphics_pso{};
+HRESULT STDMETHODCALLTYPE graphics_pso(ID3D12Device* d,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc,REFIID iid,void** out){
+    const auto result=original_graphics_pso(d,desc,iid,out);
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
+}
+using StreamPsoFn=decltype(ID3D12Device2Vtbl::CreatePipelineState);StreamPsoFn original_stream_pso{};
+HRESULT STDMETHODCALLTYPE stream_pso(ID3D12Device2* d,const D3D12_PIPELINE_STATE_STREAM_DESC* desc,REFIID iid,void** out){
+    const auto result=original_stream_pso(d,desc,iid,out);
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_stream_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
+}
+using RateFn=decltype(ID3D12GraphicsCommandList5Vtbl::RSSetShadingRate);RateFn original_rate{};
+void STDMETHODCALLTYPE rate(ID3D12GraphicsCommandList5* c,D3D12_SHADING_RATE value,const D3D12_SHADING_RATE_COMBINER* combiners){
+    original_rate(c,value,combiners);if(observe_api()){mirror::shading_rate(reinterpret_cast<ID3D12GraphicsCommandList*>(c),value,combiners);mirror::record(original_rate,c,value,combiners);}
+}
+template<int Tag,class Fn,bool Copy>struct ExtraCommandHook;
+template<int Tag,class R,class Self,class... Args,bool Copy>
+struct ExtraCommandHook<Tag,R(STDMETHODCALLTYPE*)(Self*,Args...),Copy>{
+    using Fn=R(STDMETHODCALLTYPE*)(Self*,Args...);static inline Fn original{};
+    static R STDMETHODCALLTYPE call(Self* self,Args... args){
+        if(observe_api()){
+            if constexpr(Copy){mirror::record(original,self,args...);if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}
+            else{mirror::invalidate(reinterpret_cast<ID3D12GraphicsCommandList*>(self));if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}
+        }
+        return original(self,args...);
+    }
+};
+
 template<class T>bool install(T target,T replacement,T* original){
     // Trampolines outlive the bootstrap device; keep the owning runtime module
     // loaded for the process lifetime, just like the probe itself.
@@ -148,6 +195,9 @@ template<class T>bool install(T target,T replacement,T* original){
     const auto status=MH_CreateHook(reinterpret_cast<void*>(target),reinterpret_cast<void*>(replacement),reinterpret_cast<void**>(original));
     if(status!=MH_OK){++hook_failures;return false;}return true;
 }
+
+template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;return install(target,Hook::call,&Hook::original);}
+
 void snapshot(){
     static std::mutex snapshot_mutex;std::lock_guard snapshot_lock(snapshot_mutex);
     // No reference replay/readback or safe mutation capability has been established
@@ -157,8 +207,8 @@ void snapshot(){
     const auto temporary=output.wstring()+L".tmp";
     std::ofstream file(temporary,std::ios::trunc);
     file<<"{\"schema\":1,\"pid\":"<<GetCurrentProcessId()<<",\"initialized\":"<<(initialized.load()?"true":"false")
-        <<",\"mode\":\"observe_only\",\"engine_specific_code\":false,\"telemetry_scope\":\"partial_objects_descriptors_work_and_images\","
-          "\"replay_reference_available\":false,\"safe_mutation_capability\":false,\"quality_mutations\":0,"
+        <<",\"mode\":\""<<(mirror::requested_rate()?"experimental_vrs":"observe_only")<<"\",\"engine_specific_code\":false,\"telemetry_scope\":\"partial_objects_descriptors_work_and_images\","
+          "\"replay_reference_available\":false,\"safe_mutation_capability\":false,\"quality_mutations\":"<<mirror::modified_draws()<<","
           "\"policy_abstained\":"<<(!proposal?"true":"false")<<",\"present_calls\":"<<presents.load()
         <<",\"present_failures\":"<<present_failures.load()<<",\"queue_submits\":"<<submits.load()
         <<",\"last_present_hresult\":"<<last_present_error.load()<<",\"last_present_sync\":"<<last_present_sync.load()<<",\"last_present_flags\":"<<last_present_flags.load()
@@ -166,12 +216,12 @@ void snapshot(){
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
-        <<",\"runtime\":";runtime::snapshot(file);
-    file<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; no generic mutation or replay reference is available.\"}\n";
+        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);
+    file<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 DWORD WINAPI logger(void*){
-    unsigned tick=0;for(;;){try{runtime::flush_image();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
+    unsigned tick=0;for(;;){try{mirror::collect();runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
 }
 }
 
@@ -232,6 +282,90 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(command->lpVtbl->CopyResource,copy,&original_copy)&&ok;
         ok=install(command->lpVtbl->CopyBufferRegion,copy_buffer,&original_copy_buffer)&&ok;
         ok=install(command->lpVtbl->ClearRenderTargetView,clear,&original_clear)&&ok;
+        bool mirror_ok=true;
+        mirror_ok=install(device->lpVtbl->CreateCommandSignature,command_signature,&original_signature)&&mirror_ok;
+        {ID3D12Device2* extra=nullptr;if(SUCCEEDED(ID3D12Device_QueryInterface(device,IID_ID3D12Device2,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install(extra->lpVtbl->CreatePipelineState,stream_pso,&original_stream_pso)&&mirror_ok;ID3D12Device2_Release(extra);}}
+
+        mirror_ok=install(device->lpVtbl->CreateGraphicsPipelineState,graphics_pso,&original_graphics_pso)&&mirror_ok;
+        mirror_ok=install_extra<0,true>(command->lpVtbl->CopyTextureRegion)&&mirror_ok;
+        mirror_ok=install_extra<1,true>(command->lpVtbl->CopyTiles)&&mirror_ok;
+        mirror_ok=install_extra<2,true>(command->lpVtbl->ResolveSubresource)&&mirror_ok;
+        mirror_ok=install_extra<3,true>(command->lpVtbl->IASetPrimitiveTopology)&&mirror_ok;
+        mirror_ok=install_extra<4,true>(command->lpVtbl->OMSetBlendFactor)&&mirror_ok;
+        mirror_ok=install_extra<5,true>(command->lpVtbl->OMSetStencilRef)&&mirror_ok;
+        mirror_ok=install_extra<6,true>(command->lpVtbl->SetComputeRoot32BitConstant)&&mirror_ok;
+        mirror_ok=install_extra<7,true>(command->lpVtbl->SetGraphicsRoot32BitConstant)&&mirror_ok;
+        mirror_ok=install_extra<8,true>(command->lpVtbl->SetComputeRoot32BitConstants)&&mirror_ok;
+        mirror_ok=install_extra<9,true>(command->lpVtbl->SetGraphicsRoot32BitConstants)&&mirror_ok;
+        mirror_ok=install_extra<10,true>(command->lpVtbl->SetComputeRootConstantBufferView)&&mirror_ok;
+        mirror_ok=install_extra<11,true>(command->lpVtbl->SetGraphicsRootConstantBufferView)&&mirror_ok;
+        mirror_ok=install_extra<12,true>(command->lpVtbl->SetComputeRootShaderResourceView)&&mirror_ok;
+        mirror_ok=install_extra<13,true>(command->lpVtbl->SetGraphicsRootShaderResourceView)&&mirror_ok;
+        mirror_ok=install_extra<14,true>(command->lpVtbl->SetComputeRootUnorderedAccessView)&&mirror_ok;
+        mirror_ok=install_extra<15,true>(command->lpVtbl->SetGraphicsRootUnorderedAccessView)&&mirror_ok;
+        mirror_ok=install_extra<16,true>(command->lpVtbl->IASetIndexBuffer)&&mirror_ok;
+        mirror_ok=install_extra<17,true>(command->lpVtbl->IASetVertexBuffers)&&mirror_ok;
+        mirror_ok=install_extra<18,true>(command->lpVtbl->SOSetTargets)&&mirror_ok;
+        mirror_ok=install_extra<19,true>(command->lpVtbl->ClearDepthStencilView)&&mirror_ok;
+        mirror_ok=install_extra<20,true>(command->lpVtbl->ClearUnorderedAccessViewUint)&&mirror_ok;
+        mirror_ok=install_extra<21,true>(command->lpVtbl->ClearUnorderedAccessViewFloat)&&mirror_ok;
+        mirror_ok=install_extra<22,true>(command->lpVtbl->DiscardResource)&&mirror_ok;
+        mirror_ok=install_extra<23,true>(command->lpVtbl->BeginQuery)&&mirror_ok;
+        mirror_ok=install_extra<24,true>(command->lpVtbl->EndQuery)&&mirror_ok;
+        mirror_ok=install_extra<25,true>(command->lpVtbl->ResolveQueryData)&&mirror_ok;
+        mirror_ok=install_extra<26,true>(command->lpVtbl->SetPredication)&&mirror_ok;
+        mirror_ok=install_extra<27,true>(command->lpVtbl->SetMarker)&&mirror_ok;
+        mirror_ok=install_extra<28,true>(command->lpVtbl->BeginEvent)&&mirror_ok;
+        mirror_ok=install_extra<29,true>(command->lpVtbl->EndEvent)&&mirror_ok;
+        mirror_ok=install_extra<100,false>(command->lpVtbl->ClearState)&&mirror_ok;
+        {ID3D12GraphicsCommandList1* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList1,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<101,false>(extra->lpVtbl->AtomicCopyBufferUINT)&&mirror_ok;
+            mirror_ok=install_extra<102,false>(extra->lpVtbl->AtomicCopyBufferUINT64)&&mirror_ok;
+            mirror_ok=install_extra<103,false>(extra->lpVtbl->OMSetDepthBounds)&&mirror_ok;
+            mirror_ok=install_extra<104,false>(extra->lpVtbl->SetSamplePositions)&&mirror_ok;
+            mirror_ok=install_extra<105,false>(extra->lpVtbl->ResolveSubresourceRegion)&&mirror_ok;
+            mirror_ok=install_extra<106,false>(extra->lpVtbl->SetViewInstanceMask)&&mirror_ok;
+            ID3D12GraphicsCommandList1_Release(extra);}}
+        {ID3D12GraphicsCommandList2* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList2,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<201,false>(extra->lpVtbl->WriteBufferImmediate)&&mirror_ok;
+            ID3D12GraphicsCommandList2_Release(extra);}}
+        {ID3D12GraphicsCommandList3* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList3,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<301,false>(extra->lpVtbl->SetProtectedResourceSession)&&mirror_ok;
+            ID3D12GraphicsCommandList3_Release(extra);}}
+        {ID3D12GraphicsCommandList4* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList4,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<401,true>(extra->lpVtbl->BeginRenderPass)&&mirror_ok;
+            mirror_ok=install_extra<402,true>(extra->lpVtbl->EndRenderPass)&&mirror_ok;
+            mirror_ok=install_extra<403,false>(extra->lpVtbl->InitializeMetaCommand)&&mirror_ok;
+            mirror_ok=install_extra<404,false>(extra->lpVtbl->ExecuteMetaCommand)&&mirror_ok;
+            mirror_ok=install_extra<405,false>(extra->lpVtbl->BuildRaytracingAccelerationStructure)&&mirror_ok;
+            mirror_ok=install_extra<406,false>(extra->lpVtbl->EmitRaytracingAccelerationStructurePostbuildInfo)&&mirror_ok;
+            mirror_ok=install_extra<407,false>(extra->lpVtbl->CopyRaytracingAccelerationStructure)&&mirror_ok;
+            mirror_ok=install_extra<408,false>(extra->lpVtbl->SetPipelineState1)&&mirror_ok;
+            mirror_ok=install_extra<409,false>(extra->lpVtbl->DispatchRays)&&mirror_ok;
+            ID3D12GraphicsCommandList4_Release(extra);}}
+        {ID3D12GraphicsCommandList5* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList5,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<501,true>(extra->lpVtbl->RSSetShadingRateImage)&&mirror_ok;
+            mirror_ok=install(extra->lpVtbl->RSSetShadingRate,rate,&original_rate)&&mirror_ok;
+            ID3D12GraphicsCommandList5_Release(extra);}}
+        {ID3D12GraphicsCommandList6* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList6,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<601,false>(extra->lpVtbl->DispatchMesh)&&mirror_ok;
+            ID3D12GraphicsCommandList6_Release(extra);}}
+        {ID3D12GraphicsCommandList7* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList7,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<701,true>(extra->lpVtbl->Barrier)&&mirror_ok;
+            ID3D12GraphicsCommandList7_Release(extra);}}
+        {ID3D12GraphicsCommandList8* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList8,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<801,false>(extra->lpVtbl->OMSetFrontAndBackStencilRef)&&mirror_ok;
+            ID3D12GraphicsCommandList8_Release(extra);}}
+        {ID3D12GraphicsCommandList9* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList9,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<901,false>(extra->lpVtbl->RSSetDepthBias)&&mirror_ok;
+            mirror_ok=install_extra<902,false>(extra->lpVtbl->IASetIndexBufferStripCutValue)&&mirror_ok;
+            ID3D12GraphicsCommandList9_Release(extra);}}
+        {ID3D12GraphicsCommandList10* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList10,reinterpret_cast<void**>(&extra)))){
+            mirror_ok=install_extra<1001,false>(extra->lpVtbl->SetProgram)&&mirror_ok;
+            mirror_ok=install_extra<1002,false>(extra->lpVtbl->DispatchGraph)&&mirror_ok;
+            ID3D12GraphicsCommandList10_Release(extra);}}
+        mirror_hooks_ready=mirror_ok;
         if(!ok)break;
         if(MH_EnableHook(MH_ALL_HOOKS)!=MH_OK)break;
         result=0;
@@ -247,8 +381,18 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
 BOOL WINAPI DllMain(HINSTANCE instance,DWORD reason,LPVOID){
     if(reason==DLL_PROCESS_ATTACH){module=instance;DisableThreadLibraryCalls(instance);}return TRUE;
 }
-extern "C" __declspec(dllexport) DWORD WINAPI ArcBeginCapture(void*){runtime::begin_capture();return 0;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcBeginCapture(void*){if(!detailed_tracking)return 2;runtime::begin_capture();return 0;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcEndCapture(void* path){if(!path)return 1;try{runtime::end_capture(static_cast<const wchar_t*>(path));return 0;}catch(...){return 2;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSnapshot(void*){try{snapshot();return 0;}catch(...){return 1;}}
-extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFrame(void* path){if(!path)return 1;try{return runtime::request_frame(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFrame(void* path){if(!path)return 1;if(!detailed_tracking)return 4;try{return runtime::request_frame(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestImage(void* path){if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestTiming(void* path){if(!path)return 1;try{std::wstring request=static_cast<const wchar_t*>(path);UINT seconds=60;const auto split=request.find(L'|');if(split!=std::wstring::npos){std::size_t used=0;const auto value=std::stoul(request.substr(0,split),&used);if(used!=split||value<1||value>60)return 4;seconds=static_cast<UINT>(value);request=request.substr(split+1);}return runtime::request_timing(request,seconds)?0:2;}catch(...){return 3;}}
+
+extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){
+    if(!value)return 1;const auto* mode=static_cast<const wchar_t*>(value);
+    if(wcscmp(mode,L"off")==0)return mirror::configure(0)?0:2;
+    if(wcscmp(mode,L"2x2")!=0||!mirror_hooks_ready)return 3;
+    return mirror::configure(D3D12_SHADING_RATE_2X2)?0:4;
+}
+
+extern "C" __declspec(dllexport) DWORD WINAPI ArcUseLeanMode(void*){detailed_tracking=false;runtime::observation_mode_changed();return 0;}

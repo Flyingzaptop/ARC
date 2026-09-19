@@ -38,5 +38,8 @@ void after_present(IDXGISwapChain*,std::uint64_t,HRESULT,UINT flags) noexcept;
 bool request_frame(const std::filesystem::path&) noexcept;
 bool request_image(const std::filesystem::path&) noexcept;
 void flush_image() noexcept;
+bool request_timing(const std::filesystem::path&,UINT seconds=60) noexcept;
+void flush_timing() noexcept;
+void observation_mode_changed() noexcept;
 void flush_capture() noexcept;
 }

@@ -32,12 +32,18 @@ DWORD remote_call(HANDLE process,void* function,const std::wstring& argument){
 }
 }
 int wmain(int argc,wchar_t** argv)try{
+    const bool vrs_on=argc>1&&std::wstring(argv[1])==L"--vrs-2x2";
+    const bool vrs_off=argc>1&&std::wstring(argv[1])==L"--vrs-off";
+    const bool lean=argc>1&&std::wstring(argv[1])==L"--lean";
+    const bool experiment=lean||vrs_on||vrs_off;
     const bool image=argc>1&&std::wstring(argv[1])==L"--image";
-    const bool capture=image||(argc>1&&std::wstring(argv[1])==L"--capture");
+    const bool timing=argc>1&&std::wstring(argv[1])==L"--measure";
+    const bool capture=experiment||image||timing||(argc>1&&std::wstring(argv[1])==L"--capture");
     const bool attach=capture||(argc>1&&std::wstring(argv[1])==L"--attach");
-    if(argc<(attach?5:4)){std::wcerr<<L"Usage: arc-dx12-probe-launch <owned executable> <probe DLL> <output JSON> [application args...]\nOr: --attach <explicit authorized PID> <probe DLL> <output JSON>\n";return 2;}
-    const auto dll=std::filesystem::absolute(argv[attach?3:2]),output=std::filesystem::absolute(argv[attach?4:3]);
-    require(std::filesystem::is_regular_file(dll)&&!std::filesystem::exists(output),"input DLL/new output path");
+    if(argc<(experiment?4:attach?5:4)){std::wcerr<<L"Usage: arc-dx12-probe-launch <owned executable> <probe DLL> <output JSON> [application args...]\nOr: --attach <explicit authorized PID> <probe DLL> <output JSON>\n";return 2;}
+    const auto dll=std::filesystem::absolute(argv[attach?3:2]);
+    const auto output=experiment?std::filesystem::path{}:std::filesystem::absolute(argv[attach?4:3]);
+    require(std::filesystem::is_regular_file(dll)&&(experiment||!std::filesystem::exists(output)),"input DLL/new output path");
     STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION info{};
     if(attach){
         wchar_t* end=nullptr;const auto pid=wcstoul(argv[2],&end,10);require(end&&!*end&&pid&&pid!=GetCurrentProcessId(),"explicit target PID");info.dwProcessId=pid;
@@ -58,9 +64,10 @@ int wmain(int argc,wchar_t** argv)try{
     if(capture){
         const auto remote_base=remote_module(info.dwProcessId,dll.filename().wstring());require(remote_base!=0,"Target must already have the observer attached");
         HMODULE local=LoadLibraryExW(dll.c_str(),nullptr,DONT_RESOLVE_DLL_REFERENCES);require(local!=nullptr,"read capture export");
-        auto request=GetProcAddress(local,image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");
-        const auto code=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),output.wstring());
-        require(code==0,"Capture request refused");std::wcout<<(image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
+        auto request=GetProcAddress(local,lean?"ArcUseLeanMode":experiment?"ArcExperimentalVrs":timing?"ArcRequestTiming":image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");
+        const auto argument=experiment?std::wstring(vrs_on?L"2x2":L"off"):timing&&argc>5?std::wstring(argv[5])+L"|"+output.wstring():output.wstring();
+        const auto code=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),argument);
+        require(code==0,"Capture request refused");std::wcout<<(experiment?(lean?L"Detailed observation disabled":vrs_on?L"Experimental VRS enabled":L"Original command execution restored"):timing?L"Bounded Present cadence":image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
     }
     require(remote_module(info.dwProcessId,dll.filename().wstring())==0,"probe already loaded; use --capture or restart the target");
     void* remote_load=reinterpret_cast<void*>(base+(reinterpret_cast<std::uintptr_t>(load)-reinterpret_cast<std::uintptr_t>(owner)));
@@ -69,7 +76,7 @@ int wmain(int argc,wchar_t** argv)try{
     if(!remote_base){std::cerr<<"LoadLibrary thread result="<<load_result<<'\n';throw std::runtime_error("probe DLL did not load");}
     HMODULE local=LoadLibraryExW(dll.c_str(),nullptr,DONT_RESOLVE_DLL_REFERENCES);require(local!=nullptr,"read probe export");
     auto init=GetProcAddress(local,"ArcInitialize");const auto offset=reinterpret_cast<std::uintptr_t>(init)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(init!=nullptr,"probe initialization export");
-    const auto result=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),output.wstring());
+    const auto result=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),experiment?(vrs_on?L"2x2":L"off"):output.wstring());
     if(result!=0)throw std::runtime_error("probe initialization status "+std::to_string(result));
     std::wcout<<L"{\"pid\":"<<info.dwProcessId<<L",\"initialized\":true,\"mode\":\"observe_only\"}\n";
     return 0;

@@ -5,8 +5,8 @@
 #include <vector>
 
 namespace arc::dx12::generic {
-bool ImageReadback::enqueue(IDXGISwapChain* swap,ID3D12CommandQueue* queue,const std::filesystem::path& path){
-    const auto start=std::chrono::steady_clock::now();path_=path;queue_=queue;
+bool ImageReadback::enqueue(IDXGISwapChain* swap,ID3D12CommandQueue* queue,const std::filesystem::path& path,std::uint64_t mutations,UINT rate){
+    const auto start=std::chrono::steady_clock::now();path_=path;queue_=queue;mutations_=mutations;experimental_rate_=rate;
     if(!queue||queue->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT)return false;
     Ptr<IDXGISwapChain3> current;Ptr<ID3D12Resource> buffer;
     if(FAILED(swap->QueryInterface(IID_PPV_ARGS(&current))))return false;
@@ -77,7 +77,7 @@ bool ImageReadback::write(){
         <<",\"height\":"<<height_<<",\"dxgi_format\":"<<format_<<",\"bytes_per_pixel\":4,\"row_bytes\":"<<width_*4
         <<",\"buffer_index\":"<<buffer_index_<<",\"pixel_file\":"<<std::quoted(pixels_path.filename().string())
         <<",\"copy_gpu_ms\":"<<double(elapsed)*1000.0/double(frequency_)<<",\"enqueue_cpu_ms\":"<<enqueue_cpu_ms_
-        <<",\"present_hresult\":"<<present_result_<<",\"gpu_frame_timing_available\":false,\"color_space_known\":false,\"reproducible_state\":false,\"quality_mutations\":0}";
+        <<",\"present_hresult\":"<<present_result_<<",\"gpu_frame_timing_available\":false,\"color_space_known\":false,\"reproducible_state\":false,\"cumulative_modified_draws_at_copy\":"<<mutations_<<",\"experimental_vrs_rate_at_copy\":"<<experimental_rate_<<'}';
     out.close();if(!out)return false;std::filesystem::rename(temporary,path_);return true;
 }
 }
