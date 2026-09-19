@@ -1,0 +1,6 @@
+target_sources(arc-core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/core/predictive_perceptual.cpp)
+if(ARC_BUILD_TESTS)
+    add_executable(arc-predictive-perceptual-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/predictive_perceptual_tests.cpp)
+    target_link_libraries(arc-predictive-perceptual-tests PRIVATE arc::core)
+    add_test(NAME arc-predictive-perceptual-tests COMMAND arc-predictive-perceptual-tests)
+endif()

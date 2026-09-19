@@ -6,7 +6,7 @@ Core policy, evidence formats and critic must not depend on an engine. Engine
 names/scene labels are evaluation metadata only. Existing Mega E builds and
 milestones are preserved; this work starts at 18d50bc.
 
-## F: independent evidence and reversible transactions (in progress)
+## F: independent evidence and reversible transactions (implemented; native validation passed)
 
 - Define portable capabilities, stable target generations, probe identity and
   bounded image/timing evidence. Unknown capabilities cannot authorize mutation.
@@ -22,13 +22,13 @@ milestones are preserved; this work starts at 18d50bc.
 - Exercise damaging, harmless, stale, failed and unavailable actions in tests;
   demonstrate physical changes, reference readback and restore on native D3D12.
 
-## G: prediction and bounded safe adaptation (pending F validation)
+## G: prediction and bounded safe adaptation (implemented; combined native validation passed)
 
 Use Stage 18 predictions for early restoration. Learn only from validated trial
 outcomes, with bounded capacity, cooldown, rejection quarantine, versioned/resettable
 state and explicit confidence. Learning must never relax image/safety gates.
 
-## Portability (pending F/G validation)
+## Portability (next)
 
 Run the same core on two independently implemented renderer adapters. Preserve
 raw images, timings, actions and rollback results. Compare host code and core hash;
@@ -45,3 +45,9 @@ successful launch alone. Do not alter system security or bypass protected target
 Every milestone requires code, local tests, retained negative results and Git
 publication. Stage 15's 81/128 gate remains deferred FAIL. Prior GPU power-cap
 observations must be checked before interpreting new performance results.
+
+2026-09-19 checkpoint: F/G deterministic and native tests passed, including external
+pixel/timestamp/forecast recomputation. Full Release run was 63/64; the unchanged
+legacy Mega B smoke failed its lighting-domain requirement with a 0.003 ms first
+calibration gain, then passed an isolated rerun with all three domains. Both
+results are retained; no threshold was changed and the first FAIL is not hidden.

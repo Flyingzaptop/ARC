@@ -32,7 +32,7 @@ def load(root, trial, phase):
 def evaluate(root, trial):
     (ma, a, ta), (mb, b, tb), (mc, c, tc) = [load(root, trial, p) for p in range(3)]
     require(all(ma[k] == mb[k] == mc[k] for k in ("width", "height", "state_key", "generation")), "unmatched state")
-    require(ma["mip"] == mc["mip"] == 0 and mb["mip"] == (2 if trial == 1 else 3), "physical mip/restore identity")
+    require(ma["mip"] == mc["mip"] == 0 and mb["mip"] == (3 if trial == 2 else 2), "physical mip/restore identity")
     drift = [abs(x - z) for x, z in zip(a, c)]
     damage = [max(abs(x - y), abs(z - y)) for x, y, z in zip(a, b, c)]
     require(statistics.mean(drift) <= .0005 and max(drift) <= .004, "reference image drift")
@@ -67,6 +67,24 @@ def main():
     require(summary["restored"] is True and summary["damaging_action_rejected"] is True, "rollback")
     result = {"schema": 1, "verdict": "PASS", "scope": "controlled native DX12 SRV probe; pixel guard, not human-perception equivalence",
               "positive": good, "negative": bad}
+    if (args.directory / "predictive-summary.json").exists():
+        g = json.loads((args.directory / "predictive-summary.json").read_text())
+        third = evaluate(args.directory, 3)
+        require(third["image_accepted"] and third["benefit_accepted"], "predictive admission")
+        ma, before, _ = load(args.directory, 3, 0)
+        mb, entering, _ = load(args.directory, 4, 0)
+        mc, restored, _ = load(args.directory, 4, 2)
+        def coverage(pixels):
+            return sum(any(abs(pixels[i + c] - .3) > .01 for c in range(3))
+                       for i in range(0, len(pixels), 3)) / (len(pixels) // 3)
+        old, raw = coverage(before), coverage(entering)
+        smooth = .45 * raw + .55 * old
+        prediction = smooth + 8 * .35 * (smooth - old)
+        require(raw < .03 <= prediction, "restoration must precede visibility threshold")
+        require(abs(g["current_coverage"] - smooth) < 1e-9 and abs(g["predicted_8f"] - prediction) < 1e-9, "forecast recomputation")
+        require(mb["mip"] == 2 and mc["mip"] == 0 and mb["state_key"] == mc["state_key"], "physical predictive restoration")
+        require(abs(coverage(restored) - raw) < 1e-9 and g["accepted"] == 1, "restored readback and learning count")
+        result["predictive"] = {"verdict": "PASS", "raw_coverage": raw, "predicted_8f": prediction, "restored_mip": 0}
     (args.directory / "independent-acceptance.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
 

@@ -1,4 +1,5 @@
 #include "arc/perceptual_trial.hpp"
+#include "arc/predictive_perceptual.hpp"
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
@@ -33,6 +34,7 @@ class NativeProbe final:public arc::PerceptualProbeHost {
     UINT descriptor_stride{};
     HANDLE event{};
     unsigned mip{},trial_index{};
+    unsigned visible_side{16};
     std::filesystem::path directory;
     ComPtr<ID3D12Resource> buffer(UINT64 bytes,D3D12_HEAP_TYPE type){
         D3D12_HEAP_PROPERTIES hp{};hp.Type=type;D3D12_RESOURCE_DESC desc{};
@@ -92,10 +94,12 @@ public:
         D3D12_DESCRIPTOR_RANGE ranges[2]{};ranges[0]={D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0,0,0};ranges[1]={D3D12_DESCRIPTOR_RANGE_TYPE_UAV,1,0,0,1};
         D3D12_ROOT_PARAMETER parameter{};parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameter.DescriptorTable={2,ranges};parameter.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
         D3D12_STATIC_SAMPLER_DESC sampler{};sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_WRAP;sampler.ComparisonFunc=D3D12_COMPARISON_FUNC_ALWAYS;sampler.MaxLOD=D3D12_FLOAT32_MAX;sampler.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
-        D3D12_ROOT_SIGNATURE_DESC rd{};rd.NumParameters=1;rd.pParameters=&parameter;rd.NumStaticSamplers=1;rd.pStaticSamplers=&sampler;
+        D3D12_ROOT_PARAMETER parameters[2]{parameter,{}};parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=1;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
+        D3D12_ROOT_SIGNATURE_DESC rd{};rd.NumParameters=2;rd.pParameters=parameters;rd.NumStaticSamplers=1;rd.pStaticSamplers=&sampler;
         ComPtr<ID3DBlob> blob,errors;hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&blob,&errors));hr(device->CreateRootSignature(0,blob->GetBufferPointer(),blob->GetBufferSize(),IID_PPV_ARGS(&root)));
         const char* shader=R"(
 Texture2D<float4> source:register(t0); RWTexture2D<float4> output_image:register(u0); SamplerState linear_sampler:register(s0);
+cbuffer FrameInput:register(b0) {uint visible_side;};
 [numthreads(8,8,1)] void main(uint3 tid:SV_DispatchThreadID) {
  float2 uv=(float2(tid.xy)+.5)/128; float3 sum=0;
  [loop] for(uint i=0;i<128;++i) {
@@ -103,7 +107,7 @@ Texture2D<float4> source:register(t0); RWTexture2D<float4> output_image:register
   sum+=source.SampleLevel(linear_sampler,address,0).rgb;
  }
  // Only this small output region depends on the costly sampled work.
- output_image[tid.xy]=float4(tid.x<16&&tid.y<16?sum/128:float3(.3,.3,.3),1);
+ output_image[tid.xy]=float4(tid.x<visible_side&&tid.y<visible_side?sum/128:float3(.3,.3,.3),1);
 })";
         hr(D3DCompile(shader,std::strlen(shader),"portable-probe",nullptr,nullptr,"main","cs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&blob,&errors));
         D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=root.Get();pd.CS={blob->GetBufferPointer(),blob->GetBufferSize()};hr(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&pso)));
@@ -111,22 +115,25 @@ Texture2D<float4> source:register(t0); RWTexture2D<float4> output_image:register
         execute();set_mip(0);
     }
     ~NativeProbe(){if(event)CloseHandle(event);}
+    void advance_visible_region(unsigned side_value){if(side_value>side)throw std::runtime_error("region");visible_side=side_value;++trial_index;}
+    bool full_quality()const noexcept{return mip==0;}
     bool prepare(const arc::PerceptualCapability& c)override {++trial_index;return c.target==1&&c.generation==1&&mip==0;}
     bool apply(const arc::PerceptualCapability& c)override {if(c.target!=1||c.generation!=1||c.action<1||c.action>2)return false;set_mip(c.action==1?2:3);return true;}
     bool restore(const arc::PerceptualCapability& c)noexcept override {try{if(c.target!=1||c.generation!=1)return false;set_mip(0);return true;}catch(...){return false;}}
     void finish()noexcept override{}
     std::optional<arc::ProbeCapture> capture(arc::ProbePhase phase)override {
         reset();list->SetPipelineState(pso.Get());list->SetComputeRootSignature(root.Get());ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());
+        list->SetComputeRoot32BitConstant(1,visible_side,0);
         for(UINT i=0;i<repeats;++i){list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2);list->Dispatch(side/8,side/8,1);list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2+1);D3D12_RESOURCE_BARRIER barrier{};barrier.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;barrier.UAV.pResource=output.Get();list->ResourceBarrier(1,&barrier);}
         transition(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
         D3D12_TEXTURE_COPY_LOCATION src{};src.pResource=output.Get();src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;D3D12_TEXTURE_COPY_LOCATION dst{};dst.pResource=pixels.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=output_footprint;list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);
         transition(output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);list->ResolveQueryData(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,repeats*2,times.Get(),0);execute();
-        arc::ProbeCapture p;p.state_key=123;p.generation=1;p.width=side;p.height=side;p.readback_complete=true;p.linear_rgb=true;p.rgb.resize(side*side*3);
+        arc::ProbeCapture p;p.state_key=123+visible_side;p.generation=1;p.width=side;p.height=side;p.readback_complete=true;p.linear_rgb=true;p.rgb.resize(side*side*3);
         void* data{};hr(pixels->Map(0,nullptr,&data));for(UINT y=0;y<side;++y){auto* row=reinterpret_cast<const float*>(static_cast<const unsigned char*>(data)+output_footprint.Offset+UINT64(y)*output_footprint.Footprint.RowPitch);for(UINT x=0;x<side;++x)for(UINT k=0;k<3;++k)p.rgb[(y*side+x)*3+k]=row[x*4+k];}D3D12_RANGE empty{0,0};pixels->Unmap(0,&empty);
         hr(times->Map(0,nullptr,&data));const auto* ticks=static_cast<const UINT64*>(data);std::array<UINT64,repeats*2> raw{};std::copy(ticks,ticks+raw.size(),raw.begin());times->Unmap(0,&empty);
         for(UINT i=2;i<repeats;++i){if(raw[i*2+1]<raw[i*2])throw std::runtime_error("timestamp order");p.gpu_ms.push_back(double(raw[i*2+1]-raw[i*2])*1000/double(frequency));}
         const auto stem=std::to_string(trial_index)+"-"+std::to_string(int(phase));std::ofstream binary(directory/(stem+".rgb32f"),std::ios::binary);binary.write(reinterpret_cast<const char*>(p.rgb.data()),static_cast<std::streamsize>(p.rgb.size()*sizeof(float)));
-        std::ofstream meta(directory/(stem+".json"));meta<<std::setprecision(17)<<"{\"width\":"<<side<<",\"height\":"<<side<<",\"state_key\":123,\"generation\":1,\"mip\":"<<mip<<",\"frequency\":"<<frequency<<",\"ticks\":[";for(std::size_t i=0;i<raw.size();++i){if(i)meta<<',';meta<<raw[i];}meta<<"],\"gpu_ms\":[";for(std::size_t i=0;i<p.gpu_ms.size();++i){if(i)meta<<',';meta<<p.gpu_ms[i];}meta<<"]}";
+        std::ofstream meta(directory/(stem+".json"));meta<<std::setprecision(17)<<"{\"width\":"<<side<<",\"height\":"<<side<<",\"state_key\":"<<p.state_key<<",\"generation\":1,\"mip\":"<<mip<<",\"frequency\":"<<frequency<<",\"ticks\":[";for(std::size_t i=0;i<raw.size();++i){if(i)meta<<',';meta<<raw[i];}meta<<"],\"gpu_ms\":[";for(std::size_t i=0;i<p.gpu_ms.size();++i){if(i)meta<<',';meta<<p.gpu_ms[i];}meta<<"]}";
         return p;
     }
 };
@@ -151,6 +158,23 @@ int main(int argc,char** argv)try{
     const auto good=controller.trial(host,c);if(!controller.restore(host))throw std::runtime_error("positive-trial restore failed");
     c.capability.action=2;const auto bad=controller.trial(host,c);
     if(bad.status!=arc::TrialStatus::Rejected||bad.verdict.reason!=arc::CriticReason::ImageDamage||controller.active()||controller.faulted())throw std::runtime_error("damaging action not safely rejected");
+    c.capability.action=1;arc::PredictivePerceptualOptimizer predictive(0x1234);
+    auto state=*visibility.find(1);
+    const auto predicted_trial=predictive.step(host,1,std::span(&c,1),std::span(&state,1));
+    if(predicted_trial.trial.status!=arc::TrialStatus::Retained)throw std::runtime_error("predictive native admission failed");
+    host.advance_visible_region(20);
+    const auto entering=host.capture(arc::ProbePhase::ReferenceBefore);
+    if(!entering)throw std::runtime_error("entering image");
+    affected=0;for(std::size_t i=0;i<entering->rgb.size();i+=3)
+        if(std::abs(entering->rgb[i]-.3f)>.01f||std::abs(entering->rgb[i+1]-.3f)>.01f||std::abs(entering->rgb[i+2]-.3f)>.01f)++affected;
+    observation.frame=2;observation.visible_coverage=double(affected)/(entering->width*entering->height);observation.local_coverage_upper=observation.visible_coverage;
+    if(!visibility.observe(observation))throw std::runtime_error("entering visibility");
+    state=*visibility.find(1);c.importance=arc::VisualImportanceModel{}.evaluate(state);
+    const auto restored=predictive.step(host,2,std::span(&c,1),std::span(&state,1));
+    if(restored.decision!=arc::PredictiveDecision::RestoredForVisibility||!host.full_quality()||predictive.active())throw std::runtime_error("predictive native restore");
+    (void)host.capture(arc::ProbePhase::ReferenceAfter);
+    const auto learned=predictive.checkpoint();
+    std::ofstream g(path/"predictive-summary.json");g<<std::setprecision(17)<<"{\"physical_restore\":true,\"forecast_from_gpu_readback\":true,\"current_coverage\":"<<state.estimated_visible_coverage<<",\"raw_coverage\":"<<*observation.visible_coverage<<",\"predicted_8f\":"<<state.predicted_8f<<",\"restore_threshold\":0.03,\"records\":"<<learned.records.size()<<",\"accepted\":"<<learned.records.at(0).accepted<<'}';
     std::ofstream out(path/"summary.json");out<<std::setprecision(17)<<"{\"hardware\":true,\"physical_srv_mip_change\":true,\"positive_status\":"<<int(good.status)<<",\"positive_reason\":"<<int(good.verdict.reason)<<",\"gain_ms\":"<<good.verdict.gain_ms<<",\"image_mean\":"<<good.verdict.modified_mean<<",\"image_peak\":"<<good.verdict.modified_peak<<",\"damaging_action_rejected\":true,\"restored\":true}";
     std::cout<<"Native Mega F: positive status="<<int(good.status)<<" reason="<<int(good.verdict.reason)<<" gain_ms="<<good.verdict.gain_ms<<"; damaging trial rejected and original SRV restored\n";
     return good.status==arc::TrialStatus::Retained?0:2;
