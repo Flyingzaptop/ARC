@@ -9,16 +9,18 @@ import numpy as np
 
 def image(path):
     raw = np.fromfile(path, dtype=np.uint8)
-    if raw.size != 1920 * 1080 * 3:
+    if raw.size not in (1920 * 1080 * 3, 3840 * 2160 * 3):
         raise ValueError(f"Incomplete 1080p RGB image: {path}")
     # Match the core's normalized float32 RGB contract, then compute in float64.
-    return (raw.astype(np.float32) / np.float32(255)).astype(np.float64).reshape(1080, 1920, 3)
+    shape = (1080, 1920, 3) if raw.size == 1920 * 1080 * 3 else (2160, 3840, 3)
+    return (raw.astype(np.float32) / np.float32(255)).astype(np.float64).reshape(shape)
 
 
 def compare(a, b, c):
     drift = np.abs(a - c)
     damage = np.maximum(np.abs(a - b), np.abs(c - b))
-    tiles = damage.reshape(135, 8, 240, 8, 3).mean(axis=(1, 3, 4))
+    height, width, _ = damage.shape
+    tiles = damage.reshape(height // 8, 8, width // 8, 8, 3).mean(axis=(1, 3, 4))
     return {"reference_mean": float(drift.mean()), "reference_peak": float(drift.max()),
             "mean": float(damage.mean()), "peak": float(damage.max()), "tile": float(tiles.max()),
             "pass": bool(drift.mean() <= .0005 and drift.max() <= .004 and
@@ -73,9 +75,11 @@ def validate(root):
             j, metrics, samples = timing(root / f"round-{round_index}-arm-{arm}.json")
             is_modified = arm in (0, 3) if round_index % 2 else arm in (1, 2)
             expected_mip = selected_mip if is_modified else 0
-            if (j["isolated"] or j["mip"] != expected_mip or len(samples) != 21 or
+            if (j["isolated"] or j["mip"] != expected_mip or len(samples) != (61 if scene == 5 else 21) or
                 j.get("action_mask", j["mip"]) != (selected_action if is_modified else 0)):
                 raise ValueError("Incorrect counterbalance/presentation evidence")
+            if scene == 5 and [f["camera_tick"] for f in j["frames"]] != list(range(61)):
+                raise ValueError("Dynamic arm did not replay the complete identical trajectory")
             settings.add((j["material_samples"], j["light_steps"], j.get("shadow_rays", 0)))
             (modified if is_modified else baseline).extend(samples)
             arms.append({"mip": expected_mip, "modified": is_modified, **metrics})
@@ -105,6 +109,10 @@ def validate(root):
             probe = candidate["probe"]
             q = compare(*(image(root / f"probe-{probe}-{i}.rgb8") for i in range(3)))
             captures = [timing(root / f"probe-{probe}-{i}.json") for i in range(3)]
+            if scene == 5:
+                for capture, _, _ in captures:
+                    if [f["camera_tick"] for f in capture["frames"]] != list(range(61)):
+                        raise ValueError("Dynamic reference/probe trajectories differ")
             if any((j["material_samples"], j["light_steps"], j["shadow_rays"]) not in settings for j, _, _ in captures):
                 raise ValueError("Probe used a different workload")
             if [j["action_mask"] for j, _, _ in captures] != [0, candidate["action_mask"], 0]:
@@ -115,9 +123,12 @@ def validate(root):
             reason = 2 if q["reference_mean"] > .0005 or q["reference_peak"] > .004 else 3 if not q["pass"] else 5 if not stable else 6 if gain < .02 or gain / min(ta, tc) < .02 else 0
             if candidate["reason"] != reason or candidate["status"] != (5 if reason == 0 else 4):
                 raise ValueError("Independent candidate verdict mismatch")
+            if reason in (0, 6) and abs(gain - candidate["gain_ms"]) > 1e-7:
+                raise ValueError("Reported candidate gain differs from raw timestamps")
             result["candidates"].append({**candidate, "quality": q, "independent_gain_ms": gain})
         accepted = [c for c in candidates if c["status"] == 5]
-        best = max(accepted, key=lambda c: c["gain_ms"]) if accepted else candidates[0]
+        accepted = [c for c in result["candidates"] if c["status"] == 5]
+        best = max(accepted, key=lambda c: c["independent_gain_ms"]) if accepted else candidates[0]
         if best["probe"] != selected_probe:
             raise ValueError("Selected action inconsistent with validated gains")
         if scene == 2:

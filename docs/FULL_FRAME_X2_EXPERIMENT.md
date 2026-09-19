@@ -82,6 +82,26 @@ raw final images, per-pass ticks and workload parameters are retained. The
 lighting-dominated case becomes an optimizable scenario once lighting actions
 are available; it remains an Amdahl control for texture-only actions.
 
+## Dynamic night-city extension
+
+Scenario 5 is a procedural perspective flythrough along a street with 28 analytic
+building boxes, emissive windows/signs, an integrated row of area lights, fog,
+lane markings and soft shadow ray intersections. Wet-road glow is analytic, not
+claimed ray-traced reflection. It contains no Cyberpunk assets and is not a
+commercial game's render pipeline. Camera position changes at every measured
+frame, with deterministic ticks 0..60 replayed identically for all arms.
+
+Each full/modified/full trial compares a 2x2 mosaic of full-resolution frames at
+ticks 0,20,40,60. The same 8x8 local image guards apply, so an artifact confined
+to one waypoint is not hidden by global averaging. Full GPU and wall timing spans
+all 61 positions. Counterbalanced rounds repeat the same path. Four waypoints
+do not prove absence of intermediate temporal artifacts; final previews and
+all camera indices are exported for inspection. No temporal reconstruction,
+denoiser or game-like CPU simulation is included in this test.
+
+Run a diagnostic preview only with `arc-full-frame-x2 OUTPUT 5 preview`; a full
+scenario uses `arc-full-frame-x2 OUTPUT 5`. Both require a new output directory.
+
 Scope: procedural multipass compute renderer and swapchain, not a polygonal game
 scene. Explicit LOD-zero baseline models excessive texture detail; a renderer
 already choosing an appropriate mip may have no such reserve. Hundreds of texture

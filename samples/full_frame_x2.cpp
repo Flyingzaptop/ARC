@@ -1,5 +1,6 @@
 #include "arc/perceptual_trial.hpp"
 #include "arc/predictive_perceptual.hpp"
+#include "night_city_shader.hpp"
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <d3dcompiler.h>
@@ -30,9 +31,9 @@ class FrameExperiment final:public arc::PerceptualProbeHost {
     ComPtr<IDXGISwapChain3> swap;
     std::array<ComPtr<ID3D12Resource>,2> backbuffers;
     HWND window{};
-    UINT material_samples=16,light_steps=16,shadow_rays=4,scenario=0,action_mask=0;
+    UINT material_samples=16,light_steps=16,shadow_rays=4,scenario=0,action_mask=0,camera_tick=0;
     bool isolated=true;
-    struct Frame {double wall{};std::array<UINT64,6> ticks{};};
+    struct Frame {double wall{};UINT camera_tick{};std::array<UINT64,6> ticks{};};
     std::vector<Frame> last_frames;
     static double median(std::vector<double> v){std::sort(v.begin(),v.end());return v[v.size()/2];}
     double gpu(const Frame& f)const{return double(f.ticks[5]-f.ticks[0])*1000/double(frequency);}
@@ -117,7 +118,7 @@ public:
         D3D12_DESCRIPTOR_RANGE ranges[2]{};ranges[0]={D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0,0,0};ranges[1]={D3D12_DESCRIPTOR_RANGE_TYPE_UAV,3,0,0,1};
         D3D12_ROOT_PARAMETER parameter{};parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameter.DescriptorTable={2,ranges};parameter.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
         D3D12_STATIC_SAMPLER_DESC sampler{};sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;sampler.AddressU=sampler.AddressV=sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_WRAP;sampler.ComparisonFunc=D3D12_COMPARISON_FUNC_ALWAYS;sampler.MaxLOD=D3D12_FLOAT32_MAX;sampler.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
-        D3D12_ROOT_PARAMETER parameters[2]{parameter,{}};parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=6;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
+        D3D12_ROOT_PARAMETER parameters[2]{parameter,{}};parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[1].Constants.Num32BitValues=7;parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
         D3D12_ROOT_SIGNATURE_DESC rd{};rd.NumParameters=2;rd.pParameters=parameters;rd.NumStaticSamplers=1;rd.pStaticSamplers=&sampler;
         ComPtr<ID3DBlob> blob,errors;hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&blob,&errors));hr(device->CreateRootSignature(0,blob->GetBufferPointer(),blob->GetBufferSize(),IID_PPV_ARGS(&root)));
         const char* shader=R"(
@@ -171,7 +172,10 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
  float vignette=1-.2*dot(uv-.5,uv-.5);
  output_image[tid.xy]=float4(saturate(color*vignette),1);
 })";
-        hr(D3DCompile(shader,std::strlen(shader),"portable-probe",nullptr,nullptr,"main","cs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&blob,&errors));
+        if(scenario==5)shader=night_city_shader;
+        const auto shader_result=D3DCompile(shader,std::strlen(shader),"portable-probe",nullptr,nullptr,"main","cs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&blob,&errors);
+        if(FAILED(shader_result)&&errors)std::cerr<<static_cast<const char*>(errors->GetBufferPointer())<<std::endl;
+        hr(shader_result);
         D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=root.Get();pd.CS={blob->GetBufferPointer(),blob->GetBufferSize()};hr(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&pso)));
         D3D12_QUERY_HEAP_DESC qh{};qh.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;qh.Count=6;hr(device->CreateQueryHeap(&qh,IID_PPV_ARGS(&queries)));
         execute();set_mip(0);
@@ -192,8 +196,8 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         for(UINT stage=0;stage<4;++stage){
             list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,stage);
             const UINT scale=1u<<((action_mask>>12)&3u);
-            const UINT params[]{stage,material_samples,std::max(1u,light_steps>>( (action_mask>>4)&3u)),scenario==2?1u:0u,std::max(1u,shadow_rays>>((action_mask>>8)&3u)),scale};
-            list->SetComputeRoot32BitConstants(1,6,params,0);
+            const UINT params[]{stage,material_samples,std::max(1u,light_steps>>( (action_mask>>4)&3u)),scenario==2?1u:0u,std::max(1u,shadow_rays>>((action_mask>>8)&3u)),scale,camera_tick};
+            list->SetComputeRoot32BitConstants(1,7,params,0);
             const UINT divisor=stage==2?scale:1;
             list->Dispatch(((width+divisor-1)/divisor+7)/8,((height+divisor-1)/divisor+7)/8,1);
             barrier(stage==0?lighting.Get():stage==2?shadows.Get():output.Get());
@@ -211,7 +215,7 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         list->EndQuery(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,5);
         list->ResolveQueryData(queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,6,times.Get(),0);execute();
         if(!isolated)hr(swap->Present(0,0));
-        Frame f;f.wall=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+        Frame f;f.camera_tick=camera_tick;f.wall=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
         void* data{};hr(times->Map(0,nullptr,&data));std::copy_n(static_cast<UINT64*>(data),6,f.ticks.begin());D3D12_RANGE empty{0,0};times->Unmap(0,&empty);
         for(UINT i=1;i<6;++i)if(f.ticks[i]<f.ticks[i-1])throw std::runtime_error("timestamp order");return f;
     }
@@ -232,7 +236,7 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
     }
     void timings(const std::string& name,const std::vector<Frame>& frames){
         std::ofstream file(directory/(name+".json"));file<<std::setprecision(17)<<"{\"width\":"<<width<<",\"height\":"<<height<<",\"frequency\":"<<frequency<<",\"mip\":"<<mip<<",\"isolated\":"<<(isolated?"true":"false")<<",\"material_samples\":"<<material_samples<<",\"light_steps\":"<<light_steps<<",\"shadow_rays\":"<<shadow_rays<<",\"action_mask\":"<<action_mask<<",\"frames\":[";
-        for(std::size_t i=0;i<frames.size();++i){if(i)file<<',';const auto& f=frames[i];file<<"{\"wall_ms\":"<<f.wall<<",\"ticks\":[";for(UINT k=0;k<6;++k){if(k)file<<',';file<<f.ticks[k];}file<<"]}";}file<<"]}";
+        for(std::size_t i=0;i<frames.size();++i){if(i)file<<',';const auto& f=frames[i];file<<"{\"wall_ms\":"<<f.wall<<",\"camera_tick\":"<<f.camera_tick<<",\"ticks\":[";for(UINT k=0;k<6;++k){if(k)file<<',';file<<f.ticks[k];}file<<"]}";}file<<"]}";
     }
     void warmup(){
         // Equal elapsed warmup for all arms avoids short cheap-arm warmup and
@@ -243,13 +247,21 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
     void calibrate(){
         isolated=false;set_mip(0);std::ofstream log(directory/"calibration.csv");log<<"material_samples,light_steps,shadow_rays,wall_ms,lighting_ms,material_ms\n";
         // Only baseline timings guide calibration; no degraded trial has run yet.
-        material_samples=(scenario==1||scenario==3)?2:16;light_steps=scenario==1?256:16;shadow_rays=scenario==3?128:4;
+        material_samples=(scenario==1||scenario==3)?2:scenario==4?128:16;
+        light_steps=scenario==1?256:scenario==4?1024:16;shadow_rays=scenario==3?128:scenario==4?32:4;
         for(UINT pass=0;pass<5;++pass){
             warmup();std::vector<Frame> frames;std::vector<double> wall;
             for(int i=0;i<7;++i){frames.push_back(render());wall.push_back(frames.back().wall);}
             const double ms=median(wall);const auto& f=frames[3];
             log<<material_samples<<','<<light_steps<<','<<shadow_rays<<','<<ms<<','<<double(f.ticks[1]-f.ticks[0])*1000/frequency<<','<<double(f.ticks[2]-f.ticks[1])*1000/frequency<<'\n';log.flush();
             if(ms>=30&&ms<=36)break;
+            if(scenario==4){
+                const double ratio=33.3/std::max(.1,ms);
+                material_samples=std::clamp<UINT>(static_cast<UINT>(std::lround(material_samples*ratio)),1,2048);
+                light_steps=std::clamp<UINT>(static_cast<UINT>(std::lround(light_steps*ratio)),1,8192);
+                shadow_rays=std::clamp<UINT>(static_cast<UINT>(std::lround(shadow_rays*ratio)),1,2048);
+                continue;
+            }
             auto& knob=scenario==1?light_steps:scenario==3?shadow_rays:material_samples;
             const auto next=std::clamp<UINT>(static_cast<UINT>(std::lround(knob*33.3/std::max(.1,ms))),1,scenario==1?8192u:2048u);
             if(next==knob)break;knob=next;
@@ -261,9 +273,23 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
     bool restore(const arc::PerceptualCapability& c)noexcept override {try{if(c.generation!=1||c.target!=1)return false;action_mask=0;set_mip(0);return true;}catch(...){return false;}}
     void finish()noexcept override{}
     std::optional<arc::ProbeCapture> capture(arc::ProbePhase phase)override {
-        warmup();last_frames.clear();for(int i=0;i<21;++i)last_frames.push_back(render());
-        auto p=read_image();for(const auto& f:last_frames)p.gpu_ms.push_back(gpu(f));
+        camera_tick=0;warmup();last_frames.clear();
+        arc::ProbeCapture p;
+        if(scenario==5){p.width=width*2;p.height=height*2;p.generation=1;p.state_key=5001;p.readback_complete=true;p.linear_rgb=true;p.rgb.resize(std::size_t(p.width)*p.height*3);}
+        const UINT count=scenario==5?61:21;
+        for(UINT i=0;i<count;++i){
+            camera_tick=scenario==5?i:0;last_frames.push_back(render());
+            if(scenario==5&&i%20==0){
+                auto frame=read_image();const UINT slot=i/20;
+                for(UINT y=0;y<height;++y){auto dst=p.rgb.begin()+(std::size_t((slot/2)*height+y)*p.width+(slot%2)*width)*3;std::copy_n(frame.rgb.begin()+std::size_t(y)*width*3,width*3,dst);}
+            }
+        }
+        if(scenario!=5)p=read_image();for(const auto& f:last_frames)p.gpu_ms.push_back(gpu(f));
         const auto name="probe-"+std::to_string(trial_index)+"-"+std::to_string(int(phase));save(name,p);timings(name,last_frames);return p;
+    }
+    void preview(){
+        action_mask=0;set_mip(0);isolated=false;std::filesystem::create_directories(directory/"preview");
+        for(UINT i=0;i<=60;i+=2){camera_tick=i;render();save("preview/frame-"+std::to_string(i),read_image());}
     }
     void run(){
         calibrate();arc::PerceptualCandidate c;c.capability={2,1,1,arc::PerceptualMechanism::SrvMipRange,true,true,true,true,true};
@@ -296,20 +322,22 @@ cbuffer FrameInput:register(b0) {uint stage;uint material_samples;uint light_ste
         // rejected modified images are never presented to a game/user workload.
         for(UINT round=0;round<3;++round)for(UINT arm=0;arm<4;++arm){
             const bool modified=round%2?(arm==0||arm==3):(arm==1||arm==2);
-            action_mask=modified?selected_mask:0;set_mip(action_mask&3u);isolated=false;warmup();
-            std::vector<Frame> frames;for(int i=0;i<21;++i)frames.push_back(render());
+            action_mask=modified?selected_mask:0;set_mip(action_mask&3u);isolated=false;camera_tick=0;warmup();
+            std::vector<Frame> frames;for(UINT i=0;i<(scenario==5?61u:21u);++i){camera_tick=scenario==5?i:0;frames.push_back(render());}
             timings("round-"+std::to_string(round)+"-arm-"+std::to_string(arm),frames);
             if(round==0&&(arm==0||arm==1||arm==3))save("frame-arm-"+std::to_string(arm),read_image());
         }
         action_mask=0;set_mip(0);isolated=false;render();
         std::ofstream summary(directory/"trial.json");summary<<std::setprecision(17)<<"{\"scenario\":"<<scenario<<",\"selected_probe\":"<<selected_probe<<",\"selected_mip\":"<<(selected_mask&3u)<<",\"selected_action\":"<<selected_mask<<",\"status\":"<<int(trial.status)<<",\"reason\":"<<int(trial.verdict.reason)<<",\"probe_wall_ms\":"<<trial_ms<<",\"image_mean\":"<<trial.verdict.modified_mean<<",\"image_peak\":"<<trial.verdict.modified_peak<<",\"image_tile\":"<<trial.verdict.modified_tile<<",\"restored\":true,\"resolution\":[1920,1080],\"present_sync\":0,\"game_fps_claim\":false}";
+        if(scenario==5)preview();
         std::cout<<"scenario="<<scenario<<" samples="<<material_samples<<" light="<<light_steps<<" decision="<<int(trial.status)<<" reason="<<int(trial.verdict.reason)<<std::endl;
     }
 };
 }
 int main(int argc,char** argv)try{
-    if(argc!=3)throw std::runtime_error("Usage: arc-full-frame-x2 <new output directory> <scenario 0..3>");
-    const int scenario=std::stoi(argv[2]);if(scenario<0||scenario>3)throw std::runtime_error("scenario");
+    if(argc!=3&&argc!=4)throw std::runtime_error("Usage: arc-full-frame-x2 <new output directory> <scenario 0..5> [preview]");
+    const int scenario=std::stoi(argv[2]);if(scenario<0||scenario>5)throw std::runtime_error("scenario");
     if(std::filesystem::exists(argv[1]))throw std::runtime_error("Use a new evidence directory");
-    FrameExperiment experiment(argv[1],static_cast<UINT>(scenario));experiment.run();return 0;
+    FrameExperiment experiment(argv[1],static_cast<UINT>(scenario));
+    if(argc==4){if(std::string(argv[3])!="preview")throw std::runtime_error("Unknown mode");experiment.preview();}else experiment.run();return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}
