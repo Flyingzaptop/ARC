@@ -86,6 +86,7 @@ using IndirectFn=decltype(ID3D12GraphicsCommandListVtbl::ExecuteIndirect);Indire
 using BundleFn=decltype(ID3D12GraphicsCommandListVtbl::ExecuteBundle);BundleFn original_bundle{};
 using BarriersFn=decltype(ID3D12GraphicsCommandListVtbl::ResourceBarrier);BarriersFn original_barriers{};
 using ResetFn=decltype(ID3D12GraphicsCommandListVtbl::Reset);ResetFn original_reset{};
+using CreateCommandFn=decltype(ID3D12DeviceVtbl::CreateCommandList);CreateCommandFn original_create_command{};
 using CloseFn=decltype(ID3D12GraphicsCommandListVtbl::Close);CloseFn original_close{};
 using PipelineFn=decltype(ID3D12GraphicsCommandListVtbl::SetPipelineState);PipelineFn original_pipeline{};
 using TargetsFn=decltype(ID3D12GraphicsCommandListVtbl::OMSetRenderTargets);TargetsFn original_targets{};
@@ -119,6 +120,13 @@ void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignat
 void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* c,ID3D12GraphicsCommandList* b){original_bundle(c,b);if(observe_api())runtime::unsupported();}
 void STDMETHODCALLTYPE barriers(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RESOURCE_BARRIER* b){original_barriers(c,count,b);if(observe_api())for(UINT i=0;i<count;++i)if(b[i].Type==D3D12_RESOURCE_BARRIER_TYPE_ALIASING)runtime::unsupported();}
 HRESULT STDMETHODCALLTYPE reset(ID3D12GraphicsCommandList* c,ID3D12CommandAllocator* a,ID3D12PipelineState* p){const auto result=original_reset(c,a,p);if(SUCCEEDED(result)&&observe_api()){runtime::begin(c);runtime::pipeline(c,p);}return result;}
+HRESULT STDMETHODCALLTYPE create_command(ID3D12Device* d,UINT node,D3D12_COMMAND_LIST_TYPE type,ID3D12CommandAllocator* a,ID3D12PipelineState* p,REFIID iid,void** out){
+    const auto result=original_create_command(d,node,type,a,p,iid,out);
+    if(SUCCEEDED(result)&&observe_api()&&out&&*out){ID3D12GraphicsCommandList* c=nullptr;
+        if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12GraphicsCommandList,reinterpret_cast<void**>(&c)))){
+            runtime::begin(c);runtime::pipeline(c,p);ID3D12GraphicsCommandList_Release(c);
+        }}return result;
+}
 HRESULT STDMETHODCALLTYPE close(ID3D12GraphicsCommandList* c){const auto result=original_close(c);if(SUCCEEDED(result)&&observe_api())runtime::close(c);return result;}
 void STDMETHODCALLTYPE pipeline(ID3D12GraphicsCommandList* c,ID3D12PipelineState* p){original_pipeline(c,p);if(observe_api())runtime::pipeline(c,p);}
 void STDMETHODCALLTYPE targets(ID3D12GraphicsCommandList* c,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* h,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth){original_targets(c,count,h,contiguous,depth);if(observe_api())runtime::targets(c,count,h,contiguous,depth);}
@@ -149,7 +157,7 @@ void snapshot(){
     const auto temporary=output.wstring()+L".tmp";
     std::ofstream file(temporary,std::ios::trunc);
     file<<"{\"schema\":1,\"pid\":"<<GetCurrentProcessId()<<",\"initialized\":"<<(initialized.load()?"true":"false")
-        <<",\"mode\":\"observe_only\",\"engine_specific_code\":false,\"telemetry_scope\":\"partial_api_call_counts\","
+        <<",\"mode\":\"observe_only\",\"engine_specific_code\":false,\"telemetry_scope\":\"partial_objects_descriptors_work_and_images\","
           "\"replay_reference_available\":false,\"safe_mutation_capability\":false,\"quality_mutations\":0,"
           "\"policy_abstained\":"<<(!proposal?"true":"false")<<",\"present_calls\":"<<presents.load()
         <<",\"present_failures\":"<<present_failures.load()<<",\"queue_submits\":"<<submits.load()
@@ -163,7 +171,7 @@ void snapshot(){
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 DWORD WINAPI logger(void*){
-    for(;;){try{runtime::flush_capture();snapshot();}catch(...){}Sleep(1000);}return 0;
+    unsigned tick=0;for(;;){try{runtime::flush_image();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
 }
 }
 
@@ -210,6 +218,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(command->lpVtbl->ExecuteBundle,bundle,&original_bundle)&&ok;
         ok=install(command->lpVtbl->ResourceBarrier,barriers,&original_barriers)&&ok;
         ok=install(command->lpVtbl->Reset,reset,&original_reset)&&ok;
+        ok=install(device->lpVtbl->CreateCommandList,create_command,&original_create_command)&&ok;
         ok=install(command->lpVtbl->Close,close,&original_close)&&ok;
         ok=install(command->lpVtbl->SetPipelineState,pipeline,&original_pipeline)&&ok;
         ok=install(command->lpVtbl->OMSetRenderTargets,targets,&original_targets)&&ok;
@@ -242,3 +251,4 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcBeginCapture(void*){runtime::be
 extern "C" __declspec(dllexport) DWORD WINAPI ArcEndCapture(void* path){if(!path)return 1;try{runtime::end_capture(static_cast<const wchar_t*>(path));return 0;}catch(...){return 2;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSnapshot(void*){try{snapshot();return 0;}catch(...){return 1;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFrame(void* path){if(!path)return 1;try{return runtime::request_frame(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestImage(void* path){if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}

@@ -30,13 +30,15 @@ int wmain(int argc,wchar_t** argv)try{
     D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=2;ComPtr<ID3D12DescriptorHeap> heap;hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&heap)));
     D3D12_SHADER_RESOURCE_VIEW_DESC srv{};srv.Format=DXGI_FORMAT_R32_UINT;srv.ViewDimension=D3D12_SRV_DIMENSION_BUFFER;srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;srv.Buffer.NumElements=1024;
     auto first=heap->GetCPUDescriptorHandleForHeapStart(),second=first;second.ptr+=device->GetDescriptorHandleIncrementSize(hd.Type);device->CreateShaderResourceView(middle.Get(),&srv,first);device->CopyDescriptorsSimple(1,second,first,hd.Type);
-    check(start(nullptr)==0,"Begin capture");hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));
+    check(start(nullptr)==0,"Begin capture");hr(allocator->Reset());list.Reset();
+    hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)));
     list->CopyBufferRegion(middle.Get(),0,source.Get(),0,4096);
     D3D12_RESOURCE_BARRIER barrier{};barrier.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;barrier.Transition={middle.Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_COPY_SOURCE};list->ResourceBarrier(1,&barrier);
     list->CopyBufferRegion(destination.Get(),0,middle.Get(),0,4096);hr(list->Close());ID3D12CommandList* commands[]{list.Get()};queue->ExecuteCommandLists(1,commands);
     ComPtr<ID3D12Fence> fence;hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));HANDLE event=CreateEventW(nullptr,FALSE,FALSE,nullptr);check(event!=nullptr,"event");hr(queue->Signal(fence.Get(),1));hr(fence->SetEventOnCompletion(1,event));check(WaitForSingleObject(event,30000)==WAIT_OBJECT_0,"GPU wait");CloseHandle(event);
     hr(destination->Map(0,nullptr,&data));for(UINT i=0;i<1024;++i)check(static_cast<UINT*>(data)[i]==i*37,"Hook altered copied data");destination->Unmap(0,&empty);
     auto graph=(directory/L"graph.json").wstring();check(end(graph.data())==0,"End capture");check(snapshot(nullptr)==0,"Snapshot");
+    check(read(graph).find("\"capture_state_complete\":true")!=std::string::npos&&read(graph).find("\"producer\":1,\"consumer\":2")!=std::string::npos,"New initially-open command list lost its copy dependency");
     auto json=read(metrics);check(json.find("\"resources_alive\":3")!=std::string::npos,"Observed resource count");check(json.find("\"descriptors_alive\":2")!=std::string::npos,"Descriptor copy observation");
     std::filesystem::copy_file(metrics,directory/L"alive.json");
     for(int i=0;i<1000;++i){auto temporary=buffer(D3D12_HEAP_TYPE_DEFAULT);}
@@ -63,17 +65,29 @@ int wmain(int argc,wchar_t** argv)try{
         std::ofstream(directory/L"descriptor-cost.json")<<"{\"live_extra_resources\":1500,\"copies\":20000,\"cpu_ms\":"<<ms<<'}';
         std::cout<<"Descriptor observation cost (1500 live resources, 20000 copies): "<<ms<<" ms\n";
     }
+    {
+        hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));
+        D3D12_VIEWPORT v{0,0,64,64,0,1};D3D12_RECT r{0,0,64,64};
+        const auto t=std::chrono::steady_clock::now();
+        for(int i=0;i<100000;++i){list->RSSetViewports(1,&v);list->RSSetScissorRects(1,&r);}
+        const auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();hr(list->Close());
+        std::ofstream(directory/L"idle-command-cost.json")<<"{\"setter_pairs\":100000,\"capture_active\":false,\"cpu_ms\":"<<ms<<'}';
+        std::cout<<"Idle command observation cost (100000 setter pairs): "<<ms<<" ms\n";
+    }
     // Request a frame through the injected module; no resources, bindings or
     // semantic labels are passed to ARC by this application.
     const auto request=reinterpret_cast<Api>(GetProcAddress(dll,"ArcRequestFrame"));check(request!=nullptr,"Frame request export");
     ComPtr<IDXGIFactory2> factory;hr(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));
     WNDCLASSW wc{};wc.lpfnWndProc=DefWindowProcW;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"ARCGenericFrameFixture";RegisterClassW(&wc);
     HWND window=CreateWindowW(wc.lpszClassName,L"",WS_OVERLAPPED,0,0,64,64,nullptr,nullptr,wc.hInstance,nullptr);check(window!=nullptr,"frame window");
-    DXGI_SWAP_CHAIN_DESC1 sd{};sd.Width=64;sd.Height=64;sd.Format=DXGI_FORMAT_R8G8B8A8_UNORM;sd.SampleDesc.Count=1;sd.BufferCount=2;sd.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;sd.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    DXGI_SWAP_CHAIN_DESC1 sd{};sd.Width=61;sd.Height=37;sd.Format=DXGI_FORMAT_R8G8B8A8_UNORM;sd.SampleDesc.Count=1;sd.BufferCount=2;sd.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;sd.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
     ComPtr<IDXGISwapChain1> base;hr(factory->CreateSwapChainForHwnd(queue.Get(),window,&sd,nullptr,nullptr,&base));ComPtr<IDXGISwapChain3> swap;hr(base.As(&swap));
     D3D12_DESCRIPTOR_HEAP_DESC rh{};rh.NumDescriptors=2;rh.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;ComPtr<ID3D12DescriptorHeap> rtvs;hr(device->CreateDescriptorHeap(&rh,IID_PPV_ARGS(&rtvs)));
     ComPtr<ID3D12Resource> backs[2];for(UINT i=0;i<2;++i){hr(swap->GetBuffer(i,IID_PPV_ARGS(&backs[i])));auto h=rtvs->GetCPUDescriptorHandleForHeapStart();h.ptr+=i*device->GetDescriptorHandleIncrementSize(rh.Type);device->CreateRenderTargetView(backs[i].Get(),nullptr,h);}
     auto frame_path=(directory/L"frame.json").wstring();check(request(frame_path.data())==0,"Request actual frame");
+    const auto request_image=reinterpret_cast<Api>(GetProcAddress(dll,"ArcRequestImage"));check(request_image!=nullptr,"Image request export");
+    auto image_path=(directory/L"image.json").wstring();check(request_image(image_path.data())==0,"Request native image");
+    check(request_image(image_path.data())!=0,"Second outstanding readback must be refused");
     HANDLE frame_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);check(frame_event!=nullptr,"frame event");
     for(UINT frame=0;frame<4;++frame){
         hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));const auto index=swap->GetCurrentBackBufferIndex();
@@ -85,6 +99,13 @@ int wmain(int argc,wchar_t** argv)try{
     for(int i=0;i<30&&!std::filesystem::exists(frame_path);++i)Sleep(100);
     check(std::filesystem::exists(frame_path),"Asynchronous frame export");
     check(read(frame_path).find("\"capture_state_complete\":true")!=std::string::npos,"Simple native frame lost observed application state");
+    for(int i=0;i<30&&!std::filesystem::exists(image_path);++i)Sleep(100);
+    check(std::filesystem::exists(image_path),"Asynchronous native image export");
+    const auto image_json=read(image_path);check(image_json.find("\"readback_complete\":true")!=std::string::npos,"Native image completed");
+    std::ifstream pixels(image_path+L".pixels",std::ios::binary);std::vector<unsigned char> rgb((std::istreambuf_iterator<char>(pixels)),{});
+    check(rgb.size()==61*37*4,"Readback removes row padding");
+    for(std::size_t i=0;i<rgb.size();i+=4)check(rgb[i]==51&&rgb[i+1]==102&&rgb[i+2]==153&&rgb[i+3]==255,"Native clear pixels must match the intercepted image exactly");
+    check(request_image(image_path.data())!=0,"Existing evidence cannot be overwritten");
     backs[0].Reset();backs[1].Reset();rtvs.Reset();swap.Reset();base.Reset();factory.Reset();DestroyWindow(window);UnregisterClassW(wc.lpszClassName,wc.hInstance);
     heap.Reset();source.Reset();middle.Reset();destination.Reset();list.Reset();queue.Reset();
     fence.Reset();

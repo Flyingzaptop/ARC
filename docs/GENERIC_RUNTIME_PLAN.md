@@ -1,10 +1,13 @@
 # Generic runtime: closing the application adapter gap
 
-The user requests automatic optimization in third-party DX12 applications. Game
-validation remains user-owned; development validation uses ordinary native DX12
-applications without cooperative ARC resource/action callbacks. No subagents.
+The user requests automatic optimization in third-party DX12 applications and
+authorizes Bodycam and FPV game tests. Use 60-second test windows with movement
+and camera turns; short taps do not prove a continuous traversal. Development
+validation also uses native DX12 applications without cooperative ARC
+resource/action callbacks. No subagents.
 
-The present probe observes counts only. This is not the requested optimizer.
+The present probe observes object lifetimes, descriptors and bounded work graphs.
+This is not yet the requested optimizer.
 Required execution chain:
 
 1. Bounded object identities and destruction notifications, descriptor versions,

@@ -32,7 +32,8 @@ DWORD remote_call(HANDLE process,void* function,const std::wstring& argument){
 }
 }
 int wmain(int argc,wchar_t** argv)try{
-    const bool capture=argc>1&&std::wstring(argv[1])==L"--capture";
+    const bool image=argc>1&&std::wstring(argv[1])==L"--image";
+    const bool capture=image||(argc>1&&std::wstring(argv[1])==L"--capture");
     const bool attach=capture||(argc>1&&std::wstring(argv[1])==L"--attach");
     if(argc<(attach?5:4)){std::wcerr<<L"Usage: arc-dx12-probe-launch <owned executable> <probe DLL> <output JSON> [application args...]\nOr: --attach <explicit authorized PID> <probe DLL> <output JSON>\n";return 2;}
     const auto dll=std::filesystem::absolute(argv[attach?3:2]),output=std::filesystem::absolute(argv[attach?4:3]);
@@ -57,9 +58,9 @@ int wmain(int argc,wchar_t** argv)try{
     if(capture){
         const auto remote_base=remote_module(info.dwProcessId,dll.filename().wstring());require(remote_base!=0,"Target must already have the observer attached");
         HMODULE local=LoadLibraryExW(dll.c_str(),nullptr,DONT_RESOLVE_DLL_REFERENCES);require(local!=nullptr,"read capture export");
-        auto request=GetProcAddress(local,"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"frame export");
+        auto request=GetProcAddress(local,image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");
         const auto code=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),output.wstring());
-        require(code==0,"Frame request refused");std::wcout<<L"Frame capture requested for PID "<<info.dwProcessId<<L"; wait for the next two Presents.\n";return 0;
+        require(code==0,"Capture request refused");std::wcout<<(image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
     }
     require(remote_module(info.dwProcessId,dll.filename().wstring())==0,"probe already loaded; use --capture or restart the target");
     void* remote_load=reinterpret_cast<void*>(base+(reinterpret_cast<std::uintptr_t>(load)-reinterpret_cast<std::uintptr_t>(owner)));

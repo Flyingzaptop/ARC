@@ -1,5 +1,7 @@
 #include "generic_runtime.hpp"
+#include "generic_readback.hpp"
 #include "arc/gpu_attribution.hpp"
+#include "arc/descriptor_ledger.hpp"
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -8,13 +10,13 @@
 #include <algorithm>
 #include <source_location>
 #include <iomanip>
-#include <bit>
+#include <memory>
 
 namespace arc::dx12::generic {
 namespace {
 constexpr GUID token_guid{0xa337b583,0x9b46,0x46bc,{0x94,0x10,0x61,0x5f,0x3a,0x41,0x29,0x6d}};
 enum class Kind {Resource, Heap, Command, Pipeline, Queue, RootSignature, Fence, Swapchain};
-struct Object {std::uint64_t id{};Kind kind{};D3D12_RESOURCE_DESC resource{};D3D12_DESCRIPTOR_HEAP_DESC heap{};UINT stride{};UINT64 cpu{},gpu{},gpu_address{};std::vector<std::uint64_t> null_slots;};
+struct Object {std::uint64_t id{};Kind kind{};D3D12_RESOURCE_DESC resource{};D3D12_DESCRIPTOR_HEAP_DESC heap{};UINT stride{};UINT64 cpu{},gpu{},gpu_address{};};
 struct View {std::uint64_t resource{},heap{};UINT kind{},first_mip{},mips{};};
 struct Recording {std::uint64_t id{},pipeline{},graphics_root{},compute_root{};std::vector<std::uint64_t> targets,heaps;std::map<UINT,UINT64> graphics_tables,compute_tables;RasterRegion raster{};bool viewport{},scissor{},started{};};
 struct State {
@@ -24,10 +26,16 @@ struct State {
     std::map<UINT64,std::uint64_t> cpu_heaps,gpu_heaps;
     std::multimap<UINT64,std::uint64_t> gpu_buffers;
     UINT64 maximum_buffer_width{};
-    std::size_t null_words{},null_descriptors{};
-    std::map<UINT64,View> views;
+    DescriptorLedger ledger;
     std::map<std::uint64_t,Recording> commands;
     std::map<std::uint64_t,std::uint64_t> swapchain_queues;
+    std::map<std::uint64_t,Microsoft::WRL::ComPtr<ID3D12CommandQueue>> image_queues;
+    std::filesystem::path image_path;
+    std::unique_ptr<ImageReadback> image;
+    std::uint64_t image_swapchain{},images_completed{},images_failed{};
+    std::atomic<bool> image_pending{};
+    bool image_writing{};
+    std::atomic<std::uint64_t> unsupported_calls{};
     std::filesystem::path requested_path;
     std::uint64_t capture_swapchain{},present_resource{},present_queue{};
     bool armed{},ready{};
@@ -43,14 +51,12 @@ void retire(std::uintptr_t address,std::uint64_t id) noexcept {
     auto& s=state();std::lock_guard lock(s.mutex);auto it=s.objects.find(address);
     if(it==s.objects.end()||it->second.id!=id)return;
     if(it->second.kind==Kind::Heap){
-        for(auto word:it->second.null_slots)s.null_descriptors-=std::popcount(word);s.null_words-=it->second.null_slots.size();
         const auto cpu=s.cpu_heaps.find(it->second.cpu);if(cpu!=s.cpu_heaps.end()&&cpu->second==id)s.cpu_heaps.erase(cpu);
         const auto gpu=s.gpu_heaps.find(it->second.gpu);if(gpu!=s.gpu_heaps.end()&&gpu->second==id)s.gpu_heaps.erase(gpu);
     }
     if(it->second.gpu_address){auto [first,last]=s.gpu_buffers.equal_range(it->second.gpu_address);for(auto cursor=first;cursor!=last;){if(cursor->second==id)cursor=s.gpu_buffers.erase(cursor);else ++cursor;}}
-    if(it->second.kind==Kind::Heap)std::erase_if(s.views,[&](const auto& entry){return entry.second.heap==id;});
-    if(it->second.kind==Kind::Resource)std::erase_if(s.views,[&](const auto& entry){return entry.second.resource==id;});
-    s.swapchain_queues.erase(id);if(it->second.kind==Kind::Queue)std::erase_if(s.swapchain_queues,[&](const auto& pair){return pair.second==id;});
+    if(it->second.kind==Kind::Heap)s.ledger.retire_heap(id);
+    s.swapchain_queues.erase(id);s.image_queues.erase(id);if(it->second.kind==Kind::Queue)std::erase_if(s.swapchain_queues,[&](const auto& pair){return pair.second==id;});
     s.commands.erase(id);s.graph.retire_command(id);s.by_id.erase(id);s.objects.erase(it);++s.retired;
 }
 class Lifetime final:public IUnknown {
@@ -91,29 +97,16 @@ Recording* command(ID3D12GraphicsCommandList* native){
     if(!s.commands.contains(id)){if(s.commands.size()>=256){invalidate();return nullptr;}s.commands.emplace(id,Recording{id});}
     return &s.commands.at(id);
 }
-bool is_null(Object* heap,UINT64 address){if(!heap||heap->null_slots.empty())return false;const auto index=(address-heap->cpu)/heap->stride;return (heap->null_slots[index/64]>>(index%64))&1;}
-bool null_bit(Object* heap,UINT64 address,bool value){
-    if(!heap)return false;auto& s=state();
-    if(value&&heap->null_slots.empty()){
-        const std::size_t words=(std::size_t(heap->heap.NumDescriptors)+63)/64;
-        if(words>65536||s.null_words+words>65536){invalidate();return false;}heap->null_slots.resize(words);s.null_words+=words;
-    }
-    if(heap->null_slots.empty())return true;
-    const auto index=(address-heap->cpu)/heap->stride;const auto mask=std::uint64_t(1)<<(index%64);auto& word=heap->null_slots[index/64];
-    if(bool(word&mask)!=value){if(value){word|=mask;++s.null_descriptors;}else{word&=~mask;--s.null_descriptors;}}return true;
-}
 std::optional<View> descriptor(UINT64 address){
-    auto& s=state();const auto it=s.views.find(address);if(it!=s.views.end())return it->second;
-    auto* heap=heap_at(address,false);if(is_null(heap,address))return View{0,heap->id,0,0,0};return {};
+    auto& s=state();const auto value=s.ledger.read(address);if(!value)return {};
+    if(value->resource&&!find_id(value->resource))return {}; // retired identity never becomes a new resource
+    return View{value->resource,s.ledger.heap_at(address),value->kind,value->first_mip,value->mips};
 }
 void assign(UINT64 address,View value){
-    auto& s=state();auto* heap=heap_at(address,false);
-    if(!value.kind&&heap){s.views.erase(address);null_bit(heap,address,true);++s.descriptor_writes;return;}
-    null_bit(heap,address,false);
-    if(s.views.size()>=65536&&!s.views.contains(address)){invalidate();return;}
-    value.heap=heap?heap->id:0;s.views[address]=value;++s.descriptor_writes;if(!heap)++s.untracked_heap_writes;
+    auto& s=state();if(!s.ledger.write(address,{value.resource,value.kind,value.first_mip,value.mips})){s.ledger.forget(address);invalidate();return;}
+    ++s.descriptor_writes;if(!s.ledger.heap_at(address))++s.untracked_heap_writes;
 }
-void forget(UINT64 address){state().views.erase(address);null_bit(heap_at(address,false),address,false);}
+void forget(UINT64 address){state().ledger.forget(address);}
 template<class F>void safe(F&& action)noexcept{try{auto& s=state();std::lock_guard lock(s.mutex);action();}catch(...){auto& s=state();std::lock_guard lock(s.mutex);invalidate();}}
 void add_access(WorkObservation& w,std::uint64_t id,bool write,AccessEvidence evidence,bool full=false){
     if(!id)return;
@@ -133,6 +126,7 @@ void observe_heap(ID3D12DescriptorHeap* h)noexcept{safe([&]{
     if(o.heap.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)o.gpu=h->GetGPUDescriptorHandleForHeapStart().ptr;
     ID3D12Device* device=nullptr;if(SUCCEEDED(h->GetDevice(IID_PPV_ARGS(&device)))){o.stride=device->GetDescriptorHandleIncrementSize(o.heap.Type);device->Release();}else invalidate();
     if(o.cpu)s.cpu_heaps[o.cpu]=id;if(o.gpu)s.gpu_heaps[o.gpu]=id;
+    if(!s.ledger.register_heap(id,o.cpu,o.stride,o.heap.NumDescriptors))invalidate();
 });}
 void observe_view(ID3D12Resource* r,D3D12_CPU_DESCRIPTOR_HANDLE handle,UINT kind,UINT first,UINT mips)noexcept{safe([&]{
     const auto id=resource_id(r);assign(handle.ptr,{id,0,(!r&&kind!=5)?0:kind,first,mips});
@@ -165,24 +159,24 @@ void descriptor_ranges(UINT dst_count,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,con
     if(sources.size()!=destinations.size()){invalidate();return;}
     for(std::size_t i=0;i<sources.size();++i)assign(destinations[i],sources[i]);
 });}
-void begin(ID3D12GraphicsCommandList* n)noexcept{safe([&]{if(auto* c=command(n)){const auto id=c->id;*c=Recording{id};c->started=state().capturing;if(c->started&&!state().graph.begin(id))invalidate();}});}
-void close(ID3D12GraphicsCommandList* n)noexcept{safe([&]{if(state().capturing)if(auto* c=command(n)){if(!c->started||!state().graph.close(c->id))invalidate();}});}
-void pipeline(ID3D12GraphicsCommandList* n,ID3D12PipelineState* p)noexcept{safe([&]{if(auto* c=command(n))c->pipeline=identify(p,Kind::Pipeline);});}
-void targets(ID3D12GraphicsCommandList* n,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth)noexcept{safe([&]{
+void begin(ID3D12GraphicsCommandList* n)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(auto* c=command(n)){const auto id=c->id;*c=Recording{id};c->started=state().capturing;if(c->started&&!state().graph.begin(id))invalidate();}});}
+void close(ID3D12GraphicsCommandList* n)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(state().capturing)if(auto* c=command(n)){if(!c->started||!state().graph.close(c->id))invalidate();}});}
+void pipeline(ID3D12GraphicsCommandList* n,ID3D12PipelineState* p)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(auto* c=command(n))c->pipeline=identify(p,Kind::Pipeline);});}
+void targets(ID3D12GraphicsCommandList* n,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{
     auto* c=command(n);if(!c)return;c->targets.clear();c->raster.width=c->raster.height=0;
     if(count>8||(!handles&&count)){invalidate();return;}
     UINT stride=0;if(count&&contiguous){auto* h=heap_at(handles[0].ptr,false);if(!h){invalidate();return;}stride=h->stride;}
     for(UINT i=0;i<count+(depth?1:0);++i){const auto address=i==count?depth->ptr:contiguous?handles[0].ptr+UINT64(i)*stride:handles[i].ptr;
-        const auto v=state().views.find(address);if(v==state().views.end()){invalidate();continue;}c->targets.push_back(v->second.resource);
-        if(i==0){auto* r=find_id(v->second.resource);if(r&&r->resource.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D&&v->second.first_mip<r->resource.MipLevels){const auto shift=std::min(v->second.first_mip,31u);c->raster.width=static_cast<UINT>(std::max<UINT64>(1,std::min<UINT64>(r->resource.Width,UINT_MAX)>>shift));c->raster.height=std::max(1u,r->resource.Height>>shift);}}
+        const auto v=descriptor(address);if(!v){invalidate();continue;}c->targets.push_back(v->resource);
+        if(i==0){auto* r=find_id(v->resource);if(r&&r->resource.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D&&v->first_mip<r->resource.MipLevels){const auto shift=std::min(v->first_mip,31u);c->raster.width=static_cast<UINT>(std::max<UINT64>(1,std::min<UINT64>(r->resource.Width,UINT_MAX)>>shift));c->raster.height=std::max(1u,r->resource.Height>>shift);}}
     }
     c->raster.known=count==1&&c->viewport&&c->scissor&&c->raster.width&&c->raster.height;
 });}
-void viewport(ID3D12GraphicsCommandList* n,UINT count,const D3D12_VIEWPORT* v)noexcept{safe([&]{if(auto* c=command(n)){c->viewport=count==1&&v;if(c->viewport)c->raster.viewport={v->TopLeftX,v->TopLeftY,v->Width,v->Height};c->raster.known=c->viewport&&c->scissor&&c->targets.size()==1&&c->raster.width&&c->raster.height;}});}
-void scissor(ID3D12GraphicsCommandList* n,UINT count,const D3D12_RECT* v)noexcept{safe([&]{if(auto* c=command(n)){c->scissor=count==1&&v;if(c->scissor)c->raster.scissor={double(v->left),double(v->top),double(v->right)-v->left,double(v->bottom)-v->top};c->raster.known=c->viewport&&c->scissor&&c->targets.size()==1&&c->raster.width&&c->raster.height;}});}
+void viewport(ID3D12GraphicsCommandList* n,UINT count,const D3D12_VIEWPORT* v)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(auto* c=command(n)){c->viewport=count==1&&v;if(c->viewport)c->raster.viewport={v->TopLeftX,v->TopLeftY,v->Width,v->Height};c->raster.known=c->viewport&&c->scissor&&c->targets.size()==1&&c->raster.width&&c->raster.height;}});}
+void scissor(ID3D12GraphicsCommandList* n,UINT count,const D3D12_RECT* v)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(auto* c=command(n)){c->scissor=count==1&&v;if(c->scissor)c->raster.scissor={double(v->left),double(v->top),double(v->right)-v->left,double(v->bottom)-v->top};c->raster.known=c->viewport&&c->scissor&&c->targets.size()==1&&c->raster.width&&c->raster.height;}});}
 void descriptor_heaps(ID3D12GraphicsCommandList* n,UINT count,ID3D12DescriptorHeap*const* heaps)noexcept{safe([&]{auto* c=command(n);if(!c)return;if(count>2){invalidate();return;}std::vector<std::uint64_t> next;for(UINT i=0;i<count;++i){observe_heap(heaps[i]);next.push_back(identify(heaps[i],Kind::Heap));}if(next!=c->heaps){c->graphics_tables.clear();c->compute_tables.clear();c->heaps=std::move(next);}});}
-void root_table(ID3D12GraphicsCommandList* n,bool compute,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE handle)noexcept{safe([&]{if(parameter>=64){invalidate();return;}if(auto* c=command(n))(compute?c->compute_tables:c->graphics_tables)[parameter]=handle.ptr;});}
-void root_signature(ID3D12GraphicsCommandList* n,bool compute,ID3D12RootSignature* root)noexcept{safe([&]{if(auto* c=command(n)){const auto id=identify(root,Kind::RootSignature);auto& current=compute?c->compute_root:c->graphics_root;if(current!=id){(compute?c->compute_tables:c->graphics_tables).clear();current=id;}}});}
+void root_table(ID3D12GraphicsCommandList* n,bool compute,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE handle)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(parameter>=64){invalidate();return;}if(auto* c=command(n))(compute?c->compute_tables:c->graphics_tables)[parameter]=handle.ptr;});}
+void root_signature(ID3D12GraphicsCommandList* n,bool compute,ID3D12RootSignature* root)noexcept{if(!state().capturing.load(std::memory_order_relaxed))return;safe([&]{if(auto* c=command(n)){const auto id=identify(root,Kind::RootSignature);auto& current=compute?c->compute_root:c->graphics_root;if(current!=id){(compute?c->compute_tables:c->graphics_tables).clear();current=id;}}});}
 void work(ID3D12GraphicsCommandList* n,UINT kind,std::uint64_t items)noexcept{
     if(!state().capturing)return;
     safe([&]{auto* c=command(n);if(!c)return;WorkObservation w;w.kind=kind==2?GpuWorkKind::Dispatch:GpuWorkKind::Draw;w.items=items;w.pipeline=c->pipeline;w.raster=c->raster;
@@ -200,14 +194,20 @@ void work(ID3D12GraphicsCommandList* n,UINT kind,std::uint64_t items)noexcept{
 void copy(ID3D12GraphicsCommandList* n,ID3D12Resource* src,ID3D12Resource* dst,UINT64 bytes,bool full)noexcept{
     if(!state().capturing)return;safe([&]{if(auto* c=command(n)){WorkObservation w;w.kind=GpuWorkKind::Copy;w.copy_bytes=bytes;w.bindings_complete=true;add_access(w,resource_id(src),false,AccessEvidence::Observed);add_access(w,resource_id(dst),true,AccessEvidence::Observed,full);record(*c,std::move(w));}});
 }
-void clear_target(ID3D12GraphicsCommandList* n,D3D12_CPU_DESCRIPTOR_HANDLE handle,bool full)noexcept{if(!state().capturing)return;safe([&]{auto it=state().views.find(handle.ptr);if(it==state().views.end()){invalidate();return;}if(auto* c=command(n)){WorkObservation w;w.kind=GpuWorkKind::Clear;w.bindings_complete=true;const auto* r=find_id(it->second.resource);const bool whole=full&&r&&r->resource.MipLevels==1&&r->resource.DepthOrArraySize==1&&it->second.first_mip==0;add_access(w,it->second.resource,true,AccessEvidence::Observed,whole);record(*c,std::move(w));}});}
+void clear_target(ID3D12GraphicsCommandList* n,D3D12_CPU_DESCRIPTOR_HANDLE handle,bool full)noexcept{if(!state().capturing)return;safe([&]{auto it=descriptor(handle.ptr);if(!it){invalidate();return;}if(auto* c=command(n)){WorkObservation w;w.kind=GpuWorkKind::Clear;w.bindings_complete=true;const auto* r=find_id(it->resource);const bool whole=full&&r&&r->resource.MipLevels==1&&r->resource.DepthOrArraySize==1&&it->first_mip==0;add_access(w,it->resource,true,AccessEvidence::Observed,whole);record(*c,std::move(w));}});}
 void submit(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept{if(!state().capturing)return;safe([&]{auto& s=state();if(count>1024){invalidate();return;}const auto q=identify(queue,Kind::Queue);for(UINT i=0;i<count;++i){const auto id=identify(lists[i],Kind::Command);if(!s.commands.contains(id)||!s.commands.at(id).started){invalidate();continue;}s.graph.submit(q,id);++s.submitted;}});}
 void fence(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value,bool wait)noexcept{if(!state().capturing)return;safe([&]{const auto queue=identify(q,Kind::Queue),id=identify(f,Kind::Fence);if(wait){if(!state().graph.wait(queue,id,value))invalidate();}else if(!state().graph.signal(queue,id,value))invalidate();});}
 void begin_capture()noexcept{safe([&]{auto& s=state();if(s.capturing)return;s.graph.clear();for(auto& [id,c]:s.commands){(void)id;c.started=false;}s.present_resource=s.present_queue=0;s.complete=true;s.capturing=true;s.captured=s.submitted=s.unknown_tables=0;});}
 void end_capture(const std::filesystem::path& path)noexcept{safe([&]{auto& s=state();s.capturing=false;std::ofstream file(path);file<<"{\"schema\":1,\"engine_labels\":false,\"shader_access_complete\":false,\"present_resource\":"<<s.present_resource<<",\"present_queue\":"<<s.present_queue<<",\"present_queue_known\":"<<(s.present_queue?"true":"false")<<",\"capture_state_complete\":"<<(s.complete?"true":"false")<<",\"graph\":";s.graph.write_json(file);file<<'}';});}
-void observe_swapchain(IDXGISwapChain* swap,IUnknown* native)noexcept{safe([&]{if(!swap||!native)return;ID3D12CommandQueue* queue=nullptr;if(FAILED(native->QueryInterface(IID_PPV_ARGS(&queue))))return;const auto id=swapchain_id(swap),qid=identify(queue,Kind::Queue);queue->Release();if(id&&qid)state().swapchain_queues[id]=qid;});}
+void observe_swapchain(IDXGISwapChain* swap,IUnknown* native)noexcept{safe([&]{if(!swap||!native)return;Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;if(FAILED(native->QueryInterface(IID_PPV_ARGS(&queue))))return;const auto id=swapchain_id(swap),qid=identify(queue.Get(),Kind::Queue);if(id&&qid){state().swapchain_queues[id]=qid;state().image_queues[id]=queue;}});}
 std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
-    if(!state().capturing)return 0;std::uint64_t resource=0;
+    if(!state().capturing&&!state().image_pending)return 0;std::uint64_t resource=0;
+    safe([&]{auto& s=state();if(!s.image_pending||s.image)return;const auto id=swapchain_id(swap);const auto queue=s.image_queues.find(id);
+        if(queue==s.image_queues.end()){++s.images_failed;s.image_pending=false;return;}
+        s.image=std::make_unique<ImageReadback>();s.image_swapchain=id;
+        if(!s.image->enqueue(swap,queue->second.Get(),s.image_path)){++s.images_failed;s.image_pending=false;if(!s.image->submitted())s.image.reset();}
+    });
+    if(!state().capturing)return 0;
     safe([&]{auto& s=state();if(s.capture_swapchain&&s.capture_swapchain!=swapchain_id(swap)){invalidate();return;}IDXGISwapChain3* current=nullptr;
         if(FAILED(swap->QueryInterface(IID_PPV_ARGS(&current)))){invalidate();return;}ID3D12Resource* buffer=nullptr;
         const auto hr=current->GetBuffer(current->GetCurrentBackBufferIndex(),IID_PPV_ARGS(&buffer));current->Release();
@@ -216,6 +216,7 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
 }
 void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UINT flags)noexcept{
     if(flags&DXGI_PRESENT_TEST)return;
+    safe([&]{auto& s=state();if(s.image&&s.image_swapchain==swapchain_id(swap))s.image->presented(result);});
     safe([&]{auto& s=state();if(s.armed&&!s.capturing){if(FAILED(result))return;begin_capture();s.capture_swapchain=swapchain_id(swap);s.armed=false;return;}
         if(!s.capturing||s.requested_path.empty())return;
         if(swapchain_id(swap)!=s.capture_swapchain){invalidate();return;}
@@ -226,13 +227,20 @@ void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UI
     });
 }
 bool request_frame(const std::filesystem::path& path)noexcept{bool accepted=false;safe([&]{auto& s=state();if(s.capturing||s.armed||s.ready||!path.is_absolute()||std::filesystem::exists(path))return;s.requested_path=path;s.armed=true;s.capture_swapchain=0;accepted=true;});return accepted;}
+bool request_image(const std::filesystem::path& path)noexcept{bool accepted=false;safe([&]{auto& s=state();if(s.image_pending||s.image||s.image_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels"))return;s.image_path=path;s.image_pending=true;accepted=true;});return accepted;}
+void flush_image()noexcept{
+    std::unique_ptr<ImageReadback> image;
+    safe([&]{auto& s=state();if(s.image&&s.image->ready()){image=std::move(s.image);s.image_pending=false;s.image_writing=true;}});
+    if(!image)return;bool ok=false;try{ok=image->write();}catch(...){}
+    safe([&]{state().image_writing=false;if(ok)++state().images_completed;else ++state().images_failed;});
+}
 void flush_capture()noexcept{safe([&]{auto& s=state();if(!s.ready)return;end_capture(s.requested_path);s.ready=false;s.requested_path.clear();});}
-void unsupported()noexcept{safe([]{invalidate();});}
+void unsupported()noexcept{state().unsupported_calls.fetch_add(1,std::memory_order_relaxed);if(state().capturing.load(std::memory_order_relaxed))safe([]{invalidate();});}
 void snapshot(std::ostream& out){auto& s=state();std::lock_guard lock(s.mutex);std::size_t resources=0,heaps=0,mipped=0;
     for(const auto& [key,o]:s.objects){(void)key;if(o.kind==Kind::Resource){++resources;if(o.resource.MipLevels>1)++mipped;}if(o.kind==Kind::Heap)++heaps;}
-    out<<"{\"objects_alive\":"<<s.objects.size()<<",\"resources_alive\":"<<resources<<",\"mipped_resources_alive\":"<<mipped<<",\"heaps_alive\":"<<heaps<<",\"objects_created\":"<<s.created<<",\"objects_retired\":"<<s.retired<<",\"null_descriptors\":"<<s.null_descriptors<<",\"null_bitmap_bytes\":"<<s.null_words*8<<",\"descriptors_alive\":"<<s.views.size()<<",\"untracked_heap_writes\":"<<s.untracked_heap_writes<<",\"descriptor_writes\":"<<s.descriptor_writes<<",\"command_records\":"<<s.commands.size()<<",\"captured_work\":"<<s.captured<<",\"captured_submissions\":"<<s.submitted<<",\"unknown_tables\":"<<s.unknown_tables<<",\"errors\":"<<s.errors<<",\"capturing\":"<<(s.capturing?"true":"false")<<",\"mutation_capability\":false,\"resource_records\":[";
+    out<<"{\"unsupported_api_calls\":"<<s.unsupported_calls.load()<<",\"objects_alive\":"<<s.objects.size()<<",\"resources_alive\":"<<resources<<",\"mipped_resources_alive\":"<<mipped<<",\"heaps_alive\":"<<heaps<<",\"objects_created\":"<<s.created<<",\"objects_retired\":"<<s.retired<<",\"null_descriptors\":"<<s.ledger.null_count()<<",\"descriptor_slot_bytes\":"<<s.ledger.slot_count()*4<<",\"interned_descriptor_values\":"<<s.ledger.value_count()<<",\"orphan_descriptors\":"<<s.ledger.orphan_count()<<",\"descriptors_alive\":"<<s.ledger.known_count()-s.ledger.null_count()<<",\"untracked_heap_writes\":"<<s.untracked_heap_writes<<",\"descriptor_writes\":"<<s.descriptor_writes<<",\"command_records\":"<<s.commands.size()<<",\"captured_work\":"<<s.captured<<",\"captured_submissions\":"<<s.submitted<<",\"unknown_tables\":"<<s.unknown_tables<<",\"errors\":"<<s.errors<<",\"capturing\":"<<(s.capturing?"true":"false")<<",\"mutation_capability\":false,\"resource_records\":[";
     std::size_t exported=0;for(const auto& [address,o]:s.objects){(void)address;if(o.kind!=Kind::Resource)continue;if(exported>=64)break;if(exported++)out<<',';out<<"{\"id\":"<<o.id<<",\"width\":"<<o.resource.Width<<",\"height\":"<<o.resource.Height<<",\"mips\":"<<o.resource.MipLevels<<",\"format\":"<<o.resource.Format<<",\"flags\":"<<o.resource.Flags<<'}';}
     out<<"],\"resource_records_truncated\":"<<(resources>exported?"true":"false")<<",\"coverage_gap_sites\":[";
-    bool first=true;for(const auto& [line,site]:s.error_sites){if(!first)out<<',';first=false;out<<"{\"line\":"<<line<<",\"where\":"<<std::quoted(site.function)<<",\"count\":"<<site.count<<'}';}out<<"]}";
+    bool first=true;for(const auto& [line,site]:s.error_sites){if(!first)out<<',';first=false;out<<"{\"line\":"<<line<<",\"where\":"<<std::quoted(site.function)<<",\"count\":"<<site.count<<'}';}out<<"],\"images_completed\":"<<s.images_completed<<",\"images_failed\":"<<s.images_failed<<",\"image_pending\":"<<(s.image_pending?"true":"false")<<",\"image_inflight\":"<<(s.image?"true":"false")<<'}';
 }
 }

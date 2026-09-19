@@ -21,6 +21,7 @@ add_library(arc-core STATIC
     src/core/multi_session.cpp
     src/core/event_ring.cpp
     src/core/resource_graph.cpp
+    src/core/descriptor_ledger.cpp
     src/core/resource_semantics.cpp
     src/core/scene_understanding.cpp
     src/core/gpu_attribution.cpp
@@ -93,6 +94,9 @@ endif()
 
 if(ARC_BUILD_TESTS)
     enable_testing()
+    add_executable(arc-descriptor-ledger-tests tests/descriptor_ledger_tests.cpp)
+    target_link_libraries(arc-descriptor-ledger-tests PRIVATE arc::core)
+    add_test(NAME arc-descriptor-ledger-tests COMMAND arc-descriptor-ledger-tests)
     add_executable(arc-gpu-attribution-tests tests/gpu_attribution_tests.cpp)
     target_link_libraries(arc-gpu-attribution-tests PRIVATE arc::core)
     add_test(NAME arc-gpu-attribution-tests COMMAND arc-gpu-attribution-tests)
