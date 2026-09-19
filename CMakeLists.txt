@@ -248,6 +248,8 @@ include(cmake/stage5.cmake)
 include(cmake/mega_e.cmake)
 include(cmake/mega_f.cmake)
 include(cmake/mega_g.cmake)
+include(cmake/perceptual_portability.cmake)
+include(cmake/generic_dx12_probe.cmake)
 
 if(ARC_BUILD_TESTS)
     add_executable(arc-test-assertions-tests tests/test_assertions_tests.cpp)

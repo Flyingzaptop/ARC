@@ -29,10 +29,11 @@ def load(root, trial, phase):
     return meta, pixels, statistics.median(durations)
 
 
-def evaluate(root, trial):
+def evaluate(root, trial, modified_mip=None):
     (ma, a, ta), (mb, b, tb), (mc, c, tc) = [load(root, trial, p) for p in range(3)]
     require(all(ma[k] == mb[k] == mc[k] for k in ("width", "height", "state_key", "generation")), "unmatched state")
-    require(ma["mip"] == mc["mip"] == 0 and mb["mip"] == (3 if trial == 2 else 2), "physical mip/restore identity")
+    expected_mip = modified_mip if modified_mip is not None else (3 if trial == 2 else 2)
+    require(ma["mip"] == mc["mip"] == 0 and mb["mip"] == expected_mip, "physical mip/restore identity")
     drift = [abs(x - z) for x, z in zip(a, c)]
     damage = [max(abs(x - y), abs(z - y)) for x, y, z in zip(a, b, c)]
     require(statistics.mean(drift) <= .0005 and max(drift) <= .004, "reference image drift")
