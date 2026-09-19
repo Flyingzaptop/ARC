@@ -102,6 +102,9 @@ patch("framework/cauldron/framework/src/core/components/cameracomponent.cpp", [
             // if (animated)'''),
 ])
 patch("framework/cauldron/framework/src/render/dx12/swapchain_dx12.cpp", [
+    ('        CauldronThrowOnFail(GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->Signal(pFence, 1));', ''),
+    ('        GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->ExecuteCommandLists(1, CmdListList);',
+     '        GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->ExecuteCommandLists(1, CmdListList);\n        CauldronThrowOnFail(GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->Signal(pFence, 1));'),
     ('        stbi_write_jpg(WStringToString(filePath.c_str()).c_str(), (int)fromDesc.Width, (int)fromDesc.Height, 4, pTimingsBuffer, 100);', '''        if(filePath.extension()==L".png")
             stbi_write_png(WStringToString(filePath.c_str()).c_str(),(int)fromDesc.Width,(int)fromDesc.Height,4,pTimingsBuffer,(int)fromDesc.Width*4);
         else stbi_write_jpg(WStringToString(filePath.c_str()).c_str(), (int)fromDesc.Width, (int)fromDesc.Height, 4, pTimingsBuffer, 100);'''),

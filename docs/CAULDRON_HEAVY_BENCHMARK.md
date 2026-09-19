@@ -47,8 +47,14 @@ The host adapter fixes simulation time to 1/60 s, moves the camera through a
 content/modules, warms up for 120 frames, measures 600 frames without removing
 slow frames, then saves one PNG after measurement. Additional shorter runs save
 three other matched poses. Each process has a 60-second runner budget; final
-performance runs took 14–16 seconds including startup/shutdown. Vsync and both
-CPU/GPU FPS limiters are disabled. The upstream `-benchmark` option force-enables
+performance runs took 15–20 seconds including startup/shutdown. Vsync and both
+CPU/GPU FPS limiters are disabled. The adapter also fixes an upstream screenshot race: the completion fence must be
+signaled after submitting the copy, before mapping the readback. The entire final
+run matrix and image comparisons were repeated with this correction. The first
+published evidence at `2724c70` used the unfixed capture and its image conclusions
+are superseded; its raw FPS timings occurred before capture.
+
+The upstream `-benchmark` option force-enables
 a GPU workload limiter, so the adapter explicitly bypasses that module and the
 analyzer rejects any limiter timing marker.
 
@@ -63,7 +69,8 @@ not an individual row's camera index against that row's delayed GPU timing.
 submission, Present and waits. CPU profiling reads thread times for five seconds.
 NVIDIA telemetry is sampled once per second, consistently for all four main runs;
 those hardware samples include the graphics workload and other system GPU users.
-The analyzer uses actual native render resolution from the vendor report. It
+Hardware samples taken after timing begins can include final shutdown; use them
+as coarse corroborating telemetry, not per-frame GPU occupancy. The analyzer uses actual native render resolution from the vendor report. It
 does not use the vendor's filtered min/max averages for frame-tail reporting.
 
 ## Runtime change
@@ -102,16 +109,16 @@ and DLL hashes. Older v0.1 uses the preserved DLL from the prior dynamic-city ru
 
 | Mode | FPS | 1% low FPS | CPU render-module preparation, ms | GPU span, ms |
 |---|---:|---:|---:|---:|
-| Baseline A, no DLL | 71.76 | 53.78 | 4.565 | 13.915 |
-| Old v0.1 | 61.81 | 45.30 | 14.769 | 13.513 |
-| Current single-recording VRS | 72.09 | 47.16 | 6.519 | 13.816 |
-| Baseline B, no DLL | 67.68 | 50.39 | 5.475 | 14.736 |
+| Baseline A, no DLL | 68.98 | 50.08 | 5.832 | 14.473 |
+| Old v0.1 | 51.09 | 31.89 | 17.961 | 14.034 |
+| Current single-recording VRS | 69.52 | 47.96 | 7.682 | 14.357 |
+| Baseline B, no DLL | 67.97 | 48.33 | 6.091 | 14.688 |
 
-Combined baseline is 69.66 FPS. Current raw difference is +3.49%, while baseline
-repeat drift is 6.02%; no reliable net FPS improvement is established. Current
+Combined baseline is 68.47 FPS. Current raw difference is +1.53%, while baseline
+repeat drift is 1.50%; no reliable net FPS improvement is established. Current
 1% low also remains below both baselines. CPU render-module preparation fell
-55.86% relative to old v0.1. Sampled process CPU demand fell from about 1.02 to
-0.51 equivalent logical cores; baseline demand was about 0.44–0.50 cores.
+57.23% relative to old v0.1. Sampled process CPU demand fell from about 1.04 to
+0.69 equivalent logical cores; baseline demand was about 0.57 cores.
 This is removal of ARC's overhead, not a doubling of the renderer's performance.
 
 The current run recorded 3,630,240 controlled draw calls without native command
@@ -120,18 +127,18 @@ Present errors/control faults and zero cross-queue GPU waits. The bounded pool
 reached 128 maps; capacity declines during startup are retained in telemetry.
 Do not infer full universal command coverage from these counters.
 
-The dominant GPU costs are GI/lighting (about 8.05 ms) and shadows (3.80 ms),
-approximately 86% of the current GPU span. G-buffer is 1.28 ms. The GI parent
+The dominant GPU costs are GI/lighting (about 8.34 ms) and shadows (4.02 ms),
+approximately 86% of the current GPU span. G-buffer is 1.30 ms. The GI parent
 includes its nested SDF update, tracing/filtering and deferred-lighting passes;
 do not add those nested timings to the parent again. Baseline hardware samples
-showed 100% GPU utilization. CPU time spent waiting for the next buffer overlaps
+reached 100% GPU utilization. CPU time spent waiting for the next buffer overlaps
 GPU work; it is not another render. Driving unused CPU cores to 100% would add no
 benefit to this critical path by itself.
 
 All four matched image samples fail the existing coarse-VRS limits. Worst mean
-linear error is 0.004018 (limit 0.002), peak about 0.99139 (limit 0.04), worst
-8x8 tile 0.20162 (limit 0.008). Baseline repeat itself has temporal GI variation:
-mean 0.000282, peak 0.09802; the strict reference peak gate also fails. This is
+linear error is 0.004172 (limit 0.002), peak about 0.99139 (limit 0.04), worst
+8x8 tile 0.20149 (limit 0.008). Baseline repeat itself has temporal GI variation:
+mean 0.000307, peak 0.11081; the strict reference peak gate also fails. This is
 reported separately, not subtracted to hide damage. The default controller still
 abstains; experimental VRS is explicitly disabled at test shutdown.
 
