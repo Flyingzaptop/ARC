@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "report_source": "55fe2b9b7c9110326c9f082ec8e0ae35ca006627",
+  "dynamic_source": "d05a6b2",
+  "static_source": "d4adc90",
+  "games_launched": false,
+  "archives": [
+    {
+      "archive": "dynamic-city.zip",
+      "members_verified": 105,
+      "bytes": 38611982,
+      "sha256": "aa87d5b33c099ce9153f207b0e7edc80626b165b1debe5feb6c6cb2275383e30"
+    },
+    {
+      "archive": "static-domains.zip",
+      "members_verified": 279,
+      "bytes": 50491389,
+      "sha256": "372f5efd33a86af9a77e53865ed03901454d52fd789c75d10d5a12de2c36c660"
+    },
+    {
+      "archive": "texture-only-final.zip",
+      "members_verified": 74,
+      "bytes": 7434272,
+      "sha256": "e3dd52ef6523168c589fd3cda0e46b077196fa72fb9702cb38931f03a8af99ee"
+    },
+    {
+      "archive": "initial-timing-fail.zip",
+      "members_verified": 23,
+      "bytes": 308378,
+      "sha256": "9a1d69c93c4d85ae8658dcf51e59962ae5ca9580eb5d1fcb581847ed9f422643"
+    },
+    {
+      "archive": "uniform-capacity-only.zip",
+      "members_verified": 24,
+      "bytes": 310408,
+      "sha256": "1d9ab540f3ffc5e64b45ece9725db5141ac2125ccf068d200a17d534fff19b0e"
+    }
+  ],
+  "scope": "Owned synthetic renderer only; independent quality at four dynamic waypoints; no game FPS claim"
+}

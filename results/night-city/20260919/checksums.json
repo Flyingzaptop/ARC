@@ -1,0 +1,67 @@
+[
+  {
+    "file": ".gitattributes",
+    "bytes": 51,
+    "sha256": "be6c0d43813d6165e31c6777b17978da5f0dfc7a4ff378774afa0090ff9209d5"
+  },
+  {
+    "file": "archive-manifest.json",
+    "bytes": 1298,
+    "sha256": "a81474333dd60d8c0f3203e4a06e7c90917d28444c7e754bf349d6e5297e0f47"
+  },
+  {
+    "file": "dynamic-city.zip",
+    "bytes": 38611982,
+    "sha256": "aa87d5b33c099ce9153f207b0e7edc80626b165b1debe5feb6c6cb2275383e30"
+  },
+  {
+    "file": "initial-timing-fail.zip",
+    "bytes": 308378,
+    "sha256": "9a1d69c93c4d85ae8658dcf51e59962ae5ca9580eb5d1fcb581847ed9f422643"
+  },
+  {
+    "file": "night-city-flythrough.gif",
+    "bytes": 3985823,
+    "sha256": "4ef0b15dc272104aa60ec2ef8f4b2861e9b9a50742bb71033c8f0c11311bee1e"
+  },
+  {
+    "file": "night-city-waypoints.png",
+    "bytes": 645306,
+    "sha256": "c31ec2505965f343c464c93bf0c401529abb4f2cd6784eb0b4b89c02af482d64"
+  },
+  {
+    "file": "REPORT.md",
+    "bytes": 6409,
+    "sha256": "5939dcdc642d0c20338a01833abf248d7d76cc9106264e87db949dbc5af7f239"
+  },
+  {
+    "file": "static-domains.zip",
+    "bytes": 50491389,
+    "sha256": "372f5efd33a86af9a77e53865ed03901454d52fd789c75d10d5a12de2c36c660"
+  },
+  {
+    "file": "texture-only-final.zip",
+    "bytes": 7434272,
+    "sha256": "e3dd52ef6523168c589fd3cda0e46b077196fa72fb9702cb38931f03a8af99ee"
+  },
+  {
+    "file": "tools/render-night-city-preview.py",
+    "bytes": 1186,
+    "sha256": "8263dd644e22d06cb2318c9e332122daa4f8b7b6c0ebd5ec6f3ddf913174fa5a"
+  },
+  {
+    "file": "tools/validate-full-frame-x2.py",
+    "bytes": 9832,
+    "sha256": "7439d88d6912f48dedb96efa35d9a953a27d8989886f4ba4d34044c2fd3ccbe3"
+  },
+  {
+    "file": "tools/verify-evidence-archive.py",
+    "bytes": 911,
+    "sha256": "1dc95e465e7771777f3e9d16ac1bd42b1bfc6349204d90c59839b3ee86006754"
+  },
+  {
+    "file": "uniform-capacity-only.zip",
+    "bytes": 310408,
+    "sha256": "1d9ab540f3ffc5e64b45ece9725db5141ac2125ccf068d200a17d534fff19b0e"
+  }
+]
