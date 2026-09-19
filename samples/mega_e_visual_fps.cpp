@@ -309,15 +309,52 @@ void draw_floor_grid(HDC dc, const RECT& client, const Player& player) {
 }
 
 void draw_oriented_box(HDC dc, const ProjectedObject& p) {
+    static constexpr std::array<std::array<int, 4>, 6> faces{{
+        {{0,1,2,3}},
+        {{4,5,6,7}},
+        {{0,1,5,4}},
+        {{1,2,6,5}},
+        {{2,3,7,6}},
+        {{3,0,4,7}},
+    }};
     static constexpr std::array<std::array<int, 2>, 12> edges{{
         {{0,1}}, {{1,2}}, {{2,3}}, {{3,0}},
         {{4,5}}, {{5,6}}, {{6,7}}, {{7,4}},
         {{0,4}}, {{1,5}}, {{2,6}}, {{3,7}},
     }};
 
+    HBRUSH fill = CreateSolidBrush(p.object->color);
+    HPEN face_pen = CreatePen(PS_SOLID, 1, p.object->color);
+    auto old_brush = SelectObject(dc, fill);
+    auto old_pen = SelectObject(dc, face_pen);
+
+    for (const auto& face : faces) {
+        std::array<POINT, 4> points{};
+        bool valid = true;
+        for (std::size_t i = 0; i < face.size(); ++i) {
+            const auto& corner = p.corners[face[i]];
+            if (!corner.valid) {
+                valid = false;
+                break;
+            }
+            points[i] = {
+                static_cast<LONG>(std::lround(corner.x)),
+                static_cast<LONG>(std::lround(corner.y))
+            };
+        }
+        if (valid) {
+            Polygon(dc, points.data(), static_cast<int>(points.size()));
+        }
+    }
+
+    SelectObject(dc, old_brush);
+    DeleteObject(fill);
+    SelectObject(dc, old_pen);
+    DeleteObject(face_pen);
+
     const COLORREF debug_color = importance_color(p.importance.score);
     HPEN pen = CreatePen(PS_SOLID, p.importance.score > .66 ? 3 : 2, debug_color);
-    auto old_pen = SelectObject(dc, pen);
+    old_pen = SelectObject(dc, pen);
 
     for (const auto& edge : edges) {
         const auto& a = p.corners[edge[0]];
@@ -648,10 +685,6 @@ private:
                 static_cast<LONG>(p.rect.right),
                 static_cast<LONG>(p.rect.bottom)
             };
-
-            HBRUSH fill = CreateSolidBrush(p.object->color);
-            FillRect(dc, &r, fill);
-            DeleteObject(fill);
 
             draw_oriented_box(dc, p);
 
