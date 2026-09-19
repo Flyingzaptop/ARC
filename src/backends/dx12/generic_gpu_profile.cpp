@@ -26,9 +26,28 @@ using Clock=std::chrono::steady_clock;
 constexpr unsigned max_spans=128,max_records=256,max_jobs=512,max_rows=16384;
 struct Module {HMODULE handle{};~Module(){if(handle)FreeLibrary(handle);}};
 struct Binding {UINT type{},slot{},space{},count{},dimension{};};
+std::atomic<std::size_t> captured_code_bytes{};
+struct CapturedCode {
+    std::vector<std::byte> bytes;
+    ~CapturedCode(){captured_code_bytes.fetch_sub(bytes.size());}
+};
+std::shared_ptr<const CapturedCode> capture_code(const D3D12_SHADER_BYTECODE& code){
+    // Explicit diagnostic opt-in, bounded in memory. File IO stays in the
+    // report worker, not in PSO creation or any render command hook.
+    static const bool enabled=[](){wchar_t value[8]{};return GetEnvironmentVariableW(L"ARC_CAPTURE_SHADER_CODE",value,8)==1&&value[0]==L'1';}();
+    if(!enabled||!code.pShaderBytecode||!code.BytecodeLength||code.BytecodeLength>2*1024*1024)return {};
+    auto result=std::make_shared<CapturedCode>();
+    constexpr std::size_t budget=64*1024*1024;
+    const auto old=captured_code_bytes.fetch_add(code.BytecodeLength);
+    if(old>budget-code.BytecodeLength){captured_code_bytes.fetch_sub(code.BytecodeLength);return {};}
+    try{const auto* start=static_cast<const std::byte*>(code.pShaderBytecode);result->bytes.assign(start,start+code.BytecodeLength);}
+    catch(...){captured_code_bytes.fetch_sub(code.BytecodeLength);throw;}
+    return result;
+}
 struct Shader {
     std::string hash;SIZE_T bytes{};UINT threads[3]{},instructions{},barriers{},atomics{};UINT64 requires_flags{};
     bool reflected{},bindings_truncated{},unbounded{};std::vector<Binding> bindings;
+    std::shared_ptr<const CapturedCode> captured;
 };
 struct Pipeline {std::uint64_t id{};bool compute{},depth_only{};UINT render_targets{};Shader shader;std::string vertex_hash;};
 struct Span {
@@ -101,6 +120,7 @@ public:
 };
 Shader inspect(const D3D12_SHADER_BYTECODE& code){
     Shader result;result.bytes=code.BytecodeLength;result.hash=digest(code);if(result.hash.empty())return result;
+    result.captured=capture_code(code);
     Module module;Ptr<ID3D12ShaderReflection> reflection;
     if(FAILED(D3DReflect(code.pShaderBytecode,code.BytecodeLength,IID_PPV_ARGS(&reflection)))){
         // Use only a compiler already loaded by the application. No implicit
@@ -158,6 +178,16 @@ void write_report(Session& session,unsigned pending){
             <<",\"begin_ticks\":"<<row.start<<",\"end_ticks\":"<<row.end<<",\"frequency\":"<<row.frequency<<",\"gpu_ms\":"<<double(row.end-row.start)*1000.0/double(row.frequency)<<'}';
     }
     out<<"],\"pipelines\":[";first=true;for(const auto& [id,p]:pipelines){if(!first)out<<',';first=false;shader_json(out,*p);}out<<"]}\n";out.close();
+    bool directory_created=false;auto code_directory=session.path;code_directory+=L".shaders";
+    std::set<std::string> exported;
+    for(const auto& [id,p]:pipelines){
+        (void)id;const auto& shader=p->shader;
+        if(!shader.captured||!exported.insert(shader.hash).second)continue;
+        if(!directory_created){if(!std::filesystem::create_directory(code_directory))throw std::runtime_error("Shader capture directory exists");directory_created=true;}
+        std::ofstream binary(code_directory/(shader.hash+".bin"),std::ios::binary);
+        binary.write(reinterpret_cast<const char*>(shader.captured->bytes.data()),static_cast<std::streamsize>(shader.captured->bytes.size()));binary.close();
+        if(!binary)throw std::runtime_error("Shader capture publication failed");
+    }
     if(!out||!MoveFileExW(temp.c_str(),session.path.c_str(),0))throw std::runtime_error("GPU profile publication failed");session.written=true;
 }
 }
