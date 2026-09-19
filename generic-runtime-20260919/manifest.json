@@ -1,0 +1,7 @@
+{
+  "source_commit": "a066bc5",
+  "game_binary_identification": "See launch.json in raw-evidence.zip; final initial-command and protected-swapchain changes validated natively only",
+  "archive_sha256": "9AF1C8FD1C52133E517352EB0DAB16A7964A5F6E3E265D7CF1640B4E0C536DDE",
+  "final_dll_sha256": "FD3F5EF113E803D18202E9DB29A17D641152FA2A0E7EC547E4A50C85311AAD3D",
+  "goal_2x_fps_achieved": false
+}

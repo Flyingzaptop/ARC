@@ -1,0 +1,730 @@
+Start testing: Sep 19 14:47 Центральноевропейский (лето)
+----------------------------------------------------------
+1/67 Testing: arc-descriptor-ledger-tests
+1/67 Test: arc-descriptor-ledger-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-descriptor-ledger-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-descriptor-ledger-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Descriptor ledger: million-slot deduplication, reuse, null/unknown distinction and bounded churn PASS
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-descriptor-ledger-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-descriptor-ledger-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/67 Testing: arc-gpu-attribution-tests
+2/67 Test: arc-gpu-attribution-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-gpu-attribution-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-gpu-attribution-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Mega D attribution: dependency, sync, overwrite, uncertainty, region, timing and bounds PASS
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"arc-gpu-attribution-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-gpu-attribution-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/67 Testing: arc-core-tests
+3/67 Test: arc-core-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-core-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-core-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.15 sec
+----------------------------------------------------------
+Test Passed.
+"arc-core-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-core-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/67 Testing: arc-resource-semantics-tests
+4/67 Test: arc-resource-semantics-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-resource-semantics-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-resource-semantics-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+resource-semantics-tests: PASS
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"arc-resource-semantics-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-resource-semantics-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/67 Testing: arc-scene-understanding-tests
+5/67 Test: arc-scene-understanding-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-scene-understanding-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-scene-understanding-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+scene-understanding-tests: PASS
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"arc-scene-understanding-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-scene-understanding-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/67 Testing: arc-residency-policy-tests
+6/67 Test: arc-residency-policy-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-residency-policy-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-residency-policy-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-residency-policy-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-residency-policy-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/67 Testing: arc-residency-autonomous-sim-tests
+7/67 Test: arc-residency-autonomous-sim-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-residency-autonomous-sim-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-residency-autonomous-sim-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+late_total=24 late_after_warmup=16 speculative=7 evictions=33 avg_resident=751.444 peak=1000
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-residency-autonomous-sim-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-residency-autonomous-sim-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/67 Testing: arc-residency-invariant-stress
+8/67 Test: arc-residency-invariant-stress
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-residency-invariant-stress.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-residency-invariant-stress" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+residency invariant stress passed
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Passed.
+"arc-residency-invariant-stress" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-residency-invariant-stress" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/67 Testing: arc-residency-workload-matrix-tests
+9/67 Test: arc-residency-workload-matrix-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-residency-workload-matrix-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-residency-workload-matrix-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+stable-cycle late=0 compulsory=0 predictable=0 evictions=6 promotions=0 avg=600 peak=1200
+phase-shift late=4 compulsory=4 predictable=0 evictions=10 promotions=0 avg=600 peak=1200
+streaming late=32 compulsory=32 predictable=0 evictions=55 promotions=0 avg=941 peak=3200
+mixed late=27 compulsory=27 predictable=0 evictions=38 promotions=0 avg=750 peak=1800
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-residency-workload-matrix-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-residency-workload-matrix-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/67 Testing: arc-texture-quality-policy-tests
+10/67 Test: arc-texture-quality-policy-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-texture-quality-policy-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-texture-quality-policy-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"arc-texture-quality-policy-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-texture-quality-policy-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/67 Testing: arc-texture-quality-invariant-stress
+11/67 Test: arc-texture-quality-invariant-stress
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-texture-quality-invariant-stress.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-texture-quality-invariant-stress" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.35 sec
+----------------------------------------------------------
+Test Passed.
+"arc-texture-quality-invariant-stress" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-texture-quality-invariant-stress" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/67 Testing: arc-memory-arbiter-tests
+12/67 Test: arc-memory-arbiter-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-memory-arbiter-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-memory-arbiter-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-memory-arbiter-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-memory-arbiter-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/67 Testing: arc-memory-planner-tests
+13/67 Test: arc-memory-planner-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-memory-planner-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-memory-planner-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-memory-planner-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-memory-planner-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/67 Testing: arc-candidate-surface-tests
+14/67 Test: arc-candidate-surface-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-candidate-surface-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-candidate-surface-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-candidate-surface-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-candidate-surface-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/67 Testing: arc-global-memory-scenario-tests
+15/67 Test: arc-global-memory-scenario-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-global-memory-scenario-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-global-memory-scenario-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-global-memory-scenario-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-global-memory-scenario-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/67 Testing: arc-transition-predictor-tests
+16/67 Test: arc-transition-predictor-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-transition-predictor-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-transition-predictor-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-transition-predictor-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-transition-predictor-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/67 Testing: arc-live-runtime-tests
+17/67 Test: arc-live-runtime-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-live-runtime-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-live-runtime-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-live-runtime-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-live-runtime-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/67 Testing: arc-runtime-event-bridge-tests
+18/67 Test: arc-runtime-event-bridge-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-runtime-event-bridge-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-runtime-event-bridge-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"arc-runtime-event-bridge-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-runtime-event-bridge-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/67 Testing: arc-runtime-coordinator-tests
+19/67 Test: arc-runtime-coordinator-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-runtime-coordinator-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-runtime-coordinator-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"arc-runtime-coordinator-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-runtime-coordinator-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/67 Testing: arc-runtime-integration-tests
+20/67 Test: arc-runtime-integration-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-runtime-integration-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-runtime-integration-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-runtime-integration-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-runtime-integration-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/67 Testing: arc-multisession-stress
+21/67 Test: arc-multisession-stress
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-multisession-stress.exe" "3" "2000000"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-multisession-stress" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+round 1: 2000000 monotonic events
+round 2: 2000000 monotonic events
+round 3: 2000000 monotonic events
+<end of output>
+Test time =   6.78 sec
+----------------------------------------------------------
+Test Passed.
+"arc-multisession-stress" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-multisession-stress" time elapsed: 00:00:06
+----------------------------------------------------------
+
+22/67 Testing: arc-dx12-view-tests
+22/67 Test: arc-dx12-view-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-dx12-view-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-dx12-view-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"arc-dx12-view-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-dx12-view-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/67 Testing: arc-steam-library-tests
+36/67 Test: arc-steam-library-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-steam-library-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-steam-library-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"arc-steam-library-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-steam-library-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+37/67 Testing: arc-adaptive-quality-tests
+37/67 Test: arc-adaptive-quality-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-adaptive-quality-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-adaptive-quality-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+adaptive-quality-tests: PASS
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"arc-adaptive-quality-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-adaptive-quality-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/67 Testing: arc-action-effect-tracker-tests
+38/67 Test: arc-action-effect-tracker-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-action-effect-tracker-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-action-effect-tracker-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+action-effect-tracker-tests: PASS
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"arc-action-effect-tracker-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-action-effect-tracker-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+39/67 Testing: arc-adaptive-quality-controller-tests
+39/67 Test: arc-adaptive-quality-controller-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-adaptive-quality-controller-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-adaptive-quality-controller-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+adaptive-quality-controller-tests: PASS
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"arc-adaptive-quality-controller-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-adaptive-quality-controller-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+40/67 Testing: arc-quality-profile-tests
+40/67 Test: arc-quality-profile-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-quality-profile-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-quality-profile-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+quality-profile-tests: PASS
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-quality-profile-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-quality-profile-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+43/67 Testing: arc-closed-loop-quality-sim-tests
+43/67 Test: arc-closed-loop-quality-sim-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-closed-loop-quality-sim-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-closed-loop-quality-sim-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+closed-loop-quality-sim-tests: PASS baseline_overloaded=120 arc_overloaded=27 degrade=5 restore=5 direction_changes=3
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-closed-loop-quality-sim-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-closed-loop-quality-sim-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+44/67 Testing: arc-quality-restore-memory-pressure-tests
+44/67 Test: arc-quality-restore-memory-pressure-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-quality-restore-memory-pressure-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-quality-restore-memory-pressure-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+quality-restore-memory-pressure-tests: PASS
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"arc-quality-restore-memory-pressure-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-quality-restore-memory-pressure-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+46/67 Testing: arc-quality-admission-tests
+46/67 Test: arc-quality-admission-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-quality-admission-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-quality-admission-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+quality-admission-tests: PASS
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"arc-quality-admission-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-quality-admission-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+47/67 Testing: arc-global-action-arbiter-tests
+47/67 Test: arc-global-action-arbiter-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-global-action-arbiter-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-global-action-arbiter-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+global-action-arbiter-tests: PASS
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"arc-global-action-arbiter-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-global-action-arbiter-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+48/67 Testing: arc-unified-runtime-governor-tests
+48/67 Test: arc-unified-runtime-governor-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-unified-runtime-governor-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-unified-runtime-governor-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+unified-runtime-governor-tests: PASS
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"arc-unified-runtime-governor-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-unified-runtime-governor-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+50/67 Testing: arc-dx12-host-adapter-tests
+50/67 Test: arc-dx12-host-adapter-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-dx12-host-adapter-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-dx12-host-adapter-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+dx12-host-adapter-tests: PASS
+<end of output>
+Test time =   0.12 sec
+----------------------------------------------------------
+Test Passed.
+"arc-dx12-host-adapter-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-dx12-host-adapter-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+51/67 Testing: arc-dx12-host-adapter-surface-tests
+51/67 Test: arc-dx12-host-adapter-surface-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-dx12-host-adapter-surface-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-dx12-host-adapter-surface-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+dx12-host-adapter-surface-tests: PASS
+<end of output>
+Test time =   0.18 sec
+----------------------------------------------------------
+Test Passed.
+"arc-dx12-host-adapter-surface-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-dx12-host-adapter-surface-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+53/67 Testing: arc-temporal-visibility-tests
+53/67 Test: arc-temporal-visibility-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-temporal-visibility-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-temporal-visibility-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Stage 18 temporal visibility tests PASS
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"arc-temporal-visibility-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-temporal-visibility-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+54/67 Testing: arc-visual-importance-tests
+54/67 Test: arc-visual-importance-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-visual-importance-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-visual-importance-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Stage 19 visual importance tests PASS
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"arc-visual-importance-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-visual-importance-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+55/67 Testing: arc-mega-e-scenario-tests
+55/67 Test: arc-mega-e-scenario-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-mega-e-scenario-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-mega-e-scenario-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Mega E Stage 18+19 scenario tests PASS
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"arc-mega-e-scenario-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-mega-e-scenario-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+57/67 Testing: arc-perceptual-trial-tests
+57/67 Test: arc-perceptual-trial-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-perceptual-trial-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-perceptual-trial-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Mega F critic, admission, transactional retention and fail-closed rollback PASS
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Passed.
+"arc-perceptual-trial-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-perceptual-trial-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+59/67 Testing: arc-predictive-perceptual-tests
+59/67 Test: arc-predictive-perceptual-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-predictive-perceptual-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-predictive-perceptual-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Mega G predictive restore, bounded learning, quarantine and versioned recovery PASS
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"arc-predictive-perceptual-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-predictive-perceptual-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+61/67 Testing: arc-lifecycle-tests
+61/67 Test: arc-lifecycle-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-lifecycle-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-lifecycle-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+lifecycle-tests: PASS (10000 lifetimes; in-flight retirement rejected)
+<end of output>
+Test time =   0.12 sec
+----------------------------------------------------------
+Test Passed.
+"arc-lifecycle-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-lifecycle-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+62/67 Testing: arc-test-assertions-tests
+62/67 Test: arc-test-assertions-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-test-assertions-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-test-assertions-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"arc-test-assertions-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-test-assertions-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+63/67 Testing: arc-wicked-telemetry-tests
+63/67 Test: arc-wicked-telemetry-tests
+Command: "C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc-wicked-telemetry-tests.exe"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-wicked-telemetry-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"arc-wicked-telemetry-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-wicked-telemetry-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+64/67 Testing: arc-mega-d-validation-tests
+64/67 Test: arc-mega-d-validation-tests
+Command: "C:/Users/r3d_flzp/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "C:/Users/r3d_flzp/Desktop/ARC-perceptual/tests/mega_d_validation_tests.ps1"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-mega-d-validation-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+Mega D independent validator and tamper rejection PASS
+<end of output>
+Test time =   1.23 sec
+----------------------------------------------------------
+Test Passed.
+"arc-mega-d-validation-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-mega-d-validation-tests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+65/67 Testing: arc-wicked-audit-boundary-tests
+65/67 Test: arc-wicked-audit-boundary-tests
+Command: "C:/Users/r3d_flzp/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "C:/Users/r3d_flzp/Desktop/ARC-perceptual/tests/wicked_audit_boundary_tests.ps1"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-wicked-audit-boundary-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+wicked-audit-boundary-tests: PASS
+<end of output>
+Test time =   0.82 sec
+----------------------------------------------------------
+Test Passed.
+"arc-wicked-audit-boundary-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-wicked-audit-boundary-tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+66/67 Testing: arc-wicked-presentation-contract-tests
+66/67 Test: arc-wicked-presentation-contract-tests
+Command: "C:/Users/r3d_flzp/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "C:/Users/r3d_flzp/Desktop/ARC-perceptual/tests/wicked_presentation_contract_tests.ps1"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-wicked-presentation-contract-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+wicked-presentation-contract-tests: PASS
+<end of output>
+Test time =   1.19 sec
+----------------------------------------------------------
+Test Passed.
+"arc-wicked-presentation-contract-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-wicked-presentation-contract-tests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+67/67 Testing: arc-stage15-validation-tests
+67/67 Test: arc-stage15-validation-tests
+Command: "C:/Users/r3d_flzp/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "C:/Users/r3d_flzp/Desktop/ARC-perceptual/tests/stage15_validation_tests.ps1"
+Directory: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+"arc-stage15-validation-tests" start time: Sep 19 14:47 Центральноевропейский (лето)
+Output:
+----------------------------------------------------------
+stage15-validation-tests: PASS
+<end of output>
+Test time =   1.53 sec
+----------------------------------------------------------
+Test Passed.
+"arc-stage15-validation-tests" end time: Sep 19 14:47 Центральноевропейский (лето)
+"arc-stage15-validation-tests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+End testing: Sep 19 14:47 Центральноевропейский (лето)
+
+stress =   6.78 sec*proc
+
