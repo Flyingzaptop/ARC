@@ -14,7 +14,7 @@ PerceptualCandidate candidate(){
     c.importance.id=42;c.importance.score=.1;c.importance.confidence=.95;c.measured_cost_ms=4;c.expected_gain_ms=1;return c;
 }
 struct Host final:PerceptualProbeHost {
-    bool changed{},fail_restore{},fail_prepare{},damaged{},drift{},throw_capture{},fail_apply{},fail_reapply{};
+    bool changed{},fail_restore{},fail_prepare{},damaged{},drift{},throw_capture{},fail_apply{},fail_reapply{},stale_reference{};
     int applies{},restores{},finishes{};
     bool prepare(const PerceptualCapability&)override{return !fail_prepare;}
     bool apply(const PerceptualCapability&)override{++applies;changed=true;return !fail_apply&&!(fail_reapply&&applies==2);}
@@ -22,6 +22,7 @@ struct Host final:PerceptualProbeHost {
     std::optional<ProbeCapture> capture(ProbePhase phase)override{
         if(throw_capture&&phase==ProbePhase::Modified)throw std::runtime_error("readback failed");
         auto p=image(changed?3:4,changed&&damaged?.8f:.5f);
+        if(stale_reference&&phase==ProbePhase::ReferenceBefore)++p.generation;
         if(drift&&phase==ProbePhase::ReferenceAfter)++p.state_key;
         return p;
     }
@@ -46,6 +47,8 @@ int main(){
     b=image(3);b.gpu_ms.resize(1);check(critic.evaluate(a,b,c).reason==CriticReason::InvalidTiming,"sample minimum");
     b=image(3);b.gpu_ms[0]=-1;check(critic.evaluate(a,b,c).reason==CriticReason::InvalidTiming,"invalid timestamp");
     b=image(3);b.gpu_ms[0]=100;check(critic.evaluate(a,b,c).accepted(),"median resists isolated timing outlier");
+    a.gpu_ms.assign(8,std::numeric_limits<double>::max());b.gpu_ms=a.gpu_ms;c.gpu_ms=a.gpu_ms;
+    check(critic.evaluate(a,b,c).reason==CriticReason::NoBenefit,"finite extreme medians cannot fabricate infinite gain");
     auto cap=candidate();PerceptualTrialController ctrl;Host host;
     check(ctrl.choose(std::span(&cap,1))==0,"admission");
     auto result=ctrl.trial(host,cap);check(result.status==TrialStatus::Retained&&host.changed&&host.restores==1&&host.applies==2,"restore before retention");
@@ -58,6 +61,8 @@ int main(){
     check(result.status==TrialStatus::ProbeUnavailable&&!host.changed&&host.finishes==1,"exception cleanup");
     host=Host{};host.fail_apply=true;result=ctrl.trial(host,cap);
     check(result.status==TrialStatus::Rejected&&!host.changed,"partially failed apply is restored");
+    host=Host{};host.stale_reference=true;result=ctrl.trial(host,cap);
+    check(result.status==TrialStatus::Rejected&&host.applies==0&&!host.changed,"stale reference must prevent even temporary mutation");
     host=Host{};host.fail_reapply=true;result=ctrl.trial(host,cap);
     check(result.status==TrialStatus::Rejected&&!host.changed,"failed retention is restored");
     host=Host{};host.fail_restore=true;result=ctrl.trial(host,cap);

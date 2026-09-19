@@ -17,7 +17,7 @@ std::optional<double> median(const std::vector<double>& values,const PerceptualG
     if(values.size()<c.minimum_timing_samples||values.size()>c.max_timing_samples)return {};
     if(!std::all_of(values.begin(),values.end(),[](double x){return std::isfinite(x)&&x>0;}))return {};
     auto copy=values;std::sort(copy.begin(),copy.end());const auto n=copy.size();
-    return n%2?copy[n/2]:(copy[n/2-1]+copy[n/2])/2;
+    return n%2?copy[n/2]:copy[n/2-1]*.5+copy[n/2]*.5;
 }
 }
 PerceptualCritic::PerceptualCritic(PerceptualGuardConfig config):config_(config){
@@ -95,7 +95,8 @@ PerceptualTrialResult PerceptualTrialController::trial(PerceptualProbeHost& host
         if(!prepared){r.status=TrialStatus::ProbeUnavailable;host.finish();busy_=false;return r;}
         active_=candidate.capability;owner_=&host;
         const auto a=host.capture(ProbePhase::ReferenceBefore);
-        const bool applied=a.has_value()&&host.apply(*active_);
+        const bool usable=a&&a->generation==active_->generation&&valid_image(*a,critic_.config())&&median(a->gpu_ms,critic_.config()).has_value();
+        const bool applied=usable&&host.apply(*active_);
         const auto b=applied?host.capture(ProbePhase::Modified):std::nullopt;
         r.reference_restored=host.restore(*active_);
         if(!r.reference_restored){faulted_=true;r.status=TrialStatus::RollbackFailed;}
