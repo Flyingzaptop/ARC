@@ -12,6 +12,7 @@
 #include <fstream>
 #include <mutex>
 #include <array>
+#include <set>
 
 namespace {
 namespace runtime=arc::dx12::generic;
@@ -19,6 +20,7 @@ namespace mirror=arc::dx12::mirror;
 std::atomic<bool> mirror_hooks_ready{};
 std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> passive_hooks{};
+std::set<void*> detailed_only_targets;
 std::array<void*,256> installed_targets{};std::size_t installed_count{};
 std::mutex hook_mode_mutex;
 std::atomic<bool> initialized{},initializing{},recording{};
@@ -64,10 +66,12 @@ void STDMETHODCALLTYPE execute(ID3D12CommandQueue* self,UINT count,ID3D12Command
     if(!observe_api()||!mirror::execute(self,count,commands))original_execute(self,count,commands);if(observe_api()){submits.fetch_add(1,std::memory_order_relaxed);lists.fetch_add(count,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::submit(self,count,commands);}
 }
 void STDMETHODCALLTYPE draw(ID3D12GraphicsCommandList* self,UINT vertices,UINT instances,UINT start,UINT instance){
-    original_draw(self,vertices,instances,start,instance);if(observe_api()){auto shadow=mirror::acquire_draw(self);if(shadow.list){mirror::InternalCall guard;const bool changed=mirror::before_draw(shadow);original_draw(shadow.list,vertices,instances,start,instance);if(changed)mirror::after_draw(shadow);}}if(observe_api()){draws.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,0,UINT64(vertices)*instances);}
+    auto lease=observe_api()?mirror::acquire_draw(self):mirror::Lease{};const bool changed=mirror::before_draw(lease);
+    {mirror::InternalCall native_call;original_draw(self,vertices,instances,start,instance);}if(changed)mirror::after_draw(lease);if(observe_api()){draws.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,0,UINT64(vertices)*instances);}
 }
 void STDMETHODCALLTYPE draw_indexed(ID3D12GraphicsCommandList* self,UINT indices,UINT instances,UINT start,INT base,UINT instance){
-    original_indexed(self,indices,instances,start,base,instance);if(observe_api()){auto shadow=mirror::acquire_draw(self);if(shadow.list){mirror::InternalCall guard;const bool changed=mirror::before_draw(shadow);original_indexed(shadow.list,indices,instances,start,base,instance);if(changed)mirror::after_draw(shadow);}}if(observe_api()){indexed.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,1,UINT64(indices)*instances);}
+    auto lease=observe_api()?mirror::acquire_draw(self):mirror::Lease{};const bool changed=mirror::before_draw(lease);
+    {mirror::InternalCall native_call;original_indexed(self,indices,instances,start,base,instance);}if(changed)mirror::after_draw(lease);if(observe_api()){indexed.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,1,UINT64(indices)*instances);}
 }
 void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* self,UINT x,UINT y,UINT z){
     original_dispatch(self,x,y,z);if(observe_api())mirror::record(original_dispatch,self,x,y,z);if(observe_api()){dispatches.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,2,UINT64(x)*y*z);}
@@ -125,17 +129,16 @@ void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU
 HRESULT STDMETHODCALLTYPE signal(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_signal(q,f,value);if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,false);return result;}
 HRESULT STDMETHODCALLTYPE wait(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_wait(q,f,value);if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,true);return result;}
 void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignature* signature,UINT count,ID3D12Resource* arguments,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){
-    original_indirect(c,signature,count,arguments,offset,counts,count_offset);
-    if(observe_api()){
-        if(mirror::requested_rate()){
-            if(mirror::raster_indirect(signature)){auto shadow=mirror::acquire_draw(c);if(shadow.list){mirror::InternalCall guard;const bool changed=mirror::before_draw(shadow);original_indirect(shadow.list,signature,count,arguments,offset,counts,count_offset);if(changed)mirror::after_draw(shadow);}}
-            else mirror::invalidate(c);
-        }
-        if(detailed_tracking)runtime::unsupported();
+    mirror::Lease lease;
+    if(observe_api()&&mirror::requested_rate()){
+        if(mirror::raster_indirect(signature))lease=mirror::acquire_draw(c);else mirror::invalidate(c);
     }
+    const bool changed=mirror::before_draw(lease);
+    {mirror::InternalCall native_call;original_indirect(c,signature,count,arguments,offset,counts,count_offset);}if(changed)mirror::after_draw(lease);
+    if(observe_api()&&detailed_tracking)runtime::unsupported();
 }
 
-void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* c,ID3D12GraphicsCommandList* b){original_bundle(c,b);if(observe_api()){mirror::invalidate(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}}
+void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* c,ID3D12GraphicsCommandList* b){if(observe_api())mirror::invalidate(c);original_bundle(c,b);if(observe_api()){if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}}
 void STDMETHODCALLTYPE barriers(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RESOURCE_BARRIER* b){original_barriers(c,count,b);if(observe_api())mirror::record(original_barriers,c,count,b);if(observe_api())for(UINT i=0;i<count;++i)if(b[i].Type==D3D12_RESOURCE_BARRIER_TYPE_ALIASING)if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}
 HRESULT STDMETHODCALLTYPE reset(ID3D12GraphicsCommandList* c,ID3D12CommandAllocator* a,ID3D12PipelineState* p){const auto result=original_reset(c,a,p);if(SUCCEEDED(result)&&observe_api()){mirror::begin(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::begin(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);}return result;}
 HRESULT STDMETHODCALLTYPE create_command(ID3D12Device* d,UINT node,D3D12_COMMAND_LIST_TYPE type,ID3D12CommandAllocator* a,ID3D12PipelineState* p,REFIID iid,void** out){
@@ -145,7 +148,7 @@ HRESULT STDMETHODCALLTYPE create_command(ID3D12Device* d,UINT node,D3D12_COMMAND
             mirror::begin(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::begin(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);ID3D12GraphicsCommandList_Release(c);
         }}return result;
 }
-HRESULT STDMETHODCALLTYPE close(ID3D12GraphicsCommandList* c){const auto result=original_close(c);if(SUCCEEDED(result)&&observe_api()){mirror::close(c);if(detailed_tracking.load(std::memory_order_relaxed))runtime::close(c);}return result;}
+HRESULT STDMETHODCALLTYPE close(ID3D12GraphicsCommandList* c){if(observe_api())mirror::close(c);const auto result=original_close(c);if(SUCCEEDED(result)&&observe_api()){if(detailed_tracking.load(std::memory_order_relaxed))runtime::close(c);}return result;}
 void STDMETHODCALLTYPE pipeline(ID3D12GraphicsCommandList* c,ID3D12PipelineState* p){original_pipeline(c,p);if(observe_api())mirror::record(original_pipeline,c,p);if(observe_api()){mirror::pipeline(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);}}
 void STDMETHODCALLTYPE targets(ID3D12GraphicsCommandList* c,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* h,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth){original_targets(c,count,h,contiguous,depth);if(observe_api())mirror::record(original_targets,c,count,h,contiguous,depth);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::targets(c,count,h,contiguous,depth);}
 void STDMETHODCALLTYPE viewport(ID3D12GraphicsCommandList* c,UINT count,const D3D12_VIEWPORT* v){original_viewport(c,count,v);if(observe_api())mirror::record(original_viewport,c,count,v);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::viewport(c,count,v);}
@@ -176,7 +179,11 @@ HRESULT STDMETHODCALLTYPE stream_pso(ID3D12Device2* d,const D3D12_PIPELINE_STATE
 }
 using RateFn=decltype(ID3D12GraphicsCommandList5Vtbl::RSSetShadingRate);RateFn original_rate{};
 void STDMETHODCALLTYPE rate(ID3D12GraphicsCommandList5* c,D3D12_SHADING_RATE value,const D3D12_SHADING_RATE_COMBINER* combiners){
-    original_rate(c,value,combiners);if(observe_api()){mirror::shading_rate(reinterpret_cast<ID3D12GraphicsCommandList*>(c),value,combiners);mirror::record(original_rate,c,value,combiners);}
+    if(observe_api())mirror::shading_rate(reinterpret_cast<ID3D12GraphicsCommandList*>(c),value,combiners);original_rate(c,value,combiners);
+}
+using ImageRateFn=decltype(ID3D12GraphicsCommandList5Vtbl::RSSetShadingRateImage);ImageRateFn original_image_rate{};
+void STDMETHODCALLTYPE image_rate(ID3D12GraphicsCommandList5* c,ID3D12Resource* image){
+    if(observe_api())mirror::shading_image(reinterpret_cast<ID3D12GraphicsCommandList*>(c),image);original_image_rate(c,image);
 }
 template<int Tag,class Fn,bool Copy>struct ExtraCommandHook;
 template<int Tag,class R,class Self,class... Args,bool Copy>
@@ -199,15 +206,18 @@ template<class T>bool install(T target,T replacement,T* original){
     const auto status=MH_CreateHook(reinterpret_cast<void*>(target),reinterpret_cast<void*>(replacement),reinterpret_cast<void**>(original));
     if(status!=MH_OK){++hook_failures;return false;}installed_targets[installed_count++]=reinterpret_cast<void*>(target);return true;
 }
+template<class T>bool install_detailed(T target,T replacement,T* original){
+    const bool ok=install(target,replacement,original);if(ok)detailed_only_targets.insert(reinterpret_cast<void*>(target));return ok;
+}
 bool set_passive_hooks(bool passive){
-    std::lock_guard lock(hook_mode_mutex);if(passive_hooks==passive)return true;
-    // The first two installed hooks are Present and Present1. Keep those for
-    // cadence measurement; remove all render-call trampolines from the baseline.
-    for(std::size_t i=2;i<installed_count;++i){const auto result=passive?MH_QueueDisableHook(installed_targets[i]):MH_QueueEnableHook(installed_targets[i]);if(result!=MH_OK)return false;}
+    std::lock_guard lock(hook_mode_mutex);
+    // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
+    // can contain a rate image, which must be neutralized even in passive mode.
+    for(std::size_t i=3;i<installed_count;++i){const bool enabled=!passive&&(detailed_tracking||!detailed_only_targets.contains(installed_targets[i]));const auto result=enabled?MH_QueueEnableHook(installed_targets[i]):MH_QueueDisableHook(installed_targets[i]);if(result!=MH_OK)return false;}
     if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;return true;
 }
 
-template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;return install(target,Hook::call,&Hook::original);}
+template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
 
 void snapshot(){
     static std::mutex snapshot_mutex;std::lock_guard snapshot_lock(snapshot_mutex);
@@ -260,39 +270,39 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(queue->lpVtbl->ExecuteCommandLists,execute,&original_execute)&&ok;
         ok=install(command->lpVtbl->DrawInstanced,draw,&original_draw)&&ok;
         ok=install(command->lpVtbl->DrawIndexedInstanced,draw_indexed,&original_indexed)&&ok;
-        ok=install(command->lpVtbl->Dispatch,dispatch,&original_dispatch)&&ok;
-        ok=install(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
+        ok=install_detailed(command->lpVtbl->Dispatch,dispatch,&original_dispatch)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
         ok=install(factory->lpVtbl->CreateSwapChainForHwnd,swap_hwnd,&original_swap_hwnd)&&ok;
         ok=install(reinterpret_cast<SwapFn>(factory->lpVtbl->CreateSwapChain),create_swap,&original_swap)&&ok;
-        ok=install(device->lpVtbl->CreateDescriptorHeap,heap,&original_heap)&&ok;
-        ok=install(device->lpVtbl->CreateShaderResourceView,srv,&original_srv)&&ok;
-        ok=install(device->lpVtbl->CreateUnorderedAccessView,uav,&original_uav)&&ok;
-        ok=install(device->lpVtbl->CreateRenderTargetView,rtv,&original_rtv)&&ok;
-        ok=install(device->lpVtbl->CreateDepthStencilView,dsv,&original_dsv)&&ok;
-        ok=install(device->lpVtbl->CreateSampler,sampler,&original_sampler)&&ok;
-        ok=install(device->lpVtbl->CreateConstantBufferView,cbv,&original_cbv)&&ok;
-        ok=install(device->lpVtbl->CopyDescriptorsSimple,descriptors,&original_descriptors)&&ok;
-        ok=install(device->lpVtbl->CopyDescriptors,descriptor_ranges,&original_descriptor_ranges)&&ok;
-        ok=install(queue->lpVtbl->Signal,signal,&original_signal)&&ok;
-        ok=install(queue->lpVtbl->Wait,wait,&original_wait)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateDescriptorHeap,heap,&original_heap)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateShaderResourceView,srv,&original_srv)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateUnorderedAccessView,uav,&original_uav)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateRenderTargetView,rtv,&original_rtv)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateDepthStencilView,dsv,&original_dsv)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateSampler,sampler,&original_sampler)&&ok;
+        ok=install_detailed(device->lpVtbl->CreateConstantBufferView,cbv,&original_cbv)&&ok;
+        ok=install_detailed(device->lpVtbl->CopyDescriptorsSimple,descriptors,&original_descriptors)&&ok;
+        ok=install_detailed(device->lpVtbl->CopyDescriptors,descriptor_ranges,&original_descriptor_ranges)&&ok;
+        ok=install_detailed(queue->lpVtbl->Signal,signal,&original_signal)&&ok;
+        ok=install_detailed(queue->lpVtbl->Wait,wait,&original_wait)&&ok;
         ok=install(command->lpVtbl->ExecuteIndirect,indirect,&original_indirect)&&ok;
         ok=install(command->lpVtbl->ExecuteBundle,bundle,&original_bundle)&&ok;
-        ok=install(command->lpVtbl->ResourceBarrier,barriers,&original_barriers)&&ok;
+        ok=install_detailed(command->lpVtbl->ResourceBarrier,barriers,&original_barriers)&&ok;
         ok=install(command->lpVtbl->Reset,reset,&original_reset)&&ok;
         ok=install(device->lpVtbl->CreateCommandList,create_command,&original_create_command)&&ok;
         ok=install(command->lpVtbl->Close,close,&original_close)&&ok;
         ok=install(command->lpVtbl->SetPipelineState,pipeline,&original_pipeline)&&ok;
-        ok=install(command->lpVtbl->OMSetRenderTargets,targets,&original_targets)&&ok;
-        ok=install(command->lpVtbl->RSSetViewports,viewport,&original_viewport)&&ok;
-        ok=install(command->lpVtbl->RSSetScissorRects,scissor,&original_scissor)&&ok;
-        ok=install(command->lpVtbl->SetDescriptorHeaps,bind_heaps,&original_bind_heaps)&&ok;
-        ok=install(command->lpVtbl->SetGraphicsRootDescriptorTable,graphics_table,&original_graphics_table)&&ok;
-        ok=install(command->lpVtbl->SetComputeRootDescriptorTable,compute_table,&original_compute_table)&&ok;
-        ok=install(command->lpVtbl->SetGraphicsRootSignature,graphics_root,&original_graphics_root)&&ok;
-        ok=install(command->lpVtbl->SetComputeRootSignature,compute_root,&original_compute_root)&&ok;
-        ok=install(command->lpVtbl->CopyResource,copy,&original_copy)&&ok;
-        ok=install(command->lpVtbl->CopyBufferRegion,copy_buffer,&original_copy_buffer)&&ok;
-        ok=install(command->lpVtbl->ClearRenderTargetView,clear,&original_clear)&&ok;
+        ok=install_detailed(command->lpVtbl->OMSetRenderTargets,targets,&original_targets)&&ok;
+        ok=install_detailed(command->lpVtbl->RSSetViewports,viewport,&original_viewport)&&ok;
+        ok=install_detailed(command->lpVtbl->RSSetScissorRects,scissor,&original_scissor)&&ok;
+        ok=install_detailed(command->lpVtbl->SetDescriptorHeaps,bind_heaps,&original_bind_heaps)&&ok;
+        ok=install_detailed(command->lpVtbl->SetGraphicsRootDescriptorTable,graphics_table,&original_graphics_table)&&ok;
+        ok=install_detailed(command->lpVtbl->SetComputeRootDescriptorTable,compute_table,&original_compute_table)&&ok;
+        ok=install_detailed(command->lpVtbl->SetGraphicsRootSignature,graphics_root,&original_graphics_root)&&ok;
+        ok=install_detailed(command->lpVtbl->SetComputeRootSignature,compute_root,&original_compute_root)&&ok;
+        ok=install_detailed(command->lpVtbl->CopyResource,copy,&original_copy)&&ok;
+        ok=install_detailed(command->lpVtbl->CopyBufferRegion,copy_buffer,&original_copy_buffer)&&ok;
+        ok=install_detailed(command->lpVtbl->ClearRenderTargetView,clear,&original_clear)&&ok;
         bool mirror_ok=true;
         mirror_ok=install(device->lpVtbl->CreateCommandSignature,command_signature,&original_signature)&&mirror_ok;
         {ID3D12Device2* extra=nullptr;if(SUCCEEDED(ID3D12Device_QueryInterface(device,IID_ID3D12Device2,reinterpret_cast<void**>(&extra)))){
@@ -356,7 +366,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
             mirror_ok=install_extra<409,false>(extra->lpVtbl->DispatchRays)&&mirror_ok;
             ID3D12GraphicsCommandList4_Release(extra);}}
         {ID3D12GraphicsCommandList5* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList5,reinterpret_cast<void**>(&extra)))){
-            mirror_ok=install_extra<501,true>(extra->lpVtbl->RSSetShadingRateImage)&&mirror_ok;
+            mirror_ok=install(extra->lpVtbl->RSSetShadingRateImage,image_rate,&original_image_rate)&&mirror_ok;
             mirror_ok=install(extra->lpVtbl->RSSetShadingRate,rate,&original_rate)&&mirror_ok;
             ID3D12GraphicsCommandList5_Release(extra);}}
         {ID3D12GraphicsCommandList6* extra=nullptr;if(SUCCEEDED(ID3D12GraphicsCommandList_QueryInterface(command,IID_ID3D12GraphicsCommandList6,reinterpret_cast<void**>(&extra)))){
@@ -408,5 +418,5 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){
     return mirror::configure(D3D12_SHADING_RATE_2X2)?0:4;
 }
 
-extern "C" __declspec(dllexport) DWORD WINAPI ArcUseLeanMode(void*){detailed_tracking=false;runtime::observation_mode_changed();return 0;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcUseLeanMode(void*){detailed_tracking=false;runtime::observation_mode_changed();return set_passive_hooks(passive_hooks)?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcUsePassiveMode(void*){mirror::configure(0);detailed_tracking=false;runtime::observation_mode_changed();return set_passive_hooks(true)?0:1;}

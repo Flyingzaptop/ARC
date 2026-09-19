@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <d3d12.h>
+#include <d3d12sdklayers.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <filesystem>
@@ -16,13 +17,15 @@ void hr(HRESULT r){if(FAILED(r))throw std::runtime_error("HRESULT "+std::to_stri
 int wmain(int argc,wchar_t** argv)try{
     check(argc==3||argc==4,"DLL and fresh output directory required; optional --stream-renderpass[-lean][-indirect]");const bool stream_pass=argc==4;const std::wstring options=argc==4?argv[3]:L"";const bool lean_mode=options.find(L"lean")!=std::wstring::npos,indirect=options.find(L"indirect")!=std::wstring::npos;std::filesystem::path root=std::filesystem::absolute(argv[2]);
     check(!std::filesystem::exists(root),"Fresh directory required");std::filesystem::create_directories(root);
+    ComPtr<ID3D12Debug> debug; if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))debug->EnableDebugLayer();
     auto module=LoadLibraryW(argv[1]);check(module!=nullptr,"Load observer");using Api=DWORD(WINAPI*)(void*);
     auto init=reinterpret_cast<Api>(GetProcAddress(module,"ArcInitialize"));auto mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalVrs"));auto snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));
     auto metrics=(root/L"runtime.json").wstring();check(init&&mode&&snapshot&&init(metrics.data())==0,"Initialize mirror");
     if(lean_mode){auto lean=reinterpret_cast<Api>(GetProcAddress(module,"ArcUseLeanMode"));check(lean&&lean(nullptr)==0,"Disable detailed observer independently of mirror");}
     ComPtr<ID3D12Device> device;hr(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)));
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 caps{};hr(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,&caps,sizeof(caps)));
-    if(caps.VariableShadingRateTier==D3D12_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED)return 77;
+    if(caps.VariableShadingRateTier<D3D12_VARIABLE_SHADING_RATE_TIER_2)return 77;
+    ComPtr<ID3D12InfoQueue> diagnostics;device.As(&diagnostics);
     D3D12_COMMAND_QUEUE_DESC qd{};ComPtr<ID3D12CommandQueue> queue;hr(device->CreateCommandQueue(&qd,IID_PPV_ARGS(&queue)));
     const char* shader=R"(
     struct V {float4 p:SV_Position;};
@@ -77,16 +80,17 @@ int wmain(int argc,wchar_t** argv)try{
     D3D12_QUERY_HEAP_DESC qh{};qh.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;qh.Count=2;ComPtr<ID3D12QueryHeap> query;hr(device->CreateQueryHeap(&qh,IID_PPV_ARGS(&query)));
     ComPtr<ID3D12CommandAllocator> allocator;hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)));
     ComPtr<ID3D12GraphicsCommandList> commands;hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),pso.Get(),IID_PPV_ARGS(&commands)));hr(commands->Close());
-    auto record=[&](bool unsupported){hr(allocator->Reset());hr(commands->Reset(allocator.Get(),pso.Get()));
+    auto record=[&](bool unsupported,bool late_unsupported=false,bool app_coarse=false,bool change_rate_after_draw=false){hr(allocator->Reset());hr(commands->Reset(allocator.Get(),pso.Get()));
         if(unsupported)commands->ClearState(pso.Get()); // deliberately excluded mirror API
         commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);commands->SetGraphicsRootSignature(roots.Get());commands->SetPipelineState(pso.Get());
         D3D12_VIEWPORT viewport{0,0,1280,720,0,1};D3D12_RECT scissor{0,0,1280,720};commands->RSSetViewports(1,&viewport);commands->RSSetScissorRects(1,&scissor);
         ComPtr<ID3D12GraphicsCommandList4> pass;
         if(stream_pass){hr(commands.As(&pass));D3D12_RENDER_PASS_RENDER_TARGET_DESC target_desc{};target_desc.cpuDescriptor=rtv;target_desc.BeginningAccess.Type=D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;target_desc.EndingAccess.Type=D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;pass->BeginRenderPass(1,&target_desc,nullptr,D3D12_RENDER_PASS_FLAG_NONE);}
         else commands->OMSetRenderTargets(1,&rtv,FALSE,nullptr);commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        ComPtr<ID3D12GraphicsCommandList5> v5;hr(commands.As(&v5));v5->RSSetShadingRate(D3D12_SHADING_RATE_1X1,nullptr);
+        ComPtr<ID3D12GraphicsCommandList5> v5;hr(commands.As(&v5));v5->RSSetShadingRate(app_coarse?D3D12_SHADING_RATE_2X1:D3D12_SHADING_RATE_1X1,nullptr);
         if(indirect)commands->ExecuteIndirect(indirect_signature.Get(),1,indirect_arguments.Get(),0,nullptr,0);else commands->DrawInstanced(3,1,0,0);
-        if(pass)pass->EndRenderPass();commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);commands->ResolveQueryData(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,times.Get(),0);
+        if(change_rate_after_draw){v5->RSSetShadingRate(D3D12_SHADING_RATE_2X1,nullptr);commands->DrawInstanced(3,1,0,0);}
+        if(pass)pass->EndRenderPass();if(late_unsupported)commands->ClearState(pso.Get());commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);commands->ResolveQueryData(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,times.Get(),0);
         D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition={target.Get(),0,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_SOURCE};commands->ResourceBarrier(1,&b);
         D3D12_TEXTURE_COPY_LOCATION src{},dst{};src.pResource=target.Get();src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;dst.pResource=pixels.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=footprint;
         commands->CopyTextureRegion(&dst,0,0,0,&src,nullptr);std::swap(b.Transition.StateBefore,b.Transition.StateAfter);commands->ResourceBarrier(1,&b);hr(commands->Close());};
@@ -104,11 +108,40 @@ int wmain(int argc,wchar_t** argv)try{
     wchar_t enable[]=L"2x2",disable[]=L"off";check(mode(enable)==0,"All mirror hook coverage required before enabling");record(false);auto modified=run(L"modified");
     check(mode(disable)==0,"Disable mirror");auto restored=run(L"restored-cached-list");
     check(baseline==restored,"Rollback must restore exact pixels without rerecording the cached original list");
+    if(diagnostics){for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size=0;diagnostics->GetMessage(i,nullptr,&size);std::vector<unsigned char> bytes(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(bytes.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';throw std::runtime_error("D3D12 validation error");}}}
+    snapshot(nullptr);
     check(modified!=baseline,"Experiment must actually change shader frequency/output");
     check(mode(enable)==0,"Enable negative coverage test");record(true);auto declined=run(L"unsupported-original");check(declined==baseline,"Unknown command must select original execution");
     record(false);check(run(L"qualification-original")==baseline,"Previously rejected command must first requalify without modification");
     record(false);check(run(L"requalified-modified")!=baseline,"Changed command contents must become eligible after requalification");
     check(mode(disable)==0,"Final restore");check(run(L"final-cached-restore")==baseline,"Final cached command replay must retain original pixels");
-    snapshot(nullptr);CloseHandle(event);hr(device->GetDeviceRemovedReason());
-    std::cout<<"Native VRS clone changes pixels; cached-list rollback and unsupported-operation fallback reproduce original pixels exactly PASS\n";return 0;
+    check(mode(enable)==0,"Enable passive rollback test");record(false);check(run(L"before-passive")!=baseline,"Active map before passive rollback");
+    auto passive=reinterpret_cast<Api>(GetProcAddress(module,"ArcUsePassiveMode"));check(passive&&passive(nullptr)==0,"Passive mode transition");
+    check(run(L"passive-cached-restore")==baseline,"Passive mode must neutralize previously modified cached lists");
+    check(mode(enable)==0,"Reactivate after passive");record(false);check(run(L"passive-reactivated")!=baseline,"Reactivation must change pixels");
+    ComPtr<ID3D12CommandQueue> second;hr(device->CreateCommandQueue(&qd,IID_PPV_ARGS(&second)));queue.Swap(second);
+    check(mode(disable)==0,"Disable before queue migration");check(run(L"second-queue-restored")==baseline,"Cached list migration to another queue retains rollback");
+    check(mode(enable)==0,"Late unsupported operation");record(false,true);check(run(L"late-unsupported")==baseline,"Unsupported command after injected draw must neutralize entire recording");
+    record(false);record(false);check(run(L"after-late-requalification")!=baseline,"Requalification after late unsupported operation");
+    check(mode(disable)==0,"Reference application VRS");record(false,false,true);auto application_rate=run(L"application-rate-reference");
+    check(mode(enable)==0,"Preserve application VRS");record(false,false,true);check(run(L"application-rate-preserved")==application_rate,"Non-default application shading must be left untouched");
+    record(false,false,false,true);check(run(L"application-rate-after-controlled-draw")==application_rate,"Changing application VRS after a controlled draw must restore the native state first");
+    // The application is allowed to Reset with another allocator while an old
+    // generation is in flight. Neither recording nor policy rollback may wait
+    // on the CPU for the GPU gate that this very thread will signal later.
+    check(mode(enable)==0,"Enable in-flight generation test");record(false);
+    ComPtr<ID3D12Fence> gate;hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&gate)));
+    hr(queue->Wait(gate.Get(),1));ID3D12CommandList* queued[]{commands.Get()};queue->ExecuteCommandLists(1,queued);
+    auto old_allocator=allocator;auto old_pixels=pixels;
+    hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(allocator.ReleaseAndGetAddressOf())));pixels=readback(size);
+    record(false);check(mode(disable)==0,"Disable queued generation");queue->ExecuteCommandLists(1,queued);
+    hr(gate->Signal(1));hr(queue->Signal(fence.Get(),++fence_value));hr(fence->SetEventOnCompletion(fence_value,event));check(WaitForSingleObject(event,5000)==WAIT_OBJECT_0,"Queued generations must complete");
+    check(run(L"inflight-generation-restored")==baseline,"New generation must render neutral while old generation retains its coarse map");
+    void* old_data{};D3D12_RANGE old_range{0,static_cast<SIZE_T>(size)},empty_range{};hr(old_pixels->Map(0,&old_range,&old_data));std::vector<unsigned char> old_image(1280*720*4);
+    for(UINT y=0;y<720;++y)memcpy(old_image.data()+y*1280*4,static_cast<char*>(old_data)+y*footprint.Footprint.RowPitch,1280*4);old_pixels->Unmap(0,&empty_range);
+    check(old_image!=baseline,"A later Reset must not modify the previous GPU generation's rate image");
+    check(mode(disable)==0,"Final off");snapshot(nullptr);CloseHandle(event);hr(device->GetDeviceRemovedReason());
+
+    if(diagnostics){for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size=0;diagnostics->GetMessage(i,nullptr,&size);std::vector<unsigned char> bytes(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(bytes.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';throw std::runtime_error("D3D12 validation error");}}}
+    std::cout<<"Single-recording VRS: cached/passive/cross-queue rollback, late fallback, application-rate preservation and D3D12 validation PASS\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

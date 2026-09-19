@@ -69,7 +69,7 @@ int wmain(int argc,wchar_t** argv)try{
         auto request=GetProcAddress(local,features?"ArcRequestFeatures":passive?"ArcUsePassiveMode":lean?"ArcUseLeanMode":experiment?"ArcExperimentalVrs":timing?"ArcRequestTiming":image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");
         const auto argument=experiment?std::wstring(vrs_on?L"2x2":L"off"):timing&&argc>5?std::wstring(argv[5])+L"|"+output.wstring():output.wstring();
         const auto code=remote_call(process.h,reinterpret_cast<void*>(remote_base+offset),argument);
-        require(code==0,"Capture request refused");std::wcout<<(features?L"GPU tile features":experiment?(passive?L"Only Present hooks retained":lean?L"Detailed observation disabled":vrs_on?L"Experimental VRS enabled":L"Original command execution restored"):timing?L"Bounded Present cadence":image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
+        require(code==0,"Capture request refused");std::wcout<<(features?L"GPU tile features":experiment?(passive?L"Passive observation and cached-list rollback retained":lean?L"Detailed observation disabled":vrs_on?L"Experimental VRS enabled":L"Original command execution restored"):timing?L"Bounded Present cadence":image?L"Image readback":L"Frame graph")<<L" requested for PID "<<info.dwProcessId<<L".\n";return 0;
     }
     require(remote_module(info.dwProcessId,dll.filename().wstring())==0,"probe already loaded; use --capture or restart the target");
     void* remote_load=reinterpret_cast<void*>(base+(reinterpret_cast<std::uintptr_t>(load)-reinterpret_cast<std::uintptr_t>(owner)));

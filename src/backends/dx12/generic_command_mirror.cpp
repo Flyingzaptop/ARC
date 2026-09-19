@@ -9,32 +9,50 @@
 #include <cstring>
 #include <set>
 #include <chrono>
+#include <stdexcept>
+#include <iomanip>
 
 namespace arc::dx12::mirror {
 namespace {
 template<class T>using Ptr=Microsoft::WRL::ComPtr<T>;
 thread_local bool nested{};
 struct Internal {bool old{nested};Internal(){nested=true;}~Internal(){nested=old;}};
-struct Command {
+void checked(HRESULT hr){if(FAILED(hr))throw std::runtime_error("VRS control resource HRESULT "+std::to_string(hr));}
+// The bounded pool retains maps until all GPU use is fenced. A slot can be
+// reused only after its native command list has been destroyed and completed.
+struct Control {
+    Ptr<ID3D12Device> device;
+    Ptr<ID3D12Resource> image,upload;
     Ptr<ID3D12CommandAllocator> allocator;
-    Ptr<ID3D12GraphicsCommandList> list;
-    Ptr<ID3D12GraphicsCommandList5> v5;
-    UINT rate{D3D12_SHADING_RATE_1X1};
-    D3D12_SHADING_RATE_COMBINER combiners[2]{};
-    std::uint64_t epoch{},events{},modified{},potential{};
-    bool eligible_pipeline{},closed{},valid{true};
+    Ptr<ID3D12GraphicsCommandList> copies[9]; // initialize + four on/off pairs
+    UINT64 reusable_after[4]{};
+    int active_slot{-1},retired_slot{-1};
+    Ptr<ID3D12Fence> fence;
+    Ptr<ID3D12CommandQueue> queue;
+    UINT64 value{};
+    UINT rate{};
+    bool initialized{},failed{};
 };
-struct Job {std::vector<std::shared_ptr<Command>> commands;Ptr<ID3D12Fence> fence;Ptr<ID3D12Device> device;bool signaled{};};
+struct Command {
+    std::shared_ptr<Control> control;
+    ID3D12GraphicsCommandList5* v5{}; // borrowed; retired by native lifetime token
+    UINT rate{};
+    D3D12_SHADING_RATE_COMBINER combiners[2]{};
+    std::uint64_t epoch{},modified{},potential{};
+    bool bound{},app_image{},eligible_pipeline{},closed{},valid{true},qualified{true};
+};
 struct State {
     std::recursive_mutex mutex;
     std::atomic<UINT> rate{};
     std::chrono::steady_clock::time_point expires;
-    std::uint64_t epoch{},modified_submissions{},modified_draws{},skipped{},faults{};
+    char last_error[160]{};
+    std::uint64_t epoch{},modified_submissions{},modified_draws{},skipped{},faults{},map_updates{},policy_waits{};
+    std::atomic<std::uint64_t> recorded_draws{};
     std::map<ID3D12GraphicsCommandList*,std::shared_ptr<Command>> commands;
+    std::vector<std::shared_ptr<Control>> controls;
     std::map<ID3D12PipelineState*,bool> pipelines;
     std::map<ID3D12CommandSignature*,bool> signatures;
     std::set<ID3D12GraphicsCommandList*> command_lifetimes;
-    std::vector<Job> jobs;
 };
 State& state(){static auto* s=new State;return *s;}
 constexpr GUID lifetime_guid{0x614ed930,0x83d7,0x44ca,{0xb9,0x06,0x35,0x9e,0x65,0x1d,0x3b,0x1a}};
@@ -47,7 +65,35 @@ public:
     ULONG STDMETHODCALLTYPE Release()override{const auto n=--count;if(!n){auto& s=state();{std::lock_guard lock(s.mutex);if(kind==1){s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));s.command_lifetimes.erase(static_cast<ID3D12GraphicsCommandList*>(object));}else if(kind==2)s.signatures.erase(static_cast<ID3D12CommandSignature*>(object));else s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));}delete this;}return n;}
 };
 bool track(ID3D12Object* object,int kind){auto* token=new Lifetime(object,kind);const auto hr=object->SetPrivateDataInterface(lifetime_guid,token);token->Release();return SUCCEEDED(hr);}
-template<class F>void safe(F&& fn)noexcept{try{std::lock_guard lock(state().mutex);fn();}catch(...){state().rate=0;}}
+template<class F>void safe(F&& fn)noexcept{try{std::lock_guard lock(state().mutex);fn();}catch(const std::exception& e){std::lock_guard lock(state().mutex);state().rate=0;++state().faults;strncpy_s(state().last_error,e.what(),_TRUNCATE);}catch(...){std::lock_guard lock(state().mutex);state().rate=0;++state().faults;}}
+std::shared_ptr<Control> make_control(ID3D12Device* device,UINT tile){
+    auto c=std::make_shared<Control>();c->device=device;
+    // 4096x4096 render-pixel coverage; pixels outside the image remain 1x1.
+    D3D12_RESOURCE_DESC d{};d.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;d.Width=d.Height=(4096+tile-1)/tile;
+    d.DepthOrArraySize=d.MipLevels=d.SampleDesc.Count=1;d.Format=DXGI_FORMAT_R8_UINT;
+    D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;
+    checked(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&c->image)));
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};UINT64 bytes{};device->GetCopyableFootprints(&d,0,1,0,&footprint,nullptr,nullptr,&bytes);
+    const UINT64 stride=(bytes+511)&~UINT64(511);
+    D3D12_RESOURCE_DESC b{};b.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;b.Width=stride*2;b.Height=b.DepthOrArraySize=b.MipLevels=b.SampleDesc.Count=1;b.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    hp.Type=D3D12_HEAP_TYPE_UPLOAD;checked(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&b,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&c->upload)));
+    void* data{};D3D12_RANGE empty{};checked(c->upload->Map(0,&empty,&data));std::memset(data,0,static_cast<size_t>(stride));std::memset(static_cast<char*>(data)+stride,D3D12_SHADING_RATE_2X2,static_cast<size_t>(stride));c->upload->Unmap(0,nullptr);
+    checked(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&c->allocator)));
+    for(UINT i=0;i<9;++i){
+        checked(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,c->allocator.Get(),nullptr,IID_PPV_ARGS(&c->copies[i])));
+        D3D12_RESOURCE_BARRIER barrier{};barrier.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;barrier.Transition={c->image.Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST};
+        if(i)c->copies[i]->ResourceBarrier(1,&barrier);
+        D3D12_TEXTURE_COPY_LOCATION dst{},src{};dst.pResource=c->image.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;src.pResource=c->upload.Get();src.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;src.PlacedFootprint=footprint;src.PlacedFootprint.Offset=i&&i%2?stride:0;
+        c->copies[i]->CopyTextureRegion(&dst,0,0,0,&src,nullptr);
+        std::swap(barrier.Transition.StateBefore,barrier.Transition.StateAfter);c->copies[i]->ResourceBarrier(1,&barrier);checked(c->copies[i]->Close());
+    }
+    checked(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&c->fence)));return c;
+}
+void restore(Command& c){
+    if(!c.bound)return;Internal guard;c.v5->RSSetShadingRateImage(nullptr);
+    c.v5->RSSetShadingRate(static_cast<D3D12_SHADING_RATE>(c.rate),c.combiners);c.bound=false;
+}
+
 }
 bool internal()noexcept{return nested;}
 UINT requested_rate()noexcept{return state().rate.load();}
@@ -56,49 +102,46 @@ InternalCall::InternalCall()noexcept:old(nested){nested=true;}
 InternalCall::~InternalCall(){nested=old;}
 bool configure(UINT rate)noexcept{
     if(rate!=0&&rate!=D3D12_SHADING_RATE_2X2)return false;
-    safe([&]{auto& s=state();++s.epoch;s.rate=rate;s.expires=std::chrono::steady_clock::now()+std::chrono::seconds(60);s.commands.clear();});return true;
+    safe([&]{auto& s=state();++s.epoch;s.rate=rate;s.expires=std::chrono::steady_clock::now()+std::chrono::seconds(60);});return true;
 }
 void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pso)noexcept{
-    if(nested||!state().rate.load(std::memory_order_relaxed))return;
-    safe([&]{auto& s=state();std::shared_ptr<Command> reusable;bool build=true;auto previous=s.commands.find(native);
+    if(nested)return;
+    safe([&]{auto& s=state();auto previous=s.commands.find(native);std::shared_ptr<Command> c;
         if(previous!=s.commands.end()){
-            build=previous->second->valid&&previous->second->potential>0;
-            if(build&&previous->second.use_count()==1&&previous->second->closed&&previous->second->list)reusable=std::move(previous->second);
-            s.commands.erase(previous);
+            c=previous->second;const bool qualified=c->valid;auto control=c->control;auto* v5=c->v5;
+            if(control->fence->GetCompletedValue()<control->value){
+                // Reset may overlap a preceding execution when the application
+                // supplies another allocator. Its GPU generation keeps its map;
+                // never serialize independent queues through a recycled image.
+                s.commands.erase(previous);c.reset();
+            }else{*c=Command{};c->control=std::move(control);c->v5=v5;c->qualified=qualified;}
         }
-        if(!s.rate||native->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return;
-        if(s.commands.size()>=128||s.jobs.size()>=32){++s.skipped;return;}
-        Internal guard;auto c=reusable?std::move(reusable):std::make_shared<Command>();
-        c->epoch=s.epoch;c->events=c->modified=c->potential=0;c->closed=false;c->valid=true;
-        c->rate=D3D12_SHADING_RATE_1X1;c->combiners[0]=c->combiners[1]=D3D12_SHADING_RATE_COMBINER_PASSTHROUGH;
-        if(build){
-            if(c->allocator){if(FAILED(c->allocator->Reset())||FAILED(c->list->Reset(c->allocator.Get(),pso)))return;}
-            else{
-                Ptr<ID3D12Device> device;if(FAILED(native->GetDevice(IID_PPV_ARGS(&device))))return;
-                D3D12_FEATURE_DATA_D3D12_OPTIONS6 caps{};
-                if(FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,&caps,sizeof(caps)))||caps.VariableShadingRateTier<D3D12_VARIABLE_SHADING_RATE_TIER_1)return;
-                if(FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&c->allocator)))||
-                   FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,c->allocator.Get(),pso,IID_PPV_ARGS(&c->list)))||FAILED(c->list.As(&c->v5)))return;
-            }
+        if(!s.rate){return;}
+        if(!c){
+            if(native->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return;
+            if(s.commands.size()>=16384){++s.skipped;return;}Internal guard;
+            Ptr<ID3D12Device> device;checked(native->GetDevice(IID_PPV_ARGS(&device)));D3D12_FEATURE_DATA_D3D12_OPTIONS6 caps{};
+            if(FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,&caps,sizeof(caps)))||caps.VariableShadingRateTier<D3D12_VARIABLE_SHADING_RATE_TIER_2||!caps.ShadingRateImageTileSize){++s.skipped;return;}
+            std::shared_ptr<Control> control;
+            for(const auto& available:s.controls)if(available.use_count()==1&&available->device.Get()==device.Get()&&!available->failed&&available->fence->GetCompletedValue()>=available->value){control=available;break;}
+            if(!control){if(s.controls.size()>=128){++s.skipped;return;}control=make_control(device.Get(),caps.ShadingRateImageTileSize);s.controls.push_back(control);}
+            c=std::make_shared<Command>();c->control=std::move(control);
+            Ptr<ID3D12GraphicsCommandList5> v5;checked(native->QueryInterface(IID_PPV_ARGS(&v5)));c->v5=v5.Get();
+            if(!s.command_lifetimes.contains(native)){if(s.command_lifetimes.size()>=16384||!track(native,1))return;s.command_lifetimes.insert(native);}s.commands[native]=c;
         }
-        c->eligible_pipeline=pso&&s.pipelines.contains(pso)&&s.pipelines.at(pso);
-        // Unsupported or non-raster prior recordings get a metadata-only probe.
-        // If their contents change, a later reset can become a candidate again.
-        if(!s.command_lifetimes.contains(native)){if(s.command_lifetimes.size()>=16384||!track(native,1))return;s.command_lifetimes.insert(native);}s.commands[native]=std::move(c);
+        c->epoch=s.epoch;c->eligible_pipeline=pso&&s.pipelines.contains(pso)&&s.pipelines.at(pso);
     });
 }
-Lease acquire(ID3D12GraphicsCommandList* native)noexcept{
+Lease acquire(ID3D12GraphicsCommandList*)noexcept{return {};}
+Lease acquire_draw(ID3D12GraphicsCommandList* native)noexcept{
     Lease lease;if(nested||!state().rate.load(std::memory_order_relaxed))return lease;
     safe([&]{auto& s=state();auto it=s.commands.find(native);if(it==s.commands.end())return;auto& c=it->second;
-        if(!c->valid||c->closed||c->epoch!=s.epoch)return;if(++c->events>16384){c->valid=false;++s.skipped;return;}if(c->list){lease.owner=c;lease.list=c->list.Get();}});return lease;
+        if(c->eligible_pipeline)++c->potential;
+        if(c->valid&&c->qualified&&!c->closed&&c->epoch==s.epoch&&c->eligible_pipeline&&!c->app_image&&c->rate==D3D12_SHADING_RATE_1X1&&c->combiners[0]==D3D12_SHADING_RATE_COMBINER_PASSTHROUGH&&c->combiners[1]==D3D12_SHADING_RATE_COMBINER_PASSTHROUGH){lease.owner=c;lease.list=native;}
+    });return lease;
 }
-Lease acquire_draw(ID3D12GraphicsCommandList* native)noexcept{
-    if(nested||!state().rate)return {};
-    safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()&&it->second->eligible_pipeline)++it->second->potential;});
-    return acquire(native);
-}
-void close(ID3D12GraphicsCommandList* native)noexcept{if(nested||!state().rate)return;safe([&]{auto it=state().commands.find(native);if(it==state().commands.end())return;Internal guard;auto& c=*it->second;c.closed=true;if(c.list&&FAILED(c.list->Close()))c.valid=false;});}
-void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(nested||!state().rate)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end())it->second->valid=false;});}
+void close(ID3D12GraphicsCommandList* native)noexcept{if(nested)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()&&!it->second->closed){restore(*it->second);it->second->closed=true;}});}
+void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(nested)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()){restore(*it->second);it->second->valid=false;}});}
 void pipeline_created(ID3D12PipelineState* pso,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)noexcept{
     if(nested||!pso||!desc)return;safe([&]{auto& s=state();if(s.pipelines.size()>=16384)return;if(!track(pso,false))return;
         s.pipelines[pso]=desc->PS.pShaderBytecode&&desc->PS.BytecodeLength&&desc->SampleDesc.Count>=1&&desc->SampleDesc.Count<=4&&desc->RasterizerState.ForcedSampleCount==0;});
@@ -147,33 +190,66 @@ void pipeline_stream_created(ID3D12PipelineState* pso,const D3D12_PIPELINE_STATE
     });
 }
 void pipeline(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pso)noexcept{
-    if(nested||!state().rate)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it!=s.commands.end())it->second->eligible_pipeline=pso&&s.pipelines.contains(pso)&&s.pipelines.at(pso);});
+    if(nested||!state().rate)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it!=s.commands.end()){auto& c=*it->second;c.eligible_pipeline=pso&&s.pipelines.contains(pso)&&s.pipelines.at(pso);if(!c.eligible_pipeline)restore(c);}});
 }
 void shading_rate(ID3D12GraphicsCommandList* native,D3D12_SHADING_RATE rate,const D3D12_SHADING_RATE_COMBINER* combiners)noexcept{
-    if(nested||!state().rate)return;safe([&]{auto it=state().commands.find(native);if(it==state().commands.end())return;auto& c=*it->second;c.rate=rate;for(int i=0;i<2;++i)c.combiners[i]=combiners?combiners[i]:D3D12_SHADING_RATE_COMBINER_PASSTHROUGH;});
+    if(nested||!state().rate)return;safe([&]{auto it=state().commands.find(native);if(it==state().commands.end())return;auto& c=*it->second;restore(c);c.rate=rate;for(int i=0;i<2;++i)c.combiners[i]=combiners?combiners[i]:D3D12_SHADING_RATE_COMBINER_PASSTHROUGH;});
 }
+void shading_image(ID3D12GraphicsCommandList* native,ID3D12Resource* image)noexcept{if(nested||!state().rate)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()){restore(*it->second);it->second->app_image=image!=nullptr;}});}
 bool before_draw(const Lease& lease)noexcept{
     if(!lease.owner)return false;auto c=std::static_pointer_cast<Command>(lease.owner);
-    if(!c->eligible_pipeline)return false;Internal guard;D3D12_SHADING_RATE_COMBINER pass[2]{};
-    c->v5->RSSetShadingRate(D3D12_SHADING_RATE_2X2,pass);++c->modified;return true;
+    if(!c->bound){Internal guard;
+        D3D12_SHADING_RATE_COMBINER combine[]{D3D12_SHADING_RATE_COMBINER_PASSTHROUGH,D3D12_SHADING_RATE_COMBINER_OVERRIDE};
+        c->v5->RSSetShadingRateImage(c->control->image.Get());c->v5->RSSetShadingRate(D3D12_SHADING_RATE_1X1,combine);c->bound=true;
+    }
+    ++c->modified;state().recorded_draws.fetch_add(1,std::memory_order_relaxed);return true;
 }
-void after_draw(const Lease& lease)noexcept{if(!lease.owner)return;auto c=std::static_pointer_cast<Command>(lease.owner);Internal guard;c->v5->RSSetShadingRate(static_cast<D3D12_SHADING_RATE>(c->rate),c->combiners);}
+void after_draw(const Lease&)noexcept{}
+
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* original)noexcept{
-    if(nested||!state().rate||!count||count>1024)return false;bool replaced=false;
-    safe([&]{auto& s=state();if(std::chrono::steady_clock::now()>=s.expires){configure(0);return;}if(s.jobs.size()>=32)return;std::vector<ID3D12CommandList*> lists(original,original+count);Job job;
-        for(UINT i=0;i<count;++i){auto it=s.commands.find(reinterpret_cast<ID3D12GraphicsCommandList*>(original[i]));if(it==s.commands.end())continue;auto c=it->second;
-            if(c->valid&&c->closed&&c->epoch==s.epoch&&c->modified){lists[i]=c->list.Get();job.commands.push_back(c);}}
-        if(job.commands.empty())return;Internal guard;
-        if(FAILED(queue->GetDevice(IID_PPV_ARGS(&job.device)))||FAILED(job.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&job.fence))))return;
-        // Reserve lifetime storage before submitting any work. Original lists stay
-        // untouched: disabling the experiment selects them even on cached replay.
-        s.jobs.push_back(std::move(job));auto& retained=s.jobs.back();
-        queue->ExecuteCommandLists(count,lists.data());replaced=true;
-        retained.signaled=SUCCEEDED(queue->Signal(retained.fence.Get(),1));
-        if(!retained.signaled){++s.faults;s.rate=0;}
-        ++s.modified_submissions;for(const auto& c:retained.commands)s.modified_draws+=c->modified;
-    });return replaced;
+    if(nested||!count||!original)return false;bool submitted=false;
+    safe([&]{auto& s=state();if(s.rate&&std::chrono::steady_clock::now()>=s.expires)configure(0);
+        struct Selection {Control* control;UINT desired;std::uint64_t draws;};
+        Selection selected[128]{};UINT selected_count=0;
+        for(UINT i=0;i<count;++i){
+            auto it=s.commands.find(reinterpret_cast<ID3D12GraphicsCommandList*>(original[i]));if(it==s.commands.end())continue;
+            auto& command=*it->second;if(!command.modified)continue;
+            auto* control=command.control.get();UINT index=0;while(index<selected_count&&selected[index].control!=control)++index;
+            if(index==selected_count){selected[index]={control,s.rate.load(),0};++selected_count;}
+            selected[index].draws+=command.modified;
+            if(!command.valid||!command.closed||command.epoch!=s.epoch)selected[index].desired=0;
+        }
+        if(!selected_count)return;Internal guard;
+        for(UINT i=0;i<selected_count;++i){auto& choice=selected[i];auto& c=*choice.control;
+            if(c.failed){s.rate=0;++s.faults;return;}
+            // Every native list has its own map: independent queues/lists never
+            // acquire artificial dependencies on one another. Cached migration
+            // only waits for that same list's preceding submission on the GPU.
+            if(c.queue&&c.queue.Get()!=queue&&c.fence->GetCompletedValue()<c.value){
+                if(FAILED(queue->Wait(c.fence.Get(),c.value))){c.failed=true;++s.faults;s.rate=0;return;}++s.policy_waits;
+            }
+            if(!c.initialized){ID3D12CommandList* init[]{c.copies[0].Get()};queue->ExecuteCommandLists(1,init);c.initialized=true;c.rate=0;++s.map_updates;}
+            if(choice.desired&&c.rate==0){
+                int slot=-1;for(int k=0;k<4;++k)if(c.fence->GetCompletedValue()>=c.reusable_after[k]){slot=k;break;}
+                // Reserve the unused neutral helper BEFORE enabling. If all
+                // pairs are in flight, stay at 1x1 without a CPU wait or loss of
+                // rollback capacity. Never replay an in-flight helper list.
+                if(slot<0){choice.desired=0;++s.skipped;}
+                else{ID3D12CommandList* update[]{c.copies[1+slot*2].Get()};queue->ExecuteCommandLists(1,update);c.active_slot=slot;c.rate=D3D12_SHADING_RATE_2X2;++s.map_updates;}
+            }else if(!choice.desired&&c.rate){
+                ID3D12CommandList* update[]{c.copies[2+c.active_slot*2].Get()};queue->ExecuteCommandLists(1,update);
+                c.retired_slot=c.active_slot;c.active_slot=-1;c.rate=0;++s.map_updates;
+            }
+        }
+        queue->ExecuteCommandLists(count,original);submitted=true;bool modified=false;
+        for(UINT i=0;i<selected_count;++i){auto& c=*selected[i].control;c.queue=queue;
+            if(FAILED(queue->Signal(c.fence.Get(),++c.value))){c.failed=true;++s.faults;s.rate=0;}
+            if(c.retired_slot>=0){c.reusable_after[c.retired_slot]=c.value;c.retired_slot=-1;}
+            if(c.rate){modified=true;s.modified_draws+=selected[i].draws;}
+        }
+        if(modified)++s.modified_submissions;else ++s.skipped;
+    });return submitted;
 }
-void collect()noexcept{safe([&]{auto& s=state();if(s.rate&&std::chrono::steady_clock::now()>=s.expires)configure(0);auto& jobs=s.jobs;std::erase_if(jobs,[](const Job& j){return (j.signaled&&j.fence->GetCompletedValue()>=1)||FAILED(j.device->GetDeviceRemovedReason());});});}
-void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();out<<"{\"experimental\":true,\"requested_rate\":"<<s.rate.load()<<",\"modified_submissions\":"<<s.modified_submissions<<",\"modified_draws\":"<<s.modified_draws<<",\"tracked_recordings\":"<<s.commands.size()<<",\"inflight_batches\":"<<s.jobs.size()<<",\"skipped\":"<<s.skipped<<",\"faults\":"<<s.faults<<",\"image_quality_verified\":false}";}
+void collect()noexcept{safe([&]{auto& s=state();if(s.rate&&std::chrono::steady_clock::now()>=s.expires)configure(0);});}
+void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();out<<"{\"experimental\":true,\"backend\":\"tier2_reversible_rate_image\",\"requested_rate\":"<<s.rate.load()<<",\"modified_submissions\":"<<s.modified_submissions<<",\"modified_draws\":"<<s.modified_draws<<",\"tracked_recordings\":"<<s.commands.size()<<",\"inflight_batches\":0,\"native_command_copies\":0,\"recorded_controlled_draws\":"<<s.recorded_draws<<",\"map_updates\":"<<s.map_updates<<",\"cross_queue_gpu_waits\":"<<s.policy_waits<<",\"control_images\":"<<s.controls.size()<<",\"skipped\":"<<s.skipped<<",\"faults\":"<<s.faults<<",\"last_error\":"<<std::quoted(s.last_error)<<",\"image_quality_verified\":false}";}
 }

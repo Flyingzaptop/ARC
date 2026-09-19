@@ -2,7 +2,8 @@
 
 The user requests automatic optimization in third-party DX12 applications. The
 latest instruction reserves game testing for the user: do not launch game tests
-autonomously. Development now uses the standalone dynamic city scene and native
+autonomously. Development now uses the heavy independent Cauldron/Toyshop benchmark, the small
+dynamic city diagnostic and native
 DX12 fixtures without cooperative ARC resource/action callbacks. Keep each run
 short (under 60 seconds), compare the unmodified baseline with the actual current
 optimizer, and report FPS, image quality, bottlenecks and next steps. No subagents.
@@ -34,3 +35,5 @@ as coverage limits. Original counter-only mode remains available.
 Completion must be reported against the entire chain above, not just this slice.
 No automatic game mutation is claimed until the actual generic capability/reference
 path reaches the existing independent critic and rollback controller.
+
+Current benchmark and single-recording VRS results: [Cauldron heavy benchmark](CAULDRON_HEAVY_BENCHMARK.md). The CPU duplication is removed; reliable net FPS improvement and quality acceptance are not yet established on the heavy scene.

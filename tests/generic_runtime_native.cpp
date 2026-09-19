@@ -117,6 +117,8 @@ int wmain(int argc,wchar_t** argv)try{
     feature_file.read(reinterpret_cast<char*>(features.data()),features.size()*sizeof(float));check(feature_file.gcount()==12*16,"Only 12 float4 tiles cross to CPU");
     double pixel_count=0;for(std::size_t i=0;i<features.size();i+=4){check(std::abs(features[i]-.37192f)<.00002f&&features[i+1]<.000001f&&features[i+2]<.000001f,"GPU statistics must match known clear color");pixel_count+=features[i+3];}
     check(pixel_count==61*37,"Edge tiles count actual pixels, not padding");
+    const auto lean=reinterpret_cast<Api>(GetProcAddress(dll,"ArcUseLeanMode"));
+    check(lean&&lean(nullptr)==0,"Lean mode removes detailed hooks while retaining GPU readback");
     hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));const auto edge_index=swap->GetCurrentBackBufferIndex();
     barrier.Transition={backs[edge_index].Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET};list->ResourceBarrier(1,&barrier);
     auto edge_rtv=rtvs->GetCPUDescriptorHandleForHeapStart();edge_rtv.ptr+=edge_index*device->GetDescriptorHandleIncrementSize(rh.Type);
