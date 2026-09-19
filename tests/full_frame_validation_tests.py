@@ -10,6 +10,12 @@ api = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/validate
 
 
 class FullFrameEvidence(unittest.TestCase):
+    def test_late_waypoint_damage_is_protected(self):
+        reference = np.full((16, 16, 3), .4)
+        modified = reference.copy()
+        modified[12:, 12:, :] = .5
+        self.assertFalse(api["compare"](reference, modified, reference)["pass"])
+
     def test_pixel_damage_is_not_diluted(self):
         a = np.full((1080, 1920, 3), .4)
         b = a.copy()

@@ -101,6 +101,18 @@ def validate(root):
               "probe_cost_ms": trial["probe_wall_ms"],
               "probe_amortization_frames": math.ceil(trial["probe_wall_ms"] / (off - on)) if off > on else None,
               "quality": quality, "presented_quality": presented_quality, "trial": trial, "rounds": rounds}
+    if scene == 5:
+        mosaic = image(root / f"probe-{selected_probe}-0.rgb8")
+        if mosaic.shape != (2160, 3840, 3):
+            raise ValueError("Dynamic critic requires all four full-resolution waypoints")
+        start = mosaic[:1080, :1920]
+        end = mosaic[1080:, 1920:]
+        change = float(np.abs(start - end).mean())
+        if change < .001:
+            raise ValueError("Dynamic scene has no meaningful image change along the path")
+        result["dynamic_evidence"] = {"camera_ticks": [0, 60], "critic_waypoints": [0, 20, 40, 60],
+                                      "mean_start_end_image_change": change,
+                                      "temporal_artifacts_between_waypoints_validated": False}
     candidates_path = root / "candidates.json"
     if "selected_action" in trial and candidates_path.exists():
         candidates = json.loads(candidates_path.read_text())

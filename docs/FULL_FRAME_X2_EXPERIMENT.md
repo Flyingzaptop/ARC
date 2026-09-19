@@ -102,6 +102,13 @@ denoiser or game-like CPU simulation is included in this test.
 Run a diagnostic preview only with `arc-full-frame-x2 OUTPUT 5 preview`; a full
 scenario uses `arc-full-frame-x2 OUTPUT 5`. Both require a new output directory.
 
+`scripts/run-full-frame-x2.ps1` builds, runs core regressions and performs the
+dynamic scenario by default. `-Scenes 0,1,2,3,4,5` also includes static controls and
+the mixed-cost workload. Python/NumPy independently validate evidence; optional
+`render-night-city-preview.py` uses Pillow to create a GIF from actual GPU readbacks.
+GIF playback speed is illustrative and is not benchmark FPS. The swapchain is
+hidden for unattended measurement, and scanout/display frame rate is not measured.
+
 Scope: procedural multipass compute renderer and swapchain, not a polygonal game
 scene. Explicit LOD-zero baseline models excessive texture detail; a renderer
 already choosing an appropriate mip may have no such reserve. Hundreds of texture

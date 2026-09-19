@@ -1,4 +1,5 @@
-param([string]$OutputDirectory='', [ValidateSet('Release','Debug')][string]$Configuration='Release')
+param([string]$OutputDirectory='', [ValidateSet('Release','Debug')][string]$Configuration='Release',
+      [ValidateRange(0,5)][int[]]$Scenes=@(5))
 $ErrorActionPreference='Stop'
 $repo=Split-Path -Parent $PSScriptRoot
 if(-not $OutputDirectory){$OutputDirectory=Join-Path $repo ('traces\full-frame-'+(Get-Date -Format yyyyMMdd-HHmmss))}
@@ -21,10 +22,10 @@ if($LASTEXITCODE -ne 0){throw 'Independent validation requires Python with NumPy
 New-Item -ItemType Directory -Path $run|Out-Null
 $exe=Join-Path $build "$Configuration\arc-full-frame-x2.exe"
 $sha=(& git -C $repo rev-parse HEAD).Trim()
-[ordered]@{schema=1;source_sha=$sha;tracked_changes=@(& git -C $repo diff --name-only HEAD);binary_sha256=(Get-FileHash -LiteralPath $exe).Hash;configuration=$Configuration;started_utc=[DateTime]::UtcNow.ToString('o');games_launched=$false;scenario_order=@(0,1,2,3,4);metric='serialized full-frame render/Present throughput, not game FPS'}|ConvertTo-Json -Depth 4|Set-Content (Join-Path $run 'manifest.json')
-foreach($scene in 0..4){
+[ordered]@{schema=1;source_sha=$sha;tracked_changes=@(& git -C $repo diff --name-only HEAD);binary_sha256=(Get-FileHash -LiteralPath $exe).Hash;configuration=$Configuration;started_utc=[DateTime]::UtcNow.ToString('o');games_launched=$false;scenario_order=$Scenes;metric='serialized full-frame render/Present throughput, not game FPS'}|ConvertTo-Json -Depth 4|Set-Content (Join-Path $run 'manifest.json')
+foreach($scene in $Scenes){
     $directory=Join-Path $run "scene-$scene"
-    Write-Host "Full-frame scenario $scene / 4; candidate probes then counterbalanced verification"
+    Write-Host "Full-frame scenario $scene; candidate probes then counterbalanced verification"
     & $exe $directory $scene
     if($LASTEXITCODE -ne 0){throw "Renderer failed on scenario $scene; evidence retained at $directory"}
     & python (Join-Path $PSScriptRoot 'validate-full-frame-x2.py') $directory > (Join-Path $run "validation-$scene.log")
