@@ -199,6 +199,23 @@ The simulator computes simple screen projection and approximate occlusion as
 evaluation/sample evidence. Object display names are used **only by the UI** and
 never enter ARC inference.
 
+The visual scene now uses world-space oriented boxes rather than camera-facing
+billboards. Walls retain fixed orientation as the player moves and turns. The
+debug world contains 18 simultaneous tracked objects, including multiple moving
+objects with independent trajectories (lateral oscillation, depth patrol, orbit,
+vertical bobbing and side motion). Motion changes world transforms but preserves
+stable ARC track identity.
+
+The compact overlay table shows every object at once and includes:
+
+- static/moving marker;
+- object name;
+- visibility phase;
+- current visible coverage;
+- 8-frame predicted coverage;
+- Visual Importance;
+- confidence.
+
 The colored ARC border is the debug overlay. It makes it easy to watch:
 
 - a large central object become highly important;
