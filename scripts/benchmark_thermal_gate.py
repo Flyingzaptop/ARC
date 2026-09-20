@@ -26,7 +26,11 @@ def wait_for_cool_gpu(maximum_temperature, timeout=180):
             raise RuntimeError('GPU thermal telemetry shape')
         sample = dict(zip(('temperature_c', 'gpu_utilization', 'graphics_mhz', 'power_w'), values))
         samples.append(sample)
-        ready = ready+1 if values[0] <= maximum_temperature and values[1] < 15 else 0
+        # Desktop compositing can report 20..35% activity at a very low clock.
+        # Treat that as idle only with low power and clock; temperature still
+        # must meet the unchanged start limit. A high-clock workload is refused.
+        idle = values[1] < 15 or (values[2] <= 600 and values[3] < 25)
+        ready = ready+1 if values[0] <= maximum_temperature and idle else 0
         if ready >= 3:
             return {'enabled': True, 'gpu_index': 0, 'maximum_start_temperature_c': maximum_temperature,
                     'wait_seconds': time.monotonic()-start, 'samples': samples}

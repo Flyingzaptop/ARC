@@ -116,12 +116,19 @@ DWORD WINAPI run(void*){
         };
         refresh_candidates();
         UINT64 last=0,trial=0,profile=0;std::uint64_t retained=0;
+        std::string idle_phase;
         publish({{"phase","warmup"},{"target_fps",s.target},{"quality_reference","live_motion_qualified"}});
         while(!s.cancel){
             if(s.maximum_seconds&&std::chrono::duration<double>(Clock::now()-started).count()>s.maximum_seconds)break;
-            if(!wait_frames(1)){select(L"off");publish({{"phase","inactive"},{"reason","no_present_progress"}});continue;}
+            if(!wait_frames(1)){if(s.cancel)break;idle_phase.clear();select(L"off");publish({{"phase","inactive"},{"reason","no_present_progress"}});continue;}
             const auto now=frame_number();if(now==last)continue;last=now;
             const auto generation=refresh_candidates();const auto request=policy.frame(period());
+            if(request.kind==SessionRequestKind::None){const auto current=policy.snapshot();
+                if(current.phase==SessionPhase::Active||current.phase==SessionPhase::Limited){
+                    const std::string phase=current.phase==SessionPhase::Limited?"limited":current.filtered_frame_ms<=current.target_frame_ms?"target_met":"holding";
+                    if(phase!=idle_phase){idle_phase=phase;publish({{"phase",phase},{"target_fps",s.target},{"filtered_frame_ms",current.filtered_frame_ms},{"active_action",current.active_action},{"accepted",current.accepted},{"rejected",current.rejected}});}
+                }
+            }else idle_phase.clear();
             if(request.kind==SessionRequestKind::Profile){
                 select(L"neutral|heaviest");const auto path=s.directory/(L"profile-"+std::to_wstring(++profile)+L".json");
                 if(!gpu_profile::request(path.wstring(),16)||!wait_file(path,12000))throw std::runtime_error("GPU discovery unavailable");

@@ -33,12 +33,14 @@ struct State {
     std::atomic<bool> adapting{};std::unique_ptr<arc::WorkerPlacementSearch> search;
     std::uint64_t workload_epoch{},workload_pipeline{},windows{},resets{};bool epoch_known{};
     std::uint64_t past_accepted{},past_rejected{},past_unstable{};
+    std::uint32_t sample_seed{},sample_rng{};
     double last_mean{},last_p95{},last_p99{};
 };
 State& state(){static auto* value=new State;return *value;}
 struct Samples {std::mutex mutex;std::array<double,120> frames{};unsigned count{},settle{240};void* swap{};LARGE_INTEGER last{},activity{};double frequency{};std::atomic<bool> dropped{};};
 Samples& samples(){static auto* value=new Samples;return *value;}
 void reset_samples(unsigned settle){auto& sample=samples();std::lock_guard lock(sample.mutex);sample.count=0;sample.settle=settle;sample.last={};QueryPerformanceCounter(&sample.activity);sample.dropped=false;}
+unsigned next_settle(){auto& x=state().sample_rng;x^=x<<13;x^=x>>17;x^=x<<5;return 32+x%65;}
 void reset_search(){auto& s=state();if(s.search){const auto old=s.search->status();s.past_accepted+=old.accepted;s.past_rejected+=old.rejected;s.past_unstable+=old.unstable;}std::vector<arc::WorkerMode> modes;if(s.supported){modes={arc::WorkerMode::Prefer,arc::WorkerMode::Core};if(s.allow_partition&&s.plan.partition_possible&&!s.conflict)modes.push_back(arc::WorkerMode::Partition);}s.search=std::make_unique<arc::WorkerPlacementSearch>(std::move(modes));}
 std::vector<ULONG> worker_ids(){const auto& ids=state().plan.worker_sets;return {ids.begin(),ids.end()};}
 bool exited(const Entry& e){DWORD code{};return e.process&&GetExitCodeProcess(e.handle,&code)&&code!=STILL_ACTIVE;}
@@ -98,7 +100,7 @@ bool change_locked(Mode mode){auto& s=state();initialize_locked();
 }
 }
 bool configure(const wchar_t* mode)noexcept{try{if(!mode)return false;std::lock_guard lock(state().mutex);
-    if(wcscmp(mode,L"adaptive")==0){auto& s=state();if(!change_locked(Mode::Normal))return false;reset_search();s.epoch_known=false;auto& sample=samples();{std::lock_guard guard(sample.mutex);sample.swap=nullptr;LARGE_INTEGER f{};QueryPerformanceFrequency(&f);sample.frequency=double(f.QuadPart);}reset_samples(240);s.adapting=true;return true;}
+    if(wcscmp(mode,L"adaptive")==0){auto& s=state();if(!change_locked(Mode::Normal))return false;reset_search();s.epoch_known=false;LARGE_INTEGER seed{};QueryPerformanceCounter(&seed);s.sample_seed=static_cast<std::uint32_t>(seed.QuadPart)^GetCurrentProcessId();if(!s.sample_seed)s.sample_seed=1;s.sample_rng=s.sample_seed;auto& sample=samples();{std::lock_guard guard(sample.mutex);sample.swap=nullptr;LARGE_INTEGER f{};QueryPerformanceFrequency(&f);sample.frequency=double(f.QuadPart);}reset_samples(240);s.adapting=true;return true;}
     if(wcscmp(mode,L"normal")&&wcscmp(mode,L"prefer")&&wcscmp(mode,L"core")&&wcscmp(mode,L"partition"))return false;
     state().adapting=false;
     if(wcscmp(mode,L"normal")==0)return change_locked(Mode::Normal);if(wcscmp(mode,L"prefer")==0)return change_locked(Mode::Prefer);if(wcscmp(mode,L"core")==0)return change_locked(Mode::Core);if(wcscmp(mode,L"partition")==0)return change_locked(Mode::Partition);return false;
@@ -137,13 +139,13 @@ void collect(std::uint64_t epoch,std::uint64_t pipeline)noexcept{if(!adaptive())
     std::sort(values.begin(),values.end());arc::PlacementWindow window;window.frames=static_cast<unsigned>(values.size());window.valid=!dropped;
     window.mean=std::accumulate(values.begin(),values.end(),0.0)/values.size();window.p95=values[113];window.p99=values[118];s.last_mean=window.mean;s.last_p95=window.p95;s.last_p99=window.p99;++s.windows;
     const auto wanted=static_cast<Mode>(s.search->observe(window));const bool changed=wanted!=s.mode;
-    if(!change_locked(wanted)){s.adapting=false;change_locked(Mode::Normal);return;}if(changed)reset_samples(32);
+    if(!change_locked(wanted)){s.adapting=false;change_locked(Mode::Normal);return;}if(changed)reset_samples(next_settle());
 }catch(const std::exception& error){std::lock_guard lock(s.mutex);++s.failures;s.error=error.what();s.adapting=false;try{change_locked(Mode::Normal);}catch(...) {}}}
 void snapshot(std::ostream& out){auto& s=state();std::lock_guard lock(s.mutex);unsigned workers=0;for(const auto& e:s.entries)workers+=e.handle!=nullptr;
     out<<"{\"mode\":"<<std::quoted(name(s.mode))<<",\"supported\":"<<(s.supported?"true":"false")<<",\"worker_group\":"<<s.plan.group<<",\"worker_core\":"<<s.plan.core<<",\"physical_cores\":"<<s.plan.physical_cores<<",\"worker_cpu_sets\":[";bool first=true;for(auto id:s.plan.worker_sets){if(!first)out<<',';first=false;out<<id;}
     out<<"],\"worker_logicals\":[";first=true;for(auto id:s.plan.worker_logicals){if(!first)out<<',';first=false;out<<id;}
     out<<"],\"registered_workers\":"<<workers<<",\"game_default_partitioned\":"<<(s.partition_owned?"true":"false")<<",\"rollback_pending\":"<<(s.rollback_pending?"true":"false")<<",\"os_exclusive_reservation\":false,\"transitions\":"<<s.transitions<<",\"presents_by_mode\":[";
-    for(unsigned i=0;i<4;++i){if(i)out<<',';out<<s.presents[i].load();}out<<"],\"failures\":"<<s.failures<<",\"last_error\":"<<std::quoted(s.error)<<",\"adaptive_enabled\":"<<(s.adapting?"true":"false")<<",\"adaptive_windows\":"<<s.windows<<",\"workload_resets\":"<<s.resets<<",\"last_window_ms\":["<<s.last_mean<<','<<s.last_p95<<','<<s.last_p99<<']';
+    for(unsigned i=0;i<4;++i){if(i)out<<',';out<<s.presents[i].load();}out<<"],\"failures\":"<<s.failures<<",\"last_error\":"<<std::quoted(s.error)<<",\"adaptive_enabled\":"<<(s.adapting?"true":"false")<<",\"adaptive_windows\":"<<s.windows<<",\"workload_resets\":"<<s.resets<<",\"sample_seed\":"<<s.sample_seed<<",\"last_window_ms\":["<<s.last_mean<<','<<s.last_p95<<','<<s.last_p99<<']';
     if(s.search){const auto search=s.search->status();out<<",\"search\":{\"accepted\":"<<search.accepted<<",\"rejected\":"<<search.rejected<<",\"unstable\":"<<search.unstable<<",\"accepted_total\":"<<s.past_accepted+search.accepted<<",\"rejected_total\":"<<s.past_rejected+search.rejected<<",\"unstable_total\":"<<s.past_unstable+search.unstable<<",\"requested\":"<<std::quoted(name(search.requested))<<",\"done\":"<<(search.done?"true":"false")<<",\"reason\":"<<std::quoted(search.reason)<<'}';}out<<'}';
 }
 }

@@ -20,6 +20,8 @@ parser.add_argument("--measure-costs",action="store_true")
 parser.add_argument("--seconds",type=int,choices=range(1,36),default=10)
 parser.add_argument("--worker-placement",choices=['normal','prefer','core','partition','adaptive'],default='normal')
 parser.add_argument("--max-start-temperature",type=float)
+parser.add_argument("--focus-scene",choices=['hello','instances'])
+parser.add_argument("--dynamic-camera",action="store_true")
 args=parser.parse_args()
 root=args.wicked.resolve();output=args.output.resolve();output.mkdir(parents=True,exist_ok=False)
 exe=root/"BUILD/x64/Release/Tests/Tests.exe"
@@ -30,6 +32,9 @@ if args.worker_placement!='normal' and not args.dll: raise ValueError('Worker pl
 env['ARC_WORKER_PLACEMENT']=args.worker_placement
 if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_OUTPUT=str(output/'renderer.json'),ARC_WICKED_SECONDS=str(args.seconds),ARC_WICKED_WARMUP_SECONDS='2',ARC_WICKED_SCENE_SETTLE_MS='500',ARC_WICKED_HOOK_TIMING='0')
+env['ARC_BENCH_OUTPUT']=str(output)
+if args.focus_scene: env['ARC_WICKED_FOCUS_SCENE']='0' if args.focus_scene=='hello' else '18'
+if args.dynamic_camera: env['ARC_WICKED_DYNAMIC_CAMERA']='1'
 if args.dll:
     if not args.compiler or not args.compiler.is_file(): raise ValueError("Pinned DXC required")
     env.update(ARC_BENCH_DLL=str(args.dll.resolve()),ARC_BENCH_OUTPUT=str(output),ARC_BENCH_COMPUTE=args.compute_mode,
@@ -50,16 +55,34 @@ manifest={'host_quality_actions':'off','native_resolution':[1920,1080],'dll_sha2
           'automatic_target_fps':args.auto_target,'cost_diagnostics':bool(args.measure_costs and args.dll),
           'measurement_seconds':args.seconds,
           'worker_placement':args.worker_placement,
+          'focus_scene':args.focus_scene,'dynamic_camera':args.dynamic_camera,
           'compiler_sha256':hashlib.sha256(args.compiler.read_bytes()).hexdigest() if args.dll else None}
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
 manifest['thermal_gate']=wait_for_cool_gpu(args.max_start_temperature)
 start=time.monotonic()
+history=[]
 with (output/'stdout.txt').open('w') as out,(output/'stderr.txt').open('w') as err:
     process=subprocess.Popen([str(exe),'alwaysactive','dx12'],cwd=root/'Samples/Tests',env=env,stdout=out,stderr=err,startupinfo=startup)
-    try: code=process.wait(timeout=60)
+    try:
+        while process.poll() is None:
+            remaining=60-(time.monotonic()-start)
+            if remaining<=0: raise subprocess.TimeoutExpired(str(exe),60)
+            try: process.wait(timeout=min(.5,remaining))
+            except subprocess.TimeoutExpired: pass
+            if args.dll and args.focus_scene and (output/'arc.json').is_file():
+                try:
+                    snapshot=json.loads((output/'arc.json').read_text())
+                    history.append({'elapsed_seconds':time.monotonic()-start,'presents':snapshot.get('present_calls'),
+                                    'worker_placement':snapshot.get('worker_placement'),
+                                    'automatic_session':snapshot.get('automatic_session')})
+                except (OSError,ValueError): pass # an atomic writer may be replacing its snapshot
+        code=process.returncode
     except subprocess.TimeoutExpired:
         process.kill();process.wait();raise RuntimeError('Owned renderer exceeded 60 seconds')
+(output/'adaptation-history.json').write_text(json.dumps(history,indent=2))
 manifest.update(exit_code=code,seconds=time.monotonic()-start)
 (output/'manifest.json').write_text(json.dumps(manifest,indent=2))
 if code: raise RuntimeError(f'Owned renderer failed: {code}')
-print(json.dumps(manifest))
+print(json.dumps({'output':str(output),'mode':manifest['mode'],'worker_placement':args.worker_placement,
+                  'seconds':manifest['seconds'],'exit_code':code,
+                  'cooldown_seconds':manifest['thermal_gate'].get('wait_seconds',0)}))

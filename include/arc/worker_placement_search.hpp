@@ -9,7 +9,7 @@ namespace arc {
 enum class WorkerMode : unsigned {Normal,Prefer,Core,Partition};
 struct PlacementWindow {double mean{},p95{},p99{};unsigned frames{};bool valid{true};};
 struct PlacementSearchStatus {WorkerMode requested{};unsigned accepted{},rejected{},unstable{};bool done{};std::string reason{"baseline"};};
-// Candidate changes are CPU placement only. A/B/A windows and two independent
+// Candidate changes are CPU placement only. A/B/A windows and two separate
 // confirmations protect against scene drift, noisy tails and one lucky sample.
 class WorkerPlacementSearch {
     enum class Phase {Before,Candidate,After,Hold};
@@ -44,7 +44,7 @@ public:
         const bool smoother=trial_.mean<=baseline*1.005&&trial_.p99<=p99*.9&&p99-trial_.p99>=.2;
         const bool useful=(faster||smoother)&&trial_.p95<=p95*1.02&&trial_.p99<=p99*1.02;
         if(!useful){++status_.rejected;status_.reason="no_gain_or_tail_regression";return next();}
-        if(++confirmations_<2){before_=window;phase_=Phase::Candidate;status_.requested=candidates_[candidate_];status_.reason="confirm_candidate";return status_.requested;}
+        if(++confirmations_<2){phase_=Phase::Before;status_.requested=WorkerMode::Normal;status_.reason="fresh_confirmation_baseline";return status_.requested;}
         ++status_.accepted;const auto score=std::max(gain,(p99-trial_.p99)/p99*.1);
         if(score>best_gain_){best_gain_=score;best_=candidates_[candidate_];best_reference_=trial_;}return next();
     }

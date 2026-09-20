@@ -44,7 +44,10 @@ restorations remain visible as `rollback_pending`; adaptation stops after faults
 
 Adaptive sampling never waits on a mutex in Present. A missed sample invalidates
 the window. OS setting changes run on the background collector. Each measurement
-window has 120 frames, with settling after changes. Acceptance requires either
+window has 120 frames, with randomized 32..96-frame settling after changes to
+avoid locking the experiment to periodic camera motion. Confirmation starts
+with a fresh baseline window rather than reusing the prior reference. The
+sampling seed is recorded. Acceptance requires either
 at least 2% and .05ms mean improvement, or at least 10% and .2ms p99 improvement
 with mean regression no greater than .5%. Both p95 and p99 must remain within 2%
 of the bracketed baseline. Baseline drift rejects a comparison. Two confirmations
@@ -73,3 +76,57 @@ CPU placement acceptance is separate from graphics-quality policy acceptance.
 The full graphics optimizer still lacks complete GPU-overhead evidence and does
 not automatically retain graphics mutations. No universal or 2x FPS claim is
 made by this worker-placement feature.
+
+## Measurements on the current laptop
+
+`placement-cooled-v1` has 13 complete 1200-frame dynamic Cauldron runs: four
+normal references and three repetitions of each candidate. Camera and objects
+move. Starts are temperature-gated; GPU clocks/temperatures are retained.
+
+| Mode | Median FPS | Median p99 frame ms |
+| --- | ---: | ---: |
+| normal | 78.000 | 17.431 |
+| prefer | 78.100 | 16.321 |
+| core | 78.145 | 16.672 |
+| partition | 77.952 | 16.178 |
+
+Against bracketing normal runs, median FPS changes are +.067%, +.186%, -.567%
+for prefer/core/partition. There is no material FPS gain. Their corresponding
+p99 changes are approximately -8.16%, -5.95%, -8.13%; this is a tail-latency
+signal, not evidence of universal acceleration or a 2x result.
+
+`placement-wicked-v1` repeats normal three times and candidates twice. The
+65k-instance scene already animates transforms and emissive colours using the
+engine's job system, but its camera is fixed. Normal/core CPU p50 medians are
+19.797/18.931ms; p95 23.454/21.406ms. The core p50 range (18.744..19.119ms) is
+below both normal endpoints (19.646..20.038ms), a preliminary ~4.4% CPU timing
+improvement in this workload. Other scenes and machines are not implied.
+Wicked itself pins job threads using hard affinity; changing process DEFAULT
+CPU sets must not be described as excluding every game thread from a core.
+
+## Longer, moving-camera scenes
+
+The owned harness supports `--focus-scene instances|hello --seconds 35` and
+`--dynamic-camera`. Scene switching is disabled during each focused measurement.
+The 3D camera follows a repeatable sinusoidal path; 65k-instance transforms and
+emissive colours retain their engine animation. Hello World retains its animated
+rotating/wobbling sprite. `motion.jsonl` verifies motion; `adaptation-history.json`
+samples live decisions. These fixture changes supply NO semantic inputs to ARC.
+
+`focused-dynamic-v3` completes three focused processes, each under 44 seconds:
+
+* Moving 65k instances, full graphics trials + CPU placement: CPU p50 32.815ms,
+  p95 56.475ms; GPU p50 6.921ms. Two graphics trials fail the image check; zero
+  graphics or CPU placements are retained. CPU search resets 23 times as the
+  graphics policy changes. This reveals coordination/measurement limitations.
+* Animated Hello World: CPU p50 1.671ms, GPU p50 1.008ms; the 100-FPS target is
+  already met. CPU placement candidates fail the gain tests; normal is retained.
+* Moving 65k instances, fixed neutral graphics + CPU placement only: CPU p50
+  30.933ms, p95 51.886ms; GPU p50 6.781ms. CPU placement obtains nine windows but
+  cannot confirm a winner within the run. This is NOT a matched baseline pair
+  against the preceding full-optimizer run, so do not call their difference a gain.
+
+Motion logs contain all 65536 objects, camera X spanning about -1.10..+1.10, and
+over 32 seconds of continuous motion. The earlier short-scene gain must not be
+substituted for a confirmed moving-camera gain. The remaining work includes
+workload-matched performance estimates and coordination of CPU/GPU experiments.
