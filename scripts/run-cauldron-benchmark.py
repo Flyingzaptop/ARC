@@ -15,6 +15,9 @@ parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
 parser.add_argument("--mode",choices=["vrs","observe","profile","compute-off","compute-neutral","compute-2x1","compute-1x2","compute-2x2","compute-pcf9","compute-zero","compute-neutral-hot","compute-2x1-hot","compute-1x2-hot","compute-2x2-hot","compute-pcf9-hot","compute-zero-hot","compute-adaptive-1x2-hot","compute-adaptive-2x2-hot","compute-mip-half-hot","compute-mip1-hot","compute-mip2-hot"],default="vrs")
 parser.add_argument("--frames",type=int,default=600)
+parser.add_argument("--initialization-seconds",type=float,default=0)
+parser.add_argument("--measurement-seconds",type=float,default=0)
+parser.add_argument("--cache",type=Path)
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
@@ -24,6 +27,11 @@ parser.add_argument("--cpu-state-cache",action="store_true")
 parser.add_argument("--worker-placement",choices=['normal','prefer','core','partition','adaptive'],default='normal')
 parser.add_argument("--max-start-temperature",type=float)
 args=parser.parse_args()
+if not 0<=args.initialization_seconds<=120 or not 0<=args.measurement_seconds<=60:
+    parser.error('Initialization must be 0..120s and measurement 0..60s')
+if args.initialization_seconds and not args.measurement_seconds:
+    parser.error('Timed initialization requires a timed measurement')
+process_budget=args.initialization_seconds+args.measurement_seconds+30 if args.measurement_seconds else 60
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
 exe=sdk/"bin/FFX_BRIXELIZER_GI_DX12.exe"
@@ -37,6 +45,11 @@ if args.cpu_state_cache and not args.dll: raise ValueError('CPU state cache requ
 if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_FRAMES"]=str(args.frames)
+for key in ('ARC_BENCH_MEASUREMENT_SECONDS','ARC_BENCH_INITIALIZATION_SECONDS'):
+    env.pop(key,None)
+if args.measurement_seconds:
+    env['ARC_BENCH_MEASUREMENT_SECONDS']=str(args.measurement_seconds)
+    env['ARC_BENCH_INITIALIZATION_SECONDS']=str(args.initialization_seconds)
 env.pop("ARC_BENCH_DLL",None)
 env["ARC_BENCH_MODE"]=args.mode
 if args.edge_threshold is not None:
@@ -56,7 +69,7 @@ if args.dll and args.mode.startswith("compute-"):
         raise RuntimeError("Compute experiment requires built ARC shader worker and pinned DXC")
     env["ARC_OPTIMIZER_WORKER"]=str(worker)
     env["ARC_OPTIMIZER_COMPILER"]=str(compiler)
-    env["ARC_OPTIMIZER_CACHE"]=str(output/"shader-cache")
+    env["ARC_OPTIMIZER_CACHE"]=str(args.cache.resolve() if args.cache else output/"shader-cache")
 env.pop("ARC_AUTO_CONFIG",None)
 if args.auto_target is not None:
     if not args.dll or not args.mode.startswith("compute-") or not 0 < args.auto_target <= 1000:
@@ -65,7 +78,7 @@ if args.auto_target is not None:
     config=output/"automatic-config.json"
     config.write_text(json.dumps({"target_fps":args.auto_target,"python":sys.executable,
         "critic":str(Path(__file__).resolve().parent/"optimizer-live-quality.py"),
-        "output":str(output/"automatic"),"maximum_seconds":50},indent=2))
+        "output":str(output/"automatic"),"maximum_seconds":int(process_budget-5)},indent=2))
     env["ARC_AUTO_CONFIG"]=str(config)
 command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.frames+120}",f"path={output}","json","-screenshot"]
 hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
@@ -73,6 +86,7 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "automatic_target_fps":args.auto_target,
+          "initialization_seconds":args.initialization_seconds,"measurement_seconds":args.measurement_seconds,"process_budget_seconds":process_budget,
           "cost_diagnostics":bool(args.measure_costs and args.dll),
           "cpu_state_cache":args.cpu_state_cache,
           "worker_placement":args.worker_placement,
@@ -89,19 +103,24 @@ with (output/"stdout.txt").open("w") as stdout,(output/"stderr.txt").open("w") a
     process=subprocess.Popen(command,cwd=exe.parent,env=env,stdout=stdout,stderr=stderr,startupinfo=startup)
     try:
         while process.poll() is None:
-            if time.monotonic()-started>60: raise subprocess.TimeoutExpired(command,60)
+            if time.monotonic()-started>process_budget: raise subprocess.TimeoutExpired(command,process_budget)
             rows_path=output/"frames.jsonl"
-            if args.frames>=600 and shutil.which("nvidia-smi") and time.monotonic()>=next_gpu:
+            if (args.measurement_seconds or args.frames>=600) and shutil.which("nvidia-smi") and time.monotonic()>=next_gpu:
                 sample=subprocess.run(["nvidia-smi","--query-gpu=timestamp,utilization.gpu,utilization.memory,clocks.current.graphics,memory.used,temperature.gpu,power.draw","--format=csv,nounits"],capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW)
                 gpu_rows.append({"elapsed_s":time.monotonic()-started,"measured_phase":rows_path.exists() and rows_path.stat().st_size>0,"csv":sample.stdout,"exit_code":sample.returncode})
+                with (output/'gpu-samples.jsonl').open('a') as telemetry:
+                    telemetry.write(json.dumps(gpu_rows[-1])+'\n')
                 next_gpu=time.monotonic()+1
             if cpu is None and args.process_sampler and args.frames>=600 and rows_path.exists() and rows_path.stat().st_size:
                 cpu=subprocess.Popen([str(args.process_sampler.resolve()),str(process.pid),"5",str(output/"cpu.json")],stdout=subprocess.DEVNULL,stderr=stderr,creationflags=subprocess.CREATE_NO_WINDOW)
             time.sleep(0.05)
         code=process.returncode
     except subprocess.TimeoutExpired:
-        process.kill();process.wait();raise RuntimeError("Owned benchmark exceeded 60 seconds")
+        process.kill();process.wait();raise RuntimeError(f"Owned benchmark exceeded {process_budget} seconds")
     finally:
+        (output/"gpu-samples.json").write_text(json.dumps(gpu_rows,indent=2))
+        manifest.update(exit_code=process.poll(),process_seconds=time.monotonic()-started)
+        (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
         if cpu:
             try: cpu.wait(timeout=6)
             except subprocess.TimeoutExpired: cpu.kill();cpu.wait()
@@ -112,8 +131,8 @@ log=exe.parent/"Cauldron.log"
 if log.exists(): (output/"Cauldron.log").write_bytes(log.read_bytes())
 if code: raise RuntimeError(f"Host failed: {code}")
 rows=[json.loads(line) for line in (output/"frames.jsonl").read_text().splitlines()]
-manifest['actual_frames']=len(rows);manifest['measurement_complete']=len(rows)==args.frames
+manifest['actual_frames']=len(rows);manifest['measurement_complete']=(bool(rows) and rows[-1].get('measurement_elapsed_ms',0)>=args.measurement_seconds*1000) if args.measurement_seconds else len(rows)==args.frames
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
-if len(rows)!=args.frames: raise RuntimeError(f"Incomplete measurement: {len(rows)}/{args.frames}")
+if not manifest['measurement_complete']: raise RuntimeError(f"Incomplete measurement: {len(rows)} frames")
 fps=1000*len(rows)/sum(row["frame_ms"] for row in rows)
 print(json.dumps({"output":str(output),"frames":len(rows),"fps":fps,"process_seconds":manifest["process_seconds"]}))

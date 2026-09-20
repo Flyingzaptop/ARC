@@ -101,4 +101,12 @@ int main(){
     assert(maximize.frame(3).kind!=arc::SessionRequestKind::Restore);
     arc::OptimizerSession bad(maxconfig);bad.candidates({{99,1,1,.1,true}});bad.frame(4);bad.frame(4);fast.ssim=.5;
     assert(bad.evidence(fast).kind==arc::SessionRequestKind::None&&bad.snapshot().accepted==0);
+    // Net-speed policy may accept unknown component costs, but never invents
+    // them as zero or substitutes CPU submission for GPU execution evidence.
+    maxconfig.enforce_component_budgets=false;maxconfig.require_gpu_execution=true;
+    arc::OptimizerSession execution(maxconfig);execution.candidates({{99,1,1,.1,true}});execution.frame(4);execution.frame(4);
+    fast.ssim=.99;fast.cpu_overhead_ms=fast.gpu_overhead_ms=std::numeric_limits<double>::quiet_NaN();fast.gpu_execution_confirmed=false;
+    assert(execution.evidence(fast).kind==arc::SessionRequestKind::None);
+    execution.scene_changed();execution.frame(4);execution.frame(4);fast.gpu_execution_confirmed=true;
+    assert(execution.evidence(fast).kind==arc::SessionRequestKind::Apply);
 }

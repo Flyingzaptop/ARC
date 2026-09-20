@@ -5,9 +5,10 @@
 #include <memory>
 #include <span>
 #include <vector>
+#include <optional>
 
 namespace arc::dx12::optimizer {
-struct ControlValue {UINT x{1},y{1},width{},height{},comparison_taps{},zero_factor{},edge_sources{};float edge_threshold{};UINT mip_steps{};alignas(8) UINT64 calibration{},calibration_pipeline{};};
+struct ControlValue {UINT x{1},y{1},width{},height{},comparison_taps{},zero_factor{},edge_sources{};float edge_threshold{};UINT mip_steps{};alignas(8) UINT64 calibration{},calibration_pipeline{},reserved{},proof_epoch{},proof_pipeline{};};
 // A recording ends by restoring this buffer to neutral on the GPU. Therefore a
 // missed update, exhausted upload ring or subsequent cached replay cannot keep
 // a coarse policy accidentally. Callers serialize methods with submissions.
@@ -16,6 +17,17 @@ public:
     static constexpr unsigned capacity=32;
     explicit GpuControl(ID3D12Device*,bool measure=false); // worker only: allocation/initialization
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS address(unsigned slot) const noexcept;
+    [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS marker_address(unsigned slot) const noexcept;
+    void marker_barrier(ID3D12GraphicsCommandList*);
+    struct ExecutionReadback {
+        std::shared_ptr<void> lease;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+        UINT64 completion{},offset{},queue{};
+        std::array<std::array<UINT64,2>,capacity> expected{};
+        bool read(std::array<std::array<UINT64,2>,capacity>& actual)const noexcept;
+    };
+    std::optional<ExecutionReadback> execution_readback(ID3D12CommandQueue*)const;
     void begin_recording() noexcept {calibration_mask_=0;}
     bool calibration_available()const noexcept{return bool(calibration_queries_);}
     void calibration_mark(ID3D12GraphicsCommandList*,unsigned slot,unsigned point);
@@ -36,6 +48,11 @@ private:
     template<class T>using Ptr=Microsoft::WRL::ComPtr<T>;
     Ptr<ID3D12Device> device_;
     Ptr<ID3D12Resource> buffer_,upload_,neutral_;
+    Ptr<ID3D12Resource> marker_,marker_readback_;
+    std::array<std::array<Ptr<ID3D12GraphicsCommandList>,4>,2> marker_copies_;
+    std::array<std::shared_ptr<void>,4> marker_leases_;
+    std::array<std::array<std::array<UINT64,2>,capacity>,4> marker_expected_{};
+    int last_marker_slot_{-1};
     Ptr<ID3D12Fence> fence_;
     Ptr<ID3D12QueryHeap> timestamps_;
     Ptr<ID3D12Resource> readback_;

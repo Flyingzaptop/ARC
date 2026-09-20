@@ -7,6 +7,7 @@ namespace arc {
 struct OptimizerSessionConfig {
     double target_fps{60};
     bool maximize_fps{false};
+    bool enforce_component_budgets{true},require_gpu_execution{false};
     double min_ssim{.98},max_mean_error{.01},max_tile_p99{.04};
     double min_gain_ms{.1},min_gain_fraction{.02};
     double max_cpu_overhead_ms{.2},max_gpu_overhead_ms{.25};
@@ -22,6 +23,7 @@ struct OptimizerTrialEvidence {
     double ssim{},mean_error{},tile_p99{},cpu_overhead_ms{},gpu_overhead_ms{};
     double original_frame_ms{}; // zero means no fresh original-policy timing
     bool exact_native_state{}; // structural CPU equivalence, not a measured SSIM
+    bool gpu_execution_confirmed{};
 };
 enum class SessionPhase { Warmup,Discover,Probe,Settle,Active,Limited,Recover,Faulted };
 enum class SessionRequestKind { None,Profile,Probe,Apply,Restore };

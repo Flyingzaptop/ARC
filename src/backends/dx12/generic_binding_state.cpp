@@ -136,13 +136,13 @@ std::optional<Location> Layout::locate(D3D12_DESCRIPTOR_RANGE_TYPE type,
     return found;
 }
 
-std::vector<std::byte> append_control_cbv(std::span<const std::byte> original,UINT space) {
+std::vector<std::byte> append_control_cbv(std::span<const std::byte> original,UINT space,bool execution_marker) {
     const auto parsed=Layout::parse(original);
-    if(!parsed.complete||parsed.dwords>62||parsed.parameters.size()>=64)return {};
+    if(!parsed.complete||parsed.dwords>(execution_marker?60:62)||parsed.parameters.size()>(execution_marker?62:63))return {};
     for(const auto& p:parsed.parameters){
         if(p.type==D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE){
-            for(const auto& r:p.ranges)if(r.type==D3D12_DESCRIPTOR_RANGE_TYPE_CBV&&r.space==space&&r.first_register==0)return {};
-        }else if((p.type==D3D12_ROOT_PARAMETER_TYPE_CBV||p.type==D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS)&&p.space==space&&p.shader_register==0)return {};
+            for(const auto& r:p.ranges)if((r.type==D3D12_DESCRIPTOR_RANGE_TYPE_CBV||(execution_marker&&r.type==D3D12_DESCRIPTOR_RANGE_TYPE_UAV))&&r.space==space&&r.first_register==0)return {};
+        }else if((p.type==D3D12_ROOT_PARAMETER_TYPE_CBV||p.type==D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS||(execution_marker&&p.type==D3D12_ROOT_PARAMETER_TYPE_UAV))&&p.space==space&&p.shader_register==0)return {};
     }
     Microsoft::WRL::ComPtr<ID3D12VersionedRootSignatureDeserializer> decoder;
     if(FAILED(D3D12CreateVersionedRootSignatureDeserializer(original.data(),original.size(),IID_PPV_ARGS(&decoder))))return {};
@@ -152,7 +152,8 @@ std::vector<std::byte> append_control_cbv(std::span<const std::byte> original,UI
     if(augmented.Desc_1_1.NumParameters)parameters.assign(augmented.Desc_1_1.pParameters,augmented.Desc_1_1.pParameters+augmented.Desc_1_1.NumParameters);
     D3D12_ROOT_PARAMETER1 control{};control.ParameterType=D3D12_ROOT_PARAMETER_TYPE_CBV;
     control.Descriptor={0,space,D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE};control.ShaderVisibility=D3D12_SHADER_VISIBILITY_ALL;
-    parameters.push_back(control);augmented.Desc_1_1.NumParameters=static_cast<UINT>(parameters.size());augmented.Desc_1_1.pParameters=parameters.data();
+    parameters.push_back(control);if(execution_marker){control.ParameterType=D3D12_ROOT_PARAMETER_TYPE_UAV;parameters.push_back(control);}
+    augmented.Desc_1_1.NumParameters=static_cast<UINT>(parameters.size());augmented.Desc_1_1.pParameters=parameters.data();
     Microsoft::WRL::ComPtr<ID3DBlob> blob,error;
     if(FAILED(D3D12SerializeVersionedRootSignature(&augmented,&blob,&error)))return {};
     const auto* begin=static_cast<const std::byte*>(blob->GetBufferPointer());return {begin,begin+blob->GetBufferSize()};

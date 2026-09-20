@@ -34,6 +34,7 @@ void end_capture(const std::filesystem::path&) noexcept;
 void snapshot(std::ostream&);
 void unsupported() noexcept;
 void observe_swapchain(IDXGISwapChain*,IUnknown*) noexcept;
+ID3D12CommandQueue* acquire_presentation_queue(IDXGISwapChain*) noexcept; // caller releases
 void observe_color_space(IDXGISwapChain*,DXGI_COLOR_SPACE_TYPE) noexcept;
 void invalidate_color_spaces() noexcept;
 std::uint64_t before_present(IDXGISwapChain*) noexcept;

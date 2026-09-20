@@ -1,4 +1,5 @@
 #include "generic_readback.hpp"
+#include "generic_optimizer.hpp"
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -68,6 +69,8 @@ bool ImageReadback::enqueue(IDXGISwapChain* swap,ID3D12CommandQueue* queue,const
     if(FAILED(current->GetDesc1(&swap_desc))||(swap_desc.Flags&(DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED|DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT|DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY)))return false;
     buffer_index_=current->GetCurrentBackBufferIndex();
     if(FAILED(current->GetBuffer(buffer_index_,IID_PPV_ARGS(&buffer)))||FAILED(queue->GetDevice(IID_PPV_ARGS(&device_))))return false;
+    capture_queue_=reinterpret_cast<UINT64>(queue);capture_backbuffer_=reinterpret_cast<UINT64>(buffer.Get());
+    execution_=features?std::vector<optimizer::GpuControl::ExecutionReadback>{}:optimizer::capture_execution(queue);
     const auto desc=buffer->GetDesc();format_=desc.Format;
     if(desc.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||desc.SampleDesc.Count!=1||desc.DepthOrArraySize!=1||
        !desc.Width||!desc.Height||desc.Width>7680||desc.Height>4320)return false;
@@ -164,6 +167,12 @@ bool ImageReadback::write(){
     else out<<",\"bytes_per_pixel\":4,\"row_bytes\":"<<width_*4<<",\"pixel_file\":"<<std::quoted(pixels_path.filename().string())<<",\"copy_gpu_ms\":"<<double(elapsed)*1000.0/double(frequency_);
     out<<",\"analysis_gpu_ms\":"<<double(elapsed)*1000.0/double(frequency_)<<",\"enqueue_cpu_ms\":"<<enqueue_cpu_ms_<<",\"reused_storage\":"<<(reused_storage_?"true":"false");
     if(features_)out<<",\"full_image_readback\":false,\"tile_size\":16,\"tiles_x\":"<<tiles_x_<<",\"tiles_y\":"<<tiles_y_<<",\"readback_bytes\":"<<output_bytes_<<",\"tile_layout\":\"float32_le_mean_variance_max_edge_pixel_count\",\"pixel_count\":"<<count<<",\"mean_encoded_luma\":"<<(count?sum/count:0)<<",\"max_encoded_edge\":"<<max_edge;
+    out<<",\"gpu_execution\":{\"kind\":\"shader_written_epoch\",\"capture_queue\":"<<capture_queue_<<",\"backbuffer_identity\":"<<capture_backbuffer_<<",\"image_fence_completed\":true,\"markers\":[";
+    bool first_marker=true;
+    for(const auto& proof:execution_){std::array<std::array<UINT64,2>,optimizer::GpuControl::capacity> actual{};const bool complete=proof.read(actual);
+        for(unsigned i=0;i<proof.expected.size();++i){const auto& expected=proof.expected[i];if(!expected[0])continue;if(!first_marker)out<<',';first_marker=false;
+            out<<"{\"expected_epoch\":"<<expected[0]<<",\"expected_pipeline\":"<<expected[1]<<",\"actual_epoch\":"<<actual[i][0]<<",\"actual_pipeline\":"<<actual[i][1]<<",\"queue\":"<<proof.queue<<",\"fence_completed\":"<<(complete?"true":"false")<<",\"matched\":"<<(complete&&actual[i]==expected&&proof.queue==capture_queue_?"true":"false")<<'}';}}
+    out<<"]}";
     out
         <<",\"present_hresult\":"<<present_result_<<",\"gpu_frame_timing_available\":false,\"capture_qpc\":"<<capture_qpc_<<",\"color_space_known\":"<<(color_space_known_?"true":"false")<<",\"color_space\":"<<color_space_<<",\"reproducible_state\":false,\"cumulative_modified_draws_at_copy\":"<<mutations_<<",\"experimental_vrs_rate_at_copy\":"<<experimental_rate_<<'}';
     out.close();if(!out)return false;std::filesystem::rename(temporary,path_);return true;

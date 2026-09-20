@@ -12,6 +12,9 @@ using Api=DWORD(WINAPI*)(void*);
 struct State {
     bool enabled{},ready{};
     unsigned tick{},warmup{120},frames{600};
+    bool timed{},measuring{},finished{};unsigned measured_frames{};
+    double initialization_seconds{},measurement_seconds{};
+    Clock::time_point measurement_start;
     std::wstring output;
     std::ofstream rows;
     Clock::time_point frame_start,previous_start,previous_end,ready_start;
@@ -24,7 +27,9 @@ inline std::wstring env(const wchar_t* name){wchar_t value[32768]{};GetEnvironme
 inline void initialize(){
     auto& s=state();s.output=env(L"ARC_BENCH_OUTPUT");s.enabled=!s.output.empty();if(!s.enabled)return;
     const auto frames=env(L"ARC_BENCH_FRAMES");if(!frames.empty())s.frames=std::stoul(frames);
-    if(s.frames<1||s.frames>3600)throw std::runtime_error("Benchmark frame count 1..3600 required; runner enforces 60-second limit");
+    const auto seconds=env(L"ARC_BENCH_MEASUREMENT_SECONDS");if(!seconds.empty()){s.measurement_seconds=std::stod(seconds);s.initialization_seconds=std::stod(env(L"ARC_BENCH_INITIALIZATION_SECONDS"));s.timed=true;}
+    if(s.timed&&(s.measurement_seconds<1||s.measurement_seconds>60||s.initialization_seconds<0||s.initialization_seconds>120))throw std::runtime_error("Bounded benchmark durations required");
+    if(s.frames<1||(!s.timed&&s.frames>3600))throw std::runtime_error("Benchmark frame count 1..3600 required in frame-count mode");
     s.rows.open(s.output+L"/frames.jsonl");if(!s.rows)throw std::runtime_error("Cannot open benchmark output");
     const auto dll=env(L"ARC_BENCH_DLL");if(dll.empty())return;
     const auto module=LoadLibraryW(dll.c_str());if(!module)throw std::runtime_error("Cannot load ARC benchmark DLL");
@@ -51,7 +56,8 @@ inline void initialize(){
         wchar_t enable[]=L"2x2";if(s.mode(enable))throw std::runtime_error("ARC VRS mode refused");
     }
 }
-inline void before_frame(){auto& s=state();if(s.profile&&!s.profile_requested&&s.ready&&s.tick==s.warmup){
+inline void before_frame(){auto& s=state();if(s.timed&&s.ready&&!s.measuring&&s.tick>=s.warmup&&ms(Clock::now()-s.ready_start)>=s.initialization_seconds*1000){s.measuring=true;s.measurement_start=Clock::now();}
+if(s.profile&&!s.profile_requested&&s.ready&&s.tick==s.warmup){
     auto argument=L"16|"+s.output+L"/gpu-profile.json";if(s.profile(&argument[0]))throw std::runtime_error("GPU profile request refused");s.profile_requested=true;
 }}
 inline void finish(){auto& s=state();s.rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){

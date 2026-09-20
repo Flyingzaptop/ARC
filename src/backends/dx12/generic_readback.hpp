@@ -4,6 +4,7 @@
 #include <wrl/client.h>
 #include <filesystem>
 #include <chrono>
+#include "generic_gpu_control.hpp"
 
 namespace arc::dx12::generic {
 // One explicitly requested image. No GPU wait or Map occurs on Present.
@@ -17,7 +18,7 @@ public:
     bool ready() const noexcept;
     bool write(); // worker only, after ready(); false reports GPU/IO failure
     void color_space(UINT value,bool known) noexcept {color_space_=value;color_space_known_=known;}
-    void release_queue_for_cache() noexcept {list_.Reset();allocator_.Reset();queue_.Reset();}
+    void release_queue_for_cache() noexcept {list_.Reset();allocator_.Reset();queue_.Reset();execution_.clear();}
     [[nodiscard]] bool submitted() const noexcept {return submitted_;}
 private:
     template<class T> using Ptr=Microsoft::WRL::ComPtr<T>;
@@ -43,5 +44,7 @@ private:
     bool features_{};UINT tiles_x_{},tiles_y_{};UINT64 output_bytes_{};
     bool reused_storage_{};
     UINT color_space_{};bool color_space_known_{};UINT64 capture_qpc_{};
+    std::vector<optimizer::GpuControl::ExecutionReadback> execution_;
+    UINT64 capture_queue_{},capture_backbuffer_{};
 };
 }

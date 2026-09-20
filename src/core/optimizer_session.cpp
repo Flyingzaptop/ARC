@@ -72,11 +72,12 @@ SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
     if(!e.restoration_confirmed){state_.phase=SessionPhase::Faulted;++state_.rejected;return {};}
     const bool finite=positive(e.baseline_frame_ms)&&positive(e.candidate_frame_ms)&&nonnegative(e.baseline_noise_ms)&&
         (exact||(nonnegative(e.ssim)&&e.ssim<=1&&nonnegative(e.mean_error)&&nonnegative(e.tile_p99)))&&
-        nonnegative(e.cpu_overhead_ms)&&nonnegative(e.gpu_overhead_ms);
+        (!config_.enforce_component_budgets||(nonnegative(e.cpu_overhead_ms)&&nonnegative(e.gpu_overhead_ms)));
     const double gain=e.baseline_frame_ms-e.candidate_frame_ms;
     const bool quality=exact||(e.matched_reference&&e.ssim>=config_.min_ssim&&e.mean_error<=config_.max_mean_error&&e.tile_p99<=config_.max_tile_p99);
     const bool accept=e.complete&&quality&&finite&&nonnegative(e.original_frame_ms)&&(config_.maximize_fps||e.baseline_frame_ms>state_.target_frame_ms)&&
-        e.cpu_overhead_ms<=config_.max_cpu_overhead_ms&&e.gpu_overhead_ms<=config_.max_gpu_overhead_ms&&
+        (!config_.require_gpu_execution||exact||e.gpu_execution_confirmed)&&
+        (!config_.enforce_component_budgets||(e.cpu_overhead_ms<=config_.max_cpu_overhead_ms&&e.gpu_overhead_ms<=config_.max_gpu_overhead_ms))&&
         gain>std::max({config_.min_gain_ms,e.baseline_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms});
     if(!accept){++state_.rejected;state_.phase=SessionPhase::Settle;settle_=config_.settle_samples;return {};}
     if(positive(e.original_frame_ms))original_reference_ms_=e.original_frame_ms;

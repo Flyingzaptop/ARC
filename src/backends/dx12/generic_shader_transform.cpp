@@ -77,7 +77,7 @@ std::string normalize_converted_dxil(std::string_view input){
     return output.str();
 }
 
-Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,bool runtime_control,unsigned requested_control_space) {
+Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,bool runtime_control,unsigned requested_control_space,bool execution_marker) {
     Transform out;
     auto reject=[&](std::string reason){out.reason=std::move(reason);out.ir.clear();return out;};
     try {
@@ -194,7 +194,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         if(ids[0].empty()||ids[1].empty()||stores.empty())return reject("no_pixel_outputs");
         for(const auto& s:stores)if(!s.args[2].starts_with("i32 ")||!s.args[3].starts_with("i32 ")||!thread_ids[0].contains(s.args[2].substr(4))||!thread_ids[1].contains(s.args[3].substr(4)))return reject("nonlocal_store");
         out.stores=static_cast<unsigned>(stores.size());
-        unsigned control_range{};
+        unsigned control_range{},marker_range{};
         std::string appended_metadata;
         if(runtime_control){
             unsigned space=0;
@@ -208,9 +208,20 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             auto cbuffers=resource_lists[2]=="null"?std::vector<std::string>{}:metadata.at(metadata_ref(resource_lists[2]));
             cbuffers.push_back("!"+std::to_string(control_id));resource_lists[2]="!"+std::to_string(list_id);
             auto format=[](unsigned id,const std::vector<std::string>& f){std::string s="!"+std::to_string(id)+" = !{";for(unsigned j=0;j<f.size();++j){if(j)s+=", ";s+=f[j];}return s+"}";};
+            if(execution_marker){
+                for(const auto& r:out.resources)if(r.resource_class==1)marker_range=std::max(marker_range,r.range_id+1);
+                auto uavs=resource_lists[1]=="null"?std::vector<std::string>{}:metadata.at(metadata_ref(resource_lists[1]));
+                const auto marker_id=next++,uav_list=next++;uavs.push_back("!"+std::to_string(marker_id));resource_lists[1]="!"+std::to_string(uav_list);
+                appended_metadata="\n"+format(uav_list,uavs)+"\n!"+std::to_string(marker_id)+" = !{i32 "+std::to_string(marker_range)+", %arc_execution_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 11, i1 false, i1 false, i1 false, null}\n";
+                auto flags=properties;bool found=false;
+                for(std::size_t n=0;n<flags.size();n+=2)if(integer(flags[n])==0){if(!flags[n+1].starts_with("i64 "))return reject("shader_flags");flags[n+1]="i64 "+std::to_string(std::stoull(flags[n+1].substr(4))|16ull);found=true;}
+                if(!found){flags.push_back("i32 0");flags.push_back("i64 16");}
+                const auto property_id=metadata_ref(entries[4]);for(auto& l:lines)if(l.starts_with("!"+std::to_string(property_id)+" = "))l=format(property_id,flags);
+                out.execution_marker=true;
+            }
             for(auto& l:lines)if(l.starts_with("!"+std::to_string(root_id)+" = "))l=format(root_id,resource_lists);
-            appended_metadata="\n"+format(list_id,cbuffers)+"\n!"+std::to_string(control_id)+" = !{i32 "+std::to_string(control_range)+
-                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 48, null}\n";
+            appended_metadata+="\n"+format(list_id,cbuffers)+"\n!"+std::to_string(control_id)+" = !{i32 "+std::to_string(control_range)+
+                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 "+(execution_marker?"80":"48")+", null}\n";
         }
         // Numeric SSA ids and anonymous block ids must be named before adding
         // instructions. Renumbering only definitions would corrupt PHI edges.
@@ -226,7 +237,9 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             if(text.find("declare %dx.types.Dimensions @dx.op.getDimensions(")==text.npos)generated<<"declare %dx.types.Dimensions @dx.op.getDimensions(i32, %dx.types.Handle, i32)\n";
         }
         if(runtime_control){
-            generated<<"%arc_coarse_control_buffer = type { i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32 }\n";
+            generated<<"%arc_coarse_control_buffer = type { ["<<(execution_marker?20:12)<<" x i32] }\n";
+            if(execution_marker){generated<<"%arc_execution_buffer = type { i32 }\n";
+                if(text.find("declare void @dx.op.bufferStore.i32(")==text.npos)generated<<"declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8)\n";}
             if(text.find("%dx.types.CBufRet.i32 = type")==text.npos)generated<<"%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }\n";
             if(text.find("declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(")==text.npos)
                 generated<<"declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32, %dx.types.Handle, i32)\n";
@@ -234,6 +247,23 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         for(std::size_t i=0;i<lines.size();++i){
             generated<<lines[i]<<'\n';
             if(i==begin){
+                if(execution_marker){
+                    generated<<"arc_proof_entry:\n"
+                        <<"  %arc_proof_control = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<control_range<<", i32 0, i1 false)\n"
+                        <<"  %arc_proof_data = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_proof_control, i32 4)\n";
+                    for(unsigned j=0;j<4;++j)generated<<"  %arc_proof_value"<<j<<" = extractvalue %dx.types.CBufRet.i32 %arc_proof_data, "<<j<<"\n";
+                    generated<<"  %arc_proof_epoch = or i32 %arc_proof_value0, %arc_proof_value1\n"
+                        <<"  %arc_proof_enabled = icmp ne i32 %arc_proof_epoch, 0\n"
+                        <<"  %arc_proof_x = call i32 @dx.op.threadId.i32(i32 93, i32 0)\n"
+                        <<"  %arc_proof_y = call i32 @dx.op.threadId.i32(i32 93, i32 1)\n"
+                        <<"  %arc_proof_xy = or i32 %arc_proof_x, %arc_proof_y\n"
+                        <<"  %arc_proof_first = icmp eq i32 %arc_proof_xy, 0\n"
+                        <<"  %arc_proof_write = and i1 %arc_proof_enabled, %arc_proof_first\n"
+                        <<"  br i1 %arc_proof_write, label %arc_proof_store, label %arc_coarse_entry\narc_proof_store:\n"
+                        <<"  %arc_proof_buffer = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 "<<marker_range<<", i32 0, i1 false)\n"
+                        <<"  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %arc_proof_buffer, i32 0, i32 undef, i32 %arc_proof_value0, i32 %arc_proof_value1, i32 %arc_proof_value2, i32 %arc_proof_value3, i8 15)\n"
+                        <<"  br label %arc_coarse_entry\n";
+                }
                 generated<<"arc_coarse_entry:\n";
                 if(runtime_control){
                     generated<<"  %arc_coarse_control = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<control_range<<", i32 0, i1 false)\n"

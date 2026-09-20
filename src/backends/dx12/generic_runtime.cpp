@@ -220,6 +220,7 @@ void fence(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value,bool wait)noexcept{
 void begin_capture()noexcept{safe([&]{auto& s=state();if(s.capturing)return;s.graph.clear();for(auto& [id,c]:s.commands){(void)id;c.started=false;}s.present_resource=s.present_queue=0;s.complete=true;s.capturing=true;s.captured=s.submitted=s.unknown_tables=0;});}
 void end_capture(const std::filesystem::path& path)noexcept{safe([&]{auto& s=state();s.capturing=false;std::ofstream file(path);file<<"{\"schema\":1,\"engine_labels\":false,\"shader_access_complete\":false,\"present_resource\":"<<s.present_resource<<",\"present_queue\":"<<s.present_queue<<",\"present_queue_known\":"<<(s.present_queue?"true":"false")<<",\"capture_state_complete\":"<<(s.complete?"true":"false")<<",\"graph\":";s.graph.write_json(file);file<<'}';});}
 void observe_swapchain(IDXGISwapChain* swap,IUnknown* native)noexcept{safe([&]{if(!swap||!native)return;Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;if(FAILED(native->QueryInterface(IID_PPV_ARGS(&queue))))return;const auto id=swapchain_id(swap),qid=identify(queue.Get(),Kind::Queue);if(id&&qid){state().swapchain_queues[id]=qid;state().image_queues[id]=queue;}});}
+ID3D12CommandQueue* acquire_presentation_queue(IDXGISwapChain* swap)noexcept{ID3D12CommandQueue* result=nullptr;safe([&]{const auto object=state().objects.find(reinterpret_cast<std::uintptr_t>(swap));if(object==state().objects.end()||object->second.kind!=Kind::Swapchain)return;const auto found=state().image_queues.find(object->second.id);if(found!=state().image_queues.end()){result=found->second.Get();result->AddRef();}});return result;}
 void observe_color_space(IDXGISwapChain* swap,DXGI_COLOR_SPACE_TYPE space)noexcept{safe([&]{if(swap)state().color_spaces[swapchain_id(swap)]=static_cast<UINT>(space);});}
 void invalidate_color_spaces()noexcept{safe([&]{state().color_spaces.clear();});}
 std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
@@ -279,7 +280,8 @@ bool request_image_sequence(const std::array<std::filesystem::path,3>& paths,IDX
     bool accepted=false;safe([&]{auto& s=state();if(!swap||s.sequence_active||s.image_pending||s.image||s.image_writing)return;
         std::set<std::filesystem::path> unique;
         for(const auto& path:paths)if(!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels")||!unique.insert(path).second)return;
-        const auto id=swapchain_id(swap);if(!s.image_queues.contains(id))return;
+        const auto object=s.objects.find(reinterpret_cast<std::uintptr_t>(swap));if(object==s.objects.end()||object->second.kind!=Kind::Swapchain)return;
+        const auto id=object->second.id;if(!s.image_queues.contains(id))return;
         s.sequence_paths=paths;s.sequence_swapchain=id;s.sequence_submitted=0;s.sequence_active=true;s.image_pending=true;accepted=true;
     });return accepted;
 }

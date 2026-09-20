@@ -38,7 +38,7 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
     ('    void Framework::MainLoop()\n    {', '''    void Framework::MainLoop()
     {
         auto& bench=arc_bench::state();
-        if(bench.enabled&&bench.tick>=bench.warmup+bench.frames)return;
+        if(bench.enabled&&bench.finished)return;
         if(bench.enabled){
             const auto now=arc_bench::Clock::now();
             bench.period_ms=arc_bench::ms(now-bench.previous_start);bench.previous_start=now;bench.frame_start=now;
@@ -52,8 +52,9 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
     ('        EndFrame();\n    }', '''        EndFrame();
         if(bench.enabled&&bench.ready){
             const auto frame_end=arc_bench::Clock::now();
-            if(bench.tick>=bench.warmup){
-                json row;row["frame"]=bench.tick-bench.warmup;row["pose"]=bench.tick%600;
+            if(bench.timed?bench.measuring:bench.tick>=bench.warmup){
+                json row;row["frame"]=bench.measured_frames++;row["pose"]=bench.tick%600;row["scene_frame"]=bench.tick;
+                row["measurement_elapsed_ms"]=bench.timed?arc_bench::ms(frame_end-bench.measurement_start):0;
                 row["frame_ms"]=arc_bench::ms(frame_end-bench.previous_end);row["loop_ms"]=arc_bench::ms(arc_bench::Clock::now()-bench.frame_start);
                 row["present_ms"]=bench.present_ms;row["submit_ms"]=bench.submit_ms;
                 row["swapchain_wait_ms"]=bench.wait_ms;row["allocator_wait_ms"]=bench.allocator_ms;
@@ -71,7 +72,8 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
             }
             bench.previous_end=frame_end;
             ++bench.tick;
-            if(bench.tick>=bench.warmup+bench.frames||arc_bench::ms(arc_bench::Clock::now()-bench.ready_start)>55000){
+            const bool done=bench.timed?(bench.measuring&&arc_bench::ms(frame_end-bench.measurement_start)>=bench.measurement_seconds*1000):(bench.tick>=bench.warmup+bench.frames||arc_bench::ms(frame_end-bench.ready_start)>55000);
+            if(done){bench.finished=true;
                 m_StopTime=std::chrono::steady_clock::now();PostQuitMessage(0);
             }
         }

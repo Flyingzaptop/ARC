@@ -47,7 +47,7 @@ struct Layout {
 
 // Append b0 in an unused space without changing existing parameter indices,
 // range flags, static samplers, or root flags. Empty result means unsupported.
-std::vector<std::byte> append_control_cbv(std::span<const std::byte> original, UINT space);
+std::vector<std::byte> append_control_cbv(std::span<const std::byte> original, UINT space, bool execution_marker=false);
 
 struct Argument {
     D3D12_ROOT_PARAMETER_TYPE type{};

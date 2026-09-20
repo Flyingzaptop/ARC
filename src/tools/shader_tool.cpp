@@ -60,9 +60,10 @@ void convert_dxbc(std::vector<char>& bytes){
 int wmain(int argc, wchar_t** argv) try {
     if (argc != 5) throw std::runtime_error("Usage: arc-shader-tool dump|assemble|roundtrip|coarse2x2|coarse1x2|coarse2x1|neutral INPUT NEW_OUTPUT ABSOLUTE_DXCOMPILER_DLL");
     const std::wstring mode = argv[1];
-    const bool controlled = mode == L"controlled" || mode.starts_with(L"controlled:");
+    const bool proof=mode==L"controlled-proof"||mode.starts_with(L"controlled-proof:");
+    const bool controlled = proof || mode == L"controlled" || mode.starts_with(L"controlled:");
     unsigned requested_space=UINT32_MAX;
-    if(mode.starts_with(L"controlled:")){std::size_t used{};const auto suffix=mode.substr(11);const auto value=std::stoul(suffix,&used);if(used!=suffix.size()||value>=65536)throw std::runtime_error("Control space must be 0..65535");requested_space=static_cast<unsigned>(value);}
+    if(mode.find(L':')!=mode.npos&&controlled){std::size_t used{};const auto suffix=mode.substr(mode.find(L':')+1);const auto value=std::stoul(suffix,&used);if(used!=suffix.size()||value>=65536)throw std::runtime_error("Control space must be 0..65535");requested_space=static_cast<unsigned>(value);}
     const bool transform = mode == L"coarse2x2" || mode == L"coarse1x2" || mode == L"coarse2x1" || mode == L"neutral" || controlled;
     if (mode != L"dump" && mode != L"assemble" && mode != L"roundtrip" && !transform) throw std::runtime_error("Unknown operation");
     const std::filesystem::path input = argv[2], output = argv[3], compiler_path = argv[4];
@@ -96,7 +97,7 @@ int wmain(int argc, wchar_t** argv) try {
         auto transformed = arc::dx12::shader::coarse_compute(
             {static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},
             mode == L"coarse2x2" || mode == L"coarse2x1" ? 2 : 1,
-            mode == L"coarse2x2" || mode == L"coarse1x2" ? 2 : 1, controlled, requested_space);
+            mode == L"coarse2x2" || mode == L"coarse1x2" ? 2 : 1, controlled, requested_space, proof);
         if (!transformed.admitted) throw std::runtime_error("Shader declined: " + transformed.reason);
         if(controlled){auto zero=arc::dx12::shader::short_circuit_zero_factors(transformed.ir);transformed.ir=std::move(zero.ir);transformed.zero_factor_regions=zero.regions;auto filtered=arc::dx12::shader::sparse_comparison_filter(transformed.ir);transformed.ir=std::move(filtered.ir);transformed.comparison_filter_groups=filtered.groups;}
         if(controlled){auto edges=arc::dx12::shader::protect_input_edges(transformed.ir,transformed);transformed.ir=std::move(edges.ir);transformed.edge_input_mask=edges.input_mask;}
@@ -120,7 +121,8 @@ int wmain(int argc, wchar_t** argv) try {
         auto manifest_path=output;manifest_path+=L".contract";
         if(std::filesystem::exists(manifest_path))throw std::runtime_error("Fresh contract output required");
         std::ofstream manifest(manifest_path);
-        manifest<<"ARC_SHADER_CONTRACT_5\n"<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples<<'\n';
+        manifest<<(proof?"ARC_SHADER_CONTRACT_6\n":"ARC_SHADER_CONTRACT_5\n")<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples;
+        if(proof)manifest<<' '<<contract.execution_marker;manifest<<'\n';
         for(const auto& r:contract.resources)manifest<<r.resource_class<<' '<<r.range_id<<' '<<r.shader_register<<' '<<r.space<<' '<<r.count<<' '<<r.kind<<'\n';
         manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
         if(controlled){auto access_path=output;access_path+=L".access.ll";if(std::filesystem::exists(access_path))throw std::runtime_error("Fresh access program required");std::ofstream access(access_path,std::ios::binary);access.write(original_ir.data(),original_ir.size());access.close();if(!access)throw std::runtime_error("Write access program");}

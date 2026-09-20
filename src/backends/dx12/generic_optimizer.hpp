@@ -4,8 +4,12 @@
 #include <iosfwd>
 #include <array>
 #include <vector>
+#include <string>
 #include "arc/optimizer_policy.hpp"
 #include "arc/exact_state_cache.hpp"
+#ifndef CINTERFACE
+#include "generic_gpu_control.hpp"
+#endif
 
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
@@ -14,6 +18,11 @@ void cpu_snapshot(std::ostream&);
 void intercept_cpu_snapshot(std::ostream&);
 void control_timing_snapshot(std::ostream&);
 void coverage_snapshot(std::ostream&);
+#ifndef CINTERFACE
+std::vector<GpuControl::ExecutionReadback> capture_execution(ID3D12CommandQueue*) noexcept;
+#endif
+void require_presentation_queue(ID3D12CommandQueue*) noexcept;
+std::vector<std::string> drain_events() noexcept;
 struct ConnectionCoverage {std::size_t roots{},pipelines{};std::uint64_t unknown_root_dispatches{};};
 ConnectionCoverage connection_coverage() noexcept;
 struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{},selected_pipeline{};};
