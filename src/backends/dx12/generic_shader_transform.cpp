@@ -84,6 +84,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             }
         }
         struct Handle {unsigned cls{},range{};};std::map<std::string,Handle> handles;
+        std::set<std::string> ray_queries;
         std::array<std::string,3> ids;std::array<std::set<std::string>,3> thread_ids;
         std::string entry_label="arc_coarse_orig_0";bool named_entry=false;
         for(std::size_t i=begin+1;i<end;++i){const auto first=code(lines[i]);if(first.empty())continue;if(first.ends_with(':')){entry_label=first.substr(0,first.size()-1);named_entry=true;}break;}
@@ -91,7 +92,8 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         const std::set<std::string> allowed_calls={"dx.op.createHandle","dx.op.threadId.i32","dx.op.textureLoad.f32","dx.op.textureLoad.i32",
             "dx.op.textureStore.f32","dx.op.cbufferLoadLegacy.f32","dx.op.cbufferLoadLegacy.i32","dx.op.sampleLevel.f32","dx.op.sampleCmpLevelZero.f32",
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
-            "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32"};
+            "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32",
+            "dx.op.allocateRayQuery","dx.op.rayQuery_TraceRayInline","dx.op.rayQuery_Proceed.i1","dx.op.rayQuery_StateScalar.i32"};
         const std::set<std::string> allowed_instructions={"call","ret","br","phi","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
             "shl","lshr","ashr","and","or","xor","icmp","fcmp","select","fptoui","fptosi","uitofp","sitofp","fptrunc","fpext","zext","sext","trunc","bitcast","extractvalue","extractelement","insertelement","shufflevector"};
         const std::regex call(R"(^(?:(%[A-Za-z0-9_.$]+) = )?call [^@]+@([A-Za-z0-9_.$]+)\((.*)\)(?: #[0-9]+)?$)");
@@ -108,6 +110,19 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 const auto cls=number(std::string_view(args[1]).substr(3)),range=integer(args[2]);
                 if(cls>3||std::none_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==cls&&r.range_id==range;}))return reject("handle_range");
                 handles.emplace(value,Handle{cls,range});
+            } else if(name=="dx.op.allocateRayQuery"){
+                if(args.size()!=2||args[0]!="i32 178"||value.empty()||ray_queries.size()>=16)return reject("ray_query_allocation");
+                ray_queries.insert(value);
+            } else if(name.starts_with("dx.op.rayQuery_")){
+                if(args.size()<2||!args[1].starts_with("i32 ")||!ray_queries.contains(args[1].substr(4)))return reject("nonlocal_ray_query");
+                if(name=="dx.op.rayQuery_TraceRayInline"){
+                    if(args.size()!=13||args[0]!="i32 179")return reject("ray_trace_shape");
+                    const auto h=args[2].substr(args[2].find_last_of(' ')+1);
+                    if(!handles.contains(h)||handles.at(h).cls!=0)return reject("ray_trace_handle");
+                    const auto range=handles.at(h).range;
+                    if(std::none_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==0&&r.range_id==range&&r.kind==16;}))return reject("ray_trace_resource");
+                }else if((name=="dx.op.rayQuery_Proceed.i1"&&(args.size()!=2||args[0]!="i32 180"))||
+                         (name=="dx.op.rayQuery_StateScalar.i32"&&(args.size()!=2||args[0]!="i32 184")))return reject("ray_query_operation");
             } else if(name=="dx.op.threadId.i32"){
                 if(args.size()!=2)return reject("thread_id");const auto dim=integer(args[1]);if(dim>1)return reject("thread_id");if(ids[dim].empty())ids[dim]=value;thread_ids[dim].insert(value);
             } else if(name=="dx.op.textureStore.f32"){

@@ -111,5 +111,22 @@ int main() {
     assert(!buffers.resolve(allocations,0x100100,512)); // overlapping aliases are ambiguous
     buffers.retire(11);allocations.erase(11);assert(buffers.resolve(allocations,0x100100,512)->id==10);
     buffers.retire(10);allocations.erase(10);assert(!buffers.resolve(allocations,0x100100,512));
+    allocations[10]={10,0,0,4096,0x100000,AllocationKind::Committed,buffer};buffers.observe(allocations[10]);
+    transform.resources={{0,0,7,2,1,16},{1,0,5,3,1,2}};
+    assert(submitted.table(0,{0x10000}));allocations[4].kind=AllocationKind::Committed;
+    auto acceleration=view(10,1);acceleration.shape.dimension=D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+    assert(ledger.write(0x1000+4*32,acceleration));assert(admit().admitted);
+    allocations[4].kind=AllocationKind::Placed;
+    assert(!admit().admitted&&admit().reason=="ray_indirect_alias_unproven");
+    allocations[4].kind=AllocationKind::Committed;
+    acceleration.resource=0;assert(ledger.write(0x1000+4*32,acceleration));
+    assert(!admit().admitted&&admit().reason=="unknown_acceleration_structure");
+    auto ray_root=std::make_shared<Layout>(*root);ray_root->parameters[0].ranges.erase(ray_root->parameters[0].ranges.begin());
+    Parameter ray_parameter;ray_parameter.type=D3D12_ROOT_PARAMETER_TYPE_SRV;ray_parameter.shader_register=7;ray_parameter.space=2;
+    ray_root->parameters.push_back(ray_parameter);Arguments ray_arguments;ray_arguments.signature(30,ray_root);
+    assert(ray_arguments.table(0,{0x10000}));assert(ray_arguments.descriptor(3,D3D12_ROOT_PARAMETER_TYPE_SRV,0x100000));
+    assert(admit_compute(ray_arguments,transform,ledger,heaps,allocations,8,5,1,nullptr,&buffers).admitted);
+    buffers.retire(10);allocations.erase(10);
+    assert(!admit_compute(ray_arguments,transform,ledger,heaps,allocations,8,5,1,nullptr,&buffers).admitted);
     std::cout << "Root ranges, spaces, APPEND, visibility, constants and invalidation passed\n";
 }

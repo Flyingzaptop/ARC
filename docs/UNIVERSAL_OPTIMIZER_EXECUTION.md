@@ -227,3 +227,20 @@ rollback. Existing compute/PCF/zero/edge tests still pass with zero debug errors
 .011481. The one-pair gain is below the configured 2% minimum and is NOT an
 accepted performance win. This is a bounded compute sampling actuator, not
 complete automatic texture residency/streaming or pixel-shader mip control.
+
+## Checkpoint 7 (bounded inline ray work)
+
+Independent per-pixel inline ray queries now support the same reversible group
+selection. The admitted query operations are allocation, TraceRayInline,
+Proceed and committed-status reads on locally allocated query handles. Other
+query operations and general DXR ray-generation pipelines remain unsupported.
+AS descriptor tables resolve their GPU addresses to tracked allocation identities;
+root AS SRVs use the same interval/lifetime checks. A placed output is rejected:
+without the complete TLAS/BLAS input graph its indirect alias safety is unproven.
+
+`injected-inline-ray-01` builds a real BLAS/TLAS on DXR 1.1 hardware. Every hit,
+miss and output coordinate agrees with an independent geometric CPU oracle in
+original, neutral, coarse and cached rollback modes, both directly and through
+the same DLL. Zero D3D12 debug errors. CPU binding tests also cover null/retired AS,
+root AS descriptors and placed-output rejection. This is a functionality result;
+no external ray-scene performance or universal DXR compatibility is claimed.

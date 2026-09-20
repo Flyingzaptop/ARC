@@ -266,6 +266,9 @@ void resource_created(ID3D12Resource* native,ID3D12Heap* heap,UINT64 offset)noex
 void srv(ID3D12Resource* resource,const D3D12_SHADER_RESOURCE_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{DescriptorValue v;v.kind=1;v.resource=resource_identity(resource);if(desc){v.shape.known=!resource||v.resource;v.shape.format=desc->Format;v.shape.dimension=desc->ViewDimension;v.shape.component_mapping=desc->Shader4ComponentMapping;
     switch(desc->ViewDimension){case D3D12_SRV_DIMENSION_TEXTURE2D:v.first_mip=desc->Texture2D.MostDetailedMip;v.mips=desc->Texture2D.MipLevels;v.shape.plane=desc->Texture2D.PlaneSlice;break;
     case D3D12_SRV_DIMENSION_BUFFER:v.shape.first_element=desc->Buffer.FirstElement;v.shape.elements=desc->Buffer.NumElements;v.shape.stride=desc->Buffer.StructureByteStride;v.shape.flags=desc->Buffer.Flags;break;
+    case D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE:{const auto address=desc->RaytracingAccelerationStructure.Location;
+        const auto* allocation=state().buffers.resolve(state().allocations,address,1);v.shape.known=allocation!=nullptr;
+        if(allocation){v.resource=allocation->id;v.shape.byte_offset=address-allocation->gpu_address;v.shape.byte_size=1;}break;}
     default:break;}}
     write_view(handle,v);
 });}

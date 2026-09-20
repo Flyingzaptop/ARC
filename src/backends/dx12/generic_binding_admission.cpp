@@ -73,18 +73,22 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
             } else {
                 // This first pixel-compute contract admits root CBVs only;
                 // texture resources cannot be bound as raw root descriptors.
-                if(contract.resource_class!=2)return reject("unsupported_root_view");
+                const bool acceleration=contract.resource_class==0&&contract.kind==16;
+                if(contract.resource_class!=2&&!acceleration)return reject("unsupported_root_view");
+                const auto required_bytes=acceleration?1u:contract.kind;
                 const Allocation* found=nullptr;
-                if(buffers)found=buffers->resolve(allocations,arg->address,contract.kind);
+                if(buffers)found=buffers->resolve(allocations,arg->address,required_bytes);
                 else for(const auto& [id,a]:allocations){(void)id;if(a.description.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER||!a.gpu_address||arg->address<a.gpu_address)continue;
                     const auto offset=arg->address-a.gpu_address;
-                    if(offset>a.description.Width||contract.kind>a.description.Width-offset)continue;
+                    if(offset>a.description.Width||required_bytes>a.description.Width-offset)continue;
                     if(found)return reject("ambiguous_root_address");found=&a;
                 }
                 if(!found)return reject("unknown_root_address");
-                view.resource=found->id;view.kind=6;view.shape.known=true;
-                view.shape.byte_offset=arg->address-found->gpu_address;view.shape.byte_size=contract.kind;
+                view.resource=found->id;view.kind=acceleration?1:6;view.shape.known=true;
+                view.shape.byte_offset=arg->address-found->gpu_address;view.shape.byte_size=required_bytes;
+                if(acceleration)view.shape.dimension=D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
             }
+            if(contract.resource_class==0&&contract.kind==16&&(!view.resource||view.shape.dimension!=D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE))return reject("unknown_acceleration_structure");
             if(!view.resource){if(contract.resource_class==1)return reject("null_output");continue;}
             const auto resource=allocations.find(view.resource);
             if(resource==allocations.end()||!allocation_known(resource->second))return reject("unknown_allocation");
@@ -103,6 +107,11 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
         }
     }
     if(out.outputs.empty())return reject("no_outputs");
+    const bool rays=std::any_of(out.inputs.begin(),out.inputs.end(),[](const auto& input){return input.contract.resource_class==0&&input.contract.kind==16;});
+    // TLAS/BLAS contain indirect resource references. Their complete allocation
+    // graph is unavailable here, so outputs must have independent committed
+    // storage: a placed output could alias a hidden acceleration input.
+    if(rays&&std::any_of(out.outputs.begin(),out.outputs.end(),[](const auto& output){return output.allocation.kind!=AllocationKind::Committed;}))return reject("ray_indirect_alias_unproven");
     if(x!=(out.width+transform.threads[0]-1)/transform.threads[0]||y!=(out.height+transform.threads[1]-1)/transform.threads[1])return reject("not_full_output_dispatch");
     for(std::size_t i=0;i<out.outputs.size();++i){
         const auto& target=out.outputs[i].allocation;

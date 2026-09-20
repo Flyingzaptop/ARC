@@ -38,7 +38,7 @@ struct Compiler {
     }
     ~Compiler(){validator.Reset();assembler.Reset();compiler.Reset();library.Reset();if(module)FreeLibrary(module);if(validator_module)FreeLibrary(validator_module);}
     ComPtr<IDxcBlobEncoding> blob(const std::string& s){ComPtr<IDxcBlobEncoding> b;hr(library->CreateBlobWithEncodingOnHeapCopy(s.data(),static_cast<UINT32>(s.size()),CP_UTF8,&b));return b;}
-    ComPtr<IDxcBlob> compile(const std::string& s){auto b=blob(s);ComPtr<IDxcOperationResult> op;hr(compiler->Compile(b.Get(),L"fixture",L"MainCS",L"cs_6_0",nullptr,0,nullptr,0,nullptr,&op));return result(op.Get());}
+    ComPtr<IDxcBlob> compile(const std::string& s,const wchar_t* profile=L"cs_6_0"){auto b=blob(s);ComPtr<IDxcOperationResult> op;hr(compiler->Compile(b.Get(),L"fixture",L"MainCS",profile,nullptr,0,nullptr,0,nullptr,&op));return result(op.Get());}
     std::string disassemble(IDxcBlob* b){ComPtr<IDxcBlobEncoding> text;hr(compiler->Disassemble(b,&text));return {static_cast<const char*>(text->GetBufferPointer()),text->GetBufferSize()};}
     ComPtr<IDxcBlob> assemble(const std::string& s){auto b=blob(arc::dx12::shader::preserve_arc_branches(s));ComPtr<IDxcOperationResult> op;hr(assembler->AssembleToContainer(b.Get(),&op));auto binary=result(op.Get());op.Reset();hr(validator->Validate(binary.Get(),DxcValidatorFlags_InPlaceEdit,&op));return result(op.Get());}
 };
@@ -275,9 +275,49 @@ RWTexture2D<float4> target:register(u4,space3);
         D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[0]->Map(0,&range,&ptr));
         for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Mip blend, neutral, invalid control and cached rollback must match CPU oracle");}readbacks[0]->Unmap(0,&empty);
     }
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 ray_options{};hr(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5,&ray_options,sizeof(ray_options)));
+    check(ray_options.RaytracingTier>=D3D12_RAYTRACING_TIER_1_1,"Native inline-ray fixture requires DXR 1.1");
+    ComPtr<ID3D12Device5> ray_device;hr(device.As(&ray_device));ComPtr<ID3D12GraphicsCommandList4> ray_list;hr(list.As(&ray_list));
+    const auto ray_original=compiler.compile(R"(
+RaytracingAccelerationStructure scene:register(t3,space2);RWTexture2D<float4> target:register(u4,space3);
+[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){
+ RayDesc ray;ray.Origin=float3((float2(p.xy)+.5)/float2(61,37)*2-1,-2);ray.Direction=float3(0,0,1);ray.TMin=0;ray.TMax=10;
+ RayQuery<RAY_FLAG_CULL_NON_OPAQUE|RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> q;q.TraceRayInline(scene,0,255,ray);while(q.Proceed()){}
+ float hit=q.CommittedStatus()==COMMITTED_TRIANGLE_HIT?1:0;target[p.xy]=float4(hit,float(p.x)/64,float(p.y)/64,1);
+})",L"cs_6_5");
+    const auto ray_transform=arc::dx12::shader::coarse_compute(compiler.disassemble(ray_original.Get()),1,1,true);check(ray_transform.admitted,"Local inline ray query classification");
+    auto ray_code=compiler.assemble(ray_transform.ir);std::array<ComPtr<ID3D12PipelineState>,2> ray_pipelines;IDxcBlob* ray_codes[]{ray_original.Get(),ray_code.Get()};
+    for(unsigned i=0;i<2;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=mip_root.Get();p.CS={ray_codes[i]->GetBufferPointer(),ray_codes[i]->GetBufferSize()};hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&ray_pipelines[i])));}wait_prepared(5);
+    auto ray_buffer=[&](UINT64 size,D3D12_HEAP_TYPE type,D3D12_RESOURCE_STATES state,D3D12_RESOURCE_FLAGS flags){auto d=bd;d.Width=size;d.Flags=flags;D3D12_HEAP_PROPERTIES h{};h.Type=type;ComPtr<ID3D12Resource> r;hr(device->CreateCommittedResource(&h,D3D12_HEAP_FLAG_NONE,&d,state,nullptr,IID_PPV_ARGS(&r)));return r;};
+    const float vertices[]{-.7f,-.7f,0,.7f,-.7f,0,0,.7f,0};auto vertices_buffer=ray_buffer(sizeof(vertices),D3D12_HEAP_TYPE_UPLOAD,D3D12_RESOURCE_STATE_GENERIC_READ,D3D12_RESOURCE_FLAG_NONE);
+    hr(vertices_buffer->Map(0,&empty,&ptr));std::memcpy(ptr,vertices,sizeof(vertices));vertices_buffer->Unmap(0,nullptr);
+    D3D12_RAYTRACING_GEOMETRY_DESC geometry{};geometry.Type=D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;geometry.Flags=D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+    geometry.Triangles.VertexBuffer={vertices_buffer->GetGPUVirtualAddress(),12};geometry.Triangles.VertexCount=3;geometry.Triangles.VertexFormat=DXGI_FORMAT_R32G32B32_FLOAT;
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS bottom{};bottom.Type=D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;bottom.DescsLayout=D3D12_ELEMENTS_LAYOUT_ARRAY;bottom.NumDescs=1;bottom.pGeometryDescs=&geometry;
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO bottom_info{};ray_device->GetRaytracingAccelerationStructurePrebuildInfo(&bottom,&bottom_info);check(bottom_info.ResultDataMaxSizeInBytes>0,"BLAS prebuild");
+    auto blas=ray_buffer(bottom_info.ResultDataMaxSizeInBytes,D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+    D3D12_RAYTRACING_INSTANCE_DESC instance{};instance.Transform[0][0]=instance.Transform[1][1]=instance.Transform[2][2]=1;instance.InstanceMask=255;instance.AccelerationStructure=blas->GetGPUVirtualAddress();
+    auto instances=ray_buffer(sizeof(instance),D3D12_HEAP_TYPE_UPLOAD,D3D12_RESOURCE_STATE_GENERIC_READ,D3D12_RESOURCE_FLAG_NONE);hr(instances->Map(0,&empty,&ptr));std::memcpy(ptr,&instance,sizeof(instance));instances->Unmap(0,nullptr);
+    D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS top{};top.Type=D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;top.DescsLayout=D3D12_ELEMENTS_LAYOUT_ARRAY;top.NumDescs=1;top.InstanceDescs=instances->GetGPUVirtualAddress();
+    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO top_info{};ray_device->GetRaytracingAccelerationStructurePrebuildInfo(&top,&top_info);check(top_info.ResultDataMaxSizeInBytes>0,"TLAS prebuild");
+    auto tlas=ray_buffer(top_info.ResultDataMaxSizeInBytes,D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+    auto scratch=ray_buffer(std::max(bottom_info.ScratchDataSizeInBytes,top_info.ScratchDataSizeInBytes),D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+    desired={1,1,width,height};begin();D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_as{};build_as.Inputs=bottom;build_as.DestAccelerationStructureData=blas->GetGPUVirtualAddress();build_as.ScratchAccelerationStructureData=scratch->GetGPUVirtualAddress();ray_list->BuildRaytracingAccelerationStructure(&build_as,0,nullptr);
+    D3D12_RESOURCE_BARRIER as_barrier{};as_barrier.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;list->ResourceBarrier(1,&as_barrier);
+    build_as.Inputs=top;build_as.DestAccelerationStructureData=tlas->GetGPUVirtualAddress();ray_list->BuildRaytracingAccelerationStructure(&build_as,0,nullptr);list->ResourceBarrier(1,&as_barrier);execute();
+    D3D12_SHADER_RESOURCE_VIEW_DESC as_view{};as_view.ViewDimension=D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;as_view.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;as_view.RaytracingAccelerationStructure.Location=tlas->GetGPUVirtualAddress();device->CreateShaderResourceView(nullptr,&as_view,heap->GetCPUDescriptorHandleForHeapStart());
+    for(unsigned mode=0;mode<(arc_mode?7u:4u);++mode){const bool coarse_rays=mode==2||mode==5;desired={mode==2?2u:1u,mode==2?2u:1u,width,height};
+        if(mode>=4){const auto* setting=mode==4?L"neutral":mode==5?L"2x2":L"off";check(arc_mode(const_cast<wchar_t*>(setting))==0,"Inline ray policy switch");}
+        if(mode<2||mode==4){begin();copy_in(textures[1].Get(),initial.Get());transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(mip_root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(ray_pipelines[mode==4?0:mode].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
+            transition(textures[1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[0].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[1].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();
+        }else submit();
+        D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[0]->Map(0,&range,&ptr));
+        for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=coarse_rays?x&~1u:x,sy=coarse_rays?y&~1u:y;const float rx=(float(sx)+.5f)/width*2-1,ry=(float(sy)+.5f)/height*2-1;const bool hit=ry>=-.7f&&ry<=.7f&&std::abs(rx)<=(.7f-ry)*.5f;const Pixel expected{hit?1.f:0.f,float(sx)/64,float(sy)/64,1};Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Inline rays, coarsened output and rollback must match geometric CPU oracle");}readbacks[0]->Unmap(0,&empty);
+    }
     unsigned validation_errors=0;for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size{};hr(diagnostics->GetMessage(i,nullptr,&size));std::vector<char> memory(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(memory.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';++validation_errors;}}
     check(validation_errors==0,"D3D12 validation failed");CloseHandle(event);
     if(arc_snapshot)check(arc_snapshot(nullptr)==0,"Final generic optimizer snapshot");
-    std::ofstream report(directory/"summary.json");report<<"{\"hardware\":true,\"width\":61,\"height\":37,\"outputs\":2,\"neutral_bit_exact\":true,\"cached_list_rollback\":true,\"coarse_every_pixel_verified\":true,\"comparison_filter_verified\":true,\"zero_factor_bit_exact\":true,\"edge_protection_verified\":true,\"unsafe_shader_rejections\":"<<rejected<<",\"debug_errors\":0}\n";
+    std::ofstream report(directory/"summary.json");report<<"{\"hardware\":true,\"width\":61,\"height\":37,\"outputs\":2,\"neutral_bit_exact\":true,\"cached_list_rollback\":true,\"coarse_every_pixel_verified\":true,\"comparison_filter_verified\":true,\"zero_factor_bit_exact\":true,\"edge_protection_verified\":true,\"mip_sampling_verified\":true,\"inline_ray_cpu_oracle_verified\":true,\"unsafe_shader_rejections\":"<<rejected<<",\"debug_errors\":0}\n";
     std::cout<<"Neutral and 2x2 transformed native dispatches passed, every output verified\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
