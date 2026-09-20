@@ -1,0 +1,61 @@
+{
+  "status": "checkpoint_not_complete",
+  "source_commit": "6ea2508c988ac9ebc1e63981ffa1d068fa72df42",
+  "shader_bytecode_or_ir_published": false,
+  "archives": [
+    {
+      "name": "auto-reference-confidence.zip",
+      "files": 62,
+      "bytes": 30540926,
+      "sha256": "611592441d64fca58f35782f3ca6cbde2b49726914ff9d183b371bc87c661c2d"
+    },
+    {
+      "name": "control-cost-02.zip",
+      "files": 7,
+      "bytes": 1833412,
+      "sha256": "77733fc5505acab2ee7e0547f8a4b3bb8aa8577398ea48279d90620e580594d3"
+    },
+    {
+      "name": "control-lock-cost-01.zip",
+      "files": 7,
+      "bytes": 1842640,
+      "sha256": "fbbb81cac4b047b12e469db620681e75ded84b0bfa52c12d3e1cd909224f414d"
+    },
+    {
+      "name": "unlocked-submit-cost-01.zip",
+      "files": 7,
+      "bytes": 1838309,
+      "sha256": "95434fdf426fbfd17a08568e512161413671d88dbc55e1f782974481c04df01c"
+    },
+    {
+      "name": "injected-unlocked-submit-01.zip",
+      "files": 2,
+      "bytes": 2119,
+      "sha256": "574276794148319df10a524bfaca9043d6bd40adf09fd930b20bf3c4eafc6323"
+    },
+    {
+      "name": "vrs-unlocked-submit-01.zip",
+      "files": 19,
+      "bytes": 4744,
+      "sha256": "bbf39217551f7c9ad8e6834b58fb9635e31fcae3dc01b9b71c59ee8fc8a0d87f"
+    },
+    {
+      "name": "wicked-auto-bracketed-01.zip",
+      "files": 47,
+      "bytes": 21124804,
+      "sha256": "9e6041adf027daf4c647a283c14c0824ebeca4b5b383f84f840bb0efb63428da"
+    },
+    {
+      "name": "auto-capabilities-bracketed-01.zip",
+      "files": 57,
+      "bytes": 29624429,
+      "sha256": "03e93d24dc446c98a9beadb59bd5caa8780abdb7cbbdcc00c426b4ad4710823d"
+    },
+    {
+      "name": "critic-costs.zip",
+      "files": 3,
+      "bytes": 1687,
+      "sha256": "fe3ac91ffde94da61f944429d788ad85e0c79acc71cc79f440a1b01fb053b68d"
+    }
+  ]
+}
