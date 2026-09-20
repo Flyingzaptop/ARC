@@ -302,3 +302,36 @@ half decoding, dimension guard, coarsening and rollback against a CPU oracle.
 Wicked's timed hot-pipeline diagnostics identified these missing operations;
 shader hashes were used only to match diagnostic bytecode to measured records,
 never to authorize a runtime transformation.
+
+## Checkpoint 9 (actual second-renderer execution and lean interception)
+
+Wicked exposed native interning: repeated CreateRootSignature calls returned
+the same object, but ARC replaced its lifetime identity and made existing PSOs
+appear incompatible. Existing immutable root/PSO/signature identities are now
+preserved. `injected-interned-root-01` confirms actual native root interning on
+this GPU; `profile-interned-pso-01` verifies one profile identity across repeated
+PSO creation, cached execution and multiple queues.
+
+`wicked-interned-root` executes 11,113 transformed neutral dispatches with resolved
+bindings, no pool misses and no ARC faults. `wicked-coarse-first` selects an actual
+measured compatible PSO and executes 6,754 coarse-control submissions / 10,034
+instrumented dispatches through the same DLL, host quality callbacks OFF.
+That is positive process-mutation portability. Its image quality and net FPS
+gain are still unverified and must not be reported as accepted optimization.
+
+Lean compute mode now enables only descriptor/resource/compute-binding hooks
+needed by the optimizer, instead of forcing every detailed graphics/copy hook
+back on. Invalidators and submission/rollback hooks remain active. Native compute
+and VRS cached/passive/cross-queue tests pass in this mode. A first Cauldron pair
+(`lean-hooks`) measures 83.869 vs 77.717 FPS, CPU preparation 3.616 vs 2.926ms,
+submission .246 vs .100ms; CPU overhead still exceeds the requested budget.
+
+Further CPU changes avoid redundant allocation-info queries for committed
+resources, cache placed-resource sizes by complete descriptor and retained device
+identity (4 devices, 256 sizes each), avoid allocating a duplicate proof-read map
+on cache hits, and validate a prior sparse-binding proof before repeating the
+full binding walk. `injected-proof-revalidation-01` changes the uniform output
+index and replaces its descriptor with a narrower texture: the stale assumption
+is not reused and the incompatible dispatch stays original. Every output is
+checked and the D3D12 debug layer remains clean. New performance measurements
+for these final CPU changes are pending.

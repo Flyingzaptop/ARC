@@ -60,6 +60,9 @@ int wmain(int argc,wchar_t** argv)try{
     auto passive=reinterpret_cast<Api>(GetProcAddress(dll,"ArcUsePassiveMode"));auto mode=reinterpret_cast<Api>(GetProcAddress(dll,"ArcExperimentalVrs"));wchar_t coarse[]=L"2x2";
     check(passive&&mode&&passive(nullptr)!=0&&mode(coarse)!=0,"Hook removal and VRS must not interrupt an active cost capture");
     record();for(int i=0;i<32;++i){queue->ExecuteCommandLists(1,lists);wait(queue.Get());verify();}
+    // The runtime may intern immutable PSOs and return the same object again.
+    // Existing recordings and future recordings must keep one profile identity.
+    ComPtr<ID3D12PipelineState> duplicate;make_pipeline("first",duplicate);
     // Reset may start a new GPU generation while a previous generation is
     // waiting. The thread that submits must still be able to release the gate.
     ComPtr<ID3D12Fence> gate;hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&gate)));hr(queue->Wait(gate.Get(),1));queue->ExecuteCommandLists(1,lists);hr(queue->Signal(fence.Get(),++value));
@@ -73,6 +76,8 @@ int wmain(int argc,wchar_t** argv)try{
     check(report.find("\"threads\":[64,1,1]")!=std::string::npos&&report.find("\"threads\":[128,1,1]")!=std::string::npos,"Independently reflected both compute kernels");
     check(report.find("\"indirect_calls\":1")!=std::string::npos,"Indirect dispatch is timed without guessing GPU-generated dimensions");
     check(report.find("\"kind\":\"compute\"")!=std::string::npos&&report.find("\"shader_mutations\":0")!=std::string::npos,"Compute costs without shader changes");check(request(argument.data())!=0,"Existing evidence cannot be overwritten");
+    const auto pipeline_section=report.find("\"pipelines\":[");check(pipeline_section!=std::string::npos,"Pipeline inventory");unsigned identities=0;auto cursor=pipeline_section;
+    while((cursor=report.find("\"id\":",cursor))!=std::string::npos){++identities;cursor+=5;}check(identities==2,"Recreated immutable PSO must not split existing profile identity");
     // A cached instrumented list still owns valid storage after report export.
     compute_queue->ExecuteCommandLists(1,lists);wait(compute_queue.Get());verify();commands.Reset();allocator.Reset();previous_allocator.Reset();
     for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T bytes=0;diagnostics->GetMessage(i,nullptr,&bytes);std::vector<unsigned char> storage(bytes);auto* message=reinterpret_cast<D3D12_MESSAGE*>(storage.data());hr(diagnostics->GetMessage(i,message,&bytes));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';throw std::runtime_error("D3D12 validation error");}}

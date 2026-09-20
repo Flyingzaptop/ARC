@@ -195,12 +195,12 @@ void write_report(Session& session,unsigned pending){
 
 void graphics_created(ID3D12PipelineState* pso,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)noexcept{
     if(mirror::internal()||!pso||!desc)return;
-    safe([&]{auto& s=state();if(s.pipelines.size()>=16384)return;mirror::InternalCall internal;auto p=std::make_shared<Pipeline>();p->shader=inspect(desc->PS);p->vertex_hash=digest(desc->VS);p->render_targets=desc->NumRenderTargets;p->depth_only=desc->NumRenderTargets==0&&(desc->DepthStencilState.DepthEnable||desc->DepthStencilState.StencilEnable);
+    safe([&]{auto& s=state();if(s.pipelines.contains(pso)||s.pipelines.size()>=16384)return;mirror::InternalCall internal;auto p=std::make_shared<Pipeline>();p->shader=inspect(desc->PS);p->vertex_hash=digest(desc->VS);p->render_targets=desc->NumRenderTargets;p->depth_only=desc->NumRenderTargets==0&&(desc->DepthStencilState.DepthEnable||desc->DepthStencilState.StencilEnable);
         if(!track(pso,true))return;p->id=++s.next_pipeline;s.pipelines[pso]=std::move(p);});
 }
 void compute_created(ID3D12PipelineState* pso,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)noexcept{
     if(mirror::internal()||!pso||!desc)return;
-    safe([&]{auto& s=state();if(s.pipelines.size()>=16384)return;mirror::InternalCall internal;auto p=std::make_shared<Pipeline>();p->compute=true;p->shader=inspect(desc->CS);
+    safe([&]{auto& s=state();if(s.pipelines.contains(pso)||s.pipelines.size()>=16384)return;mirror::InternalCall internal;auto p=std::make_shared<Pipeline>();p->compute=true;p->shader=inspect(desc->CS);
         if(!track(pso,true))return;p->id=++s.next_pipeline;s.pipelines[pso]=std::move(p);});
 }
 void stream_created(ID3D12PipelineState* pso,const D3D12_PIPELINE_STATE_STREAM_DESC* stream)noexcept{
@@ -245,7 +245,7 @@ void stream_created(ID3D12PipelineState* pso,const D3D12_PIPELINE_STATE_STREAM_D
 
 void signature_created(ID3D12CommandSignature* signature,const D3D12_COMMAND_SIGNATURE_DESC* desc)noexcept{
     if(mirror::internal()||!signature||!desc)return;
-    safe([&]{auto& s=state();if(s.signatures.size()>=16384)return;bool raster=false,compute=false,other=false;
+    safe([&]{auto& s=state();if(s.signatures.contains(signature)||s.signatures.size()>=16384)return;bool raster=false,compute=false,other=false;
         for(UINT i=0;i<desc->NumArgumentDescs;++i){const auto type=desc->pArgumentDescs[i].Type;raster|=type==D3D12_INDIRECT_ARGUMENT_TYPE_DRAW||type==D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;compute|=type==D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;other|=type==D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS||type==D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;}
         mirror::InternalCall internal;if(track(signature,2))s.signatures[signature]=other||(raster==compute)?3:compute?2:0;
     });

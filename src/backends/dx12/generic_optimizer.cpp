@@ -24,6 +24,7 @@ namespace arc::dx12::optimizer {
 namespace {
 template<class T>using Ptr=Microsoft::WRL::ComPtr<T>;
 struct Root {std::uint64_t id{};ID3D12RootSignature* native{};std::vector<std::byte> bytes;std::shared_ptr<const binding::Layout> layout;};
+struct AllocationCache {Ptr<ID3D12Device> device;std::map<std::array<UINT64,11>,UINT64> sizes;};
 struct VariantStats {std::uint64_t id{},attempts{},admitted{},uniform_attempts{},uniform_proven{},uniform_steps{},uniform_known_reads{},uniform_unknown_reads{};double uniform_cpu_ms{};std::string last_reason,uniform_reason;UINT binding_class{},binding_register{},binding_space{};};
 using UniformReadKey=std::tuple<unsigned,unsigned,unsigned>;
 struct Variant:VariantStats {Ptr<ID3D12RootSignature> root;Ptr<ID3D12PipelineState> pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;};
@@ -49,6 +50,7 @@ struct State {
     std::map<std::uint64_t,ID3D12Resource*> resource_natives;
     std::map<ID3D12Heap*,std::uint64_t> allocation_heaps;
     std::map<std::uint64_t,binding::Allocation> allocations;
+    std::vector<AllocationCache> allocation_cache;
     binding::BufferIndex buffers;
     DescriptorLedger descriptors;
     std::deque<std::shared_ptr<Pipeline>> jobs;
@@ -58,6 +60,7 @@ struct State {
     std::uint64_t next{1},prepared{},declined{},modified_dispatches{},coarse_submissions{},neutral_submissions{},faults{},pool_misses{};
     std::string last_error;std::map<std::string,std::uint64_t> admission_reasons;
     std::map<std::string,std::uint64_t> pipeline_declines;
+    std::array<std::uint64_t,11> dispatch_declines{};
 };
 State& state(){static auto* s=new State;return *s;}
 std::atomic<std::uint64_t> cpu_ns{};
@@ -174,7 +177,9 @@ shader::ResourceUsage uniform_usage(const Use& use,const std::vector<binding::De
     auto& variant=*use.variant;
     if(variant.cached_usage.complete){
         bool matches=true;
-        for(const auto& [key,words]:variant.cached_reads){const auto [range,reg,offset]=key;if(!(reader(range,reg,offset)==words)){matches=false;break;}}
+        // Every cached key is unique. Do not allocate a second memo tree merely
+        // to compare it and immediately discard it on the common cache hit.
+        for(const auto& [key,words]:variant.cached_reads){const auto [range,reg,offset]=key;if(!(read_memory(range,reg,offset)==words)){matches=false;break;}}
         if(matches){auto result=variant.cached_usage;result.steps=0;return result;}
     }
     auto result=variant.access->evaluate(reader);
@@ -227,6 +232,7 @@ DWORD WINAPI worker(void*){
 }
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
 void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
+    out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
     out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
 void cpu_snapshot(std::ostream& out){
@@ -265,7 +271,11 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
 DescriptorWrite descriptor_write()noexcept{DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().mutex);return result;}
-void root_created(ID3D12RootSignature* native,const void* bytes,SIZE_T size)noexcept{if(!enabled()||!native||!bytes||!size||size>65536)return;safe([&]{auto& s=state();if(s.roots.size()>=1024)return;auto root=std::make_shared<Root>();root->id=s.next++;root->native=native;const auto* data=static_cast<const std::byte*>(bytes);root->bytes.assign(data,data+size);root->layout=std::make_shared<binding::Layout>(binding::Layout::parse(root->bytes));if(track(native,1))s.roots[native]=std::move(root);});}
+void root_created(ID3D12RootSignature* native,const void* bytes,SIZE_T size)noexcept{if(!enabled()||!native||!bytes||!size||size>65536)return;safe([&]{auto& s=state();
+    // CreateRootSignature may return another reference to an interned object.
+    // Replacing its lifetime token would invalidate every existing PSO's root
+    // identity although the native object and layout have not changed.
+    if(s.roots.contains(native)||s.roots.size()>=1024)return;auto root=std::make_shared<Root>();root->id=s.next++;root->native=native;const auto* data=static_cast<const std::byte*>(bytes);root->bytes.assign(data,data+size);root->layout=std::make_shared<binding::Layout>(binding::Layout::parse(root->bytes));if(track(native,1))s.roots[native]=std::move(root);});}
 void compute_created(ID3D12PipelineState* native,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)noexcept{if(!enabled()||!native||!desc||desc->NodeMask>1||!desc->CS.pShaderBytecode||!desc->CS.BytecodeLength||desc->CS.BytecodeLength>2*1024*1024)return;const auto profile_id=gpu_profile::pipeline_identity(native);safe([&]{auto& s=state();
     auto decline=[&](const std::string& reason){if(s.pipeline_declines.size()<64||s.pipeline_declines.contains(reason))++s.pipeline_declines[reason];};
     if(s.pipelines.contains(native))return;
@@ -284,7 +294,17 @@ void stream_created(ID3D12PipelineState* native,const D3D12_PIPELINE_STATE_STREA
 }
 void resource_created(ID3D12Resource* native,ID3D12Heap* heap,UINT64 offset)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();const auto id=resource_identity(native);if(!id)return;auto& a=s.allocations.at(id);a.kind=heap?binding::AllocationKind::Placed:binding::AllocationKind::Committed;
     if(heap){auto it=s.allocation_heaps.find(heap);if(it==s.allocation_heaps.end()){if(s.allocation_heaps.size()>=4096||!track(heap,6)){a.kind=binding::AllocationKind::Unknown;return;}it=s.allocation_heaps.emplace(heap,s.next++).first;}a.heap=it->second;a.offset=offset;}
-    Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));a.bytes=device->GetResourceAllocationInfo(0,1,&a.description).SizeInBytes;if(a.bytes==UINT64_MAX)a.kind=binding::AllocationKind::Unknown;
+    // Committed storage is unique by construction; its padded allocation size
+    // is not needed for alias checks. Placed resources do require that size.
+    if(!heap){a.bytes=0;return;}
+    Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));
+    const auto& d=a.description;const std::array<UINT64,11> key{static_cast<UINT64>(d.Dimension),d.Alignment,d.Width,d.Height,d.DepthOrArraySize,d.MipLevels,static_cast<UINT64>(d.Format),d.SampleDesc.Count,d.SampleDesc.Quality,static_cast<UINT64>(d.Layout),static_cast<UINT64>(d.Flags)};
+    auto cache=std::find_if(s.allocation_cache.begin(),s.allocation_cache.end(),[&](const auto& c){return c.device.Get()==device.Get();});
+    if(cache==s.allocation_cache.end()&&s.allocation_cache.size()<4){s.allocation_cache.push_back({device,{}});cache=std::prev(s.allocation_cache.end());}
+    if(cache!=s.allocation_cache.end()){if(const auto found=cache->sizes.find(key);found!=cache->sizes.end()){a.bytes=found->second;return;}}
+    a.bytes=device->GetResourceAllocationInfo(0,1,&d).SizeInBytes;
+    if(a.bytes==UINT64_MAX||!a.bytes)a.kind=binding::AllocationKind::Unknown;
+    else if(cache!=s.allocation_cache.end()&&cache->sizes.size()<256)cache->sizes.emplace(key,a.bytes);
 });}
 void srv(ID3D12Resource* resource,const D3D12_SHADER_RESOURCE_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{DescriptorValue v;v.kind=1;v.resource=resource_identity(resource);if(desc){v.shape.known=!resource||v.resource;v.shape.format=desc->Format;v.shape.dimension=desc->ViewDimension;v.shape.component_mapping=desc->Shader4ComponentMapping;
     switch(desc->ViewDimension){case D3D12_SRV_DIMENSION_TEXTURE2D:v.first_mip=desc->Texture2D.MostDetailedMip;v.mips=desc->Texture2D.MipLevels;v.shape.plane=desc->Texture2D.PlaneSlice;break;
@@ -326,8 +346,10 @@ void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;
 void state_unknown(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->arguments.reset();c->root.reset();c->pipeline=nullptr;}});}
 void render_pass(ID3D12GraphicsCommandList* native,bool begin,D3D12_RENDER_PASS_FLAGS flags)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->render_pass=begin;if(flags&(D3D12_RENDER_PASS_FLAG_SUSPENDING_PASS|D3D12_RENDER_PASS_FLAG_RESUMING_PASS))c->valid=false;}});}
 void invalidate_all()noexcept{if(!enabled())return;safe([&]{state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;for(auto& [native,c]:state().commands){(void)native;c.valid=false;}});}
-bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if(!enabled())return false;bool changed=false;safe([&]{auto& s=state();auto* c=recording(native);if(!c||!c->valid||c->closed||c->render_pass||!c->root||c->uses.size()>=GpuControl::capacity)return;const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()||!p->second->variant||p->second->root!=c->root)return;
-    if(!s.instrumentation||(s.heaviest_only&&p->second->id!=s.selected_pipeline))return;
+bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if(!enabled())return false;bool changed=false;safe([&]{auto& s=state();auto* c=recording(native);
+    if(!c){++s.dispatch_declines[0];return;}if(!c->valid){++s.dispatch_declines[1];return;}if(c->closed){++s.dispatch_declines[2];return;}if(c->render_pass){++s.dispatch_declines[3];return;}if(!c->root){++s.dispatch_declines[4];return;}if(c->uses.size()>=GpuControl::capacity){++s.dispatch_declines[5];return;}
+    const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}
+    if(!s.instrumentation){++s.dispatch_declines[9];return;}if(s.heaviest_only&&p->second->id!=s.selected_pipeline){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z});c->control->keep_alive.push_back(variant);
@@ -360,7 +382,10 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                     stats.uniform_cpu_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
                     if(usage.complete)++stats.uniform_proven;return usage;
                 };
-                const bool needs_proof=std::any_of(use.variant->contract.resources.begin(),use.variant->contract.resources.end(),[](const auto& r){return r.count==UINT_MAX;});
+                // A previous sparse-binding proof is revalidated against this
+                // submission first, avoiding a redundant guaranteed-to-fail
+                // walk over unused descriptors in the full declared array.
+                const bool needs_proof=use.variant->cached_usage.complete||std::any_of(use.variant->contract.resources.begin(),use.variant->contract.resources.end(),[](const auto& r){return r.count==UINT_MAX;});
                 shader::ResourceUsage usage;if(needs_proof&&use.variant->access)usage=prove();
                 auto admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,usage.complete?&usage:nullptr,&s.buffers);
                 if(!needs_proof&&!admitted.admitted&&admitted.reason=="unknown_descriptor"&&admitted.binding_class==0&&use.variant->access){

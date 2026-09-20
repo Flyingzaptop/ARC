@@ -117,6 +117,8 @@ RWTexture2D<float4> target:register(u5,space3);
     IDxcBlob* codes[]{original.Get(),neutral_code.Get(),coarse_code.Get(),controlled_code.Get()};
     for(unsigned i=0;i<4;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=root.Get();p.CS={codes[i]->GetBufferPointer(),codes[i]->GetBufferSize()};hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&pipelines[i])));}
     wait_prepared(1);
+    ComPtr<ID3D12RootSignature> duplicate_root;hr(device->CreateRootSignature(0,root_blob->GetBufferPointer(),root_blob->GetBufferSize(),IID_PPV_ARGS(&duplicate_root)));
+    const bool interned_root=duplicate_root.Get()==root.Get();duplicate_root.Reset();
     constexpr UINT width=61,height=37;
     D3D12_RESOURCE_DESC td{};td.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;td.Width=width;td.Height=height;td.DepthOrArraySize=td.MipLevels=td.SampleDesc.Count=1;td.Format=DXGI_FORMAT_R32G32B32A32_FLOAT;
     D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;
@@ -339,13 +341,16 @@ cbuffer Choice:register(b9,space7){uint inputIndex;uint outputIndex;}
         std::array<ComPtr<ID3D12PipelineState>,2> bindless_pipelines;IDxcBlob* bindless_codes[]{bindless_code.Get(),varying_code.Get()};
         for(unsigned i=0;i<2;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=mip_root.Get();p.CS={bindless_codes[i]->GetBufferPointer(),bindless_codes[i]->GetBufferSize()};hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&bindless_pipelines[i])));}wait_prepared(7);
         srv.Texture2D.MipLevels=1;device->CreateShaderResourceView(textures[0].Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
-        for(unsigned mode=0;mode<5;++mode){const auto* setting=mode==0||mode==3?L"off":mode==1?L"neutral":L"2x2";check(arc_mode(const_cast<wchar_t*>(setting))==0,"Bindless policy switch");desired={1,1,width,height};const unsigned output_index=mode==0?0:1;
-            if(mode==0||mode==1||mode==4){begin();copy_in(textures[output_index+1].Get(),initial.Get());transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        for(unsigned mode=0;mode<7;++mode){const auto* setting=mode==0||mode==3?L"off":mode==1?L"neutral":L"2x2";check(arc_mode(const_cast<wchar_t*>(setting))==0,"Bindless policy switch");desired={1,1,width,height};const unsigned output_index=mode==0||mode==5?0:1;
+            // Change both the uniform output index and the descriptor behind
+            // it. A stale proof would wrongly admit the old full-size output.
+            if(mode==6){auto narrow=td;narrow.Width=width/2;hp.Type=D3D12_HEAP_TYPE_DEFAULT;textures[2].Reset();hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&narrow,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&textures[2])));auto destination=heap->GetCPUDescriptorHandleForHeapStart();destination.ptr+=6*increment;device->CreateUnorderedAccessView(textures[2].Get(),nullptr,&uav,destination);}
+            if(mode==0||mode==1||mode>=4){begin();if(mode!=6)copy_in(textures[output_index+1].Get(),initial.Get());transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(mip_root.Get());list->SetComputeRootDescriptorTable(2,heap->GetGPUDescriptorHandleForHeapStart());auto output_table=heap->GetGPUDescriptorHandleForHeapStart();output_table.ptr+=5*increment;list->SetComputeRootDescriptorTable(4,output_table);const UINT indices[]{mode==0?0u:4u,output_index};list->SetComputeRoot32BitConstants(3,2,indices,0);list->SetPipelineState(bindless_pipelines[mode==4?1:0].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
                 transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[output_index].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[output_index+1].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();
             }else submit();
             D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[output_index]->Map(0,&range,&ptr));
-            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const auto& expected=input[(mode==2?(y&~1u):y)*width+(mode==2?(x&~1u):x)];Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Uniform bindless access, varying-index refusal and rollback must match each pixel");}readbacks[output_index]->Unmap(0,&empty);
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<(mode==6?width/2:width);++x){const bool reduced=mode==2||mode==5;const auto& expected=input[(reduced?(y&~1u):y)*width+(reduced?(x&~1u):x)];Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Uniform bindless access, varying-index refusal and rollback must match each pixel");}readbacks[output_index]->Unmap(0,&empty);
         }
     }
     if(arc_mode){
@@ -371,5 +376,5 @@ ByteAddressBuffer packed:register(t8,space9);RWTexture2D<float4> target:register
     check(validation_errors==0,"D3D12 validation failed");CloseHandle(event);
     if(arc_snapshot)check(arc_snapshot(nullptr)==0,"Final generic optimizer snapshot");
     std::ofstream report(directory/"summary.json");report<<"{\"hardware\":true,\"width\":61,\"height\":37,\"outputs\":2,\"neutral_bit_exact\":true,\"cached_list_rollback\":true,\"coarse_every_pixel_verified\":true,\"comparison_filter_verified\":true,\"zero_factor_bit_exact\":true,\"edge_protection_verified\":true,\"mip_sampling_verified\":true,\"inline_ray_cpu_oracle_verified\":true,\"unsafe_shader_rejections\":"<<rejected<<",\"debug_errors\":0}\n";
-    std::cout<<"Neutral and 2x2 transformed native dispatches passed, every output verified\n";return 0;
+    std::cout<<"Neutral and 2x2 transformed native dispatches passed, every output verified; interned root="<<interned_root<<'\n';return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

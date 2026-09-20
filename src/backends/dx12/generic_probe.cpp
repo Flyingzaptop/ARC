@@ -28,6 +28,7 @@ std::atomic<bool> mirror_hooks_ready{};
 std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> passive_hooks{};
 std::set<void*> detailed_only_targets;
+std::set<void*> optimizer_targets;
 std::array<void*,256> installed_targets{};std::size_t installed_count{};
 std::mutex hook_mode_mutex;
 std::atomic<bool> initialized{},initializing{},recording{};
@@ -259,16 +260,19 @@ template<class T>bool install(T target,T replacement,T* original){
 template<class T>bool install_detailed(T target,T replacement,T* original){
     const bool ok=install(target,replacement,original);if(ok)detailed_only_targets.insert(reinterpret_cast<void*>(target));return ok;
 }
+template<class T>bool install_optimizer(T target,T replacement,T* original){
+    const bool ok=install_detailed(target,replacement,original);if(ok)optimizer_targets.insert(reinterpret_cast<void*>(target));return ok;
+}
 bool set_passive_hooks(bool passive){
     std::lock_guard lock(hook_mode_mutex);
     if(passive){optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
-    for(std::size_t i=3;i<installed_count;++i){const bool enabled=!passive&&(detailed_tracking||optimizer::enabled()||!detailed_only_targets.contains(installed_targets[i]));const auto result=enabled?MH_QueueEnableHook(installed_targets[i]):MH_QueueDisableHook(installed_targets[i]);if(result!=MH_OK)return false;}
+    for(std::size_t i=3;i<installed_count;++i){const auto target=installed_targets[i];const bool enabled=!passive&&(detailed_tracking||!detailed_only_targets.contains(target)||(optimizer::enabled()&&optimizer_targets.contains(target)));const auto result=enabled?MH_QueueEnableHook(target):MH_QueueDisableHook(target);if(result!=MH_OK)return false;}
     if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;return true;
 }
 
-template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
+template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Tag==6||Tag==8||Tag==10||Tag==12||Tag==14)return install_optimizer(target,Hook::call,&Hook::original);else if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
 
 void snapshot(){
     static std::mutex snapshot_mutex;std::lock_guard snapshot_lock(snapshot_mutex);
@@ -323,21 +327,21 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(command->lpVtbl->DrawInstanced,draw,&original_draw)&&ok;
         ok=install(command->lpVtbl->DrawIndexedInstanced,draw_indexed,&original_indexed)&&ok;
         ok=install(command->lpVtbl->Dispatch,dispatch,&original_dispatch)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
-        ok=install_detailed(device->lpVtbl->CreatePlacedResource,placed,&original_placed)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateRootSignature,root_create,&original_root_create)&&ok;
-        {ID3D12Device4* extra=nullptr;if(SUCCEEDED(ID3D12Device_QueryInterface(device,IID_ID3D12Device4,reinterpret_cast<void**>(&extra)))){ok=install_detailed(extra->lpVtbl->CreateCommittedResource1,resource1,&original_resource1)&&ok;ID3D12Device4_Release(extra);}}
+        ok=install_optimizer(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreatePlacedResource,placed,&original_placed)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreateRootSignature,root_create,&original_root_create)&&ok;
+        {ID3D12Device4* extra=nullptr;if(SUCCEEDED(ID3D12Device_QueryInterface(device,IID_ID3D12Device4,reinterpret_cast<void**>(&extra)))){ok=install_optimizer(extra->lpVtbl->CreateCommittedResource1,resource1,&original_resource1)&&ok;ID3D12Device4_Release(extra);}}
         ok=install(factory->lpVtbl->CreateSwapChainForHwnd,swap_hwnd,&original_swap_hwnd)&&ok;
         ok=install(reinterpret_cast<SwapFn>(factory->lpVtbl->CreateSwapChain),create_swap,&original_swap)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateDescriptorHeap,heap,&original_heap)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateShaderResourceView,srv,&original_srv)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateUnorderedAccessView,uav,&original_uav)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreateDescriptorHeap,heap,&original_heap)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreateShaderResourceView,srv,&original_srv)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreateUnorderedAccessView,uav,&original_uav)&&ok;
         ok=install_detailed(device->lpVtbl->CreateRenderTargetView,rtv,&original_rtv)&&ok;
         ok=install_detailed(device->lpVtbl->CreateDepthStencilView,dsv,&original_dsv)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateSampler,sampler,&original_sampler)&&ok;
-        ok=install_detailed(device->lpVtbl->CreateConstantBufferView,cbv,&original_cbv)&&ok;
-        ok=install_detailed(device->lpVtbl->CopyDescriptorsSimple,descriptors,&original_descriptors)&&ok;
-        ok=install_detailed(device->lpVtbl->CopyDescriptors,descriptor_ranges,&original_descriptor_ranges)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreateSampler,sampler,&original_sampler)&&ok;
+        ok=install_optimizer(device->lpVtbl->CreateConstantBufferView,cbv,&original_cbv)&&ok;
+        ok=install_optimizer(device->lpVtbl->CopyDescriptorsSimple,descriptors,&original_descriptors)&&ok;
+        ok=install_optimizer(device->lpVtbl->CopyDescriptors,descriptor_ranges,&original_descriptor_ranges)&&ok;
         ok=install_detailed(queue->lpVtbl->Signal,signal,&original_signal)&&ok;
         ok=install_detailed(queue->lpVtbl->Wait,wait,&original_wait)&&ok;
         ok=install(command->lpVtbl->ExecuteIndirect,indirect,&original_indirect)&&ok;
@@ -350,11 +354,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install_detailed(command->lpVtbl->OMSetRenderTargets,targets,&original_targets)&&ok;
         ok=install_detailed(command->lpVtbl->RSSetViewports,viewport,&original_viewport)&&ok;
         ok=install_detailed(command->lpVtbl->RSSetScissorRects,scissor,&original_scissor)&&ok;
-        ok=install_detailed(command->lpVtbl->SetDescriptorHeaps,bind_heaps,&original_bind_heaps)&&ok;
+        ok=install_optimizer(command->lpVtbl->SetDescriptorHeaps,bind_heaps,&original_bind_heaps)&&ok;
         ok=install_detailed(command->lpVtbl->SetGraphicsRootDescriptorTable,graphics_table,&original_graphics_table)&&ok;
-        ok=install_detailed(command->lpVtbl->SetComputeRootDescriptorTable,compute_table,&original_compute_table)&&ok;
+        ok=install_optimizer(command->lpVtbl->SetComputeRootDescriptorTable,compute_table,&original_compute_table)&&ok;
         ok=install_detailed(command->lpVtbl->SetGraphicsRootSignature,graphics_root,&original_graphics_root)&&ok;
-        ok=install_detailed(command->lpVtbl->SetComputeRootSignature,compute_root,&original_compute_root)&&ok;
+        ok=install_optimizer(command->lpVtbl->SetComputeRootSignature,compute_root,&original_compute_root)&&ok;
         ok=install_detailed(command->lpVtbl->CopyResource,copy,&original_copy)&&ok;
         ok=install_detailed(command->lpVtbl->CopyBufferRegion,copy_buffer,&original_copy_buffer)&&ok;
         ok=install_detailed(command->lpVtbl->ClearRenderTargetView,clear,&original_clear)&&ok;

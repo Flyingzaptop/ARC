@@ -143,11 +143,11 @@ Lease acquire_draw(ID3D12GraphicsCommandList* native)noexcept{
 void close(ID3D12GraphicsCommandList* native)noexcept{if(nested)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()&&!it->second->closed){restore(*it->second);it->second->closed=true;}});}
 void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(nested)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()){restore(*it->second);it->second->valid=false;}});}
 void pipeline_created(ID3D12PipelineState* pso,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)noexcept{
-    if(nested||!pso||!desc)return;safe([&]{auto& s=state();if(s.pipelines.size()>=16384)return;if(!track(pso,false))return;
+    if(nested||!pso||!desc)return;safe([&]{auto& s=state();if(s.pipelines.contains(pso)||s.pipelines.size()>=16384)return;if(!track(pso,false))return;
         s.pipelines[pso]=desc->PS.pShaderBytecode&&desc->PS.BytecodeLength&&desc->SampleDesc.Count>=1&&desc->SampleDesc.Count<=4&&desc->RasterizerState.ForcedSampleCount==0;});
 }
 void signature_created(ID3D12CommandSignature* signature,const D3D12_COMMAND_SIGNATURE_DESC* desc)noexcept{
-    if(nested||!signature||!desc)return;safe([&]{auto& s=state();if(s.signatures.size()>=16384||!track(signature,2))return;
+    if(nested||!signature||!desc)return;safe([&]{auto& s=state();if(s.signatures.contains(signature)||s.signatures.size()>=16384||!track(signature,2))return;
         bool raster=false,other=false;for(UINT i=0;i<desc->NumArgumentDescs;++i){const auto type=desc->pArgumentDescs[i].Type;
             if(type==D3D12_INDIRECT_ARGUMENT_TYPE_DRAW||type==D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED)raster=true;
             if(type==D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH||type==D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS||type==D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH)other=true;

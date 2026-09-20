@@ -12,6 +12,7 @@ parser.add_argument("wicked",type=Path)
 parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
 parser.add_argument("--compiler",type=Path)
+parser.add_argument("--compute-mode",choices=['neutral','neutral|heaviest','1x2|heaviest','2x2|heaviest','adaptive-2x2@0.9|heaviest'],default='neutral|heaviest')
 args=parser.parse_args()
 root=args.wicked.resolve();output=args.output.resolve();output.mkdir(parents=True,exist_ok=False)
 exe=root/"BUILD/x64/Release/Tests/Tests.exe"
@@ -21,11 +22,11 @@ for key in list(env):
 env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_OUTPUT=str(output/'renderer.json'),ARC_WICKED_SECONDS='10',ARC_WICKED_WARMUP_SECONDS='2',ARC_WICKED_SCENE_SETTLE_MS='500',ARC_WICKED_HOOK_TIMING='0')
 if args.dll:
     if not args.compiler or not args.compiler.is_file(): raise ValueError("Pinned DXC required")
-    env.update(ARC_BENCH_DLL=str(args.dll.resolve()),ARC_BENCH_OUTPUT=str(output),ARC_BENCH_COMPUTE='neutral|heaviest',
+    env.update(ARC_BENCH_DLL=str(args.dll.resolve()),ARC_BENCH_OUTPUT=str(output),ARC_BENCH_COMPUTE=args.compute_mode,
                ARC_OPTIMIZER_WORKER=str(Path(__file__).resolve().parents[1]/'build/Release/arc-shader-tool.exe'),
                ARC_OPTIMIZER_COMPILER=str(args.compiler.resolve()),ARC_OPTIMIZER_CACHE=str(output/'shader-cache'))
 manifest={'host_quality_actions':'off','native_resolution':[1920,1080],'dll_sha256':hashlib.sha256(args.dll.read_bytes()).hexdigest() if args.dll else None,
-          'exe_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'mode':'generic-neutral-discovery' if args.dll else 'baseline'}
+          'exe_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'mode':args.compute_mode if args.dll else 'baseline'}
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
 start=time.monotonic()
 with (output/'stdout.txt').open('w') as out,(output/'stderr.txt').open('w') as err:
