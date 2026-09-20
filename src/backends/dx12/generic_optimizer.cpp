@@ -28,7 +28,7 @@ struct Root {std::uint64_t id{};ID3D12RootSignature* native{};std::vector<std::b
 struct AllocationCache {Ptr<ID3D12Device> device;std::map<std::array<UINT64,11>,UINT64> sizes;};
 struct VariantStats {std::uint64_t id{},attempts{},admitted{},uniform_attempts{},uniform_proven{},uniform_steps{},uniform_known_reads{},uniform_unknown_reads{};double uniform_cpu_ms{};std::string last_reason,uniform_reason;UINT binding_class{},binding_register{},binding_space{};};
 using UniformReadKey=std::tuple<unsigned,unsigned,unsigned>;
-struct Variant:VariantStats {Ptr<ID3D12RootSignature> root;Ptr<ID3D12PipelineState> pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;bool proof_pending{};std::uint64_t retry_after{};};
+struct Variant:VariantStats {Ptr<ID3D12RootSignature> root;Ptr<ID3D12PipelineState> pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;std::vector<std::array<unsigned,3>> state_reads;bool proof_pending{};std::uint64_t retry_after{};};
 struct UniformJob {std::shared_ptr<Variant> variant;std::map<UniformReadKey,shader::UniformWords> words;};
 struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};};
 struct Signature {bool known{},compute{};std::shared_ptr<Root> root;std::vector<D3D12_INDIRECT_ARGUMENT_DESC> resets;};
@@ -39,7 +39,7 @@ struct Recording {
     bool valid{true},closed{},epilogue{},render_pass{},arguments_uncertain{};
 };
 struct State {
-    std::recursive_mutex mutex;std::condition_variable_any changed;
+    std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
     bool heaviest_only{};std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true};float edge_threshold{.08f};
@@ -66,6 +66,8 @@ struct State {
     std::string last_error;std::map<std::string,std::uint64_t> admission_reasons;
     std::map<std::string,std::uint64_t> pipeline_declines;
     std::array<std::uint64_t,12> dispatch_declines{};
+    std::uint64_t policy_epoch{},last_active_epoch{};
+    bool sample_state{};FrameStateSample last_frame_state;
 };
 State& state(){static auto* s=new State;return *s;}
 std::atomic<std::uint64_t> cpu_ns{};
@@ -131,10 +133,8 @@ struct UniformMemory {
     binding::Argument constants;bool inline_constants{},null_view{};
     ~UniformMemory(){if(resource&&mapped){D3D12_RANGE no_writes{};resource->Unmap(0,&no_writes);}}
 };
-shader::ResourceUsage uniform_usage(const Use& use,const std::vector<binding::DescriptorHeap>& heaps){
-    mirror::InternalCall internal;
-    std::map<std::pair<unsigned,unsigned>,UniformMemory> views;
-    auto read_memory=[&](unsigned range,unsigned reg,unsigned offset){
+shader::UniformWords read_uniform_memory(const Use& use,const std::vector<binding::DescriptorHeap>& heaps,
+    std::map<std::pair<unsigned,unsigned>,UniformMemory>& views,unsigned range,unsigned reg,unsigned offset){
         shader::UniformWords result;auto& s=state();
         const auto declaration=std::find_if(use.variant->contract.resources.begin(),use.variant->contract.resources.end(),[&](const auto& c){return c.resource_class==2&&c.range_id==range&&reg>=c.shader_register&&reg-c.shader_register<c.count;});
         if(declaration==use.variant->contract.resources.end())return result;
@@ -177,7 +177,11 @@ shader::ResourceUsage uniform_usage(const Use& use,const std::vector<binding::De
             else if(view.mapped){std::memcpy(&result.words[component],static_cast<const char*>(view.mapped)+view.offset+byte,4);result.valid_mask|=1u<<component;}
         }
         return result;
-    };
+}
+shader::ResourceUsage uniform_usage(const Use& use,const std::vector<binding::DescriptorHeap>& heaps){
+    mirror::InternalCall internal;
+    std::map<std::pair<unsigned,unsigned>,UniformMemory> views;
+    auto read_memory=[&](unsigned range,unsigned reg,unsigned offset){return read_uniform_memory(use,heaps,views,range,reg,offset);};
     auto& variant=*use.variant;
     if(variant.cached_usage.complete){
         bool matches=true;
@@ -235,7 +239,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     for(std::size_t i=0;i<count;++i){shader::ResourceContract r;description>>r.resource_class>>r.range_id>>r.shader_register>>r.space>>r.count>>r.kind;contract.resources.push_back(r);}
     if(!description)throw std::runtime_error("truncated shader contract");contract.admitted=true;
     auto access_path=binary;access_path+=L".access.ll";
-    if(std::filesystem::is_regular_file(access_path)&&std::filesystem::file_size(access_path)<=8*1024*1024){std::ifstream access(access_path,std::ios::binary);std::string ir{std::istreambuf_iterator<char>(access),{}};result->access=shader::UniformAccessProgram::compile(ir);}
+    if(std::filesystem::is_regular_file(access_path)&&std::filesystem::file_size(access_path)<=8*1024*1024){std::ifstream access(access_path,std::ios::binary);std::string ir{std::istreambuf_iterator<char>(access),{}};result->access=shader::UniformAccessProgram::compile(ir);result->state_reads=shader::floating_uniform_reads(ir);}
     const auto root=binding::append_control_cbv(pipeline->root->bytes,contract.control_space);if(root.empty())throw std::runtime_error("root_cannot_add_control");
     const auto size=std::filesystem::file_size(binary);if(!size||size>8*1024*1024)throw std::runtime_error("shader worker output size");
     std::ifstream input(binary,std::ios::binary);std::vector<char> bytes{std::istreambuf_iterator<char>(input),{}};
@@ -261,6 +265,11 @@ DWORD WINAPI worker(void*){
 }
 }
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
+PolicyStamp policy_stamp()noexcept{PolicyStamp stamp;safe([&]{const auto& s=state();stamp={s.policy_epoch,s.coarse_submissions,s.last_active_epoch};});return stamp;}
+void sample_frame_state(bool enabled)noexcept{safe([&]{state().sample_state=enabled;state().last_frame_state={};});}
+FrameStateSample frame_state_sample(){std::lock_guard lock(state().mutex);return state().last_frame_state;}
+bool restoration_ready()noexcept{bool ready=false;safe([&]{const auto& s=state();if(s.faults||s.x_rate!=1||s.y_rate!=1||s.comparison_taps||s.zero_factor||s.mip_steps)return;
+    ready=std::all_of(s.controls.begin(),s.controls.end(),[](const auto& control){return SUCCEEDED(control->device()->GetDeviceRemovedReason())&&control->ready();});});return ready;}
 void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
     out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected","root_arguments_uncertain"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
     out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
@@ -297,10 +306,10 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
     if(accepted&&command!=L"mip-half"&&command!=L"mip1"&&command!=L"mip2")s.mip_steps=0;
-    if(accepted){s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
+    if(accepted){++s.policy_epoch;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
-DescriptorWrite descriptor_write()noexcept{DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().mutex);return result;}
+DescriptorWrite descriptor_write()noexcept{DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().descriptor_mutex);return result;}
 void root_created(ID3D12RootSignature* native,const void* bytes,SIZE_T size)noexcept{if(!enabled()||!native||!bytes||!size||size>65536)return;safe([&]{auto& s=state();
     // CreateRootSignature may return another reference to an interned object.
     // Replacing its lifetime token would invalidate every existing PSO's root
@@ -426,7 +435,7 @@ void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe(
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
     if(!enabled()||!queue||(!lists&&count))return false;
     static const auto sample=register_cpu_sample("execute");CpuMeter meter(sample);
-    auto& s=state();std::lock_guard lock(s.mutex);
+    auto& s=state();std::lock_guard descriptors(s.descriptor_mutex);std::lock_guard lock(s.mutex);
     std::array<GpuControl*,64> controls{};unsigned used=0;
     auto fault=[&](const char* message){++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;try{s.last_error=message;}catch(...) {}};
     auto remember=[&](GpuControl* c){for(unsigned j=0;j<used;++j)if(controls[j]==c)return false;if(used>=controls.size()){fault("control capacity");return false;}controls[used++]=c;return true;};
@@ -442,6 +451,10 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
             if(!s.faults&&c.valid&&c.closed&&c.epilogue)for(unsigned n=0;n<c.uses.size();++n){
                 const auto& use=c.uses[n];std::vector<binding::DescriptorHeap> heaps;
                 for(auto id:use.heaps){const auto h=s.heaps_by_id.find(id);if(h!=s.heaps_by_id.end())heaps.push_back(h->second);}
+                if(s.sample_state&&use.variant->id==s.selected_pipeline){mirror::InternalCall internal;std::map<std::pair<unsigned,unsigned>,UniformMemory> views;
+                    FrameStateSample sample;sample.pipeline=use.variant->id;sample.submission=s.last_frame_state.submission+1;sample.keys=use.variant->state_reads;
+                    for(const auto& key:sample.keys){const auto value=read_uniform_memory(use,heaps,views,key[0],key[1],key[2]);sample.words.push_back(value.words);sample.valid.push_back(value.valid_mask);}s.last_frame_state=std::move(sample);
+                }
                 auto prove=[&]{
                     auto& stats=*use.variant;const auto started=std::chrono::steady_clock::now();++stats.uniform_attempts;
                     const auto usage=uniform_usage(use,heaps);stats.uniform_steps+=usage.steps;stats.uniform_reason=usage.reason;
@@ -473,7 +486,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 }
             }
             mirror::InternalCall internal;auto* helper=c.control->prepare(queue,{values.data(),c.uses.size()});
-            if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;}else ++s.neutral_submissions;
+            if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;}else ++s.neutral_submissions;
         }catch(const std::exception& e){fault(e.what());try{mirror::InternalCall internal;c.control->prepare(queue,{});}catch(...) {}}
         catch(...){fault("submission preparation failed");try{mirror::InternalCall internal;c.control->prepare(queue,{});}catch(...) {}}
     }

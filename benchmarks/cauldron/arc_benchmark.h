@@ -24,7 +24,7 @@ inline std::wstring env(const wchar_t* name){wchar_t value[32768]{};GetEnvironme
 inline void initialize(){
     auto& s=state();s.output=env(L"ARC_BENCH_OUTPUT");s.enabled=!s.output.empty();if(!s.enabled)return;
     const auto frames=env(L"ARC_BENCH_FRAMES");if(!frames.empty())s.frames=std::stoul(frames);
-    if(s.frames<1||s.frames>1800)throw std::runtime_error("Benchmark frame count 1..1800 required");
+    if(s.frames<1||s.frames>3600)throw std::runtime_error("Benchmark frame count 1..3600 required; runner enforces 60-second limit");
     s.rows.open(s.output+L"/frames.jsonl");if(!s.rows)throw std::runtime_error("Cannot open benchmark output");
     const auto dll=env(L"ARC_BENCH_DLL");if(dll.empty())return;
     const auto module=LoadLibraryW(dll.c_str());if(!module)throw std::runtime_error("Cannot load ARC benchmark DLL");

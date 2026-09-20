@@ -2,7 +2,8 @@ import runpy
 from pathlib import Path
 import numpy as np
 
-assess = runpy.run_path(str(Path(__file__).resolve().parents[1]/"scripts/optimizer-live-quality.py"))["assess"]
+module = runpy.run_path(str(Path(__file__).resolve().parents[1]/"scripts/optimizer-live-quality.py"))
+assess = module["assess"]
 image = np.full((64, 96, 3), .3)
 image[16:48, 24:72] = .7
 same = assess(image, image, image)
@@ -21,3 +22,16 @@ for value in (float("nan"),float("inf"),-.1,1.1):
     else:
         raise AssertionError("Invalid pixels must refuse the trial")
 print("Live critic accepts identical references, rejects damage and refuses scene cuts")
+samples=[]
+for index,offset in enumerate((0,.5,1)):
+    words=(np.arange(8,dtype=np.float32).reshape(2,4)+1+offset).view(np.uint32).tolist()
+    samples.append({"pipeline":1,"submission":index+1,"keys":[[0,0,0],[0,0,16]],"words":words,"valid":[15,15]})
+timing=module["state_fraction"](samples)
+assert timing and timing["fraction"]==.5 and timing["components"]==8
+samples[1]["pipeline"]=2
+assert module["state_fraction"](samples) is None
+samples[1]["pipeline"]=1
+samples[1]["words"]=(np.arange(8,dtype=np.float32).reshape(2,4)+1+np.array([[.2,.3,.4,.5],[.6,.7,.8,.9]],dtype=np.float32)).view(np.uint32).tolist()
+assert module["state_fraction"](samples) is None
+assert module["state_fraction"]([]) is None
+print("Original-state timing accepts consistent simulation motion and rejects mismatched state")

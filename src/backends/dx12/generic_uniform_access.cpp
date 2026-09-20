@@ -49,6 +49,18 @@ Value arithmetic(const Instruction& i,const Value& a,const Value& b){
 struct KeyHash {std::size_t operator()(const std::vector<unsigned>& values)const noexcept{std::size_t h=1469598103934665603ull;for(auto v:values){h^=v;h*=1099511628211ull;}return h;}};
 }
 struct UniformAccessProgram::Impl {std::vector<Block> blocks;unsigned registers{};};
+std::vector<std::array<unsigned,3>> floating_uniform_reads(std::string_view input){
+    std::vector<std::array<unsigned,3>> result;if(input.size()>8*1024*1024)return result;
+    try{std::map<std::string,std::pair<unsigned,unsigned>> handles;std::set<std::array<unsigned,3>> reads;
+        const std::regex handle(R"(^(%[A-Za-z0-9_.$]+) = call %dx.types.Handle @dx.op.createHandle\(i32 57, i8 2, i32 ([0-9]+), i32 ([0-9]+), i1 (?:true|false)\).*$)");
+        const std::regex load(R"(^%[A-Za-z0-9_.$]+ = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32\(i32 59, %dx.types.Handle (%[A-Za-z0-9_.$]+), i32 ([0-9]+)\).*$)");
+        std::istringstream source{std::string(input)};std::string line;std::smatch match;
+        while(std::getline(source,line)){line=trim(line);
+            if(std::regex_match(line,match,handle))handles[match[1]]={integer(match[2]),integer(match[3])};
+            else if(std::regex_match(line,match,load)){const auto found=handles.find(match[1]);const auto row=integer(match[2]);if(found!=handles.end()&&row<=UINT32_MAX/16&&reads.size()<64)reads.insert({found->second.first,found->second.second,row*16});}
+        }result.assign(reads.begin(),reads.end());
+    }catch(...){result.clear();}return result;
+}
 std::shared_ptr<const UniformAccessProgram> UniformAccessProgram::compile(std::string_view input){
     try{
         if(input.size()>8*1024*1024)return {};auto impl=std::make_shared<Impl>();impl->blocks.emplace_back();

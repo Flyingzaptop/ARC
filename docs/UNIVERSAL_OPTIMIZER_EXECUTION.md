@@ -377,3 +377,41 @@ faults; comparison to the saved 29fe5c9 baseline passes SSIM .990209, mean error
 .000936 and tile p99 .021215. It is a checkpoint, not full-plan acceptance.
 Automatic quality provenance/retention, complete overhead accounting, geometry,
 temporal GI/shadow reuse and the final two-renderer matrix remain unfinished.
+
+## Checkpoint 11 (live reference confidence and measured rollback)
+
+Live trials now record policy epochs and active submission counters. A candidate
+that fell back to unchanged work cannot be accepted as an exercised change.
+This is submission provenance, explicitly not proof of a same-frame GPU dataflow.
+Rollback confirmation waits on the control fences from the background worker;
+it is no longer inferred merely from requesting `off`. Per-trial decision JSON
+preserves timing, quality, provenance and cost-availability outcomes.
+
+Optional trial-only state sampling discovers literal float CBV loads from shader
+IR and reads at most 64 vectors from original CPU-visible game constants. It uses
+no variable names and is disabled outside capture windows. Consistent changes
+across those values estimate the simulation fraction between original references,
+instead of assuming Present intervals equal simulation steps. Candidate pixels
+never fit that estimate. Mismatched identities, stale submissions, nonfinite or
+inconsistent state fall back to the timing proxy.
+
+Motion ambiguity on locally flat surfaces is handled using agreement between
+both ORIGINAL warped references: each 3x3 luma range must be <=2/255 and their
+maximum linear channel difference <=.001. The final full-image quality limits,
+95% confidence coverage and reference SSIM .99 remain unchanged. Flow consistency
+and flat-region confidence are reported separately. Independent image-damage,
+scene-cut and state-mismatch tests pass.
+
+`auto-reference-confidence` completes a 3000-frame, 44-second dynamic run. Five
+successive trials pass image quality (SSIM .99548–.99861, confidence coverage
+.96518–.98171). Retention remains blocked by unavailable complete cost evidence;
+this must not be described as a finished autonomous optimizer. The runner still
+enforces a hard 60-second per-process limit; its frame cap is now 3600.
+
+A shared-memory edge-scan experiment preserved native outputs but did not improve
+measured lighting time (2.811 vs 2.783ms in the preceding run). It was reverted;
+its evidence remains under `shared-edge`. Descriptor value/reference lookup uses
+hash tables with full-value equality, and descriptor mutation/submission locking
+is separated from other state updates. `runtime-hash-ledger-01` passes lifetime,
+copy and output checks; `descriptor-locks/optimized` measures 83.525 FPS and
+3.680ms CPU preparation. No claim that the CPU budget is met is justified.

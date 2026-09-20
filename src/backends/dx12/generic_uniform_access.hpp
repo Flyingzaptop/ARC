@@ -7,10 +7,14 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace arc::dx12::shader {
 struct UniformWords {std::array<std::uint32_t,4> words{};unsigned valid_mask{};bool operator==(const UniformWords&)const=default;};
 using UniformReader=std::function<UniformWords(unsigned range_id,unsigned shader_register,unsigned byte_offset)>;
+// Optional motion-state telemetry, never an admission proof. Only literal
+// float CBV loads with statically known handles; no names/layout allowlists.
+std::vector<std::array<unsigned,3>> floating_uniform_reads(std::string_view);
 struct UsedRange {bool all{};std::set<unsigned> indices;};
 struct ResourceUsage {
     bool complete{};

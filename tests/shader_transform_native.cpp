@@ -63,6 +63,12 @@ RWTexture2D<float4> output_aux:register(u7,space3);
     output_aux[pixel.xy]=float4(c.b,c.r,c.g,0.5);
 })";
     auto original=compiler.compile(source);auto ir=compiler.disassemble(original.Get());
+    const auto motion_shader=compiler.compile(R"(
+cbuffer OriginalState:register(b5,space6){float4 values[2];} RWTexture2D<float4> result:register(u0);
+[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){result[p.xy]=values[0]+values[1]*float4(p.xy,1,1);}
+)");
+    const auto state_reads=arc::dx12::shader::floating_uniform_reads(compiler.disassemble(motion_shader.Get()));
+    check(state_reads==std::vector<std::array<unsigned,3>>{{0,5,0},{0,5,16}},"State telemetry must derive register and offsets from actual float loads");
     {ComPtr<ID3DBlob> legacy,errors;hr(D3DCompile(source.data(),source.size(),nullptr,nullptr,nullptr,"MainCS","cs_5_1",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&legacy,&errors));std::ofstream file(directory/"legacy-input.bin",std::ios::binary);file.write(static_cast<const char*>(legacy->GetBufferPointer()),legacy->GetBufferSize());check(bool(file),"Write independent DXBC fixture");}
     const auto neutral=arc::dx12::shader::coarse_compute(ir,1,1),coarse=arc::dx12::shader::coarse_compute(ir,2,2);
     check(neutral.admitted&&coarse.admitted,"Independent typed pixel writes should be admitted");

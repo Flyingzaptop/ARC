@@ -4,6 +4,7 @@
 #include <map>
 #include <optional>
 #include <vector>
+#include <unordered_map>
 
 namespace arc {
 // Optional exact native-view metadata. Stored in the interned value, not in
@@ -21,6 +22,16 @@ struct DescriptorValue {
     std::uint32_t kind{},first_mip{},mips{};
     DescriptorShape shape{};
     auto operator<=>(const DescriptorValue&)const=default;
+};
+struct DescriptorValueHash {
+    std::size_t operator()(const DescriptorValue& v) const noexcept {
+        std::uint64_t h=0x9e3779b97f4a7c15ull;
+        auto add=[&](std::uint64_t n){h^=n+0x9e3779b97f4a7c15ull+(h<<6)+(h>>2);};
+        add(v.resource);add(v.kind);add(v.first_mip);add(v.mips);
+        const auto& s=v.shape;add(s.format);add(s.dimension);add(s.first_slice);add(s.slices);add(s.plane);add(s.flags);
+        add(s.elements);add(s.stride);add(s.component_mapping);add(s.byte_offset);add(s.byte_size);add(s.first_element);add(s.counter_resource);add(s.known);
+        return static_cast<std::size_t>(h);
+    }
 };
 struct DescriptorLedgerLimits {
     std::size_t slots{8u*1024u*1024u}, values{65536}, orphan_slots{65536}, heaps{4096};
@@ -46,12 +57,12 @@ public:
     [[nodiscard]] std::size_t orphan_count()const noexcept{return orphans_.size();}
     [[nodiscard]] std::size_t null_count()const noexcept{return nulls_;}
 private:
-    struct Heap {std::uint64_t start{};std::uint32_t stride{};std::vector<std::uint32_t> entries;std::map<std::uint32_t,std::size_t> references;};
+    struct Heap {std::uint64_t start{};std::uint32_t stride{};std::vector<std::uint32_t> entries;std::unordered_map<std::uint32_t,std::size_t> references;};
     struct Value {DescriptorValue data;std::size_t references{};};
     DescriptorLedgerLimits limits_;
     std::map<std::uint64_t,Heap> heaps_;
     std::map<std::uint64_t,std::uint64_t> starts_;
-    std::map<DescriptorValue,std::uint32_t> lookup_;
+    std::unordered_map<DescriptorValue,std::uint32_t,DescriptorValueHash> lookup_;
     std::vector<Value> values_{{}};
     std::vector<std::uint32_t> free_;
     std::map<std::uint64_t,std::uint32_t> orphans_;

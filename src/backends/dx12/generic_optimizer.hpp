@@ -2,12 +2,20 @@
 #include <d3d12.h>
 #include <mutex>
 #include <iosfwd>
+#include <array>
+#include <vector>
 
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
 std::uint64_t cpu_nanoseconds() noexcept;
 void cpu_snapshot(std::ostream&);
 void coverage_snapshot(std::ostream&);
+struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{};};
+PolicyStamp policy_stamp() noexcept;
+bool restoration_ready() noexcept;
+struct FrameStateSample {std::uint64_t pipeline{},submission{};std::vector<std::array<unsigned,3>> keys;std::vector<std::array<UINT,4>> words;std::vector<unsigned> valid;};
+void sample_frame_state(bool enabled) noexcept;
+FrameStateSample frame_state_sample();
 // Explicit environment-based diagnostic setup, called before application PSOs.
 // No environment variables -> disabled, unchanged observer behavior.
 bool initialize() noexcept;
