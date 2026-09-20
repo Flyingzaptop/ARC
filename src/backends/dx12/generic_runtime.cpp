@@ -294,6 +294,7 @@ void flush_timing()noexcept{
     try{const auto temporary=std::filesystem::path(path.wstring()+L".tmp");std::ofstream out(temporary);out<<"{\"experimental_vrs_rate\":"<<rate<<",\"measurement\":";completed->write_json(out);out<<'}';out.close();if(out){std::filesystem::rename(temporary,path);written=true;}}catch(...){}
     safe([&]{auto& s=state();s.timing_writing=false;if(written&&completed->valid())++s.timing_completed;else ++s.timing_failed;});
 }
+bool gpu_helpers_idle()noexcept{bool idle=false;safe([&]{const auto& s=state();idle=!s.image_pending&&!s.sequence_active&&s.sequence_images.empty()&&!s.image_writing&&(!s.image||s.image->ready());});return idle;}
 void flush_image()noexcept{
     std::unique_ptr<ImageReadback> image;
     bool sequence=false;

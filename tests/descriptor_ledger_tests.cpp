@@ -33,5 +33,13 @@ int main(){
     check(copied.copy_one(4096,32)&&copied.read(4096)->resource==7,"copy to orphan");
     copied.retire_heap(1);copied.retire_heap(2);check(copied.known_count()==1&&copied.null_count()==0&&copied.value_count()==1,"copy references survive source retirement");
     copied.forget(4096);check(copied.known_count()==0&&copied.value_count()==0,"copy reference retirement complete");
+    arc::DescriptorLedger replacement;
+    check(copied.register_heap(11,32,32,4)&&copied.write(32,{21,1,0,1}),"cached old heap");
+    check(copied.read(32)->resource==21,"warm lookup hint");
+    check(replacement.register_heap(11,8192,16,4)&&replacement.write(8208,{22,1,0,1}),"replacement layout");
+    copied=replacement;
+    check(!copied.read(32)&&copied.read(8208)->resource==22,"assignment cannot reuse another heap's cached range");
+    auto moved=std::move(copied);
+    check(moved.read(8208)->resource==22&&!copied.read(8208),"moved-from lookup cannot retain stale heap pointers");
     std::cout<<"Descriptor ledger: million-slot deduplication, reuse, null/unknown distinction and bounded churn PASS\n";
 }

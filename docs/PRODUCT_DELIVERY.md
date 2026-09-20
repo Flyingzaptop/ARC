@@ -62,3 +62,31 @@ Twofold FPS is a target, not a guaranteed outcome or a changed quality threshold
   The adjacent no-DLL baseline measured 80.093 FPS (42.25s). This is no demonstrated
   FPS gain. Full GPU-cost/final-frame-provenance gating remains closed; CPU
   candidate-window cost is still 1.06--1.56ms/frame and exceeds the .2ms target.
+- CPU view caching now compares full native SRV/UAV/CBV descriptors (not the
+  deliberately partial semantic ledger), including resource/heap generations.
+  Descriptor copies and sampler-feedback UAV writes invalidate the affected
+  cache entries. Native source-copy/restore and per-pixel tests pass.
+- product-cpu-renderer-off/on-01: 81.27 / 80.37 FPS; median CPU preparation
+  3.543 / 3.594ms. This single pair does not support enabling the CPU cache on
+  Cauldron. The on run eliminated 40,583 setters and 130,546 view creations;
+  eliminating calls alone is not an acceptance criterion.
+- The same session controller now trials CPU-only exact-state changes before
+  GPU profiling, requires two bracketed confirmations, and distinguishes their
+  structural equivalence proof from image measurements. It does not invent SSIM
+  values. GPU candidates cannot use this exemption. Automatic mode owns policy
+  and diagnostic requests exclusively; affinity experiments are set to normal.
+- Automatic shader preparation is scheduled by measured expense instead of
+  compiling every observed pipeline at startup. Descriptor heap lookup hints
+  retain numeric IDs and revalidate current ranges, including copy/move/reuse.
+- Product-exclusive-auto-01: 3000 frames, 80.835 FPS, 43.09s, no ARC faults.
+  CPU trials correctly rejected inconsistent gains; observed CPU cost .927--.936ms.
+  Three shaders prepared, 39 declined, one unrequested low-cost pipeline retained.
+- Fixed cadence comparison bias: candidate CPU-cost sampling is now separate
+  from candidate FPS timing, so incumbent/candidate timings use equal metering.
+  An empty-hook diagnostic measured ~26ns reported own time and ~64ns total
+  instrumentation per call. No cost budget has been relaxed or debiased by fiat.
+- Added target-FPS update export and reject further degradation if the updated
+  target is already met. Whole-policy gains no longer sum unrelated increments.
+- Calibration is disabled inside application statistics queries; the native test
+  verifies the exact original CS invocation count. The latest Release build,
+  53 non-GPU tests and injected query/calibration/descriptor pixel oracle pass.

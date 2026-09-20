@@ -21,6 +21,8 @@ int wmain(int argc,wchar_t** argv)try{
     auto module=LoadLibraryW(argv[1]);check(module!=nullptr,"Load observer");using Api=DWORD(WINAPI*)(void*);
     auto init=reinterpret_cast<Api>(GetProcAddress(module,"ArcInitialize"));auto mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalVrs"));auto snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));
     auto metrics=(root/L"runtime.json").wstring();check(init&&mode&&snapshot&&init(metrics.data())==0,"Initialize mirror");
+    Api cpu_mode{};
+    if(options.find(L"cpu")!=std::wstring::npos){cpu_mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalCpuState"));wchar_t off[]=L"off";check(cpu_mode&&cpu_mode(off)==0,"Independent unoptimized CPU reference");}
     if(lean_mode){auto lean=reinterpret_cast<Api>(GetProcAddress(module,"ArcUseLeanMode"));check(lean&&lean(nullptr)==0,"Disable detailed observer independently of mirror");}
     ComPtr<ID3D12Device> device;hr(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)));
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 caps{};hr(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,&caps,sizeof(caps)));
@@ -114,7 +116,6 @@ int wmain(int argc,wchar_t** argv)try{
         std::ofstream json(root/(std::wstring(name)+L".json"));json<<"{\"width\":1280,\"height\":720,\"gpu_ms\":[";for(std::size_t i=0;i<ms.size();++i){if(i)json<<',';json<<ms[i];}json<<"]}";
         return result;};
     record(false);auto baseline=run(L"baseline");
-    Api cpu_mode{};
     if(options.find(L"cpu")!=std::wstring::npos){
         cpu_mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalCpuState"));
         wchar_t on[]=L"on";check(cpu_mode&&cpu_mode(on)==0,"Enable exact native state cache");

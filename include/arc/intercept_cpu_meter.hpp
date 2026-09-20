@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <utility>
+#include <array>
 
 namespace arc {
 // Inclusive interceptor wall time, excluding only explicitly identified native
@@ -15,6 +16,9 @@ public:
     static void enable(bool value)noexcept{enabled_.store(value,std::memory_order_relaxed);}
     static bool enabled()noexcept{return enabled_.load(std::memory_order_relaxed);}
     static Snapshot snapshot()noexcept{return {own_.load(std::memory_order_relaxed),excluded_.load(std::memory_order_relaxed),calls_.load(std::memory_order_relaxed)};}
+    struct Site {std::atomic<const char*> name{};std::atomic<std::uint64_t> own_ns{},calls{};};
+    static unsigned register_site(const char* name)noexcept{const auto id=site_count_.fetch_add(1);if(id<sites_.size())sites_[id].name=name;return id;}
+    static const auto& sites()noexcept{return sites_;}
     class Native;
     class Scope {
         friend class Native;
@@ -23,8 +27,9 @@ public:
         unsigned native_depth_{};
         typename Clock::time_point started_{};
         std::uint64_t excluded_ns_{};
+        unsigned site_{UINT32_MAX};
     public:
-        explicit Scope(bool application_call)noexcept{
+        explicit Scope(bool application_call,unsigned site=UINT32_MAX)noexcept:site_(site){
             if(!enabled()&&!current_)return;
             linked_=true;previous_=current_;current_=this;
             auto* owner=previous_;while(owner&&!owner->measured_)owner=owner->previous_;
@@ -35,8 +40,9 @@ public:
         Scope& operator=(const Scope&)=delete;
         ~Scope(){
             if(measured_){const auto elapsed=nanoseconds(Clock::now()-started_);
-                own_.fetch_add(elapsed>=excluded_ns_?elapsed-excluded_ns_:0,std::memory_order_relaxed);
-                excluded_.fetch_add(excluded_ns_,std::memory_order_relaxed);calls_.fetch_add(1,std::memory_order_relaxed);}
+                const auto own=elapsed>=excluded_ns_?elapsed-excluded_ns_:0;own_.fetch_add(own,std::memory_order_relaxed);
+                excluded_.fetch_add(excluded_ns_,std::memory_order_relaxed);calls_.fetch_add(1,std::memory_order_relaxed);
+                if(site_<sites_.size()){sites_[site_].own_ns.fetch_add(own,std::memory_order_relaxed);sites_[site_].calls.fetch_add(1,std::memory_order_relaxed);}}
             if(linked_)current_=previous_;
         }
     };
@@ -57,6 +63,8 @@ private:
     inline static std::atomic<bool> enabled_{};
     inline static std::atomic<std::uint64_t> own_{},excluded_{},calls_{};
     inline static thread_local Scope* current_{};
+    inline static std::array<Site,256> sites_;
+    inline static std::atomic<unsigned> site_count_{};
 };
 using InterceptCpuMeter=BasicInterceptCpuMeter<>;
 template<class F>decltype(auto) original_cpu_call(F&& call){InterceptCpuMeter::Native excluded;return std::forward<F>(call)();}

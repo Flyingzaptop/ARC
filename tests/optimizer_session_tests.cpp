@@ -23,6 +23,18 @@ int main(){
     measured.candidates({{1,1,0,1,true,1,false},{2,1,0,1,true,4,false}});
     assert(measured.frame(16).kind==arc::SessionRequestKind::Profile);
     assert(measured.frame(16).action==2); // measured expense, no fabricated gain
+    measured.target(60);
+    arc::OptimizerTrialEvidence no_longer_needed{2,1,true,true,true,16,12,.05,.99,.001,.01,.1,.1};
+    assert(measured.evidence(no_longer_needed).kind==arc::SessionRequestKind::None);
+    assert(measured.snapshot().accepted==0); // target changed while a trial ran
+    arc::OptimizerSession exact_cpu(measured_config);
+    exact_cpu.candidates({{21,1,0,0,true,0,false,true,true}});
+    assert(exact_cpu.frame(16).action==21); // exact CPU trial can precede GPU profiling
+    arc::OptimizerTrialEvidence exact_evidence{21,1,false,true,true,16,12,.05,0,0,0,.1,0};exact_evidence.exact_native_state=true;
+    assert(exact_cpu.evidence(exact_evidence).kind==arc::SessionRequestKind::Apply);
+    arc::OptimizerSession image_required(measured_config);image_required.candidates({{21,1,1,.1,true}});
+    image_required.frame(16);image_required.frame(16);
+    assert(image_required.evidence(exact_evidence).kind==arc::SessionRequestKind::None); // cannot waive image checks on GPU actions
     arc::OptimizerSessionConfig config;config.target_fps=120;config.warmup_samples=2;config.settle_samples=1;config.hold_samples=2;
     arc::OptimizerSession session(config);session.candidates({{1,5,4,.1,true},{2,9,2,.1,true}});
     assert(session.frame(16).kind==arc::SessionRequestKind::None);

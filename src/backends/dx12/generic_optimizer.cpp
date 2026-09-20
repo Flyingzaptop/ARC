@@ -33,12 +33,17 @@ struct VariantStats {std::uint64_t id{},attempts{},admitted{},uniform_attempts{}
 using UniformReadKey=std::tuple<unsigned,unsigned,unsigned>;
 struct Variant:VariantStats {Ptr<ID3D12RootSignature> root;Ptr<ID3D12PipelineState> pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;std::vector<std::array<unsigned,3>> state_reads;bool proof_pending{};std::uint64_t retry_after{};};
 struct UniformJob {std::shared_ptr<Variant> variant;std::map<UniformReadKey,shader::UniformWords> words;};
-struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};};
+struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};bool queued{};};
 struct Signature {bool known{},compute{};std::shared_ptr<Root> root;std::vector<D3D12_INDIRECT_ARGUMENT_DESC> resets;};
 struct Use {std::shared_ptr<Variant> variant;binding::Arguments arguments;std::vector<std::uint64_t> heaps;UINT x{},y{},z{};bool calibration{};};
 struct CpuRecordingState {
     arc::ExactStateCache cache;std::uint64_t generation{};
     std::atomic<bool> usable{true};std::atomic<std::uint64_t> attempts{},skipped{};
+};
+struct RawDescriptor {
+    std::uint64_t address{},heap{},resource{},counter{};
+    ID3D12Resource* native{};ID3D12Resource* native_counter{};
+    std::array<std::byte,128> bytes{};std::size_t size{};unsigned kind{};
 };
 struct Recording {
     std::shared_ptr<CpuRecordingState> cpu_cache;
@@ -46,18 +51,22 @@ struct Recording {
     std::vector<std::uint64_t> heaps;std::shared_ptr<GpuControl> control;std::vector<Use> uses;
     bool valid{true},closed{},epilogue{},render_pass{},arguments_uncertain{};
     bool unpredicated{true};
+    unsigned query_depth{};
 };
 struct State {
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
     std::atomic<bool> cpu_optimize{};std::atomic<std::uint64_t> cpu_generation{1},cpu_lookup_epoch{1};
     std::uint64_t cpu_state_attempts{},cpu_state_skipped{};
+    std::array<RawDescriptor,512> cpu_views;
+    std::uint64_t cpu_view_skipped{};
     bool heaviest_only{},bundle_mode{};arc::PolicyBundle bundle;
     std::uint64_t calibration_epoch{};
     std::uint64_t calibration_measurement_epoch{},calibration_expected{};
     std::vector<std::uint64_t> catalog_targets,record_targets;
     std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true},measure_control{};float edge_threshold{.08f};
+    bool compile_on_demand{};
     std::filesystem::path worker,compiler,cache;
     std::unordered_map<ID3D12RootSignature*,std::shared_ptr<Root>> roots;
     std::unordered_map<ID3D12PipelineState*,std::shared_ptr<Pipeline>> pipelines;
@@ -85,6 +94,25 @@ struct State {
     bool sample_state{};FrameStateSample last_frame_state;
 };
 State& state(){static auto* s=new State;return *s;}
+RawDescriptor& raw_view(UINT64 address){return state().cpu_views[((address>>5)^(address>>14))%state().cpu_views.size()];}
+void forget_raw_view(UINT64 address){auto& old=raw_view(address);if(old.address==address)old.address=0;}
+bool view_identity(unsigned kind,ID3D12Resource* native,ID3D12Resource* counter,const void* desc,std::size_t size,D3D12_CPU_DESCRIPTOR_HANDLE handle,RawDescriptor& result){
+    auto& s=state();if(!desc||!size||size>result.bytes.size()||!handle.ptr)return false;
+    if((kind==1&&size!=sizeof(D3D12_SHADER_RESOURCE_VIEW_DESC))||(kind==2&&size!=sizeof(D3D12_UNORDERED_ACCESS_VIEW_DESC))||(kind==6&&size!=sizeof(D3D12_CONSTANT_BUFFER_VIEW_DESC))||(kind!=1&&kind!=2&&kind!=6))return false;
+    if(kind==1&&static_cast<const D3D12_SHADER_RESOURCE_VIEW_DESC*>(desc)->ViewDimension==D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE)return false;
+    result.heap=s.descriptors.heap_at(handle.ptr);if(!result.heap)return false;
+    const auto heap=s.heaps_by_id.find(result.heap);if(heap==s.heaps_by_id.end()||heap->second.type!=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)return false;
+    if(native){const auto id=s.resource_ids.find(native);if(id==s.resource_ids.end())return false;result.resource=id->second;}
+    if(counter){const auto id=s.resource_ids.find(counter);if(id==s.resource_ids.end())return false;result.counter=id->second;}
+    if(kind==6){const auto& value=*static_cast<const D3D12_CONSTANT_BUFFER_VIEW_DESC*>(desc);
+        if(value.BufferLocation){const auto* allocation=s.buffers.resolve(s.allocations,value.BufferLocation,value.SizeInBytes);if(!allocation)return false;result.resource=allocation->id;}}
+    result.address=handle.ptr;result.native=native;result.native_counter=counter;result.kind=kind;result.size=size;return true;
+}
+void remember_view(unsigned kind,ID3D12Resource* resource,ID3D12Resource* counter,const void* desc,std::size_t size,D3D12_CPU_DESCRIPTOR_HANDLE handle){
+    if(!state().cpu_optimize)return;RawDescriptor value;
+    if(view_identity(kind,resource,counter,desc,size,handle,value)){std::memcpy(value.bytes.data(),desc,size);raw_view(handle.ptr)=value;}
+    else forget_raw_view(handle.ptr);
+}
 std::atomic<std::uint64_t> cpu_ns{};
 std::atomic<std::uint64_t> original_submit_ns{};
 std::atomic<bool> cpu_timing{};
@@ -111,7 +139,7 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()override{return ++count;}
     ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){safe([&]{auto& s=state();
         if(kind==1)s.roots.erase(static_cast<ID3D12RootSignature*>(object));
-        else if(kind==2)s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));
+        else if(kind==2){const auto it=s.pipelines.find(static_cast<ID3D12PipelineState*>(object));if(it!=s.pipelines.end()&&!it->second->queued)s.queued_code_bytes-=it->second->code.size();s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));++s.cpu_generation;}
         else if(kind==3){auto found=s.commands.find(static_cast<ID3D12GraphicsCommandList*>(object));
             if(found!=s.commands.end()&&found->second.cpu_cache){const auto& cpu=*found->second.cpu_cache;found->second.cpu_cache->usable=false;s.cpu_state_attempts+=cpu.attempts.load();s.cpu_state_skipped+=cpu.skipped.load();}
             ++s.cpu_lookup_epoch;s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));}
@@ -290,7 +318,7 @@ bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
 bool cpu_enabled()noexcept{return state().cpu_optimize.load(std::memory_order_relaxed);}
 bool cpu_configure(bool enabled)noexcept{
     if(!optimizer::enabled())return false;
-    bool ok=false;safe([&]{auto& s=state();if(s.faults&&enabled)return;++s.cpu_generation;s.cpu_optimize=enabled;ok=true;});return ok;
+    bool ok=false;safe([&]{auto& s=state();if(s.faults&&enabled)return;++s.cpu_generation;for(auto& view:s.cpu_views)view.address=0;s.cpu_optimize=enabled;ok=true;});return ok;
 }
 bool cpu_state(ID3D12GraphicsCommandList* native,unsigned slot,const void* bytes,std::size_t size)noexcept{
     if(!cpu_enabled())return false;auto& s=state();
@@ -314,7 +342,17 @@ bool cpu_state(ID3D12GraphicsCommandList* native,unsigned slot,const void* bytes
 }
 void cpu_invalidate(ID3D12GraphicsCommandList* native)noexcept{if(cpu_enabled())safe([&]{if(auto* c=recording(native);c&&c->cpu_cache)c->cpu_cache->cache.invalidate();});}
 void cpu_objects_changed()noexcept{if(cpu_enabled())safe([&]{++state().cpu_generation;});}
-void cpu_cache_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto attempts=s.cpu_state_attempts,skipped=s.cpu_state_skipped;for(const auto& [native,c]:s.commands)if(c.cpu_cache){attempts+=c.cpu_cache->attempts.load();skipped+=c.cpu_cache->skipped.load();}out<<"{\"enabled\":"<<(s.cpu_optimize?"true":"false")<<",\"attempts\":"<<attempts<<",\"skipped_native_setters\":"<<skipped<<'}';}
+void cpu_cache_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto attempts=s.cpu_state_attempts,skipped=s.cpu_state_skipped;for(const auto& [native,c]:s.commands)if(c.cpu_cache){attempts+=c.cpu_cache->attempts.load();skipped+=c.cpu_cache->skipped.load();}out<<"{\"enabled\":"<<(s.cpu_optimize?"true":"false")<<",\"attempts\":"<<attempts<<",\"skipped_native_setters\":"<<skipped<<",\"skipped_descriptor_creations\":"<<s.cpu_view_skipped<<'}';}
+CpuCacheCounters cpu_cache_counters()noexcept{CpuCacheCounters result;safe([&]{const auto& s=state();result.skipped=s.cpu_state_skipped+s.cpu_view_skipped;result.controlled_submissions=s.coarse_submissions+s.neutral_submissions;for(const auto& [native,c]:s.commands)if(c.cpu_cache)result.skipped+=c.cpu_cache->skipped.load();});return result;}
+bool cpu_same_view(unsigned kind,ID3D12Resource* resource,ID3D12Resource* counter,const void* desc,std::size_t size,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{
+    if(!cpu_enabled()||!desc||size>128)return false;bool same=false;
+    safe([&]{auto& s=state();const auto& old=raw_view(handle.ptr);
+        if(!s.cpu_optimize||old.address!=handle.ptr||old.kind!=kind||old.size!=size||old.native!=resource||old.native_counter!=counter||std::memcmp(old.bytes.data(),desc,size))return;
+        RawDescriptor current;if(!view_identity(kind,resource,counter,desc,size,handle,current))return;
+        same=old.heap==current.heap&&old.resource==current.resource&&old.counter==current.counter;s.cpu_view_skipped+=same;
+    });return same;
+}
+void forget_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(enabled())safe([&]{forget_raw_view(handle.ptr);state().descriptors.forget(handle.ptr);});}
 PolicyStamp policy_stamp()noexcept{PolicyStamp stamp;safe([&]{const auto& s=state();stamp={s.policy_epoch,s.coarse_submissions,s.last_active_epoch,s.selected_pipeline};});return stamp;}
 void sample_frame_state(bool enabled)noexcept{safe([&]{state().sample_state=enabled;state().last_frame_state={};});}
 FrameStateSample frame_state_sample(){std::lock_guard lock(state().mutex);return state().last_frame_state;}
@@ -325,7 +363,7 @@ void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);ou
     out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
 void intercept_cpu_snapshot(std::ostream& out){const auto c=arc::InterceptCpuMeter::snapshot();const auto workers=cpu_cost::snapshot();
-    out<<"{\"enabled\":"<<(arc::InterceptCpuMeter::enabled()?"true":"false")<<",\"measurement\":\"all_interceptor_wall_excluding_application_native_calls\",\"own_ms\":"<<c.own_ns/1.e6<<",\"excluded_native_ms\":"<<c.excluded_native_ns/1.e6<<",\"calls\":"<<c.calls<<",\"worker_thread_cpu_ms\":"<<workers.nanoseconds[0]/1.e6<<",\"compiler_cpu_ms\":"<<workers.nanoseconds[1]/1.e6<<",\"critic_cpu_ms\":"<<workers.nanoseconds[2]/1.e6<<",\"worker_measurement_failures\":"<<workers.failures<<",\"live_workers\":["<<workers.live[0]<<','<<workers.live[1]<<','<<workers.live[2]<<"],\"complete_overhead_evidence\":false}";
+    out<<"{\"enabled\":"<<(arc::InterceptCpuMeter::enabled()?"true":"false")<<",\"measurement\":\"all_interceptor_wall_excluding_application_native_calls\",\"own_ms\":"<<c.own_ns/1.e6<<",\"excluded_native_ms\":"<<c.excluded_native_ns/1.e6<<",\"calls\":"<<c.calls<<",\"worker_thread_cpu_ms\":"<<workers.nanoseconds[0]/1.e6<<",\"compiler_cpu_ms\":"<<workers.nanoseconds[1]/1.e6<<",\"critic_cpu_ms\":"<<workers.nanoseconds[2]/1.e6<<",\"worker_measurement_failures\":"<<workers.failures<<",\"live_workers\":["<<workers.live[0]<<','<<workers.live[1]<<','<<workers.live[2]<<"],\"complete_overhead_evidence\":false,\"sites\":[";bool first=true;for(const auto& site:arc::InterceptCpuMeter::sites()){const auto name=site.name.load();const auto calls=site.calls.load();if(!name||!calls)continue;if(!first)out<<',';first=false;out<<"{\"name\":"<<std::quoted(name)<<",\"calls\":"<<calls<<",\"own_ms\":"<<site.own_ns.load()/1.e6<<'}';}out<<"]}";
 }
 CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities result;safe([&]{const auto& s=state();if(s.faults||!s.selected_pipeline)return;
     for(const auto& [native,p]:s.pipelines){(void)native;if(p->id!=s.selected_pipeline||!p->variant)continue;const auto& c=p->variant->contract;
@@ -333,8 +371,17 @@ CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities res
 });return result;}
 std::vector<WorkCandidate> candidate_catalog()noexcept{
     // Profiling has a separate lock; never acquire it under the submission lock.
-    const auto costs=gpu_profile::compute_costs();std::vector<WorkCandidate> result;
+    auto costs=gpu_profile::compute_costs();std::vector<WorkCandidate> result;
+    std::sort(costs.begin(),costs.end(),[](const auto& a,const auto& b){return a.total_gpu_ms>b.total_gpu_ms;});
     safe([&]{auto& s=state();if(s.faults)return;
+        if(s.compile_on_demand){unsigned scheduled=0;
+            for(const auto& cost:costs){const auto found=s.pipelines.find(cost.pipeline);if(found==s.pipelines.end()||found->second->profile_id!=cost.pipeline_identity)continue;auto& p=*found->second;
+                if(p.variant){if(++scheduled==arc::PolicyBundle::capacity)break;continue;}
+                if(p.code.empty())continue;
+                if(!p.queued&&s.jobs.size()<64){s.jobs.push_back(found->second);p.queued=true;p.reason="queued_by_measured_cost";s.changed.notify_one();}
+                if(++scheduled==arc::PolicyBundle::capacity)break;
+            }
+        }
         for(const auto& cost:costs){
             const auto p=s.pipelines.find(cost.pipeline);
             if(p==s.pipelines.end()||!p->second->variant||p->second->profile_id!=cost.pipeline_identity||!cost.present_windows||!std::isfinite(cost.total_gpu_ms)||cost.total_gpu_ms<=0)continue;
@@ -357,7 +404,8 @@ bool configure_bundle(const arc::PolicyBundle& bundle,bool apply,std::uint64_t c
         }
         auto prepared=apply?bundle:arc::PolicyBundle{}; // allocation failure must leave the old policy intact
         auto targets=s.record_targets;if(!bundle.compute.empty()){targets.clear();for(const auto& p:bundle.compute)targets.push_back(p.pipeline);}
-        s.bundle=std::move(prepared);s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=true;s.calibration_epoch=calibration_epoch;
+        s.bundle=std::move(prepared);s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=!bundle.compute.empty()||!apply;s.calibration_epoch=calibration_epoch;
+        if(s.cpu_optimize!=(apply&&bundle.cpu_state_cache)){++s.cpu_generation;for(auto& view:s.cpu_views)view.address=0;s.cpu_optimize=apply&&bundle.cpu_state_cache;}
         if(calibration_epoch){s.calibration_measurement_epoch=calibration_epoch;s.calibration_expected=0;}
         s.x_rate=s.y_rate=1;s.comparison_taps=s.zero_factor=s.mip_steps=0;
         s.selected_pipeline=s.record_targets.empty()?0:s.record_targets.front();
@@ -377,7 +425,7 @@ bool configure_bundle_file(const wchar_t* path)noexcept{
             if(!it->is_number_unsigned())throw std::runtime_error("Unsigned policy field required");return it->template get<std::uint64_t>();
         };
         if(number(config,"schema")!=1)return false;
-        arc::PolicyBundle bundle;bundle.id=number(config,"id");const auto& entries=config.at("compute");
+        arc::PolicyBundle bundle;bundle.id=number(config,"id");bundle.cpu_state_cache=config.value("cpu_state_cache",false);const auto& entries=config.at("compute");
         if(!entries.is_array()||entries.size()>arc::PolicyBundle::capacity)return false;
         for(const auto& entry:entries){arc::ComputePolicy p;p.pipeline=number(entry,"pipeline");
             auto field=[&](const char* name,unsigned fallback=0){const auto value=number(entry,name,fallback);if(value>UINT_MAX)throw std::runtime_error("Policy field range");return static_cast<unsigned>(value);};
@@ -406,6 +454,7 @@ std::uint64_t calibration_sample_count(std::uint64_t epoch)noexcept{
     std::uint64_t count=UINT64_MAX;safe([&]{const auto& s=state();if(!s.faults&&s.calibration_measurement_epoch==epoch)count=s.calibration_expected;});return count;
 }
 void predication(ID3D12GraphicsCommandList* native,bool enabled)noexcept{if(optimizer::enabled())safe([&]{if(auto* c=recording(native))c->unpredicated=!enabled;});}
+void query_scope(ID3D12GraphicsCommandList* native,bool begin)noexcept{if(enabled())safe([&]{if(auto* c=recording(native)){if(begin){if(c->query_depth<UINT_MAX)++c->query_depth;}else if(c->query_depth)--c->query_depth;else c->unpredicated=false;}});}
 void control_timing_snapshot(std::ostream& out){
     std::lock_guard lock(state().mutex);GpuControl::Timing total;
     for(const auto& control:state().controls){const auto value=control->timing();total.samples+=value.samples;total.dropped+=value.dropped;total.invalid+=value.invalid;total.milliseconds+=value.milliseconds;}
@@ -422,6 +471,8 @@ bool initialize()noexcept{
         cpu_timing=environment(L"ARC_OPTIMIZER_CPU_TIMING")==L"1";
         arc::InterceptCpuMeter::enable(cpu_timing.load());
         s.measure_control=environment(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING")==L"1"||!environment(L"ARC_AUTO_CONFIG").empty();
+        s.compile_on_demand=!environment(L"ARC_AUTO_CONFIG").empty();
+        s.cpu_optimize=environment(L"ARC_OPTIMIZER_CPU_STATE_CACHE")==L"1";
         if(!s.worker.is_absolute()||!s.compiler.is_absolute()||!s.cache.is_absolute()||!std::filesystem::is_regular_file(s.worker)||!std::filesystem::is_regular_file(s.compiler)) {result=false;return;}
         s.cache/=std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64());std::filesystem::create_directories(s.cache);
         HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);if(!thread){result=false;return;}CloseHandle(thread);s.enabled=true;
@@ -460,7 +511,9 @@ void compute_created(ID3D12PipelineState* native,const D3D12_COMPUTE_PIPELINE_ST
     if(s.pipelines.size()>=512||s.jobs.size()>=256||desc->CS.BytecodeLength>64u*1024u*1024u-s.queued_code_bytes){decline("pipeline_or_worker_capacity");return;}
     const auto root=s.roots.find(desc->pRootSignature);if(root==s.roots.end()){decline("unobserved_root_signature");return;}if(!root->second->layout->complete){decline("root:"+root->second->layout->rejection);return;}
     auto p=std::make_shared<Pipeline>();p->id=s.next++;p->profile_id=profile_id;p->root=root->second;check(native->GetDevice(IID_PPV_ARGS(&p->device)));if(p->device->GetNodeCount()!=1)return;
-    const auto* bytes=static_cast<const std::byte*>(desc->CS.pShaderBytecode);p->code.assign(bytes,bytes+desc->CS.BytecodeLength);if(!track(native,2))return;s.pipelines[native]=p;s.jobs.push_back(std::move(p));s.queued_code_bytes+=desc->CS.BytecodeLength;s.changed.notify_one();
+    const auto* bytes=static_cast<const std::byte*>(desc->CS.pShaderBytecode);p->code.assign(bytes,bytes+desc->CS.BytecodeLength);if(!track(native,2))return;s.pipelines[native]=p;s.queued_code_bytes+=desc->CS.BytecodeLength;
+    if(s.compile_on_demand)p->reason="awaiting_measured_cost";
+    else{s.jobs.push_back(p);p->queued=true;s.changed.notify_one();}
 });}
 void heap_created(ID3D12DescriptorHeap* native)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();if(s.heaps.contains(native)||s.heaps.size()>=4096)return;mirror::InternalCall guard;const auto desc=native->GetDesc();Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));
     binding::DescriptorHeap h{s.next++,native->GetCPUDescriptorHandleForHeapStart().ptr,0,device->GetDescriptorHandleIncrementSize(desc.Type),desc.NumDescriptors,desc.Type};if(desc.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)h.gpu=native->GetGPUDescriptorHandleForHeapStart().ptr;
@@ -519,28 +572,30 @@ void srv(ID3D12Resource* resource,const D3D12_SHADER_RESOURCE_VIEW_DESC* desc,D3
         const auto* allocation=state().buffers.resolve(state().allocations,address,1);v.shape.known=allocation!=nullptr;
         if(allocation){v.resource=allocation->id;v.shape.byte_offset=address-allocation->gpu_address;v.shape.byte_size=1;}break;}
     default:break;}}
-    write_view(handle,v);
+    write_view(handle,v);remember_view(1,resource,nullptr,desc,sizeof(D3D12_SHADER_RESOURCE_VIEW_DESC),handle);
 });}
 void uav(ID3D12Resource* resource,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{DescriptorValue v;v.kind=2;v.resource=resource_identity(resource);v.shape.counter_resource=resource_identity(counter);if(desc){v.shape.known=(!resource||v.resource)&&(!counter||v.shape.counter_resource);v.shape.format=desc->Format;v.shape.dimension=desc->ViewDimension;
     if(desc->ViewDimension==D3D12_UAV_DIMENSION_TEXTURE2D){v.first_mip=desc->Texture2D.MipSlice;v.mips=1;v.shape.plane=desc->Texture2D.PlaneSlice;}}
-    write_view(handle,v);
+    write_view(handle,v);remember_view(2,resource,counter,desc,sizeof(D3D12_UNORDERED_ACCESS_VIEW_DESC),handle);
 });}
 void cbv(const D3D12_CONSTANT_BUFFER_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept {
     if(!enabled())return;safe([&]{DescriptorValue v;v.kind=6;
         if(desc){v.shape.byte_size=desc->SizeInBytes;v.shape.known=desc->BufferLocation==0;
             if(const auto* a=state().buffers.resolve(state().allocations,desc->BufferLocation,desc->SizeInBytes)){v.resource=a->id;v.shape.byte_offset=desc->BufferLocation-a->gpu_address;v.shape.known=true;}}
-        write_view(handle,v);
+        write_view(handle,v);remember_view(6,nullptr,nullptr,desc,sizeof(D3D12_CONSTANT_BUFFER_VIEW_DESC),handle);
     });
 }
 void sampler(const D3D12_SAMPLER_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{DescriptorValue v;v.kind=5;v.shape.known=desc!=nullptr;write_view(handle,v);});}
-void copy_descriptors(UINT count,D3D12_CPU_DESCRIPTOR_HANDLE destination,D3D12_CPU_DESCRIPTOR_HANDLE source,UINT stride)noexcept{if(!enabled())return;safe([&]{auto& ledger=state().descriptors;if(!stride||count>65536)throw std::runtime_error("descriptor copy capacity");if(count==1){if(!ledger.copy_one(destination.ptr,source.ptr))ledger.forget(destination.ptr);return;}std::vector<std::optional<DescriptorValue>> values;values.reserve(count);for(UINT i=0;i<count;++i)values.push_back(ledger.read(source.ptr+UINT64(i)*stride));for(UINT i=0;i<count;++i){const auto address=destination.ptr+UINT64(i)*stride;if(values[i]){if(!ledger.write(address,*values[i]))ledger.forget(address);}else ledger.forget(address);}});}
+void copy_descriptors(UINT count,D3D12_CPU_DESCRIPTOR_HANDLE destination,D3D12_CPU_DESCRIPTOR_HANDLE source,UINT stride)noexcept{if(!enabled())return;safe([&]{auto& ledger=state().descriptors;if(!stride||count>65536)throw std::runtime_error("descriptor copy capacity");
+    if(state().cpu_optimize){if(count>state().cpu_views.size()){for(auto& view:state().cpu_views)view.address=0;}else for(UINT i=0;i<count;++i)forget_raw_view(destination.ptr+UINT64(i)*stride);}
+    if(count==1){if(!ledger.copy_one(destination.ptr,source.ptr))ledger.forget(destination.ptr);return;}std::vector<std::optional<DescriptorValue>> values;values.reserve(count);for(UINT i=0;i<count;++i)values.push_back(ledger.read(source.ptr+UINT64(i)*stride));for(UINT i=0;i<count;++i){const auto address=destination.ptr+UINT64(i)*stride;if(values[i]){if(!ledger.write(address,*values[i]))ledger.forget(address);}else ledger.forget(address);}});}
 void descriptor_ranges(UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* ds,UINT sc,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* ss,UINT stride)noexcept{if(!enabled())return;safe([&]{if(dc>1024||sc>1024||!stride||(!dst&&dc)||(!src&&sc))throw std::runtime_error("descriptor ranges unavailable");std::vector<std::uint64_t> addresses;std::vector<std::optional<DescriptorValue>> values;auto& ledger=state().descriptors;
     for(UINT r=0;r<dc;++r){const auto count=ds?ds[r]:1;if(count>65536||addresses.size()+count>65536)throw std::runtime_error("descriptor range capacity");for(UINT i=0;i<count;++i)addresses.push_back(dst[r].ptr+UINT64(i)*stride);}
     for(UINT r=0;r<sc;++r){const auto count=ss?ss[r]:1;if(count>65536||values.size()+count>65536)throw std::runtime_error("descriptor range capacity");for(UINT i=0;i<count;++i)values.push_back(ledger.read(src[r].ptr+UINT64(i)*stride));}
-    for(std::size_t i=0;i<addresses.size();++i){if(addresses.size()==values.size()&&values[i]){if(!ledger.write(addresses[i],*values[i]))ledger.forget(addresses[i]);}else ledger.forget(addresses[i]);}
+    for(std::size_t i=0;i<addresses.size();++i){if(state().cpu_optimize)forget_raw_view(addresses[i]);if(addresses.size()==values.size()&&values[i]){if(!ledger.write(addresses[i],*values[i]))ledger.forget(addresses[i]);}else ledger.forget(addresses[i]);}
 });}
 void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it==s.commands.end()){if(s.commands.size()>=256||!track(native,3))return;it=s.commands.emplace(native,Recording{}).first;}
-    auto& c=it->second;++s.cpu_lookup_epoch;if(c.cpu_cache){c.cpu_cache->cache.invalidate();c.cpu_cache->usable=true;}c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.unpredicated=true;c.closed=c.epilogue=c.render_pass=c.arguments_uncertain=false;
+    auto& c=it->second;++s.cpu_lookup_epoch;if(c.cpu_cache){c.cpu_cache->cache.invalidate();c.cpu_cache->usable=true;}c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.unpredicated=true;c.query_depth=0;c.closed=c.epilogue=c.render_pass=c.arguments_uncertain=false;
 });}
 void pipeline(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->pipeline=pipeline;});}
 void heaps(ID3D12GraphicsCommandList* native,UINT count,ID3D12DescriptorHeap*const* heaps)noexcept{if(!enabled())return;safe([&]{auto* c=recording(native);if(!c)return;if(count>2||(!heaps&&count)){c->valid=false;return;}std::array<std::uint64_t,2> next{};
@@ -566,7 +621,7 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.record_targets.begin(),s.record_targets.end(),p->second->id)==s.record_targets.end())){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();control->begin_recording();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
-    const bool calibration=s.calibration_epoch&&c->unpredicated&&c->control->calibration_available();
+    const bool calibration=s.calibration_epoch&&c->unpredicated&&!c->query_depth&&c->control->calibration_available();
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z,calibration});c->control->keep_alive.push_back(variant);
     mirror::InternalCall internal;if(calibration)c->control->calibration_mark(native,slot,0);
     native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());

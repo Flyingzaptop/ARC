@@ -2,6 +2,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <iostream>
+#include <string_view>
 struct FakeClock {
     using duration=std::chrono::nanoseconds;
     using time_point=std::chrono::time_point<FakeClock>;
@@ -10,7 +11,17 @@ struct FakeClock {
     static void advance(int amount){value+=duration(amount);}
 };
 using Meter=arc::BasicInterceptCpuMeter<FakeClock>;
-int main(){
+int main(int argc,char** argv){
+    if(argc==2&&std::string_view(argv[1])=="--benchmark"){
+        using Real=arc::InterceptCpuMeter;constexpr unsigned count=500000;
+        for(unsigned pass=0;pass<6;++pass){
+            const bool enabled=pass%2;Real::enable(enabled);const auto before=Real::snapshot();const auto start=std::chrono::steady_clock::now();
+            for(unsigned i=0;i<count;++i){Real::Scope scope(true);Real::Native native;std::atomic_signal_fence(std::memory_order_seq_cst);}
+            const auto stop=std::chrono::steady_clock::now();const auto after=Real::snapshot();
+            std::cout<<"{\"enabled\":"<<(enabled?"true":"false")<<",\"calls\":"<<count<<",\"wall_ns_per_call\":"<<std::chrono::duration<double,std::nano>(stop-start).count()/count<<",\"reported_own_ns_per_call\":"<<double(after.own_ns-before.own_ns)/count<<"}\n";
+        }
+        return 0;
+    }
     Meter::enable(true);
     {
         Meter::Scope app(true);FakeClock::advance(10);

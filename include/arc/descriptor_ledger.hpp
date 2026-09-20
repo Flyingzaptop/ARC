@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 #include <unordered_map>
+#include <utility>
 
 namespace arc {
 // Optional exact native-view metadata. Stored in the interned value, not in
@@ -57,7 +58,9 @@ public:
     [[nodiscard]] std::size_t orphan_count()const noexcept{return orphans_.size();}
     [[nodiscard]] std::size_t null_count()const noexcept{return nulls_;}
 private:
-    struct Heap {std::uint64_t start{};std::uint32_t stride{};std::vector<std::uint32_t> entries;std::unordered_map<std::uint32_t,std::size_t> references;};
+    struct Heap {std::uint64_t id{},start{};std::uint32_t stride{};std::vector<std::uint32_t> entries;std::unordered_map<std::uint32_t,std::size_t> references;};
+    const Heap* locate_heap(std::uint64_t address)const;
+    Heap* locate_heap(std::uint64_t address){return const_cast<Heap*>(std::as_const(*this).locate_heap(address));}
     struct Value {DescriptorValue data;std::size_t references{};};
     DescriptorLedgerLimits limits_;
     std::map<std::uint64_t,Heap> heaps_;

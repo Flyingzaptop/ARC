@@ -46,6 +46,7 @@ bool request_image(const std::filesystem::path&,bool features=false) noexcept;
 bool request_image_sequence(const std::array<std::filesystem::path,3>&,IDXGISwapChain*) noexcept;
 unsigned image_sequence_progress() noexcept;
 void flush_image() noexcept;
+bool gpu_helpers_idle() noexcept;
 bool request_timing(const std::filesystem::path&,UINT seconds=60) noexcept;
 void flush_timing() noexcept;
 void observation_mode_changed() noexcept;

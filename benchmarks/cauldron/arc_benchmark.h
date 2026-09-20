@@ -35,6 +35,7 @@ inline void initialize(){
     s.stop_optimizer=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopOptimizer"));
     auto telemetry=s.output+L"/arc.json";
     if(!init||!lean||!s.mode||!s.snapshot||init(&telemetry[0])||lean(nullptr))throw std::runtime_error("ARC initialization failed");
+    if(!env(L"ARC_AUTO_CONFIG").empty()){s.mode=nullptr;return;} // the automatic controller owns all policy/profile changes
     const auto experiment=env(L"ARC_BENCH_MODE");
     if(experiment==L"profile"){
         s.profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));

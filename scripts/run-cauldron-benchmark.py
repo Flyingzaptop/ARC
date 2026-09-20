@@ -13,13 +13,14 @@ parser=argparse.ArgumentParser()
 parser.add_argument("sdk",type=Path)
 parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
-parser.add_argument("--mode",choices=["vrs","observe","profile","compute-neutral","compute-2x1","compute-1x2","compute-2x2","compute-pcf9","compute-zero","compute-neutral-hot","compute-2x1-hot","compute-1x2-hot","compute-2x2-hot","compute-pcf9-hot","compute-zero-hot","compute-adaptive-1x2-hot","compute-adaptive-2x2-hot","compute-mip-half-hot","compute-mip1-hot","compute-mip2-hot"],default="vrs")
+parser.add_argument("--mode",choices=["vrs","observe","profile","compute-off","compute-neutral","compute-2x1","compute-1x2","compute-2x2","compute-pcf9","compute-zero","compute-neutral-hot","compute-2x1-hot","compute-1x2-hot","compute-2x2-hot","compute-pcf9-hot","compute-zero-hot","compute-adaptive-1x2-hot","compute-adaptive-2x2-hot","compute-mip-half-hot","compute-mip1-hot","compute-mip2-hot"],default="vrs")
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
 parser.add_argument("--compiler",type=Path)
 parser.add_argument("--measure-costs",action="store_true")
+parser.add_argument("--cpu-state-cache",action="store_true")
 parser.add_argument("--worker-placement",choices=['normal','prefer','core','partition','adaptive'],default='normal')
 parser.add_argument("--max-start-temperature",type=float)
 args=parser.parse_args()
@@ -31,6 +32,8 @@ for key in list(env):
     if key.startswith('ARC_WORKER_'): env.pop(key)
 if args.worker_placement!='normal' and not args.dll: raise ValueError('Worker placement requires ARC DLL')
 env['ARC_WORKER_PLACEMENT']=args.worker_placement
+env['ARC_OPTIMIZER_CPU_STATE_CACHE']='1' if args.cpu_state_cache else '0'
+if args.cpu_state_cache and not args.dll: raise ValueError('CPU state cache requires the ARC DLL')
 if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_FRAMES"]=str(args.frames)
@@ -71,6 +74,7 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "automatic_target_fps":args.auto_target,
           "cost_diagnostics":bool(args.measure_costs and args.dll),
+          "cpu_state_cache":args.cpu_state_cache,
           "worker_placement":args.worker_placement,
           "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,

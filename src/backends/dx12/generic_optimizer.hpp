@@ -30,12 +30,17 @@ struct CalibrationCost {std::uint64_t pipeline{},epoch{};double wrapped_ms{},ori
 std::vector<CalibrationCost> calibration_costs(std::uint64_t epoch) noexcept;
 std::uint64_t calibration_sample_count(std::uint64_t epoch) noexcept;
 void predication(ID3D12GraphicsCommandList*,bool enabled) noexcept;
+void query_scope(ID3D12GraphicsCommandList*,bool begin) noexcept;
 bool cpu_configure(bool) noexcept;
 bool cpu_enabled() noexcept;
 bool cpu_state(ID3D12GraphicsCommandList*,unsigned slot,const void*,std::size_t) noexcept;
 void cpu_invalidate(ID3D12GraphicsCommandList*) noexcept;
 void cpu_objects_changed() noexcept;
 void cpu_cache_snapshot(std::ostream&);
+struct CpuCacheCounters {std::uint64_t skipped{},controlled_submissions{};};
+CpuCacheCounters cpu_cache_counters() noexcept;
+bool cpu_same_view(unsigned kind,ID3D12Resource*,ID3D12Resource*,const void*,std::size_t,D3D12_CPU_DESCRIPTOR_HANDLE) noexcept;
+void forget_descriptor(D3D12_CPU_DESCRIPTOR_HANDLE) noexcept;
 bool restoration_ready() noexcept;
 struct FrameStateSample {std::uint64_t pipeline{},submission{};std::vector<std::array<unsigned,3>> keys;std::vector<std::array<UINT,4>> words;std::vector<unsigned> valid;};
 void sample_frame_state(bool enabled) noexcept;

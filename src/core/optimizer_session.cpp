@@ -56,6 +56,9 @@ SessionRequest OptimizerSession::frame(double frame_ms,bool stable){
     }
     if(state_.filtered_frame_ms<=state_.target_frame_ms){state_.phase=SessionPhase::Active;return {};}
     state_.phase=SessionPhase::Discover;
+    for(const auto& action:actions_)if(action.ready&&action.before_profile&&std::find(tried_.begin(),tried_.end(),action.id)==tried_.end()){
+        pending_=action;tried_.push_back(action.id);state_.phase=SessionPhase::Probe;++state_.probes;return {SessionRequestKind::Probe,action.id};
+    }
     if(!profile_requested_){profile_requested_=true;return {SessionRequestKind::Profile,0};}
     for(const auto& action:actions_)if(action.ready&&std::find(tried_.begin(),tried_.end(),action.id)==tried_.end()){
         pending_=action;tried_.push_back(action.id);state_.phase=SessionPhase::Probe;++state_.probes;return {SessionRequestKind::Probe,action.id};
@@ -65,18 +68,23 @@ SessionRequest OptimizerSession::frame(double frame_ms,bool stable){
 SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
     if(candidate_epoch_changed_)return scene_changed();
     if(!pending_||state_.phase!=SessionPhase::Probe||e.action!=pending_->id||e.generation!=pending_->generation)return {};
-    const auto id=pending_->id,generation=pending_->generation;pending_.reset();
+    const auto id=pending_->id,generation=pending_->generation;const bool exact=pending_->exact_native_state&&e.exact_native_state;pending_.reset();
     if(!e.restoration_confirmed){state_.phase=SessionPhase::Faulted;++state_.rejected;return {};}
     const bool finite=positive(e.baseline_frame_ms)&&positive(e.candidate_frame_ms)&&nonnegative(e.baseline_noise_ms)&&
-        nonnegative(e.ssim)&&e.ssim<=1&&nonnegative(e.mean_error)&&nonnegative(e.tile_p99)&&
+        (exact||(nonnegative(e.ssim)&&e.ssim<=1&&nonnegative(e.mean_error)&&nonnegative(e.tile_p99)))&&
         nonnegative(e.cpu_overhead_ms)&&nonnegative(e.gpu_overhead_ms);
     const double gain=e.baseline_frame_ms-e.candidate_frame_ms;
-    const bool accept=e.complete&&e.matched_reference&&finite&&e.ssim>=config_.min_ssim&&
-        e.mean_error<=config_.max_mean_error&&e.tile_p99<=config_.max_tile_p99&&
+    const bool quality=exact||(e.matched_reference&&e.ssim>=config_.min_ssim&&e.mean_error<=config_.max_mean_error&&e.tile_p99<=config_.max_tile_p99);
+    const bool accept=e.complete&&quality&&finite&&nonnegative(e.original_frame_ms)&&e.baseline_frame_ms>state_.target_frame_ms&&
         e.cpu_overhead_ms<=config_.max_cpu_overhead_ms&&e.gpu_overhead_ms<=config_.max_gpu_overhead_ms&&
         gain>std::max({config_.min_gain_ms,e.baseline_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms});
     if(!accept){++state_.rejected;state_.phase=SessionPhase::Settle;settle_=config_.settle_samples;return {};}
-    retained_gain_ms_+=gain;apply_pending_=true;state_.active_action=id;active_generation_=generation;evidence_age_=0;return {SessionRequestKind::Apply,id};
+    if(positive(e.original_frame_ms))original_reference_ms_=e.original_frame_ms;
+    else if(!state_.active_action)original_reference_ms_=e.baseline_frame_ms;
+    // A replacement is a whole configuration. Adding improvements measured
+    // against different incumbents invents a gain when the workload drifts.
+    retained_gain_ms_=std::max(0.0,original_reference_ms_-e.candidate_frame_ms);
+    apply_pending_=true;state_.active_action=id;active_generation_=generation;evidence_age_=0;return {SessionRequestKind::Apply,id};
 }
 void OptimizerSession::applied(std::uint64_t action,bool success){
     if(!apply_pending_||state_.active_action!=action)return;apply_pending_=false;
@@ -86,7 +94,7 @@ void OptimizerSession::applied(std::uint64_t action,bool success){
 void OptimizerSession::restored(bool success){
     if(!restore_pending_)return;restore_pending_=false;
     if(!success){state_.phase=SessionPhase::Faulted;return;}
-    state_.active_action=0;active_generation_=0;evidence_age_=0;retained_gain_ms_=0;pending_.reset();apply_pending_=false;settle_=config_.settle_samples;hold_=0;
+    state_.active_action=0;active_generation_=0;evidence_age_=0;retained_gain_ms_=original_reference_ms_=0;pending_.reset();apply_pending_=false;settle_=config_.settle_samples;hold_=0;
     state_.phase=SessionPhase::Settle;
 }
 SessionRequest OptimizerSession::scene_changed(){

@@ -19,6 +19,8 @@ struct OptimizerTrialEvidence {
     bool matched_reference{},complete{},restoration_confirmed{};
     double baseline_frame_ms{},candidate_frame_ms{},baseline_noise_ms{};
     double ssim{},mean_error{},tile_p99{},cpu_overhead_ms{},gpu_overhead_ms{};
+    double original_frame_ms{}; // zero means no fresh original-policy timing
+    bool exact_native_state{}; // structural CPU equivalence, not a measured SSIM
 };
 enum class SessionPhase { Warmup,Discover,Probe,Settle,Active,Limited,Recover,Faulted };
 enum class SessionRequestKind { None,Profile,Probe,Apply,Restore };
@@ -32,6 +34,7 @@ struct SessionAction {
     // Measured work cost is a discovery priority, not a promised speedup.
     double measured_cost_ms{};
     bool gain_known{true};
+    bool exact_native_state{},before_profile{};
 };
 struct SessionSnapshot {
     SessionPhase phase{SessionPhase::Warmup};
@@ -64,5 +67,6 @@ private:
     std::uint64_t active_generation_{};
     std::uint32_t evidence_age_{};
     double retained_gain_ms_{};
+    double original_reference_ms_{};
 };
 }

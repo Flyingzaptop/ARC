@@ -18,8 +18,9 @@ struct PolicyBundle {
     static constexpr std::size_t capacity = 8;
     std::uint64_t id{};
     std::vector<ComputePolicy> compute;
+    bool cpu_state_cache{};
     [[nodiscard]] bool valid() const noexcept {
-        if(compute.size()>capacity || (!id && !compute.empty())) return false;
+        if(compute.size()>capacity || (!id && (!compute.empty()||cpu_state_cache))) return false;
         for(std::size_t i=0;i<compute.size();++i) {
             const auto& p=compute[i];
             if(!p.pipeline || (p.x_rate!=1&&p.x_rate!=2) || (p.y_rate!=1&&p.y_rate!=2) ||

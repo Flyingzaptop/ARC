@@ -150,9 +150,9 @@ RWTexture2D<float4> target:register(u5,space3);
     D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=7;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;ComPtr<ID3D12DescriptorHeap> heap;hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&heap)));
     auto handle=heap->GetCPUDescriptorHandleForHeapStart();const auto increment=device->GetDescriptorHandleIncrementSize(hd.Type);
     D3D12_SHADER_RESOURCE_VIEW_DESC srv{};srv.Format=td.Format;srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;srv.Texture2D.MipLevels=1;
-    for(unsigned i=0;i<5;++i){device->CreateShaderResourceView(textures[0].Get(),&srv,handle);if(i<4)handle.ptr+=increment;}
+    for(unsigned i=0;i<5;++i){device->CreateShaderResourceView(textures[0].Get(),&srv,handle);device->CreateShaderResourceView(textures[0].Get(),&srv,handle);if(i<4)handle.ptr+=increment;}
     D3D12_UNORDERED_ACCESS_VIEW_DESC uav{};uav.Format=td.Format;uav.ViewDimension=D3D12_UAV_DIMENSION_TEXTURE2D;
-    for(unsigned i=1;i<3;++i){handle.ptr+=increment;device->CreateUnorderedAccessView(textures[i].Get(),nullptr,&uav,handle);}
+    for(unsigned i=1;i<3;++i){handle.ptr+=increment;device->CreateUnorderedAccessView(textures[i].Get(),nullptr,&uav,handle);device->CreateUnorderedAccessView(textures[i].Get(),nullptr,&uav,handle);}
     auto transition=[&](ID3D12Resource* r,D3D12_RESOURCE_STATES before,D3D12_RESOURCE_STATES after){D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition={r,0,before,after};list->ResourceBarrier(1,&b);};
     auto copy_in=[&](ID3D12Resource* dst,ID3D12Resource* src){D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=dst;d.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;s.pResource=src;s.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;s.PlacedFootprint=footprint;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);};
     begin();copy_in(textures[0].Get(),upload.Get());transition(textures[0].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);execute();
@@ -163,28 +163,48 @@ RWTexture2D<float4> target:register(u5,space3);
         begin();copy_in(distinct_sources[i].Get(),upload.Get());transition(distinct_sources[i].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);execute();
         auto destination=heap->GetCPUDescriptorHandleForHeapStart();destination.ptr+=(i+1)*increment;device->CreateShaderResourceView(distinct_sources[i].Get(),&srv,destination);
     }
+    {D3D12_DESCRIPTOR_HEAP_DESC staging_desc{};staging_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;staging_desc.NumDescriptors=1;
+        ComPtr<ID3D12DescriptorHeap> staging;hr(device->CreateDescriptorHeap(&staging_desc,IID_PPV_ARGS(&staging)));
+        auto destination=heap->GetCPUDescriptorHandleForHeapStart(),source=staging->GetCPUDescriptorHandleForHeapStart();
+        device->CreateShaderResourceView(distinct_sources[0].Get(),&srv,source);
+        device->CreateShaderResourceView(textures[0].Get(),&srv,destination);
+        device->CopyDescriptorsSimple(1,destination,source,D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CreateShaderResourceView(textures[0].Get(),&srv,destination);
+        const UINT count=1;device->CopyDescriptors(1,&destination,&count,1,&source,&count,D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        device->CreateShaderResourceView(textures[0].Get(),&srv,destination);
+    }
     std::array<std::vector<Pixel>,2> baseline;
     wchar_t measure[8]{};const bool calibration_test=arc_mode&&GetEnvironmentVariableW(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING",measure,8)==1&&measure[0]==L'1';
+    wchar_t cpu_setting[8]{};const bool cpu_test=GetEnvironmentVariableW(L"ARC_OPTIMIZER_CPU_STATE_CACHE",cpu_setting,8)==1&&cpu_setting[0]==L'1';
+    ComPtr<ID3D12QueryHeap> statistics;ComPtr<ID3D12Resource> statistics_result;
+    if(calibration_test){D3D12_QUERY_HEAP_DESC q{};q.Type=D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;q.Count=1;hr(device->CreateQueryHeap(&q,IID_PPV_ARGS(&statistics)));
+        auto desc=bd;desc.Width=sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS);D3D12_HEAP_PROPERTIES props{};props.Type=D3D12_HEAP_TYPE_READBACK;
+        hr(device->CreateCommittedResource(&props,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&statistics_result)));}
     std::uint64_t native_pipeline{};
     if(calibration_test){
         arc_policy=reinterpret_cast<Api>(GetProcAddress(GetModuleHandleW(argv[3]),"ArcExperimentalPolicy"));check(arc_policy!=nullptr,"Bundle policy export");
         check(arc_snapshot(nullptr)==0,"Read native pipeline identity");std::ifstream file(arc_path);std::string json{std::istreambuf_iterator<char>(file),{}};std::smatch match;
         check(std::regex_search(json,match,std::regex("\"id\":([0-9]+),\"profile_id\":[0-9]+,\"ready\":true")),"Ready pipeline identity");native_pipeline=std::stoull(match[1]);
     }
-    const unsigned x_rates[]{1,1,2,1,2,1,2,1,UINT32_MAX,1,2,1,2,1,1,2,1},y_rates[]{1,1,2,1,1,2,2,1,0,1,1,2,2,1,1,2,1};
-    for(unsigned mode=0;mode<(calibration_test?17u:arc_mode?14u:9u);++mode){
+    const unsigned x_rates[]{1,1,2,1,2,1,2,1,UINT32_MAX,1,2,1,2,1,1,2,1,1,1},y_rates[]{1,1,2,1,1,2,2,1,0,1,1,2,2,1,1,2,1,1,1};
+    for(unsigned mode=0;mode<(calibration_test?19u:arc_mode?14u:9u);++mode){
         desired={x_rates[mode],y_rates[mode],width,height};
         if(mode>=9&&mode<14){const wchar_t* modes[]{L"neutral",L"2x1",L"1x2",L"2x2",L"off"};check(arc_mode(const_cast<wchar_t*>(modes[mode-9]))==0,"Generic policy switch");}
-        if(mode==14||mode==15){
-            const auto path=directory/L"policy.json";{std::ofstream file(path);file<<"{\"schema\":1,\"id\":"<<(mode==14?701:702)<<",\"operation\":\""<<(mode==14?"calibrate":"apply")<<"\",\"compute\":[{\"pipeline\":"<<native_pipeline<<",\"x_rate\":2,\"y_rate\":2}]}";}
+        if(mode==14||mode==15||mode==17){
+            const auto path=directory/L"policy.json";{std::ofstream file(path);file<<"{\"schema\":1,\"id\":"<<(mode==14?701:mode==15?702:703)<<",\"operation\":\""<<(mode==15?"apply":"calibrate")<<"\",\"cpu_state_cache\":"<<(cpu_test?"true":"false")<<",\"compute\":[{\"pipeline\":"<<native_pipeline<<",\"x_rate\":2,\"y_rate\":2}]}";}
             auto wide=path.wstring();check(arc_policy(wide.data())==0,"Atomic bundle configuration");
         }
-        if(mode==16)check(arc_mode(const_cast<wchar_t*>(L"off"))==0,"Retire calibration and bundle");
-        if(mode<4||mode==9||mode==14){
+        if(mode==16||mode==18)check(arc_mode(const_cast<wchar_t*>(L"off"))==0,"Retire calibration and bundle");
+        if(mode<4||mode==9||mode==14||mode==17){
         begin();for(unsigned i=1;i<3;++i){copy_in(textures[i].Get(),initial.Get());transition(textures[i].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);}
-        ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pipelines[mode>=9?0:mode].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
+        ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pipelines[mode>=9?0:mode].Get());
+        if(mode==17)list->BeginQuery(statistics.Get(),D3D12_QUERY_TYPE_PIPELINE_STATISTICS,0);
+        list->Dispatch((width+7)/8,(height+7)/8,1);
+        if(mode==17){list->EndQuery(statistics.Get(),D3D12_QUERY_TYPE_PIPELINE_STATISTICS,0);list->ResolveQueryData(statistics.Get(),D3D12_QUERY_TYPE_PIPELINE_STATISTICS,0,1,statistics_result.Get(),0);}
         for(unsigned i=1;i<3;++i){transition(textures[i].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[i-1].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[i].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[i].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);}execute();
         }else submit(); // Replay exactly the same closed native recording.
+        if(mode==17||mode==18){D3D12_RANGE range{0,sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS)};hr(statistics_result->Map(0,&range,&ptr));const auto invocations=static_cast<const D3D12_QUERY_DATA_PIPELINE_STATISTICS*>(ptr)->CSInvocations;statistics_result->Unmap(0,&empty);
+            check(invocations==UINT64((width+7)/8)*((height+7)/8)*64,"Calibration must not duplicate work inside application statistics queries");}
         for(unsigned target=0;target<2;++target){D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[target]->Map(0,&range,&ptr));std::vector<Pixel> pixels(width*height);for(UINT y=0;y<height;++y)std::memcpy(pixels.data()+y*width,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch,width*sizeof(Pixel));readbacks[target]->Unmap(0,&empty);
             if(mode==0)baseline[target]=pixels;
             if(mode==1||mode==3||mode==7||mode==8||mode==9||mode==13||mode==14||mode==16)check(std::memcmp(pixels.data(),baseline[target].data(),pixels.size()*sizeof(Pixel))==0,"Neutral transform, calibration and cached rollback must be bit-exact");

@@ -21,7 +21,7 @@ inline void initialize(){
     auto compute=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalCompute"));
     snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));stop=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopOptimizer"));
     auto path=output+L"/arc.json";auto mode=environment(L"ARC_BENCH_COMPUTE");if(mode.empty())mode=L"neutral|heaviest";
-    if(!init||!lean||!compute||!snapshot||!profile||init(path.data())||lean(nullptr)||compute(mode.data()))throw std::runtime_error("Generic benchmark initialization");
+    if(!init||!lean||!compute||!snapshot||!profile||init(path.data())||lean(nullptr)||(!automatic&&compute(mode.data())))throw std::runtime_error("Generic benchmark initialization");
     started=GetTickCount64();
 }
 inline void tick(){const auto now=GetTickCount64();if(profile&&!automatic&&!requested&&now-started>=8000&&now-last_attempt>=1000){last_attempt=now;auto path=L"16|"+output+L"/gpu-profile.json";requested=profile(path.data())==0;}}
