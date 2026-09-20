@@ -32,6 +32,31 @@ int main()try{
     check(control.prepare(direct.Get(),{})==nullptr,"neutral has no upload helper");control.submitted(direct.Get());wait(direct.Get());control.collect_timing();
     check(control.timing().samples==result.samples,"neutral retirement does not manufacture samples");
     GpuControl disabled(device.Get());auto* list=disabled.prepare(direct.Get(),{&value,1});direct->ExecuteCommandLists(1,&list);disabled.submitted(direct.Get());wait(direct.Get());disabled.collect_timing();check(disabled.timing().samples==0,"disabled measurement stays off");
+    // An explicit calibration may execute extra work; cached replay with a
+    // zero/retired policy must NOT do so. Test the GPU predicate with actual
+    // copied bytes, independently of timestamp/provenance bookkeeping.
+    GpuControl calibration(device.Get(),true);calibration.begin_recording();
+    D3D12_RESOURCE_DESC bd{};bd.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;bd.Width=16;bd.Height=bd.DepthOrArraySize=bd.MipLevels=bd.SampleDesc.Count=1;bd.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_UPLOAD;
+    ComPtr<ID3D12Resource> source,output;hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&bd,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&source)));
+    hp.Type=D3D12_HEAP_TYPE_READBACK;hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&bd,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&output)));
+    void* mapped{};D3D12_RANGE empty{};hr(source->Map(0,&empty,&mapped));static_cast<UINT64*>(mapped)[0]=0;static_cast<UINT64*>(mapped)[1]=0x12345678;source->Unmap(0,nullptr);
+    ComPtr<ID3D12CommandAllocator> ca;ComPtr<ID3D12GraphicsCommandList> cl;
+    hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&ca)));
+    hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,ca.Get(),nullptr,IID_PPV_ARGS(&cl)));
+    cl->CopyBufferRegion(output.Get(),0,source.Get(),0,8);
+    calibration.calibration_mark(cl.Get(),0,0);calibration.calibration_mark(cl.Get(),0,1);
+    calibration.calibration_predicate(cl.Get(),0);calibration.calibration_mark(cl.Get(),0,2);
+    cl->CopyBufferRegion(output.Get(),0,source.Get(),8,8);calibration.calibration_mark(cl.Get(),0,3);
+    cl->SetPredication(nullptr,0,D3D12_PREDICATION_OP_EQUAL_ZERO);calibration.record_neutralize(cl.Get());hr(cl->Close());
+    for(UINT64 epoch:{UINT64(0),UINT64(42),UINT64(0)}){
+        arc::dx12::optimizer::ControlValue cv;cv.calibration=epoch;cv.calibration_pipeline=777;
+        if(auto* helper=calibration.prepare(direct.Get(),{&cv,1}))direct->ExecuteCommandLists(1,&helper);
+        ID3D12CommandList* work[]{cl.Get()};direct->ExecuteCommandLists(1,work);calibration.submitted(direct.Get());wait(direct.Get());calibration.collect_timing();
+        D3D12_RANGE read{0,8};hr(output->Map(0,&read,&mapped));const auto actual=*static_cast<const UINT64*>(mapped);output->Unmap(0,&empty);
+        check(actual==(epoch?0x12345678u:0u),"calibration GPU predicate and cached neutral replay");
+    }
+    check(calibration.calibrations().size()==1&&calibration.calibrations().front().epoch==42&&calibration.calibrations().front().pipeline==777,"only executed calibration produces correctly identified evidence");
     for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T bytes{};hr(diagnostics->GetMessage(i,nullptr,&bytes));std::vector<char> storage(bytes);auto* message=reinterpret_cast<D3D12_MESSAGE*>(storage.data());hr(diagnostics->GetMessage(i,message,&bytes));check(message->Severity>D3D12_MESSAGE_SEVERITY_ERROR,"D3D12 debug error");}
     CloseHandle(event);std::cout<<"GPU control timing passed: samples="<<result.samples<<" dropped="<<result.dropped<<" gpu_ms="<<result.milliseconds<<'\n';return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}

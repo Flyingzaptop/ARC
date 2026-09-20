@@ -248,6 +248,7 @@ struct ExtraCommandHook<Tag,R(STDMETHODCALLTYPE*)(Self*,Args...),Copy>{
             if constexpr(Tag==6){auto values=std::tuple{args...};optimizer::constants(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values),1,&std::get<1>(values),std::get<2>(values));}
             else if constexpr(Tag==8){auto values=std::tuple{args...};optimizer::constants(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values),std::get<1>(values),static_cast<const UINT*>(std::get<2>(values)),std::get<3>(values));}
             else if constexpr(Tag==10||Tag==12||Tag==14){auto values=std::tuple{args...};optimizer::descriptor(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values),Tag==10?D3D12_ROOT_PARAMETER_TYPE_CBV:Tag==12?D3D12_ROOT_PARAMETER_TYPE_SRV:D3D12_ROOT_PARAMETER_TYPE_UAV,std::get<1>(values));}
+            else if constexpr(Tag==26){auto values=std::tuple{args...};optimizer::predication(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values)!=nullptr);}
             else if constexpr(Tag==301)optimizer::invalidate(reinterpret_cast<ID3D12GraphicsCommandList*>(self));
             else if constexpr(!Copy)optimizer::state_unknown(reinterpret_cast<ID3D12GraphicsCommandList*>(self));
             if constexpr(Copy){mirror::record(original,self,args...);if(detailed_tracking.load(std::memory_order_relaxed))runtime::unsupported();}
@@ -280,7 +281,7 @@ bool set_passive_hooks(bool passive){
     if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;return true;
 }
 
-template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Tag==3||Tag==4||Tag==5||Tag==6||Tag==8||Tag==10||Tag==12||Tag==14)return install_optimizer(target,Hook::call,&Hook::original);else if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
+template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Tag==3||Tag==4||Tag==5||Tag==6||Tag==8||Tag==10||Tag==12||Tag==14||Tag==26)return install_optimizer(target,Hook::call,&Hook::original);else if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
 
 void snapshot(){
     static std::mutex snapshot_mutex;std::lock_guard snapshot_lock(snapshot_mutex);
@@ -300,7 +301,7 @@ void snapshot(){
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
-        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"cpu_state_cache\":";optimizer::cpu_cache_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
+        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"cpu_state_cache\":";optimizer::cpu_cache_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);file<<",\"optimizer_calibration\":";optimizer::calibration_snapshot(file);
     file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
@@ -507,6 +508,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){profile::
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(!mode||!optimizer::enabled())return 1;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){autotune::stop();return 0;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalPolicy(void* path){return path&&optimizer::configure_bundle_file(static_cast<const wchar_t*>(path))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCpuState(void* mode){
     if(!mode)return 1;const auto* text=static_cast<const wchar_t*>(mode);const bool enabled=wcscmp(text,L"on")==0;
     if(!enabled&&wcscmp(text,L"off")!=0)return 2;

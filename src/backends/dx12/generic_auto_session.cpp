@@ -17,6 +17,7 @@
 #include <cmath>
 #include <chrono>
 #include <limits>
+#include <map>
 
 namespace arc::dx12::autotune {
 namespace {
@@ -85,6 +86,26 @@ void select(const std::wstring& mode){auto& s=state();std::lock_guard lock(s.pol
 void select(const arc::PolicyBundle& bundle,bool apply=true){auto& s=state();std::lock_guard lock(s.policy_mutex);
     if(s.cancel&&!bundle.compute.empty())throw std::runtime_error("Session cancelled");
     if(!optimizer::configure_bundle(bundle,apply))throw std::runtime_error("Optimizer bundle refused");}
+Json calibrate_gpu(const arc::PolicyBundle& bundle,const std::filesystem::path& path){
+    static std::atomic<std::uint64_t> sequence{UINT64(1)<<63};const auto epoch=sequence.fetch_add(1);
+    Json result{{"epoch",epoch},{"complete_cost_evidence",false},{"samples",Json::array()}};
+    {std::lock_guard lock(state().policy_mutex);if(state().cancel||!optimizer::begin_calibration(bundle,epoch))return result;}
+    const auto first=frame_number();const bool progressed=wait_frames(6);const auto last=frame_number();
+    select(L"off");const bool retired=wait_restoration();optimizer::collect();
+    const auto expected=optimizer::calibration_sample_count(epoch);const auto samples=optimizer::calibration_costs(epoch);
+    double sum=0;std::map<std::uint64_t,unsigned> covered;
+    for(const auto& sample:samples){
+        ++covered[sample.pipeline];sum+=std::max(0.0,sample.wrapped_ms-sample.original_ms)+sample.neutralize_ms+sample.upload_ms;
+        result["samples"].push_back({{"pipeline",sample.pipeline},{"wrapped_ms",sample.wrapped_ms},{"original_ms",sample.original_ms},{"neutralize_ms",sample.neutralize_ms},{"upload_ms",sample.upload_ms}});
+    }
+    bool coverage=progressed&&retired&&expected>0&&samples.size()==expected&&last>first+1;
+    for(const auto& target:bundle.compute)coverage=coverage&&covered[target.pipeline]>=2;
+    result["paired_dispatch_coverage_complete"]=coverage;result["issued_samples"]=expected;result["present_intervals"]=last-first;
+    result["paired_component_ms_per_frame"]=coverage?Json(sum/double(last-first-1)):Json(nullptr);
+    // This is measured dispatch/guard/control cost, not yet an assertion that
+    // every persistent query/capture/VRS cost or final-frame dependency is known.
+    {std::ofstream file(path);file<<result.dump(2)<<'\n';}return result;
+}
 bool capture_trial(const std::array<std::filesystem::path,3>& paths,const arc::PolicyBundle& bundle,bool& observed_submission){
     struct EndSampling {~EndSampling(){optimizer::sample_frame_state(false);}} end_sampling;
     auto& s=state();select(bundle,false);if(!wait_frames(8))return false;
@@ -171,6 +192,7 @@ DWORD WINAPI run(void*){
                 const auto choice=std::find_if(choices.begin(),choices.end(),[&](const auto& c){return c.bundle.id==request.action;});
                 if(choice==choices.end())throw std::runtime_error("Unknown bundle request");
                 const auto candidate=choice->bundle;const auto generation=candidate.id;
+                const auto gpu_calibration=calibrate_gpu(candidate,dir/L"gpu-calibration.json");
                 if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;double baseline_ms=period();
                 // The final-image reference always uses the ORIGINAL policy,
                 // even when comparing a replacement against a retained setting.
@@ -214,6 +236,7 @@ DWORD WINAPI run(void*){
                 const auto state=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"submission_observed",submitted},{"quality_pass",judgement.value("accepted_quality",false)},{"baseline_frame_ms",baseline_ms},{"candidate_frame_ms",candidate_ms},{"accepted",state.accepted},{"rejected",state.rejected},{"retained",retained},{"cost_evidence_available",false},{"original_policy_retired",restored_original}};
                 report["pipeline_generation"]=generation;report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
                 report["cpu_cost_available"]=std::isfinite(cpu_overhead_ms);report["cpu_overhead_ms"]=std::isfinite(cpu_overhead_ms)?Json(cpu_overhead_ms):Json(nullptr);report["cpu_measured_intervals"]=cpu_frames;
+                report["gpu_calibration"]=gpu_calibration;
                 report["bundle_targets"]=Json::array();for(const auto& p:candidate.compute)report["bundle_targets"].push_back({{"pipeline",p.pipeline},{"rate",{p.x_rate,p.y_rate}},{"pcf_taps",p.comparison_taps},{"zero_factor",p.zero_factor},{"mip_steps",p.mip_steps},{"protect_edges",p.protect_edges},{"edge_threshold",p.edge_threshold}});
                 {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));
             }else if(request.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("GPU policy retirement not confirmed");}

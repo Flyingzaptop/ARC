@@ -22,7 +22,14 @@ struct WorkCandidate {CandidateCapabilities capabilities;double gpu_ms_per_windo
 std::vector<WorkCandidate> candidate_catalog() noexcept;
 // Validates the entire bundle before publishing any setting. An empty bundle
 // is neutral; original-policy configuration remains available through "off".
-bool configure_bundle(const arc::PolicyBundle&,bool apply=true) noexcept;
+bool configure_bundle(const arc::PolicyBundle&,bool apply=true,std::uint64_t calibration_epoch=0) noexcept;
+bool begin_calibration(const arc::PolicyBundle&,std::uint64_t epoch) noexcept;
+bool configure_bundle_file(const wchar_t*) noexcept;
+void calibration_snapshot(std::ostream&);
+struct CalibrationCost {std::uint64_t pipeline{},epoch{};double wrapped_ms{},original_ms{},neutralize_ms{},upload_ms{};};
+std::vector<CalibrationCost> calibration_costs(std::uint64_t epoch) noexcept;
+std::uint64_t calibration_sample_count(std::uint64_t epoch) noexcept;
+void predication(ID3D12GraphicsCommandList*,bool enabled) noexcept;
 bool cpu_configure(bool) noexcept;
 bool cpu_enabled() noexcept;
 bool cpu_state(ID3D12GraphicsCommandList*,unsigned slot,const void*,std::size_t) noexcept;

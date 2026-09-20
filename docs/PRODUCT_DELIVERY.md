@@ -50,3 +50,15 @@ Twofold FPS is a target, not a guaranteed outcome or a changed quality threshold
   documented optional OMSetBlendFactor(nullptr), reproduced WITHOUT loading ARC.
   The fixture now passes the equivalent explicit {1,1,1,1} array. No production
   API behavior was changed to hide that SDK issue.
+- Added explicitly bounded GPU calibration: neutral controlled shader and original
+  shader execute against the same admitted read-only inputs. The extra original
+  dispatch is GPU-predicated and disappears on cached replay after calibration.
+  Native tests verify every output before/during/after calibration and actual
+  copied bytes for active/zero predicate values. Timestamp readbacks retain the
+  submitted epoch and pipeline identity across control-pool reuse.
+- product-calibration-auto-01: 3000 frames, 80.086 FPS, 43.13s, zero ARC faults.
+  Seven calibration windows each issued and collected six samples; dispatch,
+  guard, neutralization and upload component estimates span .116--.318ms/frame.
+  The adjacent no-DLL baseline measured 80.093 FPS (42.25s). This is no demonstrated
+  FPS gain. Full GPU-cost/final-frame-provenance gating remains closed; CPU
+  candidate-window cost is still 1.06--1.56ms/frame and exceeds the .2ms target.

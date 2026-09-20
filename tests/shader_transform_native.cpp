@@ -99,7 +99,7 @@ RWTexture2D<float4> target:register(u5,space3);
     check(!access->evaluate([](unsigned,unsigned,unsigned){return arc::dx12::shader::UniformWords{};},512).complete,"Unreadable dynamic loop bound must decline");
 
     ComPtr<ID3D12Debug> debug;hr(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)));debug->EnableDebugLayer();
-    using Api=DWORD(WINAPI*)(void*);Api arc_mode{},arc_snapshot{};auto arc_path=(directory/L"arc.json").wstring();
+    using Api=DWORD(WINAPI*)(void*);Api arc_mode{},arc_snapshot{},arc_policy{};auto arc_path=(directory/L"arc.json").wstring();
     if(argc==4){HMODULE probe=LoadLibraryW(argv[3]);check(probe!=nullptr,"Load generic optimizer DLL");auto init=reinterpret_cast<Api>(GetProcAddress(probe,"ArcInitialize"));auto lean=reinterpret_cast<Api>(GetProcAddress(probe,"ArcUseLeanMode"));arc_mode=reinterpret_cast<Api>(GetProcAddress(probe,"ArcExperimentalCompute"));arc_snapshot=reinterpret_cast<Api>(GetProcAddress(probe,"ArcSnapshot"));check(init&&lean&&arc_mode&&arc_snapshot&&init(arc_path.data())==0&&lean(nullptr)==0,"Initialize generic optimizer");}
     auto wait_prepared=[&](unsigned count){if(!arc_snapshot)return;const auto deadline=GetTickCount64()+10000;bool ready=false;while(GetTickCount64()<deadline){check(arc_snapshot(nullptr)==0,"Optimizer snapshot");std::ifstream file(arc_path);std::string json{std::istreambuf_iterator<char>(file),{}};std::smatch match;if(std::regex_search(json,match,std::regex("\"prepared\":([0-9]+)"))&&std::stoul(match[1])>=count){ready=true;break;}Sleep(20);}check(ready,"Generic worker must prepare a real shader variant");};
     ComPtr<IDXGIFactory6> factory;hr(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)));ComPtr<IDXGIAdapter1> adapter;hr(factory->EnumAdapterByGpuPreference(0,DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,IID_PPV_ARGS(&adapter)));
@@ -164,18 +164,30 @@ RWTexture2D<float4> target:register(u5,space3);
         auto destination=heap->GetCPUDescriptorHandleForHeapStart();destination.ptr+=(i+1)*increment;device->CreateShaderResourceView(distinct_sources[i].Get(),&srv,destination);
     }
     std::array<std::vector<Pixel>,2> baseline;
-    const unsigned x_rates[]{1,1,2,1,2,1,2,1,UINT32_MAX,1,2,1,2,1},y_rates[]{1,1,2,1,1,2,2,1,0,1,1,2,2,1};
-    for(unsigned mode=0;mode<(arc_mode?14u:9u);++mode){
+    wchar_t measure[8]{};const bool calibration_test=arc_mode&&GetEnvironmentVariableW(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING",measure,8)==1&&measure[0]==L'1';
+    std::uint64_t native_pipeline{};
+    if(calibration_test){
+        arc_policy=reinterpret_cast<Api>(GetProcAddress(GetModuleHandleW(argv[3]),"ArcExperimentalPolicy"));check(arc_policy!=nullptr,"Bundle policy export");
+        check(arc_snapshot(nullptr)==0,"Read native pipeline identity");std::ifstream file(arc_path);std::string json{std::istreambuf_iterator<char>(file),{}};std::smatch match;
+        check(std::regex_search(json,match,std::regex("\"id\":([0-9]+),\"profile_id\":[0-9]+,\"ready\":true")),"Ready pipeline identity");native_pipeline=std::stoull(match[1]);
+    }
+    const unsigned x_rates[]{1,1,2,1,2,1,2,1,UINT32_MAX,1,2,1,2,1,1,2,1},y_rates[]{1,1,2,1,1,2,2,1,0,1,1,2,2,1,1,2,1};
+    for(unsigned mode=0;mode<(calibration_test?17u:arc_mode?14u:9u);++mode){
         desired={x_rates[mode],y_rates[mode],width,height};
-        if(mode>=9){const wchar_t* modes[]{L"neutral",L"2x1",L"1x2",L"2x2",L"off"};check(arc_mode(const_cast<wchar_t*>(modes[mode-9]))==0,"Generic policy switch");}
-        if(mode<4||mode==9){
+        if(mode>=9&&mode<14){const wchar_t* modes[]{L"neutral",L"2x1",L"1x2",L"2x2",L"off"};check(arc_mode(const_cast<wchar_t*>(modes[mode-9]))==0,"Generic policy switch");}
+        if(mode==14||mode==15){
+            const auto path=directory/L"policy.json";{std::ofstream file(path);file<<"{\"schema\":1,\"id\":"<<(mode==14?701:702)<<",\"operation\":\""<<(mode==14?"calibrate":"apply")<<"\",\"compute\":[{\"pipeline\":"<<native_pipeline<<",\"x_rate\":2,\"y_rate\":2}]}";}
+            auto wide=path.wstring();check(arc_policy(wide.data())==0,"Atomic bundle configuration");
+        }
+        if(mode==16)check(arc_mode(const_cast<wchar_t*>(L"off"))==0,"Retire calibration and bundle");
+        if(mode<4||mode==9||mode==14){
         begin();for(unsigned i=1;i<3;++i){copy_in(textures[i].Get(),initial.Get());transition(textures[i].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);}
-        ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pipelines[mode==9?0:mode].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
+        ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pipelines[mode>=9?0:mode].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
         for(unsigned i=1;i<3;++i){transition(textures[i].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[i-1].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[i].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[i].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);}execute();
         }else submit(); // Replay exactly the same closed native recording.
         for(unsigned target=0;target<2;++target){D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[target]->Map(0,&range,&ptr));std::vector<Pixel> pixels(width*height);for(UINT y=0;y<height;++y)std::memcpy(pixels.data()+y*width,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch,width*sizeof(Pixel));readbacks[target]->Unmap(0,&empty);
             if(mode==0)baseline[target]=pixels;
-            if(mode==1||mode==3||mode==7||mode==8||mode==9||mode==13)check(std::memcmp(pixels.data(),baseline[target].data(),pixels.size()*sizeof(Pixel))==0,"Neutral transform and cached rollback must be bit-exact");
+            if(mode==1||mode==3||mode==7||mode==8||mode==9||mode==13||mode==14||mode==16)check(std::memcmp(pixels.data(),baseline[target].data(),pixels.size()*sizeof(Pixel))==0,"Neutral transform, calibration and cached rollback must be bit-exact");
             for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=x_rates[mode]==2?x&~1u:x,sy=y_rates[mode]==2?y&~1u:y;auto p=array_pixel(sx,sy,sy/8);p.r+=array_pixel(sx,sy,(sx/8)%5).r;const Pixel expected=p.a?(target?Pixel{p.b,p.r,p.g,.5f}:Pixel{p.r*2,p.g+.125f,p.b*.5f,1}):(target?Pixel{}:clear);check(std::memcmp(&pixels[y*width+x],&expected,sizeof(Pixel))==0,"Every output pixel including edges and conditional stores must match");}
         }
     }

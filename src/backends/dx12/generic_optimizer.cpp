@@ -5,6 +5,7 @@
 #include "generic_gpu_profile.hpp"
 #include "arc/intercept_cpu_meter.hpp"
 #include "generic_cpu_workers.hpp"
+#include "json.hpp"
 #include <windows.h>
 #include <wrl/client.h>
 #include <atomic>
@@ -34,7 +35,7 @@ struct Variant:VariantStats {Ptr<ID3D12RootSignature> root;Ptr<ID3D12PipelineSta
 struct UniformJob {std::shared_ptr<Variant> variant;std::map<UniformReadKey,shader::UniformWords> words;};
 struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};};
 struct Signature {bool known{},compute{};std::shared_ptr<Root> root;std::vector<D3D12_INDIRECT_ARGUMENT_DESC> resets;};
-struct Use {std::shared_ptr<Variant> variant;binding::Arguments arguments;std::vector<std::uint64_t> heaps;UINT x{},y{},z{};};
+struct Use {std::shared_ptr<Variant> variant;binding::Arguments arguments;std::vector<std::uint64_t> heaps;UINT x{},y{},z{};bool calibration{};};
 struct CpuRecordingState {
     arc::ExactStateCache cache;std::uint64_t generation{};
     std::atomic<bool> usable{true};std::atomic<std::uint64_t> attempts{},skipped{};
@@ -44,6 +45,7 @@ struct Recording {
     ID3D12PipelineState* pipeline{};std::shared_ptr<Root> root;binding::Arguments arguments;
     std::vector<std::uint64_t> heaps;std::shared_ptr<GpuControl> control;std::vector<Use> uses;
     bool valid{true},closed{},epilogue{},render_pass{},arguments_uncertain{};
+    bool unpredicated{true};
 };
 struct State {
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
@@ -51,6 +53,8 @@ struct State {
     std::atomic<bool> cpu_optimize{};std::atomic<std::uint64_t> cpu_generation{1},cpu_lookup_epoch{1};
     std::uint64_t cpu_state_attempts{},cpu_state_skipped{};
     bool heaviest_only{},bundle_mode{};arc::PolicyBundle bundle;
+    std::uint64_t calibration_epoch{};
+    std::uint64_t calibration_measurement_epoch{},calibration_expected{};
     std::vector<std::uint64_t> catalog_targets,record_targets;
     std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true},measure_control{};float edge_threshold{.08f};
@@ -342,9 +346,9 @@ std::vector<WorkCandidate> candidate_catalog()noexcept{
         s.catalog_targets.clear();for(const auto& c:result)s.catalog_targets.push_back(c.capabilities.pipeline);
     });return result;
 }
-bool configure_bundle(const arc::PolicyBundle& bundle,bool apply)noexcept{
+bool configure_bundle(const arc::PolicyBundle& bundle,bool apply,std::uint64_t calibration_epoch)noexcept{
     if(!enabled()||!bundle.valid())return false;
-    bool accepted=false;safe([&]{auto& s=state();if(s.faults)return;
+    bool accepted=false;safe([&]{auto& s=state();if(s.faults||(calibration_epoch&&(!apply||!s.measure_control||bundle.compute.empty())))return;
         for(const auto& setting:bundle.compute){
             const auto p=std::find_if(s.pipelines.begin(),s.pipelines.end(),[&](const auto& pair){return pair.second->id==setting.pipeline;});
             if(p==s.pipelines.end()||!p->second->variant)return;
@@ -353,12 +357,55 @@ bool configure_bundle(const arc::PolicyBundle& bundle,bool apply)noexcept{
         }
         auto prepared=apply?bundle:arc::PolicyBundle{}; // allocation failure must leave the old policy intact
         auto targets=s.record_targets;if(!bundle.compute.empty()){targets.clear();for(const auto& p:bundle.compute)targets.push_back(p.pipeline);}
-        s.bundle=std::move(prepared);s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=true;
+        s.bundle=std::move(prepared);s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=true;s.calibration_epoch=calibration_epoch;
+        if(calibration_epoch){s.calibration_measurement_epoch=calibration_epoch;s.calibration_expected=0;}
         s.x_rate=s.y_rate=1;s.comparison_taps=s.zero_factor=s.mip_steps=0;
         s.selected_pipeline=s.record_targets.empty()?0:s.record_targets.front();
         ++s.policy_epoch;accepted=true;
     });return accepted;
 }
+bool begin_calibration(const arc::PolicyBundle& bundle,std::uint64_t epoch)noexcept{
+    return epoch&&configure_bundle(bundle,true,epoch);
+}
+bool configure_bundle_file(const wchar_t* path)noexcept{
+    if(!path)return false;
+    try{
+        const std::filesystem::path file(path);if(!file.is_absolute()||!std::filesystem::is_regular_file(file)||std::filesystem::file_size(file)>65536)return false;
+        std::ifstream input(file);const auto config=nlohmann::json::parse(input);
+        auto number=[](const auto& object,const char* key,std::uint64_t fallback=0){
+            const auto it=object.find(key);if(it==object.end())return fallback;
+            if(!it->is_number_unsigned())throw std::runtime_error("Unsigned policy field required");return it->template get<std::uint64_t>();
+        };
+        if(number(config,"schema")!=1)return false;
+        arc::PolicyBundle bundle;bundle.id=number(config,"id");const auto& entries=config.at("compute");
+        if(!entries.is_array()||entries.size()>arc::PolicyBundle::capacity)return false;
+        for(const auto& entry:entries){arc::ComputePolicy p;p.pipeline=number(entry,"pipeline");
+            auto field=[&](const char* name,unsigned fallback=0){const auto value=number(entry,name,fallback);if(value>UINT_MAX)throw std::runtime_error("Policy field range");return static_cast<unsigned>(value);};
+            p.x_rate=field("x_rate",1);p.y_rate=field("y_rate",1);p.comparison_taps=field("comparison_taps");p.zero_factor=field("zero_factor");p.mip_steps=field("mip_steps");
+            p.protect_edges=entry.value("protect_edges",false);p.edge_threshold=entry.value("edge_threshold",.08f);bundle.compute.push_back(p);
+        }
+        const auto operation=config.value("operation",std::string("apply"));
+        if(operation=="calibrate")return begin_calibration(bundle,number(config,"epoch",bundle.id));
+        if(operation!="apply"&&operation!="prepare")return false;
+        return configure_bundle(bundle,operation=="apply");
+    }catch(...){return false;}
+}
+void calibration_snapshot(std::ostream& out){
+    std::lock_guard lock(state().mutex);const auto& s=state();out<<"{\"active_epoch\":"<<s.calibration_epoch<<",\"measurement\":\"same_inputs_neutral_wrapper_and_original_dispatch\",\"complete_overhead_evidence\":false,\"samples\":[";bool first=true;
+    for(const auto& control:s.controls)for(const auto& sample:control->calibrations()){
+        if(!first)out<<',';first=false;out<<"{\"epoch\":"<<sample.epoch<<",\"pipeline\":"<<sample.pipeline<<",\"wrapped_ms\":"<<sample.wrapped_ms<<",\"original_ms\":"<<sample.original_ms<<",\"neutralize_ms\":"<<sample.neutralize_ms<<",\"upload_ms\":"<<sample.upload_ms<<'}';
+    }out<<"]}";
+}
+std::vector<CalibrationCost> calibration_costs(std::uint64_t epoch)noexcept{
+    std::vector<CalibrationCost> result;
+    safe([&]{const auto& s=state();if(s.faults||s.calibration_measurement_epoch!=epoch)return;for(const auto& control:s.controls){
+        for(const auto& sample:control->calibrations())if(sample.epoch==epoch&&sample.pipeline)result.push_back({sample.pipeline,epoch,sample.wrapped_ms,sample.original_ms,sample.neutralize_ms,sample.upload_ms});
+    }});return result;
+}
+std::uint64_t calibration_sample_count(std::uint64_t epoch)noexcept{
+    std::uint64_t count=UINT64_MAX;safe([&]{const auto& s=state();if(!s.faults&&s.calibration_measurement_epoch==epoch)count=s.calibration_expected;});return count;
+}
+void predication(ID3D12GraphicsCommandList* native,bool enabled)noexcept{if(optimizer::enabled())safe([&]{if(auto* c=recording(native))c->unpredicated=!enabled;});}
 void control_timing_snapshot(std::ostream& out){
     std::lock_guard lock(state().mutex);GpuControl::Timing total;
     for(const auto& control:state().controls){const auto value=control->timing();total.samples+=value.samples;total.dropped+=value.dropped;total.invalid+=value.invalid;total.milliseconds+=value.milliseconds;}
@@ -374,7 +421,7 @@ bool initialize()noexcept{
         s.worker=worker_path;s.compiler=environment(L"ARC_OPTIMIZER_COMPILER");s.cache=environment(L"ARC_OPTIMIZER_CACHE");
         cpu_timing=environment(L"ARC_OPTIMIZER_CPU_TIMING")==L"1";
         arc::InterceptCpuMeter::enable(cpu_timing.load());
-        s.measure_control=environment(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING")==L"1";
+        s.measure_control=environment(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING")==L"1"||!environment(L"ARC_AUTO_CONFIG").empty();
         if(!s.worker.is_absolute()||!s.compiler.is_absolute()||!s.cache.is_absolute()||!std::filesystem::is_regular_file(s.worker)||!std::filesystem::is_regular_file(s.compiler)) {result=false;return;}
         s.cache/=std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64());std::filesystem::create_directories(s.cache);
         HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);if(!thread){result=false;return;}CloseHandle(thread);s.enabled=true;
@@ -398,7 +445,7 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
     if(accepted&&command!=L"mip-half"&&command!=L"mip1"&&command!=L"mip2")s.mip_steps=0;
-    if(accepted){++s.policy_epoch;s.bundle_mode=false;s.bundle={};s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
+    if(accepted){++s.policy_epoch;s.bundle_mode=false;s.bundle={};s.calibration_epoch=0;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
 DescriptorWrite descriptor_write()noexcept{static const auto sample=register_cpu_sample("descriptor_write_lock");CpuMeter meter(sample);DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().descriptor_mutex);meter.locked();return result;}
@@ -493,7 +540,7 @@ void descriptor_ranges(UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT
     for(std::size_t i=0;i<addresses.size();++i){if(addresses.size()==values.size()&&values[i]){if(!ledger.write(addresses[i],*values[i]))ledger.forget(addresses[i]);}else ledger.forget(addresses[i]);}
 });}
 void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it==s.commands.end()){if(s.commands.size()>=256||!track(native,3))return;it=s.commands.emplace(native,Recording{}).first;}
-    auto& c=it->second;++s.cpu_lookup_epoch;if(c.cpu_cache){c.cpu_cache->cache.invalidate();c.cpu_cache->usable=true;}c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.closed=c.epilogue=c.render_pass=c.arguments_uncertain=false;
+    auto& c=it->second;++s.cpu_lookup_epoch;if(c.cpu_cache){c.cpu_cache->cache.invalidate();c.cpu_cache->usable=true;}c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.unpredicated=true;c.closed=c.epilogue=c.render_pass=c.arguments_uncertain=false;
 });}
 void pipeline(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->pipeline=pipeline;});}
 void heaps(ID3D12GraphicsCommandList* native,UINT count,ID3D12DescriptorHeap*const* heaps)noexcept{if(!enabled())return;safe([&]{auto* c=recording(native);if(!c)return;if(count>2||(!heaps&&count)){c->valid=false;return;}std::array<std::uint64_t,2> next{};
@@ -505,7 +552,7 @@ void table(ID3D12GraphicsCommandList* native,UINT parameter,D3D12_GPU_DESCRIPTOR
 void constants(ID3D12GraphicsCommandList* native,UINT parameter,UINT count,const UINT* values,UINT offset)noexcept{if(!enabled())return;safe([&]{if((!values&&count)||count>64)return;if(auto* c=recording(native))c->arguments.constants(parameter,offset,{values,count});});}
 void descriptor(ID3D12GraphicsCommandList* native,UINT parameter,D3D12_ROOT_PARAMETER_TYPE type,UINT64 address)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->arguments.descriptor(parameter,type,address);});}
 void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->valid=false;if(c->cpu_cache)c->cpu_cache->usable=false;}});}
-void state_unknown(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->cpu_cache)c->cpu_cache->cache.invalidate();c->arguments.reset();c->root.reset();c->pipeline=nullptr;c->arguments_uncertain=true;}});}
+void state_unknown(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->cpu_cache)c->cpu_cache->cache.invalidate();c->arguments.reset();c->root.reset();c->pipeline=nullptr;c->arguments_uncertain=true;c->unpredicated=false;}});}
 void render_pass(ID3D12GraphicsCommandList* native,bool begin,D3D12_RENDER_PASS_FLAGS flags)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->render_pass=begin;if(flags&(D3D12_RENDER_PASS_FLAG_SUSPENDING_PASS|D3D12_RENDER_PASS_FLAG_RESUMING_PASS))c->valid=false;}});}
 void invalidate_all()noexcept{if(!enabled())return;safe([&]{state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().bundle={};state().cpu_optimize=false;++state().cpu_lookup_epoch;for(auto& [native,c]:state().commands){(void)native;c.valid=false;if(c.cpu_cache)c.cpu_cache->usable=false;}});}
 bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if(!enabled())return false;bool changed=false;safe([&]{auto& s=state();auto* c=recording(native);
@@ -518,10 +565,19 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}
     if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.record_targets.begin(),s.record_targets.end(),p->second->id)==s.record_targets.end())){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
-    if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
-    const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z});c->control->keep_alive.push_back(variant);
-    mirror::InternalCall internal;native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());{arc::InterceptCpuMeter::Native application_work;native->Dispatch(x,y,z);}
+    if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();control->begin_recording();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
+    const bool calibration=s.calibration_epoch&&c->unpredicated&&c->control->calibration_available();
+    const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z,calibration});c->control->keep_alive.push_back(variant);
+    mirror::InternalCall internal;if(calibration)c->control->calibration_mark(native,slot,0);
+    native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());
+    {arc::InterceptCpuMeter::Native application_work;native->Dispatch(x,y,z);}
     native->SetComputeRootSignature(c->root->native);replay_arguments(native,c->arguments);native->SetPipelineState(c->pipeline);changed=true;++s.modified_dispatches;
+    if(calibration){
+        c->control->calibration_mark(native,slot,1);
+        D3D12_RESOURCE_BARRIER barrier{};barrier.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;native->ResourceBarrier(1,&barrier);
+        c->control->calibration_predicate(native,slot);c->control->calibration_mark(native,slot,2);native->Dispatch(x,y,z);c->control->calibration_mark(native,slot,3);
+        native->SetPredication(nullptr,0,D3D12_PREDICATION_OP_EQUAL_ZERO);
+    }
 });return changed;}
 void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->control&&c->valid&&!c->closed&&!c->render_pass&&!c->uses.empty()){mirror::InternalCall internal;c->control->record_neutralize(native);c->epilogue=true;}c->closed=true;if(c->cpu_cache)c->cpu_cache->usable=false;}});}
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
@@ -581,10 +637,19 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                         }
                         if(mask){values[n].edge_sources=0x80000000u|mask;values[n].edge_threshold=setting.edge_threshold;}else values[n]=ControlValue{};
                     }
+                    if(s.calibration_epoch){
+                        // Both dispatches must compute the original result.
+                        // Enabled edge validation still runs, giving its cost
+                        // at full invocation density rather than hiding it.
+                        values[n].x=values[n].y=1;values[n].comparison_taps=values[n].zero_factor=values[n].mip_steps=0;
+                        if(use.calibration&&(!setting.protect_edges||values[n].edge_sources)&&std::count(lists,lists+count,lists[i])==1){values[n].calibration=s.calibration_epoch;values[n].calibration_pipeline=use.variant->id;}
+                    }
                 }
             }
             mirror::InternalCall internal;auto* helper=c.control->prepare(queue,{values.data(),c.uses.size()});
-            if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;}else ++s.neutral_submissions;
+            if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;
+                if(s.calibration_epoch)for(const auto& value:values)if(value.calibration==s.calibration_epoch)++s.calibration_expected;
+            }else ++s.neutral_submissions;
         }catch(const std::exception& e){fault(e.what());try{mirror::InternalCall internal;c.control->prepare(queue,{});}catch(...) {}}
         catch(...){fault("submission preparation failed");try{mirror::InternalCall internal;c.control->prepare(queue,{});}catch(...) {}}
     }
