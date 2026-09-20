@@ -12,6 +12,7 @@
 #include "generic_zero_transform.hpp"
 #include "generic_ir_hints.hpp"
 #include "generic_edge_transform.hpp"
+#include "generic_mip_transform.hpp"
 #include <algorithm>
 #include <regex>
 #include <array>
@@ -232,6 +233,47 @@ Texture2D<float4> source:register(t3,space2);RWTexture2D<float4> target:register
         }else submit();
         D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[0]->Map(0,&range,&ptr));std::vector<Pixel> actual(width*height);for(UINT y=0;y<height;++y)std::memcpy(actual.data()+y*width,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch,width*sizeof(Pixel));readbacks[0]->Unmap(0,&empty);
         for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const auto& expected=zero_reference[(mode==1?(y&~1u):y)*width+(mode==1?(x&~1u):x)];check(std::memcmp(&actual[y*width+x],&expected,sizeof(Pixel))==0,"Edge protection/coarse grouping must match every pixel including borders");}
+    }
+    const auto mip_original=compiler.compile(R"(
+Texture2D<float4> source:register(t3,space2);SamplerState filtering:register(s2,space2);
+RWTexture2D<float4> target:register(u4,space3);
+[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){target[p.xy]=source.SampleLevel(filtering,(float2(p.xy)+.5)/float2(61,37),0);}
+)");
+    const auto mip_base=arc::dx12::shader::coarse_compute(compiler.disassemble(mip_original.Get()),1,1,true);
+    {std::ofstream file(directory/"mip-fixture.ll");file<<mip_base.ir;}
+    check(mip_base.admitted,"Explicit mip shader classification");const auto mip=arc::dx12::shader::bias_explicit_mips(mip_base.ir);
+    check(mip.samples==1,"Exactly one explicit noncomparison sample");
+    check(arc::dx12::shader::bias_explicit_mips(pcf_base.ir).samples==0,"Comparison sampling cannot inherit mip bias");
+    check(arc::dx12::shader::bias_explicit_mips(zero_base.ir).samples==0,"Integer texture loads cannot inherit mip bias");
+    auto mip_code=compiler.assemble(mip.ir);
+    auto regular=comparison;regular.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;regular.ComparisonFunc=D3D12_COMPARISON_FUNC_ALWAYS;
+    rd.pStaticSamplers=&regular;root_blob.Reset();error.Reset();hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&root_blob,&error));
+    ComPtr<ID3D12RootSignature> mip_root;hr(device->CreateRootSignature(0,root_blob->GetBufferPointer(),root_blob->GetBufferSize(),IID_PPV_ARGS(&mip_root)));
+    std::array<ComPtr<ID3D12PipelineState>,2> mip_pipelines;IDxcBlob* mip_codes[]{mip_original.Get(),mip_code.Get()};
+    for(unsigned i=0;i<2;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=mip_root.Get();p.CS={mip_codes[i]->GetBufferPointer(),mip_codes[i]->GetBufferSize()};hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&mip_pipelines[i])));}
+    wait_prepared(4);
+    auto mip_desc=td;mip_desc.Flags=D3D12_RESOURCE_FLAG_NONE;mip_desc.MipLevels=3;hp.Type=D3D12_HEAP_TYPE_DEFAULT;
+    ComPtr<ID3D12Resource> mip_texture,mip_upload;hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&mip_desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&mip_texture)));
+    std::array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT,3> mip_footprints;UINT64 mip_bytes{};device->GetCopyableFootprints(&mip_desc,0,3,0,mip_footprints.data(),nullptr,nullptr,&mip_bytes);
+    bd.Width=mip_bytes;hp.Type=D3D12_HEAP_TYPE_UPLOAD;hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&bd,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&mip_upload)));
+    const float mip_colors[]{.125f,.375f,.875f};hr(mip_upload->Map(0,&empty,&ptr));
+    for(unsigned level=0;level<3;++level){const auto& fp=mip_footprints[level];const Pixel color{mip_colors[level],.25f,.5f,1};
+        for(UINT y=0;y<fp.Footprint.Height;++y)for(UINT x=0;x<fp.Footprint.Width;++x)std::memcpy(static_cast<char*>(ptr)+fp.Offset+y*fp.Footprint.RowPitch+x*sizeof(Pixel),&color,sizeof(color));}
+    mip_upload->Unmap(0,nullptr);desired={1,1,width,height};begin();
+    for(unsigned level=0;level<3;++level){D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=mip_texture.Get();d.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;d.SubresourceIndex=level;s.pResource=mip_upload.Get();s.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;s.PlacedFootprint=mip_footprints[level];list->CopyTextureRegion(&d,0,0,0,&s,nullptr);
+        D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition={mip_texture.Get(),level,D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE};list->ResourceBarrier(1,&b);}
+    execute();srv.Texture2D.MipLevels=3;device->CreateShaderResourceView(mip_texture.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
+    for(unsigned mode=0;mode<(arc_mode?12u:7u);++mode){
+        const unsigned steps=mode==2||mode==8?1:mode==3||mode==9?2:mode==4||mode==10?4:mode==5?UINT32_MAX:0;
+        desired={1,1,width,height};if(mode<7)desired.mip_steps=steps;
+        if(mode>=7){const wchar_t* modes[]{L"neutral",L"mip-half",L"mip1",L"mip2",L"off"};check(arc_mode(const_cast<wchar_t*>(modes[mode-7]))==0,"Injected mip switch");}
+        if(mode<2||mode==7){begin();copy_in(textures[1].Get(),initial.Get());transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(mip_root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(mip_pipelines[mode==7?0:mode].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
+            transition(textures[1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[0].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[1].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();
+        }else submit();
+        const Pixel expected{steps==1?.25f:steps==2?.375f:steps==4?.875f:.125f,.25f,.5f,1};
+        D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[0]->Map(0,&range,&ptr));
+        for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Mip blend, neutral, invalid control and cached rollback must match CPU oracle");}readbacks[0]->Unmap(0,&empty);
     }
     unsigned validation_errors=0;for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size{};hr(diagnostics->GetMessage(i,nullptr,&size));std::vector<char> memory(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(memory.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';++validation_errors;}}
     check(validation_errors==0,"D3D12 validation failed");CloseHandle(event);

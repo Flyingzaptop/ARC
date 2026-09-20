@@ -76,7 +76,7 @@ DWORD WINAPI run(void*){
     try{
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         arc::OptimizerSession policy(config);
-        const std::vector<std::wstring> modes={L"zero|heaviest",L"pcf9|heaviest",L"adaptive-1x2@0.5|heaviest",L"adaptive-2x2@0.5|heaviest",L"adaptive-2x2@0.75|heaviest",L"adaptive-2x2@0.9|heaviest",L"1x2|heaviest",L"2x2|heaviest"};
+        const std::vector<std::wstring> modes={L"zero|heaviest",L"pcf9|heaviest",L"adaptive-1x2@0.5|heaviest",L"adaptive-2x2@0.5|heaviest",L"adaptive-2x2@0.75|heaviest",L"adaptive-2x2@0.9|heaviest",L"1x2|heaviest",L"2x2|heaviest",L"mip-half|heaviest",L"mip1|heaviest",L"mip2|heaviest"};
         std::vector<SessionAction> actions;for(unsigned i=0;i<modes.size();++i)actions.push_back({i+1,1,.2+double(i)*.2,.02+double(i)*.1,true});policy.candidates(std::move(actions));
         UINT64 last=0,trial=0,profile=0;std::uint64_t retained=0;
         publish({{"phase","warmup"},{"target_fps",s.target},{"quality_reference","live_motion_qualified"}});

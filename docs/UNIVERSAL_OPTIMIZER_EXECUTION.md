@@ -209,3 +209,21 @@ Checks: full Release build; 49 non-GPU tests; independent/live quality tests;
 `runtime-sequence-regression-01` (native interception/lifetimes/data verified).
 Automatic retention, complete overhead accounting, VRS composition, mip/ray/
 geometry/temporal actuators and second-renderer portability remain unfinished.
+
+## Checkpoint 6 (explicit mip actuator)
+
+The generic compute worker now recognizes noncomparison `SampleLevel` operations
+and supplies reversible +0.5/+1/+2 LOD bias, controlled at submission without
+changing application descriptors. Texture loads and comparison samplers remain
+unmodified. Invalid controls fall back to the original LOD; neutral selection
+preserves its original value. The worker contract is version 5 and its control
+buffer declares 48 bytes. Experimental modes: `mip-half`, `mip1`, `mip2`, with
+optional `|heaviest`; the benchmark exposes their `compute-...-hot` forms.
+
+`injected-mip-02` verifies every pixel against a CPU oracle for three actual mip
+levels, half-level interpolation, cached replay, invalid controls, neutral and
+rollback. Existing compute/PCF/zero/edge tests still pass with zero debug errors.
+`mip-first`: 78.551 vs 77.894 FPS, SSIM .991639, mean error .000451 and tile p99
+.011481. The one-pair gain is below the configured 2% minimum and is NOT an
+accepted performance win. This is a bounded compute sampling actuator, not
+complete automatic texture residency/streaming or pixel-shader mip control.

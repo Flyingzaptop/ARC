@@ -12,6 +12,7 @@
 #include "generic_zero_transform.hpp"
 #include "generic_ir_hints.hpp"
 #include "generic_edge_transform.hpp"
+#include "generic_mip_transform.hpp"
 
 using Microsoft::WRL::ComPtr;
 namespace {
@@ -95,6 +96,7 @@ int wmain(int argc, wchar_t** argv) try {
         if (!transformed.admitted) throw std::runtime_error("Shader declined: " + transformed.reason);
         if(controlled){auto zero=arc::dx12::shader::short_circuit_zero_factors(transformed.ir);transformed.ir=std::move(zero.ir);transformed.zero_factor_regions=zero.regions;auto filtered=arc::dx12::shader::sparse_comparison_filter(transformed.ir);transformed.ir=std::move(filtered.ir);transformed.comparison_filter_groups=filtered.groups;}
         if(controlled){auto edges=arc::dx12::shader::protect_input_edges(transformed.ir,transformed);transformed.ir=std::move(edges.ir);transformed.edge_input_mask=edges.input_mask;}
+        if(controlled){auto mips=arc::dx12::shader::bias_explicit_mips(transformed.ir);transformed.ir=std::move(mips.ir);transformed.mip_samples=mips.samples;}
         transformed.ir=arc::dx12::shader::preserve_arc_branches(std::move(transformed.ir));
         control_space=transformed.control_space;
         contract=transformed;contract.ir.clear();
@@ -114,7 +116,7 @@ int wmain(int argc, wchar_t** argv) try {
         auto manifest_path=output;manifest_path+=L".contract";
         if(std::filesystem::exists(manifest_path))throw std::runtime_error("Fresh contract output required");
         std::ofstream manifest(manifest_path);
-        manifest<<"ARC_SHADER_CONTRACT_4\n"<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<'\n';
+        manifest<<"ARC_SHADER_CONTRACT_5\n"<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples<<'\n';
         for(const auto& r:contract.resources)manifest<<r.resource_class<<' '<<r.range_id<<' '<<r.shader_register<<' '<<r.space<<' '<<r.count<<' '<<r.kind<<'\n';
         manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
         if(controlled){auto access_path=output;access_path+=L".access.ll";if(std::filesystem::exists(access_path))throw std::runtime_error("Fresh access program required");std::ofstream access(access_path,std::ios::binary);access.write(original_ir.data(),original_ir.size());access.close();if(!access)throw std::runtime_error("Write access program");}

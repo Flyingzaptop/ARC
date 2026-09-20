@@ -35,7 +35,7 @@ struct Recording {
 };
 struct State {
     std::recursive_mutex mutex;std::condition_variable_any changed;
-    std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{};
+    std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
     bool heaviest_only{};std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true};float edge_threshold{.08f};
     std::filesystem::path worker,compiler,cache;
@@ -190,8 +190,8 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     if(code)throw std::runtime_error("shader_class_not_admitted_or_compiler_failed");
     auto manifest=binary;manifest+=L".contract";std::ifstream description(manifest);std::string tag;description>>tag;
     auto result=std::make_shared<Variant>();result->id=pipeline->id;auto& contract=result->contract;std::size_t count{};
-    description>>contract.control_space>>contract.threads[0]>>contract.threads[1]>>contract.threads[2]>>contract.stores>>count>>contract.comparison_filter_groups>>contract.zero_factor_regions>>contract.edge_input_mask;
-    if(!description||tag!="ARC_SHADER_CONTRACT_4"||count>128||contract.control_space==UINT32_MAX)throw std::runtime_error("shader worker contract");
+    description>>contract.control_space>>contract.threads[0]>>contract.threads[1]>>contract.threads[2]>>contract.stores>>count>>contract.comparison_filter_groups>>contract.zero_factor_regions>>contract.edge_input_mask>>contract.mip_samples;
+    if(!description||tag!="ARC_SHADER_CONTRACT_5"||count>128||contract.control_space==UINT32_MAX)throw std::runtime_error("shader worker contract");
     for(std::size_t i=0;i<count;++i){shader::ResourceContract r;description>>r.resource_class>>r.range_id>>r.shader_register>>r.space>>r.count>>r.kind;contract.resources.push_back(r);}
     if(!description)throw std::runtime_error("truncated shader contract");contract.admitted=true;
     auto access_path=binary;access_path+=L".access.ll";
@@ -242,8 +242,10 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     else if(wcscmp(value,L"zero")==0){s.x_rate=s.y_rate=1;s.zero_factor=1;accepted=true;}
     else if(wcscmp(value,L"adaptive-1x2")==0){s.x_rate=1;s.y_rate=2;accepted=true;}
     else if(wcscmp(value,L"adaptive-2x2")==0){s.x_rate=s.y_rate=2;accepted=true;}
+    else if(command==L"mip-half"||command==L"mip1"||command==L"mip2"){s.x_rate=s.y_rate=1;s.mip_steps=command==L"mip-half"?1:command==L"mip1"?2:4;accepted=true;}
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
+    if(accepted&&command!=L"mip-half"&&command!=L"mip1"&&command!=L"mip2")s.mip_steps=0;
     if(accepted){s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
@@ -336,6 +338,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 if(s.admission_reasons.size()<64||s.admission_reasons.contains(admitted.reason))++s.admission_reasons[admitted.reason];
                 if(admitted.admitted&&(!s.heaviest_only||use.variant->id==s.selected_pipeline)){
                     values[n]={s.x_rate,s.y_rate,admitted.width,admitted.height,use.variant->contract.comparison_filter_groups?s.comparison_taps:0,use.variant->contract.zero_factor_regions?s.zero_factor:0};
+                    if(use.variant->contract.mip_samples)values[n].mip_steps=s.mip_steps;
                     if(s.protect_edges){unsigned mask=0,selected=0;
                         for(const auto& input:admitted.inputs){const auto& r=input.contract;const auto& d=input.allocation.description;const auto& v=input.view;
                             if(selected>=4||r.resource_class!=0||r.range_id>=31||!(use.variant->contract.edge_input_mask&(1u<<r.range_id))||v.shape.dimension!=D3D12_SRV_DIMENSION_TEXTURE2D||v.first_mip>=d.MipLevels||v.first_mip>=32)continue;

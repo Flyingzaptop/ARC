@@ -61,7 +61,7 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
     const auto completed=fence_->GetCompletedValue();
     if(last_queue_&&last_queue_.Get()!=queue&&completed<sequence_)check(queue->Wait(fence_.Get(),sequence_));
     if(values.size()>capacity)throw std::runtime_error("GPU control capacity");
-    bool coarse=false;for(const auto& value:values)coarse|=value.x==2||value.y==2||value.comparison_taps==9||value.zero_factor==1;
+    bool coarse=false;for(const auto& value:values)coarse|=value.x==2||value.y==2||value.comparison_taps==9||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=4);
     if(!coarse)return nullptr;
     for(unsigned i=0;i<4;++i)if(retired_[i]<=completed){pending_=static_cast<int>(i);break;}
     if(pending_<0)return nullptr; // previous recording's GPU epilogue is neutral

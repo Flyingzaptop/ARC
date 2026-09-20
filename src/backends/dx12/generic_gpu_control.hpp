@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace arc::dx12::optimizer {
-struct ControlValue {UINT x{1},y{1},width{},height{},comparison_taps{},zero_factor{},edge_sources{};float edge_threshold{};};
+struct ControlValue {UINT x{1},y{1},width{},height{},comparison_taps{},zero_factor{},edge_sources{};float edge_threshold{};UINT mip_steps{};};
 // A recording ends by restoring this buffer to neutral on the GPU. Therefore a
 // missed update, exhausted upload ring or subsequent cached replay cannot keep
 // a coarse policy accidentally. Callers serialize methods with submissions.

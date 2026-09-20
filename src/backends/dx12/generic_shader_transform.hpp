@@ -19,6 +19,7 @@ struct Transform {
     unsigned comparison_filter_groups{};
     unsigned zero_factor_regions{};
     unsigned edge_input_mask{};
+    unsigned mip_samples{};
     // UINT32_MAX for static diagnostic variants; otherwise a new b0 binding in
     // this previously unused space. The root signature must explicitly bind it.
     unsigned control_space{UINT32_MAX};
