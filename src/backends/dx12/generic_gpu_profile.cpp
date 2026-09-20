@@ -1,6 +1,7 @@
 #include "generic_cpu_workers.hpp"
 #include "arc/intercept_cpu_meter.hpp"
 #include "generic_gpu_profile.hpp"
+#include "generic_hook_control.hpp"
 #include "generic_command_mirror.hpp"
 #include <windows.h>
 #include <bcrypt.h>
@@ -319,10 +320,13 @@ void after_submit(Submission& submission,ID3D12CommandQueue* native)noexcept{
     for(UINT i=0;i<submission.count;++i){auto& job=s.jobs[submission.jobs[i]];job.value=value;job.signaled=signaled;if(!signaled){job.record->quarantined=true;++job.record->session->faults;}}
 }
 bool request(const std::wstring& path,UINT windows)noexcept{
+    if(!hooks::begin_raster_observation())return false;
+    struct EndSetup {~EndSetup(){hooks::end_raster_observation();}} setup;
     bool accepted=false;safe([&]{auto& s=state();if(path.empty()||windows<1||windows>32||(s.session&&!s.session->written&&!s.session->export_failed)||!std::filesystem::is_directory(std::filesystem::absolute(path).parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path+L".tmp"))return;
         auto session=std::make_shared<Session>();session->id=++s.next_session;session->path=path;session->wanted=windows;session->deadline=Clock::now()+std::chrono::seconds(10);session->drain_deadline=session->deadline+std::chrono::seconds(5);session->rows.reserve(max_rows);s.session=std::move(session);s.capturing=true;accepted=true;});return accepted;
 }
 bool busy()noexcept{bool result=true;safe([&]{auto& s=state();result=s.open||s.capturing||(s.session&&!s.session->written&&!s.session->export_failed);});return result;}
+bool needs_raster_observation()noexcept{return state().open.load(std::memory_order_relaxed)||state().capturing.load(std::memory_order_relaxed);}
 void stop()noexcept{safe([&]{auto& s=state();s.capturing=false;if(s.session){s.session->stopped=true;s.session->drain_deadline=Clock::now()+std::chrono::seconds(5);}});}
 void present()noexcept{if(!state().capturing)return;safe([&]{auto& s=state();if(s.session&&!s.session->stopped&&++s.session->presents>=s.session->wanted)stop();});}
 void collect()noexcept{

@@ -10,6 +10,8 @@
 #include "generic_command_mirror.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_optimizer.hpp"
+#include "generic_hook_control.hpp"
+#include "generic_child_launch.hpp"
 #include "generic_auto_session.hpp"
 #include "generic_cpu_workers.hpp"
 #include <atomic>
@@ -31,6 +33,9 @@ std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> passive_hooks{};
 std::set<void*> detailed_only_targets;
 std::set<void*> optimizer_targets;
+std::set<void*> raster_targets;
+std::atomic<unsigned> raster_setup{};
+std::atomic<bool> raster_hooks_enabled{true};
 std::array<void*,256> installed_targets{};std::size_t installed_count{};
 std::mutex hook_mode_mutex;
 std::atomic<bool> initialized{},initializing{},recording{};
@@ -39,6 +44,7 @@ std::atomic<long> last_present_error{},last_device_reason{};
 std::atomic<UINT> last_present_sync{},last_present_flags{};
 std::atomic<bool> device_reason_available{};
 std::filesystem::path output;
+std::mutex output_mutex;
 HMODULE module{};
 using PresentFn=decltype(IDXGISwapChainVtbl::Present);
 using Present1Fn=decltype(IDXGISwapChain1Vtbl::Present1);
@@ -156,14 +162,14 @@ HRESULT STDMETHODCALLTYPE heap(ID3D12Device* d,const D3D12_DESCRIPTOR_HEAP_DESC*
     const auto result=arc::original_cpu_call([&]{return original_heap(d,desc,iid,out);});
     if(SUCCEEDED(result)&&out&&*out&&observe_api()){ID3D12DescriptorHeap* h=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12DescriptorHeap,reinterpret_cast<void**>(&h)))){optimizer::heap_created(h);if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_heap(h);ID3D12DescriptorHeap_Release(h);}}return result;
 }
-void STDMETHODCALLTYPE srv(ID3D12Device* d,ID3D12Resource* r,const D3D12_SHADER_RESOURCE_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);auto write_guard=observe_api()?optimizer::descriptor_write():optimizer::DescriptorWrite{};if(observe_api()&&optimizer::cpu_same_view(1,r,nullptr,v,sizeof(*v),h))return;arc::original_cpu_call([&]{return original_srv(d,r,v,h);});if(observe_api())optimizer::srv(r,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,1,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MostDetailedMip:0,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MipLevels:0);}
-void STDMETHODCALLTYPE uav(ID3D12Device* d,ID3D12Resource* r,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);auto write_guard=observe_api()?optimizer::descriptor_write():optimizer::DescriptorWrite{};if(observe_api()&&optimizer::cpu_same_view(2,r,counter,v,sizeof(*v),h))return;arc::original_cpu_call([&]{return original_uav(d,r,counter,v,h);});if(observe_api())optimizer::uav(r,counter,v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,2,v&&v->ViewDimension==D3D12_UAV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
+void STDMETHODCALLTYPE srv(ID3D12Device* d,ID3D12Resource* r,const D3D12_SHADER_RESOURCE_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const bool observed=observe_api();auto write_guard=observed?optimizer::descriptor_write():optimizer::DescriptorWrite{};if(observed&&optimizer::cpu_same_view(1,r,nullptr,v,sizeof(*v),h))return;arc::original_cpu_call([&]{return original_srv(d,r,v,h);});if(observed)optimizer::srv(r,v,h);if(observed)if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,1,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MostDetailedMip:0,v&&v->ViewDimension==D3D12_SRV_DIMENSION_TEXTURE2D?v->Texture2D.MipLevels:0);}
+void STDMETHODCALLTYPE uav(ID3D12Device* d,ID3D12Resource* r,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const bool observed=observe_api();auto write_guard=observed?optimizer::descriptor_write():optimizer::DescriptorWrite{};if(observed&&optimizer::cpu_same_view(2,r,counter,v,sizeof(*v),h))return;arc::original_cpu_call([&]{return original_uav(d,r,counter,v,h);});if(observed)optimizer::uav(r,counter,v,h);if(observed)if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,2,v&&v->ViewDimension==D3D12_UAV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
 void STDMETHODCALLTYPE rtv(ID3D12Device* d,ID3D12Resource* r,const D3D12_RENDER_TARGET_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);arc::original_cpu_call([&]{return original_rtv(d,r,v,h);});if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,3,v&&v->ViewDimension==D3D12_RTV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
 void STDMETHODCALLTYPE dsv(ID3D12Device* d,ID3D12Resource* r,const D3D12_DEPTH_STENCIL_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);arc::original_cpu_call([&]{return original_dsv(d,r,v,h);});if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(r,h,4,v&&v->ViewDimension==D3D12_DSV_DIMENSION_TEXTURE2D?v->Texture2D.MipSlice:0,1);}
-void STDMETHODCALLTYPE sampler(ID3D12Device* d,const D3D12_SAMPLER_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);auto write_guard=observe_api()?optimizer::descriptor_write():optimizer::DescriptorWrite{};arc::original_cpu_call([&]{return original_sampler(d,v,h);});if(observe_api())optimizer::sampler(v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(nullptr,h,5,0,0);}
-void STDMETHODCALLTYPE cbv(ID3D12Device* d,const D3D12_CONSTANT_BUFFER_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);auto write_guard=observe_api()?optimizer::descriptor_write():optimizer::DescriptorWrite{};if(observe_api()&&optimizer::cpu_same_view(6,nullptr,nullptr,v,sizeof(*v),h))return;arc::original_cpu_call([&]{return original_cbv(d,v,h);});if(observe_api())optimizer::cbv(v,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_cbv(v,h);}
-void STDMETHODCALLTYPE descriptors(ID3D12Device* d,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dst,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);auto write_guard=observe_api()?optimizer::descriptor_write():optimizer::DescriptorWrite{};arc::original_cpu_call([&]{return original_descriptors(d,count,dst,src,type);});if(observe_api())optimizer::copy_descriptors(count,dst,src,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::copy_descriptors(count,dst,src,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
-void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* ds,UINT sc,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* ss,D3D12_DESCRIPTOR_HEAP_TYPE type){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);auto write_guard=observe_api()?optimizer::descriptor_write():optimizer::DescriptorWrite{};arc::original_cpu_call([&]{return original_descriptor_ranges(d,dc,dst,ds,sc,src,ss,type);});if(observe_api())optimizer::descriptor_ranges(dc,dst,ds,sc,src,ss,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::descriptor_ranges(dc,dst,ds,sc,src,ss,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
+void STDMETHODCALLTYPE sampler(ID3D12Device* d,const D3D12_SAMPLER_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const bool observed=observe_api();auto write_guard=observed?optimizer::descriptor_write():optimizer::DescriptorWrite{};arc::original_cpu_call([&]{return original_sampler(d,v,h);});if(observed)optimizer::sampler(v,h);if(observed)if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_view(nullptr,h,5,0,0);}
+void STDMETHODCALLTYPE cbv(ID3D12Device* d,const D3D12_CONSTANT_BUFFER_VIEW_DESC* v,D3D12_CPU_DESCRIPTOR_HANDLE h){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const bool observed=observe_api();auto write_guard=observed?optimizer::descriptor_write():optimizer::DescriptorWrite{};if(observed&&optimizer::cpu_same_view(6,nullptr,nullptr,v,sizeof(*v),h))return;arc::original_cpu_call([&]{return original_cbv(d,v,h);});if(observed)optimizer::cbv(v,h);if(observed)if(detailed_tracking.load(std::memory_order_relaxed))runtime::observe_cbv(v,h);}
+void STDMETHODCALLTYPE descriptors(ID3D12Device* d,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dst,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const bool observed=observe_api();auto write_guard=observed?optimizer::descriptor_write():optimizer::DescriptorWrite{};arc::original_cpu_call([&]{return original_descriptors(d,count,dst,src,type);});if(observed)optimizer::copy_descriptors(count,dst,src,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));if(observed)if(detailed_tracking.load(std::memory_order_relaxed))runtime::copy_descriptors(count,dst,src,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
+void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* ds,UINT sc,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* ss,D3D12_DESCRIPTOR_HEAP_TYPE type){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const bool observed=observe_api();auto write_guard=observed?optimizer::descriptor_write():optimizer::DescriptorWrite{};arc::original_cpu_call([&]{return original_descriptor_ranges(d,dc,dst,ds,sc,src,ss,type);});if(observed)optimizer::descriptor_ranges(dc,dst,ds,sc,src,ss,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));if(observed)if(detailed_tracking.load(std::memory_order_relaxed))runtime::descriptor_ranges(dc,dst,ds,sc,src,ss,type,ID3D12Device_GetDescriptorHandleIncrementSize(d,type));}
 HRESULT STDMETHODCALLTYPE signal(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const auto result=arc::original_cpu_call([&]{return original_signal(q,f,value);});if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,false);return result;}
 HRESULT STDMETHODCALLTYPE wait(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);const auto result=arc::original_cpu_call([&]{return original_wait(q,f,value);});if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,true);return result;}
 void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignature* signature,UINT count,ID3D12Resource* arguments,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
@@ -285,14 +291,22 @@ bool set_passive_hooks(bool passive){
     if(passive){optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
-    for(std::size_t i=3;i<installed_count;++i){const auto target=installed_targets[i];const bool enabled=!passive&&(detailed_tracking||!detailed_only_targets.contains(target)||(optimizer::enabled()&&optimizer_targets.contains(target)));const auto result=enabled?MH_QueueEnableHook(target):MH_QueueDisableHook(target);if(result!=MH_OK)return false;}
-    if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;return true;
+    const bool raster=!passive&&(detailed_tracking||raster_setup||mirror::requested_rate()||profile::needs_raster_observation());
+    for(std::size_t i=3;i<installed_count;++i){const auto target=installed_targets[i];const bool enabled=raster_targets.contains(target)?raster:!passive&&(detailed_tracking||!detailed_only_targets.contains(target)||(optimizer::enabled()&&optimizer_targets.contains(target)));const auto result=enabled?MH_QueueEnableHook(target):MH_QueueDisableHook(target);if(result!=MH_OK)return false;}
+    if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;raster_hooks_enabled=raster;return true;
+}
+void refresh_raster_hooks(){
+    std::lock_guard lock(hook_mode_mutex);
+    const bool needed=!passive_hooks&&(detailed_tracking||raster_setup||mirror::requested_rate()||profile::needs_raster_observation());
+    if(needed==raster_hooks_enabled)return;
+    for(const auto target:raster_targets)if((needed?MH_QueueEnableHook(target):MH_QueueDisableHook(target))!=MH_OK){++hook_failures;return;}
+    if(MH_ApplyQueued()!=MH_OK){++hook_failures;return;}raster_hooks_enabled=needed;
 }
 
 template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Tag==3||Tag==4||Tag==5||Tag==6||Tag==8||Tag==10||Tag==12||Tag==14||Tag==23||Tag==24||Tag==26)return install_optimizer(target,Hook::call,&Hook::original);else if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
 
 void snapshot(){
-    static std::mutex snapshot_mutex;std::lock_guard snapshot_lock(snapshot_mutex);
+    std::lock_guard snapshot_lock(output_mutex);
     // No reference replay/readback or safe mutation capability has been established
     // for an unknown process. The portable policy must therefore abstain.
     arc::PerceptualTrialController policy;
@@ -310,13 +324,18 @@ void snapshot(){
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
         <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"cpu_state_cache\":";optimizer::cpu_cache_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);file<<",\"optimizer_calibration\":";optimizer::calibration_snapshot(file);
-    file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
+    file<<",\"raster_draw_hooks_enabled\":"<<(raster_hooks_enabled?"true":"false")<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 DWORD WINAPI logger(void*){
     arc::dx12::cpu_cost::Registration worker_cpu;
-    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
+    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();refresh_raster_hooks();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
 }
+}
+
+namespace arc::dx12::hooks {
+bool begin_raster_observation()noexcept{++raster_setup;try{if(set_passive_hooks(false))return true;}catch(...){}--raster_setup;return false;}
+void end_raster_observation()noexcept{--raster_setup;}
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
@@ -344,6 +363,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         {IDXGISwapChain3* extra=nullptr;if(SUCCEEDED(IDXGISwapChain1_QueryInterface(swapchain,IID_IDXGISwapChain3,reinterpret_cast<void**>(&extra)))){ok=install(extra->lpVtbl->SetColorSpace1,color_space,&original_color_space)&&ok;IDXGISwapChain3_Release(extra);}}
         ok=install(command->lpVtbl->DrawInstanced,draw,&original_draw)&&ok;
         ok=install(command->lpVtbl->DrawIndexedInstanced,draw_indexed,&original_indexed)&&ok;
+        raster_targets.insert(reinterpret_cast<void*>(command->lpVtbl->DrawInstanced));raster_targets.insert(reinterpret_cast<void*>(command->lpVtbl->DrawIndexedInstanced));
         ok=install(command->lpVtbl->Dispatch,dispatch,&original_dispatch)&&ok;
         ok=install_optimizer(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
         ok=install_optimizer(device->lpVtbl->CreatePlacedResource,placed,&original_placed)&&ok;
@@ -468,6 +488,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
             ID3D12GraphicsCommandList10_Release(extra);}}
         mirror_hooks_ready=mirror_ok;
         if(!ok)break;
+        if(!arc::dx12::children::install())break;
         if(MH_EnableHook(MH_ALL_HOOKS)!=MH_OK)break;
         result=0;
     }while(false);
@@ -490,6 +511,12 @@ BOOL WINAPI DllMain(HINSTANCE instance,DWORD reason,LPVOID){
 extern "C" __declspec(dllexport) DWORD WINAPI ArcBeginCapture(void*){if(!detailed_tracking)return 2;runtime::begin_capture();return 0;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcEndCapture(void* path){if(!path)return 1;try{runtime::end_capture(static_cast<const wchar_t*>(path));return 0;}catch(...){return 2;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSnapshot(void*){try{snapshot();return 0;}catch(...){return 1;}}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcSetMetricsPath(void* value){
+    if(!value||autotune::active())return 1;try{const std::filesystem::path path(static_cast<const wchar_t*>(value));
+        if(!path.is_absolute()||std::filesystem::exists(path)||!std::filesystem::is_directory(path.parent_path()))return 2;
+        std::lock_guard lock(output_mutex);output=path;return 0;
+    }catch(...){return 3;}
+}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFrame(void* path){if(autotune::active())return 10;if(!path)return 1;if(!detailed_tracking)return 4;try{return runtime::request_frame(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestImage(void* path){if(autotune::active())return 10;if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path))?0:2;}catch(...){return 3;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFeatures(void* path){if(autotune::active())return 10;if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path),true)?0:2;}catch(...){return 3;}}
@@ -500,8 +527,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){if
     if(wcscmp(mode,L"off")==0)return mirror::configure(0)?0:2;
     if(wcscmp(mode,L"2x2")!=0||!mirror_hooks_ready)return 3;
     if(profile::busy())return 7;
-    if(!set_passive_hooks(false))return 5;
-    return mirror::configure(D3D12_SHADING_RATE_2X2)?0:4;
+    if(!arc::dx12::hooks::begin_raster_observation())return 5;
+    const bool enabled=mirror::configure(D3D12_SHADING_RATE_2X2);arc::dx12::hooks::end_raster_observation();return enabled?0:4;
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcUseLeanMode(void*){detailed_tracking=false;runtime::observation_mode_changed();return set_passive_hooks(passive_hooks)?0:1;}
@@ -517,10 +544,16 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestGpuProfile(void* path){i
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){if(autotune::active())return 10;profile::stop();return 0;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(autotune::active())return 10;if(!mode||!optimizer::enabled())return 1;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){if(!set_passive_hooks(false))return 3;return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcConfigureRuntime(void* config){
+    if(!config||!autotune::configure_runtime(static_cast<const wchar_t*>(config)))return 1;
+    if(!arc::dx12::children::configure(static_cast<const wchar_t*>(config)))return 4;
+    if(!initialized)return 0;
+    if(!optimizer::initialize())return 2;return set_passive_hooks(false)?0:3;
+}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSetTargetFps(void* value){
     if(!value)return 1;try{const std::wstring text=static_cast<const wchar_t*>(value);std::size_t used{};const auto fps=std::stod(text,&used);return used==text.size()&&autotune::target(fps)?0:2;}catch(...){return 2;}
 }
-extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){autotune::stop();return 0;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){arc::dx12::children::stop();autotune::stop();return 0;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalPolicy(void* path){if(autotune::active())return 10;return path&&optimizer::configure_bundle_file(static_cast<const wchar_t*>(path))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCpuState(void* mode){if(autotune::active())return 10;
     if(!mode)return 1;const auto* text=static_cast<const wchar_t*>(mode);const bool enabled=wcscmp(text,L"on")==0;

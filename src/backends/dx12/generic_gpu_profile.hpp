@@ -32,6 +32,7 @@ Submission before_submit(ID3D12CommandQueue*,UINT,ID3D12CommandList*const*) noex
 void after_submit(Submission&,ID3D12CommandQueue*) noexcept;
 bool request(const std::wstring& new_path,UINT present_windows=8) noexcept;
 bool busy() noexcept;
+bool needs_raster_observation() noexcept;
 void stop() noexcept;
 void present() noexcept;
 void collect() noexcept;

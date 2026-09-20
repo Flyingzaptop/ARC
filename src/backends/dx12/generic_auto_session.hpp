@@ -7,6 +7,7 @@ bool start(const wchar_t* config_path) noexcept;
 void stop() noexcept;
 bool target(double fps) noexcept;
 bool active() noexcept;
+bool configure_runtime(const wchar_t* config_path) noexcept;
 void present(void* swapchain,HRESULT result,UINT flags) noexcept;
 void snapshot(std::ostream&);
 }

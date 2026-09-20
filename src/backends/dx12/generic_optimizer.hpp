@@ -14,6 +14,8 @@ void cpu_snapshot(std::ostream&);
 void intercept_cpu_snapshot(std::ostream&);
 void control_timing_snapshot(std::ostream&);
 void coverage_snapshot(std::ostream&);
+struct ConnectionCoverage {std::size_t roots{},pipelines{};std::uint64_t unknown_root_dispatches{};};
+ConnectionCoverage connection_coverage() noexcept;
 struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{},selected_pipeline{};};
 PolicyStamp policy_stamp() noexcept;
 struct CandidateCapabilities {std::uint64_t pipeline{};bool coarse{},comparison{},zero{},edges{},mips{};};

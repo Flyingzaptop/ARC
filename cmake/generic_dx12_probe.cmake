@@ -40,14 +40,19 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_optimizer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_cpu_workers.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_auto_session.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_child_launch.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_gpu_profile.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_command_mirror.cpp)
     target_compile_definitions(arc-dx12-probe PRIVATE UNICODE _UNICODE NOMINMAX)
     target_include_directories(arc-dx12-probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/json)
     target_link_libraries(arc-dx12-probe PRIVATE arc::core arc-minhook arc-generic-binding arc-generic-gpu-control arc-generic-shader-transform arc-generic-worker-placement d3d12 dxgi dxguid user32 d3dcompiler bcrypt)
     add_executable(arc-dx12-probe-launch ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/dx12_probe_launch.cpp)
+    target_link_libraries(arc-dx12-probe-launch PRIVATE psapi)
     target_compile_definitions(arc-dx12-probe-launch PRIVATE UNICODE _UNICODE NOMINMAX)
     if(ARC_BUILD_TESTS)
+        add_executable(arc-connection-native-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/connection_native.cpp)
+        target_compile_definitions(arc-connection-native-tests PRIVATE UNICODE _UNICODE NOMINMAX)
+        target_link_libraries(arc-connection-native-tests PRIVATE d3d12 dxgi d3dcompiler user32)
         add_executable(arc-worker-placement-native-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/worker_placement_native.cpp)
         target_include_directories(arc-worker-placement-native-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/json)
         target_link_libraries(arc-worker-placement-native-tests PRIVATE arc-generic-worker-placement)

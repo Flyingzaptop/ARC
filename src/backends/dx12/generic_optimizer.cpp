@@ -358,7 +358,8 @@ void sample_frame_state(bool enabled)noexcept{safe([&]{state().sample_state=enab
 FrameStateSample frame_state_sample(){std::lock_guard lock(state().mutex);return state().last_frame_state;}
 bool restoration_ready()noexcept{bool ready=false;safe([&]{const auto& s=state();if(s.faults||!s.bundle.compute.empty()||s.x_rate!=1||s.y_rate!=1||s.comparison_taps||s.zero_factor||s.mip_steps)return;
     ready=std::all_of(s.controls.begin(),s.controls.end(),[](const auto& control){return SUCCEEDED(control->device()->GetDeviceRemovedReason())&&control->ready();});});return ready;}
-void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
+ConnectionCoverage connection_coverage()noexcept{ConnectionCoverage result;safe([&]{const auto& s=state();result={s.roots.size(),s.pipelines.size(),s.dispatch_declines[4]};});return result;}
+void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"observed_root_signatures\":"<<state().roots.size()<<",\"observed_compute_pipelines\":"<<state().pipelines.size()<<",\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
     out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected","root_arguments_uncertain"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
     out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
@@ -574,7 +575,12 @@ void srv(ID3D12Resource* resource,const D3D12_SHADER_RESOURCE_VIEW_DESC* desc,D3
     default:break;}}
     write_view(handle,v);remember_view(1,resource,nullptr,desc,sizeof(D3D12_SHADER_RESOURCE_VIEW_DESC),handle);
 });}
-void uav(ID3D12Resource* resource,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{DescriptorValue v;v.kind=2;v.resource=resource_identity(resource);v.shape.counter_resource=resource_identity(counter);if(desc){v.shape.known=(!resource||v.resource)&&(!counter||v.shape.counter_resource);v.shape.format=desc->Format;v.shape.dimension=desc->ViewDimension;
+void uav(ID3D12Resource* resource,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{
+    // The admitted shader contract rejects every non-2D UAV. Preserve the
+    // exact CPU-view cache, but do not build unused semantic values for them.
+    // Forgetting a previous typed view is essential when a slot is overwritten.
+    if(desc&&desc->ViewDimension!=D3D12_UAV_DIMENSION_TEXTURE2D){state().descriptors.forget(handle.ptr);remember_view(2,resource,counter,desc,sizeof(*desc),handle);return;}
+    DescriptorValue v;v.kind=2;v.resource=resource_identity(resource);v.shape.counter_resource=resource_identity(counter);if(desc){v.shape.known=(!resource||v.resource)&&(!counter||v.shape.counter_resource);v.shape.format=desc->Format;v.shape.dimension=desc->ViewDimension;
     if(desc->ViewDimension==D3D12_UAV_DIMENSION_TEXTURE2D){v.first_mip=desc->Texture2D.MipSlice;v.mips=1;v.shape.plane=desc->Texture2D.PlaneSlice;}}
     write_view(handle,v);remember_view(2,resource,counter,desc,sizeof(D3D12_UNORDERED_ACCESS_VIEW_DESC),handle);
 });}

@@ -201,6 +201,18 @@ DWORD WINAPI run(void*){
             if(s.maximum_seconds&&std::chrono::duration<double>(Clock::now()-started).count()>s.maximum_seconds)break;
             if(!wait_frames(1)){if(s.cancel)break;idle_phase.clear();select(L"off");publish({{"phase","inactive"},{"reason","no_present_progress"}});continue;}
             const auto now=frame_number();if(now==last)continue;last=now;
+            // Receiving Presents is not evidence that shader creation was
+            // observed. A late attach cannot reconstruct opaque root/PSO
+            // objects. Do not spend time on unrelated automatic trials while
+            // all compute work lacks the metadata needed by this optimizer.
+            const auto coverage=optimizer::connection_coverage();
+            if(now>=32&&coverage.unknown_root_dispatches&&!coverage.pipelines){
+                if(idle_phase!="render_metadata_missing"){
+                    select(L"off");idle_phase="render_metadata_missing";
+                    publish({{"phase",idle_phase},{"reason","unobserved_root_signatures_or_compute_pipelines"},{"target_fps",s.target},{"active_action",0},{"restart_recommended",true}});
+                }
+                continue;
+            }
             // Compilation is asynchronous: a profile can finish before its
             // expensive pipeline is ready. Refresh bounded discovery without
             // inventing new action IDs on every frame or repeating rejections.
@@ -297,7 +309,7 @@ DWORD WINAPI run(void*){
 bool start(const wchar_t* config_path)noexcept{
     if(!config_path||!optimizer::enabled()||mirror::requested_rate()||gpu_profile::busy()||!generic::gpu_helpers_idle())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
     try{const auto config=read_json(config_path);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
-        s.python=config.at("python").get<std::string>();s.critic=config.at("critic").get<std::string>();s.directory=config.at("output").get<std::string>();s.maximum_seconds=config.value("maximum_seconds",0u);
+        s.python=std::filesystem::u8path(config.at("python").get<std::string>());s.critic=std::filesystem::u8path(config.at("critic").get<std::string>());s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
         if(!s.python.is_absolute()||!s.critic.is_absolute()||!s.directory.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
         std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.swapchain=nullptr;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
         HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
@@ -306,6 +318,17 @@ bool start(const wchar_t* config_path)noexcept{
 void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
 bool target(double fps)noexcept{auto& s=state();if(!std::isfinite(fps)||fps<=0||fps>1000||!s.running||s.cancel)return false;s.requested_target=fps;return true;}
 bool active()noexcept{return state().running.load();}
+bool configure_runtime(const wchar_t* path)noexcept{
+    if(!path||active())return false;
+    try{const auto config=read_json(path);
+        const wchar_t* names[]{L"ARC_OPTIMIZER_WORKER",L"ARC_OPTIMIZER_COMPILER",L"ARC_OPTIMIZER_CACHE"};
+        const char* keys[]{"worker","compiler","cache"};std::array<std::filesystem::path,3> paths;
+        for(unsigned i=0;i<paths.size();++i){paths[i]=std::filesystem::u8path(config.at(keys[i]).get<std::string>());if(!paths[i].is_absolute()||(i<2&&!std::filesystem::is_regular_file(paths[i])))return false;}
+        // Validate the complete request before changing process-local settings.
+        for(unsigned i=0;i<paths.size();++i)if(!SetEnvironmentVariableW(names[i],paths[i].c_str()))return false;
+        return SetEnvironmentVariableW(L"ARC_AUTO_CONFIG",path)!=FALSE;
+    }catch(...){return false;}
+}
 void present(void* swap,HRESULT result,UINT flags)noexcept{
     auto& s=state();if(!s.running||result!=S_OK||(flags&DXGI_PRESENT_TEST))return;LARGE_INTEGER qpc{};QueryPerformanceCounter(&qpc);
     std::lock_guard lock(s.mutex);if(s.swapchain&&s.swapchain!=swap)return;s.swapchain=swap;
@@ -323,5 +346,7 @@ void present(void* swap,HRESULT result,UINT flags)noexcept{
     if(s.last_qpc){const auto elapsed=(double(qpc.QuadPart)-double(s.last_qpc))*1000/s.frequency;if(elapsed>0&&elapsed<1000){s.periods[s.cursor++%s.periods.size()]=elapsed;s.count=std::min<unsigned>(s.count+1,static_cast<unsigned>(s.periods.size()));}}
     s.last_qpc=qpc.QuadPart;++s.frames;s.changed.notify_all();
 }
-void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<state().status.dump();}
+void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto status=s.status;status["present_samples"]=s.frames;
+    const auto count=std::min(32u,s.count);if(count){double total=0;for(unsigned i=0;i<count;++i)total+=s.periods[(s.cursor+s.periods.size()-1-i)%s.periods.size()];if(total>0){status["current_fps"]=1000*count/total;status["current_frame_ms"]=total/count;}}
+    out<<status.dump();}
 }
