@@ -35,7 +35,12 @@ struct UniformJob {std::shared_ptr<Variant> variant;std::map<UniformReadKey,shad
 struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};};
 struct Signature {bool known{},compute{};std::shared_ptr<Root> root;std::vector<D3D12_INDIRECT_ARGUMENT_DESC> resets;};
 struct Use {std::shared_ptr<Variant> variant;binding::Arguments arguments;std::vector<std::uint64_t> heaps;UINT x{},y{},z{};};
+struct CpuRecordingState {
+    arc::ExactStateCache cache;std::uint64_t generation{};
+    std::atomic<bool> usable{true};std::atomic<std::uint64_t> attempts{},skipped{};
+};
 struct Recording {
+    std::shared_ptr<CpuRecordingState> cpu_cache;
     ID3D12PipelineState* pipeline{};std::shared_ptr<Root> root;binding::Arguments arguments;
     std::vector<std::uint64_t> heaps;std::shared_ptr<GpuControl> control;std::vector<Use> uses;
     bool valid{true},closed{},epilogue{},render_pass{},arguments_uncertain{};
@@ -43,8 +48,10 @@ struct Recording {
 struct State {
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
+    std::atomic<bool> cpu_optimize{};std::atomic<std::uint64_t> cpu_generation{1},cpu_lookup_epoch{1};
+    std::uint64_t cpu_state_attempts{},cpu_state_skipped{};
     bool heaviest_only{},bundle_mode{};arc::PolicyBundle bundle;
-    std::vector<std::uint64_t> catalog_targets;
+    std::vector<std::uint64_t> catalog_targets,record_targets;
     std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true},measure_control{};float edge_threshold{.08f};
     std::filesystem::path worker,compiler,cache;
@@ -101,7 +108,9 @@ public:
     ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){safe([&]{auto& s=state();
         if(kind==1)s.roots.erase(static_cast<ID3D12RootSignature*>(object));
         else if(kind==2)s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));
-        else if(kind==3)s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));
+        else if(kind==3){auto found=s.commands.find(static_cast<ID3D12GraphicsCommandList*>(object));
+            if(found!=s.commands.end()&&found->second.cpu_cache){const auto& cpu=*found->second.cpu_cache;found->second.cpu_cache->usable=false;s.cpu_state_attempts+=cpu.attempts.load();s.cpu_state_skipped+=cpu.skipped.load();}
+            ++s.cpu_lookup_epoch;s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));}
         else if(kind==4){auto it=s.heaps.find(static_cast<ID3D12DescriptorHeap*>(object));if(it!=s.heaps.end()){s.descriptors.retire_heap(it->second.id);s.heaps_by_id.erase(it->second.id);s.heaps.erase(it);}}
         else if(kind==5){auto it=s.resource_ids.find(static_cast<ID3D12Resource*>(object));if(it!=s.resource_ids.end()){s.buffers.retire(it->second);s.resource_natives.erase(it->second);s.allocations.erase(it->second);s.resource_ids.erase(it);}}
         else if(kind==6)s.allocation_heaps.erase(static_cast<ID3D12Heap*>(object));
@@ -274,6 +283,34 @@ DWORD WINAPI worker(void*){
 }
 }
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
+bool cpu_enabled()noexcept{return state().cpu_optimize.load(std::memory_order_relaxed);}
+bool cpu_configure(bool enabled)noexcept{
+    if(!optimizer::enabled())return false;
+    bool ok=false;safe([&]{auto& s=state();if(s.faults&&enabled)return;++s.cpu_generation;s.cpu_optimize=enabled;ok=true;});return ok;
+}
+bool cpu_state(ID3D12GraphicsCommandList* native,unsigned slot,const void* bytes,std::size_t size)noexcept{
+    if(!cpu_enabled())return false;auto& s=state();
+    struct Hint {ID3D12GraphicsCommandList* native{};std::uint64_t epoch{};std::shared_ptr<CpuRecordingState> value;};
+    thread_local std::array<Hint,8> hints;
+    const auto address=reinterpret_cast<std::uintptr_t>(native);auto& hint=hints[((address>>4)^(address>>12))%hints.size()];
+    if(hint.native!=native||hint.epoch!=s.cpu_lookup_epoch.load(std::memory_order_acquire)){
+        hint={};safe([&]{auto* c=recording(native);if(!c||!c->valid||c->closed)return;
+            if(!c->cpu_cache)c->cpu_cache=std::make_shared<CpuRecordingState>();
+            hint={native,s.cpu_lookup_epoch.load(),c->cpu_cache};
+        });
+    }
+    const auto& data=hint.value;if(!data||!data->usable.load(std::memory_order_acquire))return false;
+    // DX12 command recording is serialized by the application. A shared cache
+    // follows a command when that recording moves between application threads;
+    // only its lifetime lookup is thread-local, never its native state.
+    const auto generation=s.cpu_generation.load(std::memory_order_acquire);
+    if(data->generation!=generation){data->cache.invalidate();data->generation=generation;}
+    data->attempts.fetch_add(1,std::memory_order_relaxed);
+    const bool skip=data->cache.repeat(slot,bytes,size);if(skip)data->skipped.fetch_add(1,std::memory_order_relaxed);return skip;
+}
+void cpu_invalidate(ID3D12GraphicsCommandList* native)noexcept{if(cpu_enabled())safe([&]{if(auto* c=recording(native);c&&c->cpu_cache)c->cpu_cache->cache.invalidate();});}
+void cpu_objects_changed()noexcept{if(cpu_enabled())safe([&]{++state().cpu_generation;});}
+void cpu_cache_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto attempts=s.cpu_state_attempts,skipped=s.cpu_state_skipped;for(const auto& [native,c]:s.commands)if(c.cpu_cache){attempts+=c.cpu_cache->attempts.load();skipped+=c.cpu_cache->skipped.load();}out<<"{\"enabled\":"<<(s.cpu_optimize?"true":"false")<<",\"attempts\":"<<attempts<<",\"skipped_native_setters\":"<<skipped<<'}';}
 PolicyStamp policy_stamp()noexcept{PolicyStamp stamp;safe([&]{const auto& s=state();stamp={s.policy_epoch,s.coarse_submissions,s.last_active_epoch,s.selected_pipeline};});return stamp;}
 void sample_frame_state(bool enabled)noexcept{safe([&]{state().sample_state=enabled;state().last_frame_state={};});}
 FrameStateSample frame_state_sample(){std::lock_guard lock(state().mutex);return state().last_frame_state;}
@@ -305,7 +342,7 @@ std::vector<WorkCandidate> candidate_catalog()noexcept{
         s.catalog_targets.clear();for(const auto& c:result)s.catalog_targets.push_back(c.capabilities.pipeline);
     });return result;
 }
-bool configure_bundle(const arc::PolicyBundle& bundle)noexcept{
+bool configure_bundle(const arc::PolicyBundle& bundle,bool apply)noexcept{
     if(!enabled()||!bundle.valid())return false;
     bool accepted=false;safe([&]{auto& s=state();if(s.faults)return;
         for(const auto& setting:bundle.compute){
@@ -314,10 +351,11 @@ bool configure_bundle(const arc::PolicyBundle& bundle)noexcept{
             const auto& c=p->second->variant->contract;
             if((setting.comparison_taps&&!c.comparison_filter_groups)||(setting.zero_factor&&!c.zero_factor_regions)||(setting.mip_steps&&!c.mip_samples)||(setting.protect_edges&&!c.edge_input_mask))return;
         }
-        auto prepared=bundle; // allocation failure must leave the old policy intact
-        s.bundle=std::move(prepared);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=true;
+        auto prepared=apply?bundle:arc::PolicyBundle{}; // allocation failure must leave the old policy intact
+        auto targets=s.record_targets;if(!bundle.compute.empty()){targets.clear();for(const auto& p:bundle.compute)targets.push_back(p.pipeline);}
+        s.bundle=std::move(prepared);s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=true;
         s.x_rate=s.y_rate=1;s.comparison_taps=s.zero_factor=s.mip_steps=0;
-        s.selected_pipeline=bundle.compute.empty()?(s.catalog_targets.empty()?0:s.catalog_targets.front()):bundle.compute.front().pipeline;
+        s.selected_pipeline=s.record_targets.empty()?0:s.record_targets.front();
         ++s.policy_epoch;accepted=true;
     });return accepted;
 }
@@ -455,7 +493,7 @@ void descriptor_ranges(UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT
     for(std::size_t i=0;i<addresses.size();++i){if(addresses.size()==values.size()&&values[i]){if(!ledger.write(addresses[i],*values[i]))ledger.forget(addresses[i]);}else ledger.forget(addresses[i]);}
 });}
 void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it==s.commands.end()){if(s.commands.size()>=256||!track(native,3))return;it=s.commands.emplace(native,Recording{}).first;}
-    auto& c=it->second;c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.closed=c.epilogue=c.render_pass=c.arguments_uncertain=false;
+    auto& c=it->second;++s.cpu_lookup_epoch;if(c.cpu_cache){c.cpu_cache->cache.invalidate();c.cpu_cache->usable=true;}c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.closed=c.epilogue=c.render_pass=c.arguments_uncertain=false;
 });}
 void pipeline(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->pipeline=pipeline;});}
 void heaps(ID3D12GraphicsCommandList* native,UINT count,ID3D12DescriptorHeap*const* heaps)noexcept{if(!enabled())return;safe([&]{auto* c=recording(native);if(!c)return;if(count>2||(!heaps&&count)){c->valid=false;return;}std::array<std::uint64_t,2> next{};
@@ -466,10 +504,10 @@ void root(ID3D12GraphicsCommandList* native,ID3D12RootSignature* root)noexcept{i
 void table(ID3D12GraphicsCommandList* native,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->arguments.table(parameter,handle);});}
 void constants(ID3D12GraphicsCommandList* native,UINT parameter,UINT count,const UINT* values,UINT offset)noexcept{if(!enabled())return;safe([&]{if((!values&&count)||count>64)return;if(auto* c=recording(native))c->arguments.constants(parameter,offset,{values,count});});}
 void descriptor(ID3D12GraphicsCommandList* native,UINT parameter,D3D12_ROOT_PARAMETER_TYPE type,UINT64 address)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->arguments.descriptor(parameter,type,address);});}
-void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->valid=false;});}
-void state_unknown(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->arguments.reset();c->root.reset();c->pipeline=nullptr;c->arguments_uncertain=true;}});}
+void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->valid=false;if(c->cpu_cache)c->cpu_cache->usable=false;}});}
+void state_unknown(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->cpu_cache)c->cpu_cache->cache.invalidate();c->arguments.reset();c->root.reset();c->pipeline=nullptr;c->arguments_uncertain=true;}});}
 void render_pass(ID3D12GraphicsCommandList* native,bool begin,D3D12_RENDER_PASS_FLAGS flags)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->render_pass=begin;if(flags&(D3D12_RENDER_PASS_FLAG_SUSPENDING_PASS|D3D12_RENDER_PASS_FLAG_RESUMING_PASS))c->valid=false;}});}
-void invalidate_all()noexcept{if(!enabled())return;safe([&]{state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;for(auto& [native,c]:state().commands){(void)native;c.valid=false;}});}
+void invalidate_all()noexcept{if(!enabled())return;safe([&]{state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().bundle={};state().cpu_optimize=false;++state().cpu_lookup_epoch;for(auto& [native,c]:state().commands){(void)native;c.valid=false;if(c.cpu_cache)c.cpu_cache->usable=false;}});}
 bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if(!enabled())return false;bool changed=false;safe([&]{auto& s=state();auto* c=recording(native);
     if(!c){++s.dispatch_declines[0];return;}if(!c->valid){++s.dispatch_declines[1];return;}if(c->closed){++s.dispatch_declines[2];return;}if(c->render_pass){++s.dispatch_declines[3];return;}if(!c->root){++s.dispatch_declines[4];return;}if(c->uses.size()>=GpuControl::capacity){++s.dispatch_declines[5];return;}
     // Rebinding the same native root after indirect/bundle/opaque work does not
@@ -478,14 +516,14 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     if(c->arguments_uncertain){const auto layout=c->arguments.layout();bool known=layout&&layout->complete;if(known)for(UINT i=0;i<layout->parameters.size();++i){const auto a=c->arguments.raw_argument(i);if(!a||(!a->initialized&&!(a->observed&&(a->type==D3D12_ROOT_PARAMETER_TYPE_CBV||a->type==D3D12_ROOT_PARAMETER_TYPE_SRV||a->type==D3D12_ROOT_PARAMETER_TYPE_UAV)))){known=false;break;}}
         if(!known){++s.dispatch_declines[11];return;}c->arguments_uncertain=false;}
     const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}
-    if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.catalog_targets.begin(),s.catalog_targets.end(),p->second->id)==s.catalog_targets.end()&&!s.bundle.find(p->second->id))){++s.dispatch_declines[10];return;}
+    if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.record_targets.begin(),s.record_targets.end(),p->second->id)==s.record_targets.end())){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z});c->control->keep_alive.push_back(variant);
     mirror::InternalCall internal;native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());{arc::InterceptCpuMeter::Native application_work;native->Dispatch(x,y,z);}
     native->SetComputeRootSignature(c->root->native);replay_arguments(native,c->arguments);native->SetPipelineState(c->pipeline);changed=true;++s.modified_dispatches;
 });return changed;}
-void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->control&&c->valid&&!c->closed&&!c->render_pass&&!c->uses.empty()){mirror::InternalCall internal;c->control->record_neutralize(native);c->epilogue=true;}c->closed=true;}});}
+void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->control&&c->valid&&!c->closed&&!c->render_pass&&!c->uses.empty()){mirror::InternalCall internal;c->control->record_neutralize(native);c->epilogue=true;}c->closed=true;if(c->cpu_cache)c->cpu_cache->usable=false;}});}
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
     if(!enabled()||!queue||(!lists&&count))return false;
     static const auto sample=register_cpu_sample("execute");CpuMeter meter(sample);

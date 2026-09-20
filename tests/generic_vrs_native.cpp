@@ -17,7 +17,7 @@ void hr(HRESULT r){if(FAILED(r))throw std::runtime_error("HRESULT "+std::to_stri
 int wmain(int argc,wchar_t** argv)try{
     check(argc==3||argc==4,"DLL and fresh output directory required; optional --stream-renderpass[-lean][-indirect]");const bool stream_pass=argc==4;const std::wstring options=argc==4?argv[3]:L"";const bool lean_mode=options.find(L"lean")!=std::wstring::npos,indirect=options.find(L"indirect")!=std::wstring::npos;std::filesystem::path root=std::filesystem::absolute(argv[2]);
     check(!std::filesystem::exists(root),"Fresh directory required");std::filesystem::create_directories(root);
-    ComPtr<ID3D12Debug> debug; if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))debug->EnableDebugLayer();
+    ComPtr<ID3D12Debug> debug; if(options.find(L"nodebug")==std::wstring::npos&&SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug))))debug->EnableDebugLayer();
     auto module=LoadLibraryW(argv[1]);check(module!=nullptr,"Load observer");using Api=DWORD(WINAPI*)(void*);
     auto init=reinterpret_cast<Api>(GetProcAddress(module,"ArcInitialize"));auto mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalVrs"));auto snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));
     auto metrics=(root/L"runtime.json").wstring();check(init&&mode&&snapshot&&init(metrics.data())==0,"Initialize mirror");
@@ -84,6 +84,16 @@ int wmain(int argc,wchar_t** argv)try{
         if(unsupported)commands->ClearState(pso.Get()); // deliberately excluded mirror API
         commands->EndQuery(query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);commands->SetGraphicsRootSignature(roots.Get());commands->SetPipelineState(pso.Get());
         D3D12_VIEWPORT viewport{0,0,1280,720,0,1};D3D12_RECT scissor{0,0,1280,720};commands->RSSetViewports(1,&viewport);commands->RSSetScissorRects(1,&scissor);
+        if(options.find(L"cpu")!=std::wstring::npos){
+            const float blend[]{1,1,1,1};
+            for(unsigned repeat=0;repeat<8;++repeat){
+                commands->SetPipelineState(pso.Get());commands->RSSetViewports(1,&viewport);commands->RSSetScissorRects(1,&scissor);
+                commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);commands->OMSetBlendFactor(blend);commands->OMSetStencilRef(0);
+            }
+            auto reduced_viewport=viewport;reduced_viewport.Width=320;auto clipped=scissor;clipped.right=320;
+            commands->RSSetViewports(1,&reduced_viewport);commands->RSSetScissorRects(1,&clipped);
+            commands->RSSetViewports(1,&viewport);commands->RSSetScissorRects(1,&scissor);
+        }
         ComPtr<ID3D12GraphicsCommandList4> pass;
         if(stream_pass){hr(commands.As(&pass));D3D12_RENDER_PASS_RENDER_TARGET_DESC target_desc{};target_desc.cpuDescriptor=rtv;target_desc.BeginningAccess.Type=D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;target_desc.EndingAccess.Type=D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;pass->BeginRenderPass(1,&target_desc,nullptr,options.find(L"suspend")!=std::wstring::npos?D3D12_RENDER_PASS_FLAG_SUSPENDING_PASS:D3D12_RENDER_PASS_FLAG_NONE);}
         else commands->OMSetRenderTargets(1,&rtv,FALSE,nullptr);commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -104,6 +114,12 @@ int wmain(int argc,wchar_t** argv)try{
         std::ofstream json(root/(std::wstring(name)+L".json"));json<<"{\"width\":1280,\"height\":720,\"gpu_ms\":[";for(std::size_t i=0;i<ms.size();++i){if(i)json<<',';json<<ms[i];}json<<"]}";
         return result;};
     record(false);auto baseline=run(L"baseline");
+    Api cpu_mode{};
+    if(options.find(L"cpu")!=std::wstring::npos){
+        cpu_mode=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalCpuState"));
+        wchar_t on[]=L"on";check(cpu_mode&&cpu_mode(on)==0,"Enable exact native state cache");
+        record(false);check(run(L"cpu-state-exact")==baseline,"CPU state optimization must preserve every pixel");
+    }
     if(options.find(L"profile")!=std::wstring::npos){
         auto request=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));auto stop=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopGpuProfile"));
         auto path=(root/L"profile.json").wstring();auto argument=L"1|"+path;check(request&&stop&&request(argument.data())==0,"Request graphics cost profile");
@@ -148,6 +164,25 @@ int wmain(int argc,wchar_t** argv)try{
     for(UINT y=0;y<720;++y)memcpy(old_image.data()+y*1280*4,static_cast<char*>(old_data)+y*footprint.Footprint.RowPitch,1280*4);old_pixels->Unmap(0,&empty_range);
     check(old_image!=baseline,"A later Reset must not modify the previous GPU generation's rate image");
     check(mode(disable)==0,"Final off");snapshot(nullptr);CloseHandle(event);hr(device->GetDeviceRemovedReason());
+    if(cpu_mode){
+        std::ofstream measurements(root/L"cpu-recording.json");measurements<<"{\"kind\":\"native_api_recording_only\",\"debug_layer\":"<<(debug?"true":"false")<<",\"iterations\":20000,\"runs\":[";
+        LARGE_INTEGER timer_frequency{};QueryPerformanceFrequency(&timer_frequency);
+        const bool order[]{false,true,true,false,false,true,true,false};
+        for(unsigned sample=0;sample<std::size(order);++sample){
+            wchar_t on[]=L"on",off[]=L"off";check(cpu_mode(order[sample]?on:off)==0,"CPU measurement mode");
+            hr(allocator->Reset());hr(commands->Reset(allocator.Get(),pso.Get()));
+            D3D12_VIEWPORT viewport{0,0,1280,720,0,1};D3D12_RECT scissor{0,0,1280,720};
+            const float blend[]{1,1,1,1};
+            LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
+            for(unsigned repeat=0;repeat<20000;++repeat){
+                commands->SetPipelineState(pso.Get());commands->RSSetViewports(1,&viewport);commands->RSSetScissorRects(1,&scissor);
+                commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);commands->OMSetBlendFactor(blend);commands->OMSetStencilRef(0);
+            }
+            QueryPerformanceCounter(&end);hr(commands->Close());
+            if(sample)measurements<<',';measurements<<"{\"enabled\":"<<(order[sample]?"true":"false")<<",\"ms\":"<<double(end.QuadPart-begin.QuadPart)*1000.0/timer_frequency.QuadPart<<'}';
+        }
+        measurements<<"]}";wchar_t off[]=L"off";check(cpu_mode(off)==0,"CPU state rollback");snapshot(nullptr);
+    }
 
     if(diagnostics){for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size=0;diagnostics->GetMessage(i,nullptr,&size);std::vector<unsigned char> bytes(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(bytes.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';throw std::runtime_error("D3D12 validation error");}}}
     std::cout<<"Single-recording VRS: cached/passive/cross-queue rollback, late fallback, application-rate preservation and D3D12 validation PASS\n";return 0;

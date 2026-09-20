@@ -160,6 +160,7 @@ void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU
 HRESULT STDMETHODCALLTYPE signal(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());const auto result=arc::original_cpu_call([&]{return original_signal(q,f,value);});if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,false);return result;}
 HRESULT STDMETHODCALLTYPE wait(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());const auto result=arc::original_cpu_call([&]{return original_wait(q,f,value);});if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,true);return result;}
 void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignature* signature,UINT count,ID3D12Resource* arguments,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());
+    if(observe_api())optimizer::cpu_invalidate(c);
     if(observe_api())profile::indirect(c,signature,count);
     mirror::Lease lease;
     if(observe_api()&&mirror::requested_rate()){
@@ -181,10 +182,10 @@ HRESULT STDMETHODCALLTYPE create_command(ID3D12Device* d,UINT node,D3D12_COMMAND
         }}return result;
 }
 HRESULT STDMETHODCALLTYPE close(ID3D12GraphicsCommandList* c){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());if(observe_api()){mirror::close(c);profile::close(c);optimizer::close(c);}const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_close(c);});}();if(SUCCEEDED(result)&&observe_api()){if(detailed_tracking.load(std::memory_order_relaxed))runtime::close(c);}return result;}
-void STDMETHODCALLTYPE pipeline(ID3D12GraphicsCommandList* c,ID3D12PipelineState* p){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());if(observe_api())profile::pipeline(c,p);{mirror::InternalCall native_call;arc::original_cpu_call([&]{return original_pipeline(c,p);});}if(observe_api())mirror::record(original_pipeline,c,p);if(observe_api()){mirror::pipeline(c,p);optimizer::pipeline(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);}}
+void STDMETHODCALLTYPE pipeline(ID3D12GraphicsCommandList* c,ID3D12PipelineState* p){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());const bool observing=observe_api();if(observing&&p&&optimizer::cpu_state(c,arc::ExactStateCache::Pipeline,&p,sizeof(p)))return;if(observing)profile::pipeline(c,p);{mirror::InternalCall native_call;arc::original_cpu_call([&]{return original_pipeline(c,p);});}if(observing){mirror::pipeline(c,p);optimizer::pipeline(c,p);if(detailed_tracking.load(std::memory_order_relaxed))runtime::pipeline(c,p);}}
 void STDMETHODCALLTYPE targets(ID3D12GraphicsCommandList* c,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* h,BOOL contiguous,const D3D12_CPU_DESCRIPTOR_HANDLE* depth){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());arc::original_cpu_call([&]{return original_targets(c,count,h,contiguous,depth);});if(observe_api())mirror::record(original_targets,c,count,h,contiguous,depth);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::targets(c,count,h,contiguous,depth);}
-void STDMETHODCALLTYPE viewport(ID3D12GraphicsCommandList* c,UINT count,const D3D12_VIEWPORT* v){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());arc::original_cpu_call([&]{return original_viewport(c,count,v);});if(observe_api())mirror::record(original_viewport,c,count,v);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::viewport(c,count,v);}
-void STDMETHODCALLTYPE scissor(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RECT* v){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());arc::original_cpu_call([&]{return original_scissor(c,count,v);});if(observe_api())mirror::record(original_scissor,c,count,v);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::scissor(c,count,v);}
+void STDMETHODCALLTYPE viewport(ID3D12GraphicsCommandList* c,UINT count,const D3D12_VIEWPORT* v){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());const bool observing=observe_api();const bool skip=observing&&count<=16&&optimizer::cpu_state(c,arc::ExactStateCache::Viewports,v,std::size_t(count)*sizeof(*v));if(!skip)arc::original_cpu_call([&]{return original_viewport(c,count,v);});if(observing&&detailed_tracking.load(std::memory_order_relaxed))runtime::viewport(c,count,v);}
+void STDMETHODCALLTYPE scissor(ID3D12GraphicsCommandList* c,UINT count,const D3D12_RECT* v){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());const bool observing=observe_api();const bool skip=observing&&count<=16&&optimizer::cpu_state(c,arc::ExactStateCache::Scissors,v,std::size_t(count)*sizeof(*v));if(!skip)arc::original_cpu_call([&]{return original_scissor(c,count,v);});if(observing&&detailed_tracking.load(std::memory_order_relaxed))runtime::scissor(c,count,v);}
 void STDMETHODCALLTYPE bind_heaps(ID3D12GraphicsCommandList* c,UINT count,ID3D12DescriptorHeap*const* h){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());arc::original_cpu_call([&]{return original_bind_heaps(c,count,h);});if(observe_api())optimizer::heaps(c,count,h);if(observe_api())mirror::record(original_bind_heaps,c,count,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::descriptor_heaps(c,count,h);}
 void STDMETHODCALLTYPE graphics_table(ID3D12GraphicsCommandList* c,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE h){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());arc::original_cpu_call([&]{return original_graphics_table(c,parameter,h);});if(observe_api())mirror::record(original_graphics_table,c,parameter,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::root_table(c,false,parameter,h);}
 void STDMETHODCALLTYPE compute_table(ID3D12GraphicsCommandList* c,UINT parameter,D3D12_GPU_DESCRIPTOR_HANDLE h){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());arc::original_cpu_call([&]{return original_compute_table(c,parameter,h);});if(observe_api())optimizer::table(c,parameter,h);if(observe_api())mirror::record(original_compute_table,c,parameter,h);if(observe_api())if(detailed_tracking.load(std::memory_order_relaxed))runtime::root_table(c,true,parameter,h);}
@@ -201,16 +202,19 @@ HRESULT STDMETHODCALLTYPE command_signature(ID3D12Device* d,const D3D12_COMMAND_
 }
 using GraphicsPsoFn=decltype(ID3D12DeviceVtbl::CreateGraphicsPipelineState);GraphicsPsoFn original_graphics_pso{};
 HRESULT STDMETHODCALLTYPE graphics_pso(ID3D12Device* d,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc,REFIID iid,void** out){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());
+    if(observe_api())optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_graphics_pso(d,desc,iid,out);});}();
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_created(p,desc);profile::graphics_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using ComputePsoFn=decltype(ID3D12DeviceVtbl::CreateComputePipelineState);ComputePsoFn original_compute_pso{};
 HRESULT STDMETHODCALLTYPE compute_pso(ID3D12Device* d,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc,REFIID iid,void** out){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());
+    if(observe_api())optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_compute_pso(d,desc,iid,out);});}();
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){profile::compute_created(p,desc);optimizer::compute_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using StreamPsoFn=decltype(ID3D12Device2Vtbl::CreatePipelineState);StreamPsoFn original_stream_pso{};
 HRESULT STDMETHODCALLTYPE stream_pso(ID3D12Device2* d,const D3D12_PIPELINE_STATE_STREAM_DESC* desc,REFIID iid,void** out){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());
+    if(observe_api())optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_stream_pso(d,desc,iid,out);});}();
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_stream_created(p,desc);profile::stream_created(p,desc);optimizer::stream_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
@@ -239,6 +243,8 @@ struct ExtraCommandHook<Tag,R(STDMETHODCALLTYPE*)(Self*,Args...),Copy>{
     using Fn=R(STDMETHODCALLTYPE*)(Self*,Args...);static inline Fn original{};
     static R STDMETHODCALLTYPE call(Self* self,Args... args){arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread());
         if(observe_api()){
+            if constexpr(Tag==3||Tag==5){auto values=std::tuple{args...};const auto value=std::get<0>(values);if(optimizer::cpu_state(reinterpret_cast<ID3D12GraphicsCommandList*>(self),Tag==3?arc::ExactStateCache::Topology:arc::ExactStateCache::Stencil,&value,sizeof(value)))return;}
+            else if constexpr(Tag==4){auto values=std::tuple{args...};const auto* value=std::get<0>(values);const float defaults[]{1,1,1,1};if(optimizer::cpu_state(reinterpret_cast<ID3D12GraphicsCommandList*>(self),arc::ExactStateCache::Blend,value?value:defaults,sizeof(defaults)))return;}
             if constexpr(Tag==6){auto values=std::tuple{args...};optimizer::constants(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values),1,&std::get<1>(values),std::get<2>(values));}
             else if constexpr(Tag==8){auto values=std::tuple{args...};optimizer::constants(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values),std::get<1>(values),static_cast<const UINT*>(std::get<2>(values)),std::get<3>(values));}
             else if constexpr(Tag==10||Tag==12||Tag==14){auto values=std::tuple{args...};optimizer::descriptor(reinterpret_cast<ID3D12GraphicsCommandList*>(self),std::get<0>(values),Tag==10?D3D12_ROOT_PARAMETER_TYPE_CBV:Tag==12?D3D12_ROOT_PARAMETER_TYPE_SRV:D3D12_ROOT_PARAMETER_TYPE_UAV,std::get<1>(values));}
@@ -274,7 +280,7 @@ bool set_passive_hooks(bool passive){
     if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;return true;
 }
 
-template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Tag==6||Tag==8||Tag==10||Tag==12||Tag==14)return install_optimizer(target,Hook::call,&Hook::original);else if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
+template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=ExtraCommandHook<Tag,Fn,Copy>;if constexpr(Tag==3||Tag==4||Tag==5||Tag==6||Tag==8||Tag==10||Tag==12||Tag==14)return install_optimizer(target,Hook::call,&Hook::original);else if constexpr(Copy)return install_detailed(target,Hook::call,&Hook::original);else return install(target,Hook::call,&Hook::original);}
 
 void snapshot(){
     static std::mutex snapshot_mutex;std::lock_guard snapshot_lock(snapshot_mutex);
@@ -294,7 +300,7 @@ void snapshot(){
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
-        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
+        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"cpu_state_cache\":";optimizer::cpu_cache_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
     file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
@@ -355,8 +361,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(command->lpVtbl->Close,close,&original_close)&&ok;
         ok=install(command->lpVtbl->SetPipelineState,pipeline,&original_pipeline)&&ok;
         ok=install_detailed(command->lpVtbl->OMSetRenderTargets,targets,&original_targets)&&ok;
-        ok=install_detailed(command->lpVtbl->RSSetViewports,viewport,&original_viewport)&&ok;
-        ok=install_detailed(command->lpVtbl->RSSetScissorRects,scissor,&original_scissor)&&ok;
+        ok=install_optimizer(command->lpVtbl->RSSetViewports,viewport,&original_viewport)&&ok;
+        ok=install_optimizer(command->lpVtbl->RSSetScissorRects,scissor,&original_scissor)&&ok;
         ok=install_optimizer(command->lpVtbl->SetDescriptorHeaps,bind_heaps,&original_bind_heaps)&&ok;
         ok=install_detailed(command->lpVtbl->SetGraphicsRootDescriptorTable,graphics_table,&original_graphics_table)&&ok;
         ok=install_optimizer(command->lpVtbl->SetComputeRootDescriptorTable,compute_table,&original_compute_table)&&ok;
@@ -501,5 +507,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){profile::
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(!mode||!optimizer::enabled())return 1;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){autotune::stop();return 0;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCpuState(void* mode){
+    if(!mode)return 1;const auto* text=static_cast<const wchar_t*>(mode);const bool enabled=wcscmp(text,L"on")==0;
+    if(!enabled&&wcscmp(text,L"off")!=0)return 2;
+    if(enabled&&!set_passive_hooks(false))return 3;
+    return optimizer::cpu_configure(enabled)?0:4;
+}
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcWorkerPlacement(void* mode){return mode&&arc::dx12::placement::configure(static_cast<const wchar_t*>(mode))?0:1;}

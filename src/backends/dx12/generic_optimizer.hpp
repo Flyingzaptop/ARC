@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include "arc/optimizer_policy.hpp"
+#include "arc/exact_state_cache.hpp"
 
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
@@ -21,7 +22,13 @@ struct WorkCandidate {CandidateCapabilities capabilities;double gpu_ms_per_windo
 std::vector<WorkCandidate> candidate_catalog() noexcept;
 // Validates the entire bundle before publishing any setting. An empty bundle
 // is neutral; original-policy configuration remains available through "off".
-bool configure_bundle(const arc::PolicyBundle&) noexcept;
+bool configure_bundle(const arc::PolicyBundle&,bool apply=true) noexcept;
+bool cpu_configure(bool) noexcept;
+bool cpu_enabled() noexcept;
+bool cpu_state(ID3D12GraphicsCommandList*,unsigned slot,const void*,std::size_t) noexcept;
+void cpu_invalidate(ID3D12GraphicsCommandList*) noexcept;
+void cpu_objects_changed() noexcept;
+void cpu_cache_snapshot(std::ostream&);
 bool restoration_ready() noexcept;
 struct FrameStateSample {std::uint64_t pipeline{},submission{};std::vector<std::array<unsigned,3>> keys;std::vector<std::array<UINT,4>> words;std::vector<unsigned> valid;};
 void sample_frame_state(bool enabled) noexcept;

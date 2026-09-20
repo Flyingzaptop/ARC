@@ -82,12 +82,12 @@ Json quality(const std::filesystem::path& a,const std::filesystem::path& b,const
 void select(const std::wstring& mode){auto& s=state();std::lock_guard lock(s.policy_mutex);
     if(s.cancel&&mode!=L"off")throw std::runtime_error("Session cancelled");
     if(!optimizer::configure(mode.c_str()))throw std::runtime_error("Optimizer policy switch refused");}
-void select(const arc::PolicyBundle& bundle){auto& s=state();std::lock_guard lock(s.policy_mutex);
+void select(const arc::PolicyBundle& bundle,bool apply=true){auto& s=state();std::lock_guard lock(s.policy_mutex);
     if(s.cancel&&!bundle.compute.empty())throw std::runtime_error("Session cancelled");
-    if(!optimizer::configure_bundle(bundle))throw std::runtime_error("Optimizer bundle refused");}
+    if(!optimizer::configure_bundle(bundle,apply))throw std::runtime_error("Optimizer bundle refused");}
 bool capture_trial(const std::array<std::filesystem::path,3>& paths,const arc::PolicyBundle& bundle,bool& observed_submission){
     struct EndSampling {~EndSampling(){optimizer::sample_frame_state(false);}} end_sampling;
-    auto& s=state();select(arc::PolicyBundle{});if(!wait_frames(8))return false;
+    auto& s=state();select(bundle,false);if(!wait_frames(8))return false;
     optimizer::sample_frame_state(true);if(!wait_frames(2)){optimizer::sample_frame_state(false);return false;}
     {std::lock_guard lock(s.mutex);if(s.cancel)return false;s.capture_bundle=bundle;s.capture_stage=0;s.capture_stamps={};s.frame_states={};s.candidate_epoch=0;
         s.capture_active=generic::request_image_sequence(paths,reinterpret_cast<IDXGISwapChain*>(s.swapchain));
@@ -105,7 +105,8 @@ bool capture_trial(const std::array<std::filesystem::path,3>& paths,const arc::P
 }
 DWORD WINAPI run(void*){
     cpu_cost::Registration worker_cpu;
-    arc::InterceptCpuMeter::enable(true);
+    const bool meter_was_enabled=arc::InterceptCpuMeter::enabled();
+    struct RestoreMeter {bool enabled;~RestoreMeter(){arc::InterceptCpuMeter::enable(enabled);}} restore_meter{meter_was_enabled};
     auto& s=state();SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);const auto started=Clock::now();
     try{
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
@@ -187,9 +188,10 @@ DWORD WINAPI run(void*){
                     // afterwards, with incumbent windows on BOTH sides of B.
                     // A scene transition must not masquerade as a speedup.
                     if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;baseline_before_ms=period();
-                    select(candidate);if(!wait_frames(16))break;const auto cost_before=cpu_sample();
+                    select(candidate);if(!wait_frames(16))break;arc::InterceptCpuMeter::enable(true);const auto cost_before=cpu_sample();
                     if(!wait_frames(32))break;const auto cost_after=cpu_sample();candidate_ms=period();
                     cpu_overhead_ms=cpu_window_ms(cost_before,cost_after);cpu_frames=cost_after.frame-cost_before.frame;
+                    arc::InterceptCpuMeter::enable(meter_was_enabled);
                     select(L"off");if(!wait_restoration())throw std::runtime_error("Timing policy retirement not confirmed");
                     if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;baseline_after_ms=period();
                     baseline_ms=(baseline_before_ms+baseline_after_ms)*.5;
@@ -230,7 +232,7 @@ bool start(const wchar_t* config_path)noexcept{
         HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
     }catch(...){s.running=false;return false;}
 }
-void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();optimizer::configure(L"off");optimizer::sample_frame_state(false);placement::configure(L"normal");}
+void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
 void present(void* swap,HRESULT result,UINT flags)noexcept{
     auto& s=state();if(!s.running||result!=S_OK||(flags&DXGI_PRESENT_TEST))return;LARGE_INTEGER qpc{};QueryPerformanceCounter(&qpc);
     std::lock_guard lock(s.mutex);if(s.swapchain&&s.swapchain!=swap)return;s.swapchain=swap;

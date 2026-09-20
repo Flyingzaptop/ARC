@@ -1,10 +1,18 @@
 #include "arc/optimizer_session.hpp"
 #include "arc/optimizer_policy.hpp"
+#include "arc/exact_state_cache.hpp"
 #include <cassert>
 #include <limits>
 #include <iostream>
 
 int main(){
+    arc::ExactStateCache states;unsigned stencil=3;
+    assert(!states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));
+    assert(states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));
+    ++stencil;assert(!states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));
+    states.invalidate();assert(!states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));
+    assert(!states.repeat(arc::ExactStateCache::Stencil,nullptr,sizeof(stencil)));
+    assert(!states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));
     arc::PolicyBundle bundle{1,{{11,1,2},{12,2,2}}};assert(bundle.valid());
     auto replacement=bundle;replacement.id=2;assert(replacement.replace({11,2,2}));
     assert(replacement.compute.size()==2&&replacement.find(12)->x_rate==2&&bundle.find(11)->x_rate==1);
