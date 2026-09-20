@@ -1,0 +1,1142 @@
+{
+  "status": "exploratory_two_repetitions_per_candidate",
+  "thermal_start_gated": true,
+  "no_overall_fps_derived_from_scene_medians": true,
+  "summary": {
+    "core": {
+      "model": {
+        "cpu_p50_ms": 1.7396500000000001,
+        "cpu_p95_ms": 2.2734025,
+        "gpu_p50_ms": 1.16531199,
+        "cpu_p50_range": [
+          1.7363,
+          1.743
+        ]
+      },
+      "shadows": {
+        "cpu_p50_ms": 2.32425,
+        "cpu_p95_ms": 2.612915,
+        "gpu_p50_ms": 2.3134719749999997,
+        "cpu_p50_range": [
+          2.3196,
+          2.3289
+        ]
+      },
+      "water": {
+        "cpu_p50_ms": 3.3724,
+        "cpu_p95_ms": 3.5927949999999997,
+        "gpu_p50_ms": 3.36076796,
+        "cpu_p50_range": [
+          3.3585,
+          3.3863
+        ]
+      },
+      "volumetric": {
+        "cpu_p50_ms": 2.5242250000000004,
+        "cpu_p95_ms": 2.838755,
+        "gpu_p50_ms": 2.513407945,
+        "cpu_p50_range": [
+          2.51325,
+          2.5352
+        ]
+      },
+      "instances_65k": {
+        "cpu_p50_ms": 18.931375,
+        "cpu_p95_ms": 21.405575,
+        "gpu_p50_ms": 5.3931521149999995,
+        "cpu_p50_range": [
+          18.74375,
+          19.119
+        ]
+      }
+    },
+    "normal": {
+      "model": {
+        "cpu_p50_ms": 1.7602,
+        "cpu_p95_ms": 2.248275,
+        "gpu_p50_ms": 1.15404797,
+        "cpu_p50_range": [
+          1.734,
+          1.77385
+        ]
+      },
+      "shadows": {
+        "cpu_p50_ms": 2.3154,
+        "cpu_p95_ms": 2.65384,
+        "gpu_p50_ms": 2.30502391,
+        "cpu_p50_range": [
+          2.31405,
+          2.4093
+        ]
+      },
+      "water": {
+        "cpu_p50_ms": 3.3705,
+        "cpu_p95_ms": 3.52548,
+        "gpu_p50_ms": 3.35974407,
+        "cpu_p50_range": [
+          3.33095,
+          3.3738
+        ]
+      },
+      "volumetric": {
+        "cpu_p50_ms": 2.5025,
+        "cpu_p95_ms": 2.81171,
+        "gpu_p50_ms": 2.4924159,
+        "cpu_p50_range": [
+          2.4771,
+          2.5104
+        ]
+      },
+      "instances_65k": {
+        "cpu_p50_ms": 19.7971,
+        "cpu_p95_ms": 23.453765,
+        "gpu_p50_ms": 5.21420813,
+        "cpu_p50_range": [
+          19.646,
+          20.0379
+        ]
+      }
+    },
+    "partition": {
+      "model": {
+        "cpu_p50_ms": 1.7351999999999999,
+        "cpu_p95_ms": 2.2802425,
+        "gpu_p50_ms": 1.169407965,
+        "cpu_p50_range": [
+          1.7284,
+          1.742
+        ]
+      },
+      "shadows": {
+        "cpu_p50_ms": 2.3512000000000004,
+        "cpu_p95_ms": 2.70194,
+        "gpu_p50_ms": 2.3383039200000004,
+        "cpu_p50_range": [
+          2.3511,
+          2.3513
+        ]
+      },
+      "water": {
+        "cpu_p50_ms": 3.37845,
+        "cpu_p95_ms": 3.56053,
+        "gpu_p50_ms": 3.364863995,
+        "cpu_p50_range": [
+          3.37655,
+          3.38035
+        ]
+      },
+      "volumetric": {
+        "cpu_p50_ms": 2.516725,
+        "cpu_p95_ms": 2.8345925000000003,
+        "gpu_p50_ms": 2.50572801,
+        "cpu_p50_range": [
+          2.5104,
+          2.52305
+        ]
+      },
+      "instances_65k": {
+        "cpu_p50_ms": 19.049075000000002,
+        "cpu_p95_ms": 21.839937499999998,
+        "gpu_p50_ms": 5.47532809,
+        "cpu_p50_range": [
+          18.82685,
+          19.2713
+        ]
+      }
+    },
+    "prefer": {
+      "model": {
+        "cpu_p50_ms": 1.7610000000000001,
+        "cpu_p95_ms": 2.3534249999999997,
+        "gpu_p50_ms": 1.158143995,
+        "cpu_p50_range": [
+          1.7342,
+          1.7878
+        ]
+      },
+      "shadows": {
+        "cpu_p50_ms": 2.3154250000000003,
+        "cpu_p95_ms": 2.6283174999999996,
+        "gpu_p50_ms": 2.30502391,
+        "cpu_p50_range": [
+          2.314,
+          2.31685
+        ]
+      },
+      "water": {
+        "cpu_p50_ms": 3.3748250000000004,
+        "cpu_p95_ms": 3.5272474999999996,
+        "gpu_p50_ms": 3.364095985,
+        "cpu_p50_range": [
+          3.3715,
+          3.37815
+        ]
+      },
+      "volumetric": {
+        "cpu_p50_ms": 2.50185,
+        "cpu_p95_ms": 2.780525,
+        "gpu_p50_ms": 2.491391895,
+        "cpu_p50_range": [
+          2.4985,
+          2.5052
+        ]
+      },
+      "instances_65k": {
+        "cpu_p50_ms": 19.54655,
+        "cpu_p95_ms": 23.068925,
+        "gpu_p50_ms": 5.072055935,
+        "cpu_p50_range": [
+          18.8494,
+          20.2437
+        ]
+      }
+    }
+  },
+  "runs": [
+    {
+      "case": "00-normal",
+      "mode": "normal",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1133,
+          "cpu_samples": 1133,
+          "gpu_p50_ms": 1.13971198,
+          "gpu_p95_ms": 1.26976001,
+          "cpu_p50_ms": 1.734,
+          "cpu_p95_ms": 2.07878
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 801,
+          "cpu_samples": 801,
+          "gpu_p50_ms": 2.39206409,
+          "gpu_p95_ms": 2.75455999,
+          "cpu_p50_ms": 2.4093,
+          "cpu_p95_ms": 2.9728
+        },
+        {
+          "name": "water",
+          "gpu_samples": 590,
+          "cpu_samples": 590,
+          "gpu_p50_ms": 3.32083201,
+          "gpu_p95_ms": 3.65624315,
+          "cpu_p50_ms": 3.33095,
+          "cpu_p95_ms": 3.709185
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 775,
+          "cpu_samples": 775,
+          "gpu_p50_ms": 2.46476793,
+          "gpu_p95_ms": 2.87375355,
+          "cpu_p50_ms": 2.4771,
+          "cpu_p95_ms": 2.96227
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 44,
+          "cpu_samples": 44,
+          "gpu_p50_ms": 5.21420813,
+          "gpu_p95_ms": 5.54383368,
+          "cpu_p50_ms": 20.0379,
+          "cpu_p95_ms": 23.453765
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          7533,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11816.9,
+        "excluded_native_ms": 23595.2,
+        "calls": 3410656,
+        "worker_thread_cpu_ms": 1078.12,
+        "compiler_cpu_ms": 6312.5,
+        "critic_cpu_ms": 10234.4,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 3
+    },
+    {
+      "case": "01-core",
+      "mode": "core",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1115,
+          "cpu_samples": 1115,
+          "gpu_p50_ms": 1.159168,
+          "gpu_p95_ms": 1.33457923,
+          "cpu_p50_ms": 1.7363,
+          "cpu_p95_ms": 2.222
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 846,
+          "cpu_samples": 846,
+          "gpu_p50_ms": 2.30860794,
+          "gpu_p95_ms": 2.52979195,
+          "cpu_p50_ms": 2.3196,
+          "cpu_p95_ms": 2.55905
+        },
+        {
+          "name": "water",
+          "gpu_samples": 591,
+          "cpu_samples": 591,
+          "gpu_p50_ms": 3.34745598,
+          "gpu_p95_ms": 3.51590407,
+          "cpu_p50_ms": 3.3585,
+          "cpu_p95_ms": 3.5645
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 780,
+          "cpu_samples": 780,
+          "gpu_p50_ms": 2.504704,
+          "gpu_p95_ms": 2.80888313,
+          "cpu_p50_ms": 2.51325,
+          "cpu_p95_ms": 2.84051
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 46,
+          "cpu_samples": 46,
+          "gpu_p50_ms": 5.38316822,
+          "gpu_p95_ms": 5.69727993,
+          "cpu_p50_ms": 18.74375,
+          "cpu_p95_ms": 20.1515
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          7302,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11358.9,
+        "excluded_native_ms": 22868.7,
+        "calls": 3433713,
+        "worker_thread_cpu_ms": 1031.25,
+        "compiler_cpu_ms": 7109.38,
+        "critic_cpu_ms": 10484.4,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 3
+    },
+    {
+      "case": "02-prefer",
+      "mode": "prefer",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1083,
+          "cpu_samples": 1083,
+          "gpu_p50_ms": 1.159168,
+          "gpu_p95_ms": 1.28706563,
+          "cpu_p50_ms": 1.7878,
+          "cpu_p95_ms": 2.39079
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 846,
+          "cpu_samples": 846,
+          "gpu_p50_ms": 2.3039999,
+          "gpu_p95_ms": 2.61555195,
+          "cpu_p50_ms": 2.31685,
+          "cpu_p95_ms": 2.667175
+        },
+        {
+          "name": "water",
+          "gpu_samples": 590,
+          "cpu_samples": 590,
+          "gpu_p50_ms": 3.35974407,
+          "gpu_p95_ms": 3.46961915,
+          "cpu_p50_ms": 3.3715,
+          "cpu_p95_ms": 3.507395
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 785,
+          "cpu_samples": 785,
+          "gpu_p50_ms": 2.48934388,
+          "gpu_p95_ms": 2.79203844,
+          "cpu_p50_ms": 2.4985,
+          "cpu_p95_ms": 2.80442
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 41,
+          "cpu_samples": 41,
+          "gpu_p50_ms": 5.12819195,
+          "gpu_p95_ms": 5.47532797,
+          "cpu_p50_ms": 20.2437,
+          "cpu_p95_ms": 24.1944
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          7490,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11948.9,
+        "excluded_native_ms": 26864.4,
+        "calls": 3507587,
+        "worker_thread_cpu_ms": 1187.5,
+        "compiler_cpu_ms": 6843.75,
+        "critic_cpu_ms": 10218.8,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 3
+    },
+    {
+      "case": "03-partition",
+      "mode": "partition",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1110,
+          "cpu_samples": 1110,
+          "gpu_p50_ms": 1.16838396,
+          "gpu_p95_ms": 1.35577595,
+          "cpu_p50_ms": 1.7284,
+          "cpu_p95_ms": 2.30689
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 833,
+          "cpu_samples": 833,
+          "gpu_p50_ms": 2.3357439,
+          "gpu_p95_ms": 2.61877751,
+          "cpu_p50_ms": 2.3511,
+          "cpu_p95_ms": 2.66898
+        },
+        {
+          "name": "water",
+          "gpu_samples": 590,
+          "cpu_samples": 590,
+          "gpu_p50_ms": 3.3628161,
+          "gpu_p95_ms": 3.46782714,
+          "cpu_p50_ms": 3.37655,
+          "cpu_p95_ms": 3.511135
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 784,
+          "cpu_samples": 784,
+          "gpu_p50_ms": 2.50060797,
+          "gpu_p95_ms": 2.78599679,
+          "cpu_p50_ms": 2.5104,
+          "cpu_p95_ms": 2.82131
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 41,
+          "cpu_samples": 41,
+          "gpu_p50_ms": 5.86444807,
+          "gpu_p95_ms": 6.16960001,
+          "cpu_p50_ms": 19.2713,
+          "cpu_p95_ms": 22.1101
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          0,
+          7535
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11727.3,
+        "excluded_native_ms": 27264.5,
+        "calls": 3513187,
+        "worker_thread_cpu_ms": 1031.25,
+        "compiler_cpu_ms": 7437.5,
+        "critic_cpu_ms": 10390.6,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 2
+    },
+    {
+      "case": "04-normal",
+      "mode": "normal",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1081,
+          "cpu_samples": 1081,
+          "gpu_p50_ms": 1.16428804,
+          "gpu_p95_ms": 1.33632004,
+          "cpu_p50_ms": 1.7602,
+          "cpu_p95_ms": 2.3396
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 837,
+          "cpu_samples": 837,
+          "gpu_p50_ms": 2.30092812,
+          "gpu_p95_ms": 2.58437109,
+          "cpu_p50_ms": 2.3154,
+          "cpu_p95_ms": 2.65384
+        },
+        {
+          "name": "water",
+          "gpu_samples": 589,
+          "cpu_samples": 589,
+          "gpu_p50_ms": 3.36486411,
+          "gpu_p95_ms": 3.47811842,
+          "cpu_p50_ms": 3.3738,
+          "cpu_p95_ms": 3.52548
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 785,
+          "cpu_samples": 785,
+          "gpu_p50_ms": 2.4924159,
+          "gpu_p95_ms": 2.77196789,
+          "cpu_p50_ms": 2.5025,
+          "cpu_p95_ms": 2.80218
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 46,
+          "cpu_samples": 46,
+          "gpu_p50_ms": 5.04831982,
+          "gpu_p95_ms": 5.45920014,
+          "cpu_p50_ms": 19.646,
+          "cpu_p95_ms": 22.54315
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          7352,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11925.5,
+        "excluded_native_ms": 25137.5,
+        "calls": 3453120,
+        "worker_thread_cpu_ms": 1031.25,
+        "compiler_cpu_ms": 7109.38,
+        "critic_cpu_ms": 9968.75,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 2
+    },
+    {
+      "case": "05-partition",
+      "mode": "partition",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1112,
+          "cpu_samples": 1112,
+          "gpu_p50_ms": 1.17043197,
+          "gpu_p95_ms": 1.34906882,
+          "cpu_p50_ms": 1.742,
+          "cpu_p95_ms": 2.253595
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 831,
+          "cpu_samples": 831,
+          "gpu_p50_ms": 2.34086394,
+          "gpu_p95_ms": 2.598912,
+          "cpu_p50_ms": 2.3513,
+          "cpu_p95_ms": 2.7349
+        },
+        {
+          "name": "water",
+          "gpu_samples": 586,
+          "cpu_samples": 586,
+          "gpu_p50_ms": 3.36691189,
+          "gpu_p95_ms": 3.55558395,
+          "cpu_p50_ms": 3.38035,
+          "cpu_p95_ms": 3.609925
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 776,
+          "cpu_samples": 776,
+          "gpu_p50_ms": 2.51084805,
+          "gpu_p95_ms": 2.81523198,
+          "cpu_p50_ms": 2.52305,
+          "cpu_p95_ms": 2.847875
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 56,
+          "cpu_samples": 56,
+          "gpu_p50_ms": 5.08620811,
+          "gpu_p95_ms": 5.31558394,
+          "cpu_p50_ms": 18.82685,
+          "cpu_p95_ms": 21.569775
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          0,
+          7146
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11335.9,
+        "excluded_native_ms": 23191.7,
+        "calls": 3397407,
+        "worker_thread_cpu_ms": 1125,
+        "compiler_cpu_ms": 7062.5,
+        "critic_cpu_ms": 10375,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 3
+    },
+    {
+      "case": "06-prefer",
+      "mode": "prefer",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1113,
+          "cpu_samples": 1113,
+          "gpu_p50_ms": 1.15711999,
+          "gpu_p95_ms": 1.30129921,
+          "cpu_p50_ms": 1.7342,
+          "cpu_p95_ms": 2.31606
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 849,
+          "cpu_samples": 849,
+          "gpu_p50_ms": 2.30604792,
+          "gpu_p95_ms": 2.52846074,
+          "cpu_p50_ms": 2.314,
+          "cpu_p95_ms": 2.58946
+        },
+        {
+          "name": "water",
+          "gpu_samples": 588,
+          "cpu_samples": 588,
+          "gpu_p50_ms": 3.3684479,
+          "gpu_p95_ms": 3.49957114,
+          "cpu_p50_ms": 3.37815,
+          "cpu_p95_ms": 3.5471
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 787,
+          "cpu_samples": 787,
+          "gpu_p50_ms": 2.49343991,
+          "gpu_p95_ms": 2.73653769,
+          "cpu_p50_ms": 2.5052,
+          "cpu_p95_ms": 2.75663
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 54,
+          "cpu_samples": 54,
+          "gpu_p50_ms": 5.01591992,
+          "gpu_p95_ms": 5.45049601,
+          "cpu_p50_ms": 18.8494,
+          "cpu_p95_ms": 21.94345
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          7000,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11195.4,
+        "excluded_native_ms": 24213,
+        "calls": 3382594,
+        "worker_thread_cpu_ms": 1093.75,
+        "compiler_cpu_ms": 6562.5,
+        "critic_cpu_ms": 9625,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 2
+    },
+    {
+      "case": "07-core",
+      "mode": "core",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1104,
+          "cpu_samples": 1104,
+          "gpu_p50_ms": 1.17145598,
+          "gpu_p95_ms": 1.36688644,
+          "cpu_p50_ms": 1.743,
+          "cpu_p95_ms": 2.324805
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 837,
+          "cpu_samples": 837,
+          "gpu_p50_ms": 2.31833601,
+          "gpu_p95_ms": 2.57576966,
+          "cpu_p50_ms": 2.3289,
+          "cpu_p95_ms": 2.66678
+        },
+        {
+          "name": "water",
+          "gpu_samples": 583,
+          "cpu_samples": 583,
+          "gpu_p50_ms": 3.37407994,
+          "gpu_p95_ms": 3.57345283,
+          "cpu_p50_ms": 3.3863,
+          "cpu_p95_ms": 3.62109
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 776,
+          "cpu_samples": 776,
+          "gpu_p50_ms": 2.52211189,
+          "gpu_p95_ms": 2.79782408,
+          "cpu_p50_ms": 2.5352,
+          "cpu_p95_ms": 2.837
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 46,
+          "cpu_samples": 46,
+          "gpu_p50_ms": 5.40313601,
+          "gpu_p95_ms": 5.61254406,
+          "cpu_p50_ms": 19.119,
+          "cpu_p95_ms": 22.65965
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          6974,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 11172,
+        "excluded_native_ms": 23856,
+        "calls": 3372743,
+        "worker_thread_cpu_ms": 890.625,
+        "compiler_cpu_ms": 7031.25,
+        "critic_cpu_ms": 10500,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 2
+    },
+    {
+      "case": "08-normal",
+      "mode": "normal",
+      "scenes": [
+        {
+          "name": "model",
+          "gpu_samples": 1096,
+          "cpu_samples": 1096,
+          "gpu_p50_ms": 1.15404797,
+          "gpu_p95_ms": 1.30508801,
+          "cpu_p50_ms": 1.77385,
+          "cpu_p95_ms": 2.248275
+        },
+        {
+          "name": "shadows",
+          "gpu_samples": 846,
+          "cpu_samples": 846,
+          "gpu_p50_ms": 2.30502391,
+          "gpu_p95_ms": 2.54745609,
+          "cpu_p50_ms": 2.31405,
+          "cpu_p95_ms": 2.56785
+        },
+        {
+          "name": "water",
+          "gpu_samples": 591,
+          "cpu_samples": 591,
+          "gpu_p50_ms": 3.35974407,
+          "gpu_p95_ms": 3.46777594,
+          "cpu_p50_ms": 3.3705,
+          "cpu_p95_ms": 3.51815
+        },
+        {
+          "name": "volumetric",
+          "gpu_samples": 783,
+          "cpu_samples": 783,
+          "gpu_p50_ms": 2.49651194,
+          "gpu_p95_ms": 2.79552007,
+          "cpu_p50_ms": 2.5104,
+          "cpu_p95_ms": 2.81171
+        },
+        {
+          "name": "instances_65k",
+          "gpu_samples": 42,
+          "cpu_samples": 42,
+          "gpu_p50_ms": 6.1342721,
+          "gpu_p95_ms": 6.54192638,
+          "cpu_p50_ms": 19.7971,
+          "cpu_p95_ms": 23.606155
+        }
+      ],
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          7254,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cpu_accounting": {
+        "enabled": true,
+        "measurement": "all_interceptor_wall_excluding_application_native_calls",
+        "own_ms": 12379.4,
+        "excluded_native_ms": 23169.2,
+        "calls": 3402615,
+        "worker_thread_cpu_ms": 859.375,
+        "compiler_cpu_ms": 7140.62,
+        "critic_cpu_ms": 9937.5,
+        "worker_measurement_failures": 0,
+        "live_workers": [
+          3,
+          0,
+          0
+        ],
+        "complete_overhead_evidence": false
+      },
+      "trials": 2
+    }
+  ]
+}

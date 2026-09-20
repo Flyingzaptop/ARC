@@ -1,0 +1,211 @@
+{
+  "status": "checkpoint_not_complete",
+  "source_commit": "b7a8d73840b476901918a765ef812ed2cd8b1f90",
+  "shader_bytecode_or_ir_published": false,
+  "archives": [
+    {
+      "name": "auto-cpu-accounting-01.zip",
+      "files": 79,
+      "bytes": 39038183,
+      "sha256": "e2bd262cdca13183c7445e26851249c3bf38669b30eedd3cf2b340939e451a3a"
+    },
+    {
+      "name": "injected-workers-accounting-01.zip",
+      "files": 2,
+      "bytes": 3041,
+      "sha256": "d46a0bcc159979e47189712582a082660bf89320c40456646892777dd1059912"
+    },
+    {
+      "name": "injected-placement-core-01.zip",
+      "files": 2,
+      "bytes": 2341,
+      "sha256": "e30100b2ae1c3b766fd91014b0d757cb01d5afe28e254a77cb417e6c1cfa895e"
+    },
+    {
+      "name": "injected-placement-partition-01.zip",
+      "files": 2,
+      "bytes": 2340,
+      "sha256": "59b95f6469f77e8a6cd38da2bdf220d74f6ea07cfcbb12289526e2d11684c94e"
+    },
+    {
+      "name": "placement-matrix-v1--00-normal.zip",
+      "files": 78,
+      "bytes": 39913147,
+      "sha256": "dbe3e821c390d854054847e1cccc80a89f1ee77542cde8e84b15337c256651a1"
+    },
+    {
+      "name": "placement-matrix-v1--04-normal.zip",
+      "files": 89,
+      "bytes": 45644906,
+      "sha256": "b7680d681b0c1647ca5c5b8bd079c231be141f62b21b3430aeeb6cecfe740b51"
+    },
+    {
+      "name": "placement-matrix-v1--05-partition.zip",
+      "files": 78,
+      "bytes": 40300818,
+      "sha256": "ce1b5e5a9352e10ea7b2dca1740b4409d9edf4658a9546487d17e856a76cf5a0"
+    },
+    {
+      "name": "placement-adaptive-fixed-gpu-01.zip",
+      "files": 7,
+      "bytes": 2611446,
+      "sha256": "2f2e9f85b2513a3f7cac9b8362f3a5ce3d660e4639485c3e36cd56ecc10e26ee"
+    },
+    {
+      "name": "placement-adaptive-wicked-01.zip",
+      "files": 57,
+      "bytes": 20702560,
+      "sha256": "5a2271b829a2fb4bd7a770b59050de820eedae52ef4332fb86330186e5017d2b"
+    },
+    {
+      "name": "placement-cooled-v1--00-normal.zip",
+      "files": 38,
+      "bytes": 17836705,
+      "sha256": "bd3ca283270a2844d87d71689a50d0516bd093c1f2acfc1328d0e43d07eeddd0"
+    },
+    {
+      "name": "placement-cooled-v1--01-core.zip",
+      "files": 38,
+      "bytes": 17848716,
+      "sha256": "a5c3f0b4d0a58dc2fe7416c4ec2cf241693b1897a5282ac08b9043840225cee7"
+    },
+    {
+      "name": "placement-cooled-v1--02-prefer.zip",
+      "files": 38,
+      "bytes": 17832172,
+      "sha256": "fe38b59009814a18f9dc5062f3573d7d20e8734df86c4ec10d6d963d86599e36"
+    },
+    {
+      "name": "placement-cooled-v1--03-partition.zip",
+      "files": 38,
+      "bytes": 17850528,
+      "sha256": "27def5f14aa446ae4445b50ee56b0511c11970297e789206bedcf5ca9251b73b"
+    },
+    {
+      "name": "placement-cooled-v1--04-normal.zip",
+      "files": 38,
+      "bytes": 17845388,
+      "sha256": "6e689d0177b7decc8e0f2cc146da29dbc0784e7c1f7a0633dcfbf581f431e83f"
+    },
+    {
+      "name": "placement-cooled-v1--05-partition.zip",
+      "files": 38,
+      "bytes": 17898706,
+      "sha256": "8e5fdc5227e5309a32fa4a6c9104f6841b15a48e8d7e85c0fcf11fae9fad5ef2"
+    },
+    {
+      "name": "placement-cooled-v1--06-prefer.zip",
+      "files": 38,
+      "bytes": 17975007,
+      "sha256": "4a86b13a8cc5c7a71dbb31426823a13f4ad315a4d0f7fe8bdf87593c9efe7d38"
+    },
+    {
+      "name": "placement-cooled-v1--07-core.zip",
+      "files": 38,
+      "bytes": 17805027,
+      "sha256": "4f81d365958101ea17bb52887d2c355d7b320c2e21c179ff7b48f33208defb5e"
+    },
+    {
+      "name": "placement-cooled-v1--08-normal.zip",
+      "files": 38,
+      "bytes": 17907790,
+      "sha256": "41491f6ed999a0e1b53f41f3e62a1e4b7fdfefb57b3ccc6df50a5ac433f1b04d"
+    },
+    {
+      "name": "placement-cooled-v1--09-prefer.zip",
+      "files": 38,
+      "bytes": 17938473,
+      "sha256": "7efd6b4ff00ee6342243c69c5d92feb5df1884323e139fa38d3097cf2044bff6"
+    },
+    {
+      "name": "placement-cooled-v1--10-core.zip",
+      "files": 38,
+      "bytes": 17747613,
+      "sha256": "ddf3b50baf39ae484a5922e6a95e6aa66dd03be0b1b29336d33687466d98b193"
+    },
+    {
+      "name": "placement-cooled-v1--11-partition.zip",
+      "files": 38,
+      "bytes": 17864663,
+      "sha256": "4f73f002bb8d8e68e96d9a1eed44fc0b54bc80f9550ea1b09a84553654ab9346"
+    },
+    {
+      "name": "placement-cooled-v1--12-normal.zip",
+      "files": 38,
+      "bytes": 17776095,
+      "sha256": "08f1367355e6ae48e1e384997faf50b4359cd6fb4c6b06a4804ed0c09554e8d0"
+    },
+    {
+      "name": "placement-wicked-v1--00-normal.zip",
+      "files": 37,
+      "bytes": 15216675,
+      "sha256": "ae2a0cd84775eb3e4cc02384e33bf98fdbdd9983703e1426f1972d1d9a0469c7"
+    },
+    {
+      "name": "placement-wicked-v1--01-core.zip",
+      "files": 37,
+      "bytes": 15218360,
+      "sha256": "7b3e307a9639487e8ed54e3533cab22231da8369643520fbaa04bccbc67ed515"
+    },
+    {
+      "name": "placement-wicked-v1--02-prefer.zip",
+      "files": 37,
+      "bytes": 15213122,
+      "sha256": "2b1b7faa4c5132c2620149d8f6037d71ae93b2a13d0ec4453ce734e117e40f8f"
+    },
+    {
+      "name": "placement-wicked-v1--03-partition.zip",
+      "files": 36,
+      "bytes": 15213333,
+      "sha256": "5e7e9df9e2ce8f9f4e249cf3a8cca81cce4395d889c4b335cfa87d45cd7cc470"
+    },
+    {
+      "name": "placement-wicked-v1--04-normal.zip",
+      "files": 36,
+      "bytes": 15215911,
+      "sha256": "ede677534c81b77f85f9900749892be789e745702787291b5cdcc7bd1e99df80"
+    },
+    {
+      "name": "placement-wicked-v1--05-partition.zip",
+      "files": 37,
+      "bytes": 15220891,
+      "sha256": "1de5bd086d73742619995bbac91c3ed1e50ec5c9e0d640737c9be4923d46b8e1"
+    },
+    {
+      "name": "placement-wicked-v1--06-prefer.zip",
+      "files": 36,
+      "bytes": 15197277,
+      "sha256": "7df93d702b5f4998dc63382e0262f1540cb35d927595ed4410438c8aa4f49e90"
+    },
+    {
+      "name": "placement-wicked-v1--07-core.zip",
+      "files": 36,
+      "bytes": 17419713,
+      "sha256": "dac112061f6a5453e205d93496e8b6d0bf8c9f892e83f8d22dd267369ebd1858"
+    },
+    {
+      "name": "placement-wicked-v1--08-normal.zip",
+      "files": 36,
+      "bytes": 15207624,
+      "sha256": "453a017158f54f0dc2c6089922b18cb236c0eda8e4791ed372099a56f3ff5066"
+    },
+    {
+      "name": "focused-dynamic-v3--00-instances-adaptive-100.zip",
+      "files": 36,
+      "bytes": 10774037,
+      "sha256": "ae7cc9edd678ceb83edbf74fbce10b3f447ef413b936c182edf50642d445d385"
+    },
+    {
+      "name": "focused-dynamic-v3--01-hello-adaptive-100.zip",
+      "files": 7,
+      "bytes": 19467,
+      "sha256": "fe6e511adf7d67100f4256f608ae13fb30f478d1038e03f4041a973e5782d0f6"
+    },
+    {
+      "name": "focused-dynamic-v3--02-instances-adaptive-fixed.zip",
+      "files": 6,
+      "bytes": 21427,
+      "sha256": "8d6ca5348d919c930a919c74137a0316abd81c48b6bfb57145747711c45a5acc"
+    }
+  ]
+}

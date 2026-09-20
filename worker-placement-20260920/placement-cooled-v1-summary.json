@@ -1,0 +1,951 @@
+{
+  "status": "experimental_comparison",
+  "not_game_logic_parallelization": true,
+  "render_prepare_is_not_total_cpu_frametime": true,
+  "modes": {
+    "core": {
+      "runs": 3,
+      "qualified_comparisons": 3,
+      "median_fps": 78.14487810336755,
+      "fps_range": [
+        77.98311844846764,
+        78.54213441234867
+      ],
+      "median_p99_ms": 16.671519,
+      "median_fps_change_percent": 0.18563106209465996,
+      "median_p99_change_percent": -5.9472347748469545
+    },
+    "normal": {
+      "runs": 4,
+      "qualified_comparisons": 0,
+      "median_fps": 78.00046317516998,
+      "fps_range": [
+        77.69781981471556,
+        79.10807543540392
+      ],
+      "median_p99_ms": 17.430898499999998
+    },
+    "partition": {
+      "runs": 3,
+      "qualified_comparisons": 3,
+      "median_fps": 77.9517431159549,
+      "fps_range": [
+        77.47579820700084,
+        78.12836470789416
+      ],
+      "median_p99_ms": 16.177636,
+      "median_fps_change_percent": -0.5674516628061732,
+      "median_p99_change_percent": -8.13368486931414
+    },
+    "prefer": {
+      "runs": 3,
+      "qualified_comparisons": 3,
+      "median_fps": 78.10034500241652,
+      "fps_range": [
+        78.05251888617286,
+        78.31439438930619
+      ],
+      "median_p99_ms": 16.320941,
+      "median_fps_change_percent": 0.06678986562971279,
+      "median_p99_change_percent": -8.158695038903563
+    }
+  },
+  "runs": [
+    {
+      "case": "00-normal",
+      "mode": "normal",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 79.10807543540392,
+      "mean_frame_ms": 12.6409345,
+      "p95_ms": 14.175539999999998,
+      "p99_ms": 16.407525999999994,
+      "max_ms": 24.4125,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.69911375,
+      "submit_ms": 0.13502258333333333,
+      "gpu_span_ms": 12.615000746666666,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          2924,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1856.357142857143,
+      "gpu_clock_spread_fraction": 0.024241025049059218,
+      "max_gpu_temperature_c": 58.0,
+      "mean_gpu_power_w": 114.57142857142857
+    },
+    {
+      "case": "01-core",
+      "mode": "core",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.54213441234867,
+      "mean_frame_ms": 12.732019666666666,
+      "p95_ms": 14.25304,
+      "p99_ms": 16.739434999999997,
+      "max_ms": 25.8056,
+      "frames_over_25ms": 2,
+      "render_prepare_ms": 4.532366833333334,
+      "submit_ms": 0.133769,
+      "gpu_span_ms": 12.711606613333334,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          2905,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1841.4285714285713,
+      "gpu_clock_spread_fraction": 0.02443754848719938,
+      "max_gpu_temperature_c": 64.0,
+      "mean_gpu_power_w": 114.66928571428572,
+      "references": [
+        "00-normal",
+        "04-normal"
+      ],
+      "fps_change_percent": 0.18563106209465996,
+      "p99_change_percent": -1.8522466450687336,
+      "comparison_qualified": true
+    },
+    {
+      "case": "02-prefer",
+      "mode": "prefer",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.31439438930619,
+      "mean_frame_ms": 12.769044666666666,
+      "p95_ms": 14.46643,
+      "p99_ms": 16.320941,
+      "max_ms": 24.9575,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.61770175,
+      "submit_ms": 0.13727091666666666,
+      "gpu_span_ms": 12.748701866666666,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          2934,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1828.7857142857142,
+      "gpu_clock_spread_fraction": 0.032808655235714565,
+      "max_gpu_temperature_c": 68.0,
+      "mean_gpu_power_w": 114.42571428571429,
+      "references": [
+        "00-normal",
+        "04-normal"
+      ],
+      "fps_change_percent": -0.10486623718705124,
+      "p99_change_percent": -4.305988117974968,
+      "comparison_qualified": true
+    },
+    {
+      "case": "03-partition",
+      "mode": "partition",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 77.9517431159549,
+      "mean_frame_ms": 12.8284495,
+      "p95_ms": 14.47015,
+      "p99_ms": 15.841292999999995,
+      "max_ms": 22.4069,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.521115,
+      "submit_ms": 0.13733125,
+      "gpu_span_ms": 12.807340373333334,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 2,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          0,
+          3086
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1824.7333333333333,
+      "gpu_clock_spread_fraction": 0.03671769390961236,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 114.66933333333333,
+      "references": [
+        "00-normal",
+        "04-normal"
+      ],
+      "fps_change_percent": -0.5674516628061732,
+      "p99_change_percent": -7.118291735222904,
+      "comparison_qualified": true
+    },
+    {
+      "case": "04-normal",
+      "mode": "normal",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 77.69781981471556,
+      "mean_frame_ms": 12.870374,
+      "p95_ms": 14.511379999999999,
+      "p99_ms": 17.703158,
+      "max_ms": 27.3264,
+      "frames_over_25ms": 2,
+      "render_prepare_ms": 4.743553416666667,
+      "submit_ms": 0.13930375,
+      "gpu_span_ms": 12.830211413333334,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          3086,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1813.642857142857,
+      "gpu_clock_spread_fraction": 0.049623882478043405,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 114.57571428571428
+    },
+    {
+      "case": "05-partition",
+      "mode": "partition",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.12836470789416,
+      "mean_frame_ms": 12.79944875,
+      "p95_ms": 14.388465,
+      "p99_ms": 16.53407,
+      "max_ms": 22.5008,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.559741833333334,
+      "submit_ms": 0.13869741666666666,
+      "gpu_span_ms": 12.777796266666666,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 2,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          0,
+          3100
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1828.5714285714287,
+      "gpu_clock_spread_fraction": 0.028437499999999998,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 114.45571428571428,
+      "references": [
+        "04-normal",
+        "08-normal"
+      ],
+      "fps_change_percent": 0.32291559952273285,
+      "p99_change_percent": -8.13368486931414,
+      "comparison_qualified": true
+    },
+    {
+      "case": "06-prefer",
+      "mode": "prefer",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.10034500241652,
+      "mean_frame_ms": 12.80404075,
+      "p95_ms": 14.381165000000001,
+      "p99_ms": 16.527147,
+      "max_ms": 23.0617,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.694655916666667,
+      "submit_ms": 0.13542733333333334,
+      "gpu_span_ms": 12.78432768,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          2919,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1825.4285714285713,
+      "gpu_clock_spread_fraction": 0.024651745187040226,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 114.49214285714285,
+      "references": [
+        "04-normal",
+        "08-normal"
+      ],
+      "fps_change_percent": 0.28693611168542077,
+      "p99_change_percent": -8.172150322747552,
+      "comparison_qualified": true
+    },
+    {
+      "case": "07-core",
+      "mode": "core",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.14487810336755,
+      "mean_frame_ms": 12.796744,
+      "p95_ms": 14.351745,
+      "p99_ms": 16.6674,
+      "max_ms": 26.0168,
+      "frames_over_25ms": 1,
+      "render_prepare_ms": 4.55258125,
+      "submit_ms": 0.137218,
+      "gpu_span_ms": 12.775706453333333,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          3086,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1832.357142857143,
+      "gpu_clock_spread_fraction": 0.024558531165945502,
+      "max_gpu_temperature_c": 70.0,
+      "mean_gpu_power_w": 114.47214285714286,
+      "references": [
+        "04-normal",
+        "08-normal"
+      ],
+      "fps_change_percent": 0.3441200876306283,
+      "p99_change_percent": -7.392879018342513,
+      "comparison_qualified": true
+    },
+    {
+      "case": "08-normal",
+      "mode": "normal",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.05678365617922,
+      "mean_frame_ms": 12.811186333333334,
+      "p95_ms": 14.528679999999998,
+      "p99_ms": 18.292778000000002,
+      "max_ms": 25.0703,
+      "frames_over_25ms": 1,
+      "render_prepare_ms": 4.7547680833333335,
+      "submit_ms": 0.13800691666666667,
+      "gpu_span_ms": 12.790396586666667,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          2956,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1830.7857142857142,
+      "gpu_clock_spread_fraction": 0.02840310561429519,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 114.53285714285714
+    },
+    {
+      "case": "09-prefer",
+      "mode": "prefer",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 78.05251888617286,
+      "mean_frame_ms": 12.811886333333334,
+      "p95_ms": 14.77975,
+      "p99_ms": 16.279521999999996,
+      "max_ms": 22.6498,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.783012666666667,
+      "submit_ms": 0.13989241666666666,
+      "gpu_span_ms": 12.792623786666667,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 2,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          3008,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1831.2857142857142,
+      "gpu_clock_spread_fraction": 0.024572899602153055,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 114.50571428571429,
+      "references": [
+        "08-normal",
+        "12-normal"
+      ],
+      "fps_change_percent": 0.06678986562971279,
+      "p99_change_percent": -8.158695038903563,
+      "comparison_qualified": true
+    },
+    {
+      "case": "10-core",
+      "mode": "core",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 77.98311844846764,
+      "mean_frame_ms": 12.823288166666666,
+      "p95_ms": 14.435270000000001,
+      "p99_ms": 16.671519,
+      "max_ms": 27.6526,
+      "frames_over_25ms": 2,
+      "render_prepare_ms": 4.6345773333333335,
+      "submit_ms": 0.13601291666666668,
+      "gpu_span_ms": 12.80138496,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          2890,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1829.7142857142858,
+      "gpu_clock_spread_fraction": 0.03279200499687695,
+      "max_gpu_temperature_c": 70.0,
+      "mean_gpu_power_w": 114.42714285714285,
+      "references": [
+        "08-normal",
+        "12-normal"
+      ],
+      "fps_change_percent": -0.02218457255028783,
+      "p99_change_percent": -5.9472347748469545,
+      "comparison_qualified": true
+    },
+    {
+      "case": "11-partition",
+      "mode": "partition",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 77.47579820700084,
+      "mean_frame_ms": 12.9072565,
+      "p95_ms": 14.45608,
+      "p99_ms": 16.177636,
+      "max_ms": 22.245,
+      "frames_over_25ms": 0,
+      "render_prepare_ms": 4.552797833333333,
+      "submit_ms": 0.13508516666666667,
+      "gpu_span_ms": 12.886161066666666,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 2,
+        "presents_by_mode": [
+          0,
+          0,
+          0,
+          3106
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1822.1333333333334,
+      "gpu_clock_spread_fraction": 0.02469632665008049,
+      "max_gpu_temperature_c": 70.0,
+      "mean_gpu_power_w": 114.6,
+      "references": [
+        "08-normal",
+        "12-normal"
+      ],
+      "fps_change_percent": -0.6725916154219247,
+      "p99_change_percent": -8.733487296149567,
+      "comparison_qualified": true
+    },
+    {
+      "case": "12-normal",
+      "mode": "normal",
+      "signature": [
+        "a8c2e7fdc8ba791638ca997b1c928a383b9afdb2d8534996947c700a3a3bccb7",
+        "bb94ac8ec969ddde0c0d3e0097cc902463b2930f1fbf35d92202245b6aefddf1",
+        "eb0e6196eae92f69f7e3a8a0bf0e35f30d7c2adad475bebbde3a41015ca0b414",
+        "compute-neutral",
+        156.0,
+        1200
+      ],
+      "frames": 1200,
+      "fps": 77.94414269416073,
+      "mean_frame_ms": 12.829700416666666,
+      "p95_ms": 14.378019999999998,
+      "p99_ms": 17.158639,
+      "max_ms": 25.8346,
+      "frames_over_25ms": 1,
+      "render_prepare_ms": 4.65234275,
+      "submit_ms": 0.13606391666666667,
+      "gpu_span_ms": 12.809859413333333,
+      "trials": 2,
+      "placement": {
+        "mode": "normal",
+        "supported": true,
+        "worker_group": 0,
+        "worker_core": 14,
+        "physical_cores": 8,
+        "worker_cpu_sets": [
+          270,
+          271
+        ],
+        "worker_logicals": [
+          14,
+          15
+        ],
+        "registered_workers": 3,
+        "game_default_partitioned": false,
+        "rollback_pending": false,
+        "os_exclusive_reservation": false,
+        "transitions": 0,
+        "presents_by_mode": [
+          2878,
+          0,
+          0,
+          0
+        ],
+        "failures": 0,
+        "last_error": "",
+        "adaptive_enabled": false,
+        "adaptive_windows": 0,
+        "workload_resets": 0,
+        "last_window_ms": [
+          0,
+          0,
+          0
+        ]
+      },
+      "thermal_gate": true,
+      "gpu_clock_mhz": 1826.5,
+      "gpu_clock_spread_fraction": 0.03668217903093348,
+      "max_gpu_temperature_c": 70.0,
+      "mean_gpu_power_w": 114.43571428571428
+    }
+  ],
+  "invalid": []
+}
