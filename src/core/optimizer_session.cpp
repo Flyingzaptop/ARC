@@ -24,9 +24,9 @@ void OptimizerSession::target(double fps){
 void OptimizerSession::candidates(std::vector<SessionAction> actions){
     if(actions.size()>128)throw std::invalid_argument("Candidate capacity");
     std::vector<std::uint64_t> ids;
-    for(const auto& a:actions){if(!a.id||!a.generation||!nonnegative(a.predicted_gain_ms)||!nonnegative(a.quality_cost)||
+    for(const auto& a:actions){if(!a.id||!a.generation||!nonnegative(a.predicted_gain_ms)||!nonnegative(a.quality_cost)||!nonnegative(a.measured_cost_ms)||
         std::find(ids.begin(),ids.end(),a.id)!=ids.end())throw std::invalid_argument("Invalid or duplicate action");ids.push_back(a.id);}
-    std::stable_sort(actions.begin(),actions.end(),[](const auto& a,const auto& b){return a.predicted_gain_ms/(.01+a.quality_cost)>b.predicted_gain_ms/(.01+b.quality_cost);});
+    std::stable_sort(actions.begin(),actions.end(),[](const auto& a,const auto& b){return (a.gain_known?a.predicted_gain_ms:a.measured_cost_ms)/(.01+a.quality_cost)>(b.gain_known?b.predicted_gain_ms:b.measured_cost_ms)/(.01+b.quality_cost);});
     // A rejection belongs to a concrete generation, not the numeric action ID
     // forever. Newly compiled/replaced pipelines must get their own trial.
     std::erase_if(tried_,[&](auto id){

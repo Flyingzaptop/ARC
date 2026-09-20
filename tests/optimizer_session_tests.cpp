@@ -1,9 +1,20 @@
 #include "arc/optimizer_session.hpp"
+#include "arc/optimizer_policy.hpp"
 #include <cassert>
 #include <limits>
 #include <iostream>
 
 int main(){
+    arc::PolicyBundle bundle{1,{{11,1,2},{12,2,2}}};assert(bundle.valid());
+    auto replacement=bundle;replacement.id=2;assert(replacement.replace({11,2,2}));
+    assert(replacement.compute.size()==2&&replacement.find(12)->x_rate==2&&bundle.find(11)->x_rate==1);
+    auto duplicate=bundle;duplicate.compute.push_back(duplicate.compute.front());assert(!duplicate.valid());
+    auto malformed=bundle;malformed.compute.front().edge_threshold=std::numeric_limits<float>::quiet_NaN();assert(!malformed.valid());
+    arc::OptimizerSessionConfig measured_config;measured_config.target_fps=120;measured_config.warmup_samples=1;
+    arc::OptimizerSession measured(measured_config);
+    measured.candidates({{1,1,0,1,true,1,false},{2,1,0,1,true,4,false}});
+    assert(measured.frame(16).kind==arc::SessionRequestKind::Profile);
+    assert(measured.frame(16).action==2); // measured expense, no fabricated gain
     arc::OptimizerSessionConfig config;config.target_fps=120;config.warmup_samples=2;config.settle_samples=1;config.hold_samples=2;
     arc::OptimizerSession session(config);session.candidates({{1,5,4,.1,true},{2,9,2,.1,true}});
     assert(session.frame(16).kind==arc::SessionRequestKind::None);

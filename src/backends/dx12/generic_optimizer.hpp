@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include <array>
 #include <vector>
+#include "arc/optimizer_policy.hpp"
 
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
@@ -16,6 +17,11 @@ struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch
 PolicyStamp policy_stamp() noexcept;
 struct CandidateCapabilities {std::uint64_t pipeline{};bool coarse{},comparison{},zero{},edges{},mips{};};
 CandidateCapabilities candidate_capabilities() noexcept;
+struct WorkCandidate {CandidateCapabilities capabilities;double gpu_ms_per_window{};std::uint64_t profile_session{};};
+std::vector<WorkCandidate> candidate_catalog() noexcept;
+// Validates the entire bundle before publishing any setting. An empty bundle
+// is neutral; original-policy configuration remains available through "off".
+bool configure_bundle(const arc::PolicyBundle&) noexcept;
 bool restoration_ready() noexcept;
 struct FrameStateSample {std::uint64_t pipeline{},submission{};std::vector<std::array<unsigned,3>> keys;std::vector<std::array<UINT,4>> words;std::vector<unsigned> valid;};
 void sample_frame_state(bool enabled) noexcept;

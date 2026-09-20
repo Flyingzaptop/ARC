@@ -29,6 +29,9 @@ struct SessionAction {
     std::uint64_t id{},generation{};
     double predicted_gain_ms{},quality_cost{};
     bool ready{};
+    // Measured work cost is a discovery priority, not a promised speedup.
+    double measured_cost_ms{};
+    bool gain_known{true};
 };
 struct SessionSnapshot {
     SessionPhase phase{SessionPhase::Warmup};

@@ -36,7 +36,7 @@ void stop() noexcept;
 void present() noexcept;
 void collect() noexcept;
 void snapshot(std::ostream&);
-struct ComputeCost {ID3D12PipelineState* pipeline{};std::uint64_t session{},pipeline_identity{};double total_gpu_ms{};};
+struct ComputeCost {ID3D12PipelineState* pipeline{};std::uint64_t session{},pipeline_identity{};double total_gpu_ms{};UINT present_windows{};};
 // Only completed, healthy captures; retired PSOs are never matched by an old
 // address. Consumers must call before taking their own submission lock.
 std::vector<ComputeCost> compute_costs() noexcept;

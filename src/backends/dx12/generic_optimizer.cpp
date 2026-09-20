@@ -43,7 +43,9 @@ struct Recording {
 struct State {
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
-    bool heaviest_only{};std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
+    bool heaviest_only{},bundle_mode{};arc::PolicyBundle bundle;
+    std::vector<std::uint64_t> catalog_targets;
+    std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true},measure_control{};float edge_threshold{.08f};
     std::filesystem::path worker,compiler,cache;
     std::unordered_map<ID3D12RootSignature*,std::shared_ptr<Root>> roots;
@@ -275,7 +277,7 @@ bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
 PolicyStamp policy_stamp()noexcept{PolicyStamp stamp;safe([&]{const auto& s=state();stamp={s.policy_epoch,s.coarse_submissions,s.last_active_epoch,s.selected_pipeline};});return stamp;}
 void sample_frame_state(bool enabled)noexcept{safe([&]{state().sample_state=enabled;state().last_frame_state={};});}
 FrameStateSample frame_state_sample(){std::lock_guard lock(state().mutex);return state().last_frame_state;}
-bool restoration_ready()noexcept{bool ready=false;safe([&]{const auto& s=state();if(s.faults||s.x_rate!=1||s.y_rate!=1||s.comparison_taps||s.zero_factor||s.mip_steps)return;
+bool restoration_ready()noexcept{bool ready=false;safe([&]{const auto& s=state();if(s.faults||!s.bundle.compute.empty()||s.x_rate!=1||s.y_rate!=1||s.comparison_taps||s.zero_factor||s.mip_steps)return;
     ready=std::all_of(s.controls.begin(),s.controls.end(),[](const auto& control){return SUCCEEDED(control->device()->GetDeviceRemovedReason())&&control->ready();});});return ready;}
 void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
     out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected","root_arguments_uncertain"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
@@ -288,6 +290,37 @@ CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities res
     for(const auto& [native,p]:s.pipelines){(void)native;if(p->id!=s.selected_pipeline||!p->variant)continue;const auto& c=p->variant->contract;
         result={p->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0,c.mip_samples!=0};break;}
 });return result;}
+std::vector<WorkCandidate> candidate_catalog()noexcept{
+    // Profiling has a separate lock; never acquire it under the submission lock.
+    const auto costs=gpu_profile::compute_costs();std::vector<WorkCandidate> result;
+    safe([&]{auto& s=state();if(s.faults)return;
+        for(const auto& cost:costs){
+            const auto p=s.pipelines.find(cost.pipeline);
+            if(p==s.pipelines.end()||!p->second->variant||p->second->profile_id!=cost.pipeline_identity||!cost.present_windows||!std::isfinite(cost.total_gpu_ms)||cost.total_gpu_ms<=0)continue;
+            const auto& c=p->second->variant->contract;
+            result.push_back({{p->second->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0,c.mip_samples!=0},cost.total_gpu_ms/cost.present_windows,cost.session});
+        }
+        std::sort(result.begin(),result.end(),[](const auto& a,const auto& b){return a.gpu_ms_per_window!=b.gpu_ms_per_window?a.gpu_ms_per_window>b.gpu_ms_per_window:a.capabilities.pipeline<b.capabilities.pipeline;});
+        if(result.size()>arc::PolicyBundle::capacity)result.resize(arc::PolicyBundle::capacity);
+        s.catalog_targets.clear();for(const auto& c:result)s.catalog_targets.push_back(c.capabilities.pipeline);
+    });return result;
+}
+bool configure_bundle(const arc::PolicyBundle& bundle)noexcept{
+    if(!enabled()||!bundle.valid())return false;
+    bool accepted=false;safe([&]{auto& s=state();if(s.faults)return;
+        for(const auto& setting:bundle.compute){
+            const auto p=std::find_if(s.pipelines.begin(),s.pipelines.end(),[&](const auto& pair){return pair.second->id==setting.pipeline;});
+            if(p==s.pipelines.end()||!p->second->variant)return;
+            const auto& c=p->second->variant->contract;
+            if((setting.comparison_taps&&!c.comparison_filter_groups)||(setting.zero_factor&&!c.zero_factor_regions)||(setting.mip_steps&&!c.mip_samples)||(setting.protect_edges&&!c.edge_input_mask))return;
+        }
+        auto prepared=bundle; // allocation failure must leave the old policy intact
+        s.bundle=std::move(prepared);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=true;
+        s.x_rate=s.y_rate=1;s.comparison_taps=s.zero_factor=s.mip_steps=0;
+        s.selected_pipeline=bundle.compute.empty()?(s.catalog_targets.empty()?0:s.catalog_targets.front()):bundle.compute.front().pipeline;
+        ++s.policy_epoch;accepted=true;
+    });return accepted;
+}
 void control_timing_snapshot(std::ostream& out){
     std::lock_guard lock(state().mutex);GpuControl::Timing total;
     for(const auto& control:state().controls){const auto value=control->timing();total.samples+=value.samples;total.dropped+=value.dropped;total.invalid+=value.invalid;total.milliseconds+=value.milliseconds;}
@@ -327,7 +360,7 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
     if(accepted&&command!=L"mip-half"&&command!=L"mip1"&&command!=L"mip2")s.mip_steps=0;
-    if(accepted){++s.policy_epoch;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
+    if(accepted){++s.policy_epoch;s.bundle_mode=false;s.bundle={};s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
 DescriptorWrite descriptor_write()noexcept{static const auto sample=register_cpu_sample("descriptor_write_lock");CpuMeter meter(sample);DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().descriptor_mutex);meter.locked();return result;}
@@ -445,7 +478,7 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     if(c->arguments_uncertain){const auto layout=c->arguments.layout();bool known=layout&&layout->complete;if(known)for(UINT i=0;i<layout->parameters.size();++i){const auto a=c->arguments.raw_argument(i);if(!a||(!a->initialized&&!(a->observed&&(a->type==D3D12_ROOT_PARAMETER_TYPE_CBV||a->type==D3D12_ROOT_PARAMETER_TYPE_SRV||a->type==D3D12_ROOT_PARAMETER_TYPE_UAV)))){known=false;break;}}
         if(!known){++s.dispatch_declines[11];return;}c->arguments_uncertain=false;}
     const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}
-    if(!s.instrumentation){++s.dispatch_declines[9];return;}if(s.heaviest_only&&p->second->id!=s.selected_pipeline){++s.dispatch_declines[10];return;}
+    if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.catalog_targets.begin(),s.catalog_targets.end(),p->second->id)==s.catalog_targets.end()&&!s.bundle.find(p->second->id))){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z});c->control->keep_alive.push_back(variant);
@@ -470,7 +503,13 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
         try{
             std::array<ControlValue,GpuControl::capacity> values{};
             if(!s.faults&&c.valid&&c.closed&&c.epilogue)for(unsigned n=0;n<c.uses.size();++n){
-                const auto& use=c.uses[n];std::vector<binding::DescriptorHeap> heaps;
+                const auto& use=c.uses[n];
+                const auto* requested=s.bundle_mode?s.bundle.find(use.variant->id):nullptr;
+                // Neutral and unselected cached recordings require no descriptor
+                // proofs. Their GPU epilogue restores neutral control values.
+                if(!s.sample_state&&((s.bundle_mode&&!requested)||(!s.bundle_mode&&(s.heaviest_only&&use.variant->id!=s.selected_pipeline))||!s.instrumentation))continue;
+                const arc::ComputePolicy setting=requested?*requested:arc::ComputePolicy{use.variant->id,s.x_rate,s.y_rate,s.comparison_taps,s.zero_factor,s.mip_steps,s.protect_edges,s.edge_threshold};
+                std::vector<binding::DescriptorHeap> heaps;
                 for(auto id:use.heaps){const auto h=s.heaps_by_id.find(id);if(h!=s.heaps_by_id.end())heaps.push_back(h->second);}
                 if(s.sample_state&&use.variant->id==s.selected_pipeline){mirror::InternalCall internal;std::map<std::pair<unsigned,unsigned>,UniformMemory> views;
                     FrameStateSample sample;sample.pipeline=use.variant->id;sample.submission=s.last_frame_state.submission+1;sample.keys=use.variant->state_reads;
@@ -494,15 +533,15 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 auto& v=*use.variant;++v.attempts;v.admitted+=admitted.admitted;v.last_reason=admitted.reason;v.binding_class=admitted.binding_class;v.binding_register=admitted.binding_register;v.binding_space=admitted.binding_space;
                 if(s.history.size()<256||s.history.contains(v.id))s.history[v.id]=v;
                 if(s.admission_reasons.size()<64||s.admission_reasons.contains(admitted.reason))++s.admission_reasons[admitted.reason];
-                if(admitted.admitted&&(!s.heaviest_only||use.variant->id==s.selected_pipeline)){
-                    values[n]={s.x_rate,s.y_rate,admitted.width,admitted.height,use.variant->contract.comparison_filter_groups?s.comparison_taps:0,use.variant->contract.zero_factor_regions?s.zero_factor:0};
-                    if(use.variant->contract.mip_samples)values[n].mip_steps=s.mip_steps;
-                    if(s.protect_edges){unsigned mask=0,selected=0;
+                if(admitted.admitted&&(s.bundle_mode?requested!=nullptr:(!s.heaviest_only||use.variant->id==s.selected_pipeline))){
+                    values[n]={setting.x_rate,setting.y_rate,admitted.width,admitted.height,use.variant->contract.comparison_filter_groups?setting.comparison_taps:0,use.variant->contract.zero_factor_regions?setting.zero_factor:0};
+                    if(use.variant->contract.mip_samples)values[n].mip_steps=setting.mip_steps;
+                    if(setting.protect_edges){unsigned mask=0,selected=0;
                         for(const auto& input:admitted.inputs){const auto& r=input.contract;const auto& d=input.allocation.description;const auto& v=input.view;
                             if(selected>=4||r.resource_class!=0||r.range_id>=31||!(use.variant->contract.edge_input_mask&(1u<<r.range_id))||v.shape.dimension!=D3D12_SRV_DIMENSION_TEXTURE2D||v.first_mip>=d.MipLevels||v.first_mip>=32)continue;
                             if(std::max<UINT64>(1,d.Width>>v.first_mip)==admitted.width&&std::max(1u,d.Height>>v.first_mip)==admitted.height){mask|=1u<<r.range_id;++selected;}
                         }
-                        if(mask){values[n].edge_sources=0x80000000u|mask;values[n].edge_threshold=s.edge_threshold;}else values[n]=ControlValue{};
+                        if(mask){values[n].edge_sources=0x80000000u|mask;values[n].edge_threshold=setting.edge_threshold;}else values[n]=ControlValue{};
                     }
                 }
             }

@@ -358,7 +358,7 @@ std::vector<ComputeCost> compute_costs()noexcept{
         std::map<const Pipeline*,double> costs;
         for(const auto& row:s.session->rows)if(row.span.kind==2&&row.span.pipeline&&!row.span.mixed_pipeline)
             costs[row.span.pipeline.get()]+=double(row.end-row.start)*1000.0/double(row.frequency);
-        for(const auto& [native,pipeline]:s.pipelines)if(auto it=costs.find(pipeline.get());it!=costs.end())result.push_back({native,s.session->id,pipeline->id,it->second});
+        for(const auto& [native,pipeline]:s.pipelines)if(auto it=costs.find(pipeline.get());it!=costs.end())result.push_back({native,s.session->id,pipeline->id,it->second,s.session->presents});
     });return result;
 }
 std::uint64_t pipeline_identity(ID3D12PipelineState* native)noexcept{std::uint64_t id{};safe([&]{if(auto p=lookup(native))id=p->id;});return id;}
