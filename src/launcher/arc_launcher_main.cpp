@@ -15,7 +15,7 @@
 
 namespace {
 using Json=nlohmann::json;
-enum { Games=1001,Scan,Choose,Launch,Attach,Pid,Target,ApplyTarget,Stop,Arguments };
+enum { Games=1001,Scan,Choose,Launch,Attach,Pid,Target,ApplyTarget,Stop,Arguments,SteamOptions };
 HWND list{},path_label{},arguments{},pid_edit{},target_edit{},state_label{},fps_label{},detail_label{};
 std::vector<arc::SteamGame> games;
 std::filesystem::path selected,session,metrics;
@@ -84,6 +84,31 @@ void launch(bool attach){
     args+=L" "+quote(dll.wstring())+L" "+quote(metrics.wstring())+L" "+quote(config.wstring());if(!attach&&!text(arguments).empty())args+=L" "+text(arguments);
     command(args);starting_game=!attach;started_at=GetTickCount64();status(L"Подключение ARC…");SetWindowTextW(detail_label,session.c_str());
 }
+void steam_options(HWND owner){
+    const auto value=quote((directory()/L"arc-launcher.exe").wstring())+L" --steam-launch "+std::to_wstring(target())+L" %command%";
+    if(!OpenClipboard(owner))throw std::runtime_error("Cannot open clipboard");
+    const auto bytes=(value.size()+1)*sizeof(wchar_t);HANDLE memory=GlobalAlloc(GMEM_MOVEABLE,bytes);
+    if(!memory){CloseClipboard();throw std::runtime_error("Clipboard allocation failed");}
+    void* data=GlobalLock(memory);if(!data){GlobalFree(memory);CloseClipboard();throw std::runtime_error("Clipboard lock failed");}
+    memcpy(data,value.c_str(),bytes);GlobalUnlock(memory);
+    const bool ok=EmptyClipboard()&&SetClipboardData(CF_UNICODETEXT,memory);if(!ok)GlobalFree(memory);CloseClipboard();
+    if(!ok)throw std::runtime_error("Clipboard write failed");
+    status(L"Строка скопирована. Steam → Свойства игры → Параметры запуска. Вставьте её и запускайте игру из Steam.");
+}
+void steam_launch_arguments(){
+    int count{};auto args=CommandLineToArgvW(GetCommandLineW(),&count);if(!args)throw std::runtime_error("Cannot parse launch command");
+    struct Free {LPWSTR* value;~Free(){LocalFree(value);}} free{args};
+    if(count<2)return;
+    if(std::wstring(args[1])!=L"--steam-launch"||count<4)throw std::runtime_error("Expected --steam-launch <target FPS> <game EXE> [game arguments]");
+    SetWindowTextW(target_edit,args[2]);target();
+    selected=std::filesystem::absolute(args[3]);launch_scope=selected.parent_path();
+    for(const auto& game:games){std::error_code error;const auto relative=std::filesystem::relative(selected,game.install_dir,error);if(!error&&!relative.empty()&&!relative.is_absolute()&&*relative.begin()!=L".."){launch_scope=game.install_dir;break;}}
+    std::wstring parameters;for(int i=4;i<count;++i){if(!parameters.empty())parameters+=L' ';parameters+=quote(args[i]);}
+    SetWindowTextW(path_label,selected.c_str());SetWindowTextW(arguments,parameters.c_str());
+    // Preserve Steam's environment and the exact executable/arguments supplied
+    // by %command%; do not substitute a guessed Shipping executable.
+    launch(false);
+}
 void stop(){if(!target_pid)return;command(L"--stop-auto "+std::to_wstring(target_pid)+L" "+quote((directory()/L"arc-dx12-probe.dll").wstring()));status(L"Восстановление исходного рендера…");}
 void poll(){
     if(helper&&WaitForSingleObject(helper,0)==WAIT_OBJECT_0){DWORD result{};GetExitCodeProcess(helper,&result);CloseHandle(helper);helper=nullptr;if(result){helper_failed=true;std::ifstream f(session/L"launcher.log");const std::string error{std::istreambuf_iterator<char>(f),{}};status(L"Ошибка подключения или управления. "+wide(error));}}
@@ -100,7 +125,7 @@ void poll(){
     if(metrics.empty()||!std::filesystem::is_regular_file(metrics))return;
     try{std::ifstream file(metrics);const auto data=Json::parse(file);target_pid=data.value("pid",0u);if(target_pid)SetWindowTextW(pid_edit,std::to_wstring(target_pid).c_str());
         HANDLE process=OpenProcess(SYNCHRONIZE,FALSE,target_pid);const bool alive=process&&WaitForSingleObject(process,0)==WAIT_TIMEOUT;if(process)CloseHandle(process);
-        if(!alive){target_pid=0;SetWindowTextW(pid_edit,L"");SetWindowTextW(fps_label,L"Нет кадров от работающего процесса.");status(starting_game&&GetTickCount64()-started_at<60000?L"Стартовый процесс завершился. Ожидание дочернего рендера…":L"Процесс завершён. Новый рендер не подключён; повторите запуск через ARC.");return;}
+        if(!alive){target_pid=0;SetWindowTextW(pid_edit,L"");SetWindowTextW(detail_label,L"Подключённого рендера нет.");SetWindowTextW(fps_label,L"Нет кадров от работающего процесса.");status(starting_game&&GetTickCount64()-started_at<15000?L"Стартовый процесс завершился. Ожидание дочернего рендера…":L"Рендер не подключён. Для Steam используйте «Строка для Steam» и запуск из Steam.");return;}
         const auto& automatic=data.at("automatic_session");const auto phase=automatic.value("phase",std::string("off"));
         if(automatic.contains("current_fps")){wchar_t label[160]{};swprintf_s(label,L"FPS приложения: %.1f     Кадр: %.2f мс",automatic["current_fps"].get<double>(),automatic["current_frame_ms"].get<double>());SetWindowTextW(fps_label,label);}
         std::wstring label=L"Измерение и подбор настроек…";
@@ -126,6 +151,7 @@ LRESULT CALLBACK window(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
         control(hwnd,L"STATIC",L"ARC — автономная оптимизация DX12",0,20,16,680,26);
         list=control(hwnd,L"LISTBOX",L"",LBS_NOTIFY|WS_VSCROLL,20,52,700,180,Games);
         control(hwnd,L"BUTTON",L"Обновить Steam",0,20,245,155,32,Scan);control(hwnd,L"BUTTON",L"Выбрать EXE",0,190,245,150,32,Choose);
+        control(hwnd,L"BUTTON",L"Строка для Steam",0,355,245,190,32,SteamOptions);
         path_label=control(hwnd,L"STATIC",L"Приложение не выбрано",SS_PATHELLIPSIS,20,287,700,25);
         control(hwnd,L"STATIC",L"Аргументы запуска",0,20,325,155,25);arguments=control(hwnd,L"EDIT",L"",ES_AUTOHSCROLL,180,322,540,28,Arguments);
         control(hwnd,L"STATIC",L"Целевой FPS",0,20,367,120,25);target_edit=control(hwnd,L"EDIT",L"60",ES_NUMBER,145,363,75,30,Target);control(hwnd,L"BUTTON",L"Изменить цель",0,235,363,155,32,ApplyTarget);
@@ -140,6 +166,7 @@ LRESULT CALLBACK window(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
     case WM_COMMAND:
         switch(LOWORD(wparam)){
         case Scan:scan();break;
+        case SteamOptions:steam_options(hwnd);break;
         case Games:if(HIWORD(wparam)==LBN_SELCHANGE){const auto index=SendMessageW(list,LB_GETCURSEL,0,0);if(index>=0&&std::size_t(index)<games.size()){selected=game_executable(games[index]);launch_scope=games[index].install_dir;SetWindowTextW(path_label,selected.c_str());}}break;
         case Choose:{wchar_t path[32768]{};OPENFILENAMEW dialog{sizeof(dialog)};dialog.hwndOwner=hwnd;dialog.lpstrFilter=L"Приложения (*.exe)\0*.exe\0\0";dialog.lpstrFile=path;dialog.nMaxFile=32768;dialog.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;if(GetOpenFileNameW(&dialog)){selected=path;launch_scope=selected.parent_path();SetWindowTextW(path_label,selected.c_str());}break;}
         case Launch:launch(false);break;
@@ -157,7 +184,9 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show){
     INITCOMMONCONTROLSEX common{sizeof(common),ICC_STANDARD_CLASSES};InitCommonControlsEx(&common);
     WNDCLASSW cls{};cls.lpfnWndProc=window;cls.hInstance=instance;cls.lpszClassName=L"ARCProductLauncher";cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);cls.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);RegisterClassW(&cls);
     const auto hwnd=CreateWindowW(cls.lpszClassName,L"ARC",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,758,675,nullptr,nullptr,instance,nullptr);
-    if(!hwnd)return 2;ShowWindow(hwnd,show);UpdateWindow(hwnd);MSG message{};while(GetMessageW(&message,nullptr,0,0)>0){TranslateMessage(&message);DispatchMessageW(&message);}return int(message.wParam);
+    if(!hwnd)return 2;ShowWindow(hwnd,show);UpdateWindow(hwnd);
+    try{steam_launch_arguments();}catch(const std::exception& error){status(wide(error.what()));}
+    MSG message{};while(GetMessageW(&message,nullptr,0,0)>0){TranslateMessage(&message);DispatchMessageW(&message);}return int(message.wParam);
 }
 #else
 int main(){return 77;}

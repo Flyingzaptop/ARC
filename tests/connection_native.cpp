@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include "json.hpp"
 using Microsoft::WRL::ComPtr;
 void check(bool value,const char* message){if(!value)throw std::runtime_error(message);}
 void hr(HRESULT value){check(SUCCEEDED(value),"DX12 call failed");}
@@ -41,6 +42,8 @@ int wmain(int argc,wchar_t** argv)try{
     ComPtr<ID3D12Fence> fence;hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));HANDLE event=CreateEventW(nullptr,FALSE,FALSE,nullptr);
     for(unsigned i=1;i<=100;++i){hr(allocator->Reset());hr(list->Reset(allocator.Get(),pso.Get()));list->SetComputeRootSignature(root.Get());list->Dispatch(1,1,1);hr(list->Close());ID3D12CommandList* lists[]{list.Get()};queue->ExecuteCommandLists(1,lists);hr(queue->Signal(fence.Get(),i));hr(fence->SetEventOnCompletion(i,event));check(WaitForSingleObject(event,2000)==WAIT_OBJECT_0,"GPU completion");hr(swap->Present(0,0));Sleep(25);}
     const auto dll=GetModuleHandleW(L"arc-dx12-probe.dll");check(dll,"ARC loaded");const auto snapshot=reinterpret_cast<DWORD(WINAPI*)(void*)>(GetProcAddress(dll,"ArcSnapshot"));check(snapshot&&snapshot(nullptr)==0,"snapshot");
-    std::ofstream(output/L"renderer.json")<<"{\"pid\":"<<GetCurrentProcessId()<<",\"arc_before_main\":"<<(before?"true":"false")<<",\"device_healthy\":"<<(device->GetDeviceRemovedReason()==S_OK?"true":"false")<<"}";
+    nlohmann::json arguments=nlohmann::json::array();for(int i=0;i<argc;++i){const auto size=WideCharToMultiByte(CP_UTF8,0,argv[i],-1,nullptr,0,nullptr,nullptr);std::string value(size,'\0');WideCharToMultiByte(CP_UTF8,0,argv[i],-1,value.data(),size,nullptr,nullptr);value.pop_back();arguments.push_back(value);}
+    char appid[128]{};GetEnvironmentVariableA("SteamAppId",appid,128);
+    std::ofstream(output/L"renderer.json")<<nlohmann::json{{"pid",GetCurrentProcessId()},{"arc_before_main",before},{"device_healthy",device->GetDeviceRemovedReason()==S_OK},{"arguments",arguments},{"steam_app_id",appid}}.dump(2);
     CloseHandle(event);DestroyWindow(window);return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

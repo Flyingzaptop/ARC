@@ -65,3 +65,29 @@ from the user's next run. This is a development build, not full product acceptan
 The commit also preserves the preceding uncommitted development launcher/package
 and raster-hook demand changes required by this working tree; those do not close
 the remaining automatic optimization acceptance criteria.
+
+## Steam handoff correction (development package 03)
+
+The user's next run established the actual topology: the ARC-launched PID 29656
+exited; the already-running Steam process started Bodycam.exe (PID 2748), which
+started the renderer (PID 24612). No child handoff record was created in the ARC
+session. This confirms the external-launcher case above, not a failure of the
+tested in-process CreateProcessW handoff.
+
+The launcher now accepts `--steam-launch <FPS> <original EXE> [original arguments]`.
+The new **Строка для Steam** button copies a launch-option wrapper ending in
+`%command%`. Steam supplies its original executable and arguments; ARC preserves
+them and the inherited Steam environment while applying suspended initialization.
+The original executable is not replaced with a guessed Shipping binary.
+The user pastes the line in the game's Steam launch options and starts it in Steam.
+Removing that wrapper restores the original launch route.
+
+`tests/steam_wrapper_launch_tests.py` verified the packaged GUI entry point using
+an owned hidden DX12 fixture, both directly and via a bootstrap. Both runs observed
+100 Presents, registered compute metadata, and no unknown-root dispatches. The
+test also verified an inherited SteamAppId marker, quoted/spaced/trailing-backslash
+arguments, and the requested target FPS. This is a synthetic Steam context test,
+not a live Steam or Bodycam success claim. The user performs that final check.
+
+The dead-process UI now clears its stale PID/details and directs Steam users to
+the wrapper route rather than indefinitely suggesting another direct launch.
