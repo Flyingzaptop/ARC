@@ -9,6 +9,7 @@ namespace arc::dx12::optimizer {
 bool enabled() noexcept;
 std::uint64_t cpu_nanoseconds() noexcept;
 void cpu_snapshot(std::ostream&);
+void intercept_cpu_snapshot(std::ostream&);
 void control_timing_snapshot(std::ostream&);
 void coverage_snapshot(std::ostream&);
 struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{};};

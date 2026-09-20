@@ -1,4 +1,6 @@
+#include "generic_cpu_workers.hpp"
 #include "generic_command_mirror.hpp"
+#include "arc/intercept_cpu_meter.hpp"
 #include <wrl/client.h>
 #include <atomic>
 #include <map>
@@ -62,7 +64,7 @@ public:
     Lifetime(void* p,int k):object(p),kind(k){}
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out)override{if(!out)return E_POINTER;*out=nullptr;if(iid!=IID_IUnknown)return E_NOINTERFACE;*out=this;AddRef();return S_OK;}
     ULONG STDMETHODCALLTYPE AddRef()override{return ++count;}
-    ULONG STDMETHODCALLTYPE Release()override{const auto n=--count;if(!n){auto& s=state();{std::lock_guard lock(s.mutex);if(kind==1){s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));s.command_lifetimes.erase(static_cast<ID3D12GraphicsCommandList*>(object));}else if(kind==2)s.signatures.erase(static_cast<ID3D12CommandSignature*>(object));else s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));}delete this;}return n;}
+    ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){auto& s=state();{std::lock_guard lock(s.mutex);if(kind==1){s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));s.command_lifetimes.erase(static_cast<ID3D12GraphicsCommandList*>(object));}else if(kind==2)s.signatures.erase(static_cast<ID3D12CommandSignature*>(object));else s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));}delete this;}return n;}
 };
 bool track(ID3D12Object* object,int kind){auto* token=new Lifetime(object,kind);const auto hr=object->SetPrivateDataInterface(lifetime_guid,token);token->Release();return SUCCEEDED(hr);}
 template<class F>void safe(F&& fn)noexcept{try{std::lock_guard lock(state().mutex);fn();}catch(const std::exception& e){std::lock_guard lock(state().mutex);state().rate=0;++state().faults;strncpy_s(state().last_error,e.what(),_TRUNCATE);}catch(...){std::lock_guard lock(state().mutex);state().rate=0;++state().faults;}}
@@ -241,7 +243,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* origi
                 c.retired_slot=c.active_slot;c.active_slot=-1;c.rate=0;++s.map_updates;
             }
         }
-        queue->ExecuteCommandLists(count,original);submitted=true;bool modified=false;
+        {arc::InterceptCpuMeter::Native application_work;queue->ExecuteCommandLists(count,original);}submitted=true;bool modified=false;
         for(UINT i=0;i<selected_count;++i){auto& c=*selected[i].control;c.queue=queue;
             if(FAILED(queue->Signal(c.fence.Get(),++c.value))){c.failed=true;++s.faults;s.rate=0;}
             if(c.retired_slot>=0){c.reusable_after[c.retired_slot]=c.value;c.retired_slot=-1;}

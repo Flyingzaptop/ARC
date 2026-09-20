@@ -3,6 +3,8 @@
 #include "generic_runtime.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_command_mirror.hpp"
+#include "generic_cpu_workers.hpp"
+#include "arc/intercept_cpu_meter.hpp"
 #include "arc/optimizer_session.hpp"
 #include "json.hpp"
 #include <atomic>
@@ -41,6 +43,19 @@ void publish(Json value){
     if(file)MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 UINT64 frame_number(){std::lock_guard lock(state().mutex);return state().frames;}
+struct CpuWindowSample {arc::InterceptCpuMeter::Snapshot hooks;cpu_cost::Snapshot workers;UINT64 frame{};bool coherent{};};
+CpuWindowSample cpu_sample(){
+    CpuWindowSample sample;sample.frame=frame_number();sample.hooks=arc::InterceptCpuMeter::snapshot();sample.workers=cpu_cost::snapshot();
+    sample.coherent=arc::InterceptCpuMeter::enabled()&&!sample.workers.failures&&sample.workers.live[0]>=3&&sample.frame==frame_number();return sample;
+}
+double cpu_window_ms(const CpuWindowSample& before,const CpuWindowSample& after){
+    if(!before.coherent||!after.coherent||after.frame<=before.frame+1||after.hooks.own_ns<before.hooks.own_ns)return std::numeric_limits<double>::infinity();
+    double ns=double(after.hooks.own_ns-before.hooks.own_ns);
+    for(unsigned i=0;i<3;++i){if(after.workers.nanoseconds[i]<before.workers.nanoseconds[i])return std::numeric_limits<double>::infinity();ns+=double(after.workers.nanoseconds[i]-before.workers.nanoseconds[i]);}
+    // Snapshots lie inside their Present intervals. Dividing by one fewer
+    // interval conservatively removes the partially observed boundary frame.
+    return ns/1.e6/double(after.frame-before.frame-1);
+}
 bool wait_frames(unsigned count){auto& s=state();std::unique_lock lock(s.mutex);const auto target=s.frames+count;
     const bool woke=s.changed.wait_for(lock,std::chrono::seconds(4),[&]{return s.cancel||s.frames>=target;});return woke&&!s.cancel;}
 double period(unsigned samples=32){std::lock_guard lock(state().mutex);const auto& s=state();const auto n=std::min(samples,s.count);if(!n)return 0;double sum=0;for(unsigned i=0;i<n;++i)sum+=s.periods[(s.cursor+s.periods.size()-1-i)%s.periods.size()];return sum/n;}
@@ -56,6 +71,7 @@ Json quality(const std::filesystem::path& a,const std::filesystem::path& b,const
     limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
     if(!job||!SetInformationJobObject(job,JobObjectExtendedLimitInformation,&limits,sizeof(limits))){if(job)CloseHandle(job);throw std::runtime_error("Quality worker lifetime job");}
     if(!CreateProcessW(s.python.c_str(),command.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW|CREATE_SUSPENDED|BELOW_NORMAL_PRIORITY_CLASS,nullptr,s.directory.c_str(),&startup,&process)){CloseHandle(job);throw std::runtime_error("Quality worker launch");}
+    cpu_cost::Registration child_cpu(cpu_cost::Kind::Critic,process.hProcess);
     if(!AssignProcessToJobObject(job,process.hProcess)||ResumeThread(process.hThread)==DWORD(-1)){
         TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);CloseHandle(process.hThread);CloseHandle(process.hProcess);CloseHandle(job);throw std::runtime_error("Quality worker lifetime assignment");}
     CloseHandle(process.hThread);DWORD code=1,waited=WAIT_TIMEOUT;const auto deadline=Clock::now()+std::chrono::seconds(15);
@@ -85,6 +101,8 @@ bool capture_trial(const std::array<std::filesystem::path,3>& paths,const std::w
     select(L"off");return complete;
 }
 DWORD WINAPI run(void*){
+    cpu_cost::Registration worker_cpu;
+    arc::InterceptCpuMeter::enable(true);
     auto& s=state();SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);const auto started=Clock::now();
     try{
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
@@ -121,12 +139,15 @@ DWORD WINAPI run(void*){
                     {"quality",{{"ssim_gaussian_luma",0.0},{"mean_linear_rgb_error",1.0},{"p99_tile_linear_rgb_error",1.0}}}};
                 if(s.cancel)break;
                 double candidate_ms=baseline_ms,baseline_before_ms=baseline_ms,baseline_after_ms=baseline_ms;bool timing_stable=false;
+                double cpu_overhead_ms=std::numeric_limits<double>::infinity();UINT64 cpu_frames=0;
                 if(submitted&&judgement.value("accepted_quality",false)){
                     // Image analysis can take seconds. Measure cadence only
                     // afterwards, with incumbent windows on BOTH sides of B.
                     // A scene transition must not masquerade as a speedup.
                     select(retained?modes.at(retained-1):L"off");if(!wait_frames(40))break;baseline_before_ms=period();
-                    select(mode);if(!wait_frames(48))break;candidate_ms=period();
+                    select(mode);if(!wait_frames(16))break;const auto cost_before=cpu_sample();
+                    if(!wait_frames(32))break;const auto cost_after=cpu_sample();candidate_ms=period();
+                    cpu_overhead_ms=cpu_window_ms(cost_before,cost_after);cpu_frames=cost_after.frame-cost_before.frame;
                     select(L"off");if(!wait_restoration())throw std::runtime_error("Timing policy retirement not confirmed");
                     select(retained?modes.at(retained-1):L"off");if(!wait_frames(40))break;baseline_after_ms=period();
                     baseline_ms=(baseline_before_ms+baseline_after_ms)*.5;
@@ -139,15 +160,17 @@ DWORD WINAPI run(void*){
                 evidence.action=request.action;evidence.generation=generation;evidence.complete=submitted&&timing_stable;evidence.restoration_confirmed=restored_original;evidence.matched_reference=submitted&&judgement.value("matched_reference",false);
                 evidence.baseline_frame_ms=baseline_ms;evidence.candidate_frame_ms=candidate_ms;evidence.baseline_noise_ms=std::max(baseline_ms*.03,std::abs(baseline_before_ms-baseline_after_ms));
                 evidence.ssim=q.at("ssim_gaussian_luma");evidence.mean_error=q.at("mean_linear_rgb_error");evidence.tile_p99=q.at("p99_tile_linear_rgb_error");
-                // Until own CPU/GPU overhead is measured, the evidence must not
-                // pass the cost gate. A fast-looking cadence is insufficient.
-                evidence.cpu_overhead_ms=std::numeric_limits<double>::infinity();evidence.gpu_overhead_ms=std::numeric_limits<double>::infinity();
+                // CPU covers hooks, lifetime callbacks, owned threads and live
+                // children. GPU upload timing alone still cannot cover shader
+                // guards/neutralization, so the combined cost gate stays shut.
+                evidence.cpu_overhead_ms=cpu_overhead_ms;evidence.gpu_overhead_ms=std::numeric_limits<double>::infinity();
                 refresh_candidates(); // invalidate evidence if pipeline selection changed during the trial
                 const auto decision=policy.evidence(evidence);
                 if(decision.kind==SessionRequestKind::Apply){select(mode);retained=decision.action;policy.applied(retained,true);}
                 else if(decision.kind==SessionRequestKind::Restore){select(L"off");retained=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("Changed pipeline retirement not confirmed");}
                 const auto state=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"submission_observed",submitted},{"quality_pass",judgement.value("accepted_quality",false)},{"baseline_frame_ms",baseline_ms},{"candidate_frame_ms",candidate_ms},{"accepted",state.accepted},{"rejected",state.rejected},{"retained",retained},{"cost_evidence_available",false},{"original_policy_retired",restored_original}};
                 report["pipeline_generation"]=generation;report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
+                report["cpu_cost_available"]=std::isfinite(cpu_overhead_ms);report["cpu_overhead_ms"]=std::isfinite(cpu_overhead_ms)?Json(cpu_overhead_ms):Json(nullptr);report["cpu_measured_intervals"]=cpu_frames;
                 {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));
             }else if(request.kind==SessionRequestKind::Restore){select(L"off");retained=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("GPU policy retirement not confirmed");}
         }

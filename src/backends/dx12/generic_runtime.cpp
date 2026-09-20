@@ -1,3 +1,5 @@
+#include "generic_cpu_workers.hpp"
+#include "arc/intercept_cpu_meter.hpp"
 #include "generic_runtime.hpp"
 #include "generic_readback.hpp"
 #include "generic_command_mirror.hpp"
@@ -83,7 +85,7 @@ public:
     Lifetime(std::uintptr_t a,std::uint64_t i):address(a),id(i){}
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out)override {if(!out)return E_POINTER;*out=nullptr;if(iid!=IID_IUnknown)return E_NOINTERFACE;*out=static_cast<IUnknown*>(this);AddRef();return S_OK;}
     ULONG STDMETHODCALLTYPE AddRef()override {return ++references;}
-    ULONG STDMETHODCALLTYPE Release()override {const auto n=--references;if(!n){retire(address,id);delete this;}return n;}
+    ULONG STDMETHODCALLTYPE Release()override {arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--references;if(!n){retire(address,id);delete this;}return n;}
 };
 std::uint64_t identify(ID3D12Object* object,Kind kind){
     if(!object)return 0;

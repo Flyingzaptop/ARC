@@ -486,3 +486,28 @@ On the same recorded trial, cProfile wall time decreases from 4.763 to 2.496s.
 SSIM changes by <1e-15 from summation order, linear mean/peak errors are identical.
 Independent Gaussian/tile oracles and damage/scene-cut/state-mismatch tests pass.
 This accelerates validation, not rendering by 2x.
+
+## Checkpoint 13 (CPU accounting, before placement experiments)
+
+All 50 concrete DX12/DXGI hook entry points and the generic command-hook template
+now measure interceptor wall time while excluding explicitly identified native
+application calls. ARC's extra native commands remain charged; lifetime callbacks
+are included. Fake-clock tests cover nested calls, internal ARC work, callbacks
+inside excluded driver work, disabled mode and unwinding. Registered ARC threads
+and live compiler/critic children expose separate OS CPU totals, with no double
+counting of hooks on registered worker threads. OS thread-time granularity and
+meter overhead must be considered; these are not exact critical-path timings.
+
+Automatic trials collect CPU evidence over their candidate timing window,
+checking frame-coherent, monotonic samples and successful worker accounting.
+Unavailable GPU guard/neutralization costs still keep retention blocked.
+`auto-cpu-accounting-01` completes 3000 frames at 78.476 FPS in 44.65 seconds;
+seven trials finish. Reported candidate CPU overhead is .951–1.567ms/frame, above
+the .2ms budget. Total critic CPU is 21.125 seconds; owned worker threads .672s,
+compiler children 1.734s. No worker-accounting failures occurred. This is not a
+controlled before/after performance claim: probe count and scene positions vary.
+All 50 non-GPU tests and `injected-workers-accounting-01` pass.
+
+The new approved investigation is topology-aware placement of ARC workers,
+compared against normal scheduling and reversible reservation experiments in
+owned renderers. It does not promise automatic parallelization of game logic.

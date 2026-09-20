@@ -35,6 +35,7 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_runtime.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_readback.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_optimizer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_cpu_workers.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_auto_session.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_gpu_profile.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_command_mirror.cpp)

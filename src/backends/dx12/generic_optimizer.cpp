@@ -3,6 +3,8 @@
 #include "generic_gpu_control.hpp"
 #include "generic_command_mirror.hpp"
 #include "generic_gpu_profile.hpp"
+#include "arc/intercept_cpu_meter.hpp"
+#include "generic_cpu_workers.hpp"
 #include <windows.h>
 #include <wrl/client.h>
 #include <atomic>
@@ -94,7 +96,7 @@ public:
     Lifetime(void* p,unsigned k):object(p),kind(k){}
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out)override{if(!out)return E_POINTER;*out=nullptr;if(iid!=IID_IUnknown)return E_NOINTERFACE;*out=this;AddRef();return S_OK;}
     ULONG STDMETHODCALLTYPE AddRef()override{return ++count;}
-    ULONG STDMETHODCALLTYPE Release()override{const auto n=--count;if(!n){safe([&]{auto& s=state();
+    ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){safe([&]{auto& s=state();
         if(kind==1)s.roots.erase(static_cast<ID3D12RootSignature*>(object));
         else if(kind==2)s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));
         else if(kind==3)s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));
@@ -231,6 +233,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     auto command=quote(s.worker.wstring())+L" controlled:"+std::to_wstring(space)+L" "+quote(source.wstring())+L" "+quote(binary.wstring())+L" "+quote(s.compiler.wstring());
     STARTUPINFOW start{};start.cb=sizeof(start);start.dwFlags=STARTF_USESHOWWINDOW;start.wShowWindow=SW_HIDE;PROCESS_INFORMATION process{};
     if(!CreateProcessW(s.worker.c_str(),command.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,s.cache.c_str(),&start,&process))throw std::runtime_error("shader worker launch");
+    cpu_cost::Registration child_cpu(cpu_cost::Kind::Compiler,process.hProcess);
     CloseHandle(process.hThread);const auto waited=WaitForSingleObject(process.hProcess,20000);DWORD code=1;
     if(waited!=WAIT_OBJECT_0){TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);}else GetExitCodeProcess(process.hProcess,&code);CloseHandle(process.hProcess);
     if(code)throw std::runtime_error("shader_class_not_admitted_or_compiler_failed");
@@ -251,6 +254,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     return result;
 }
 DWORD WINAPI worker(void*){
+    cpu_cost::Registration worker_cpu;
     SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);
     for(;;){std::shared_ptr<Pipeline> job;UniformJob proof;{
         auto& s=state();std::unique_lock lock(s.mutex);s.changed.wait(lock,[&]{return !s.jobs.empty()||!s.uniform_jobs.empty();});
@@ -276,6 +280,9 @@ void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);ou
     out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected","root_arguments_uncertain"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
     out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
+void intercept_cpu_snapshot(std::ostream& out){const auto c=arc::InterceptCpuMeter::snapshot();const auto workers=cpu_cost::snapshot();
+    out<<"{\"enabled\":"<<(arc::InterceptCpuMeter::enabled()?"true":"false")<<",\"measurement\":\"all_interceptor_wall_excluding_application_native_calls\",\"own_ms\":"<<c.own_ns/1.e6<<",\"excluded_native_ms\":"<<c.excluded_native_ns/1.e6<<",\"calls\":"<<c.calls<<",\"worker_thread_cpu_ms\":"<<workers.nanoseconds[0]/1.e6<<",\"compiler_cpu_ms\":"<<workers.nanoseconds[1]/1.e6<<",\"critic_cpu_ms\":"<<workers.nanoseconds[2]/1.e6<<",\"worker_measurement_failures\":"<<workers.failures<<",\"live_workers\":["<<workers.live[0]<<','<<workers.live[1]<<','<<workers.live[2]<<"],\"complete_overhead_evidence\":false}";
+}
 CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities result;safe([&]{const auto& s=state();if(s.faults||!s.selected_pipeline)return;
     for(const auto& [native,p]:s.pipelines){(void)native;if(p->id!=s.selected_pipeline||!p->variant)continue;const auto& c=p->variant->contract;
         result={p->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0,c.mip_samples!=0};break;}
@@ -294,6 +301,7 @@ bool initialize()noexcept{
         const auto worker_path=environment(L"ARC_OPTIMIZER_WORKER");if(worker_path.empty())return;
         s.worker=worker_path;s.compiler=environment(L"ARC_OPTIMIZER_COMPILER");s.cache=environment(L"ARC_OPTIMIZER_CACHE");
         cpu_timing=environment(L"ARC_OPTIMIZER_CPU_TIMING")==L"1";
+        arc::InterceptCpuMeter::enable(cpu_timing.load());
         s.measure_control=environment(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING")==L"1";
         if(!s.worker.is_absolute()||!s.compiler.is_absolute()||!s.cache.is_absolute()||!std::filesystem::is_regular_file(s.worker)||!std::filesystem::is_regular_file(s.compiler)) {result=false;return;}
         s.cache/=std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64());std::filesystem::create_directories(s.cache);
@@ -321,7 +329,7 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     if(accepted){++s.policy_epoch;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
-DescriptorWrite descriptor_write()noexcept{DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().descriptor_mutex);return result;}
+DescriptorWrite descriptor_write()noexcept{static const auto sample=register_cpu_sample("descriptor_write_lock");CpuMeter meter(sample);DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().descriptor_mutex);meter.locked();return result;}
 void root_created(ID3D12RootSignature* native,const void* bytes,SIZE_T size)noexcept{if(!enabled()||!native||!bytes||!size||size>65536)return;safe([&]{auto& s=state();
     // CreateRootSignature may return another reference to an interned object.
     // Replacing its lifetime token would invalidate every existing PSO's root
@@ -440,7 +448,7 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     const auto variant=p->second->variant;
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z});c->control->keep_alive.push_back(variant);
-    mirror::InternalCall internal;native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());native->Dispatch(x,y,z);
+    mirror::InternalCall internal;native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());{arc::InterceptCpuMeter::Native application_work;native->Dispatch(x,y,z);}
     native->SetComputeRootSignature(c->root->native);replay_arguments(native,c->arguments);native->SetPipelineState(c->pipeline);changed=true;++s.modified_dispatches;
 });return changed;}
 void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->control&&c->valid&&!c->closed&&!c->render_pass&&!c->uses.empty()){mirror::InternalCall internal;c->control->record_neutralize(native);c->epilogue=true;}c->closed=true;}});}
@@ -513,6 +521,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
     // controls out of the reuse pool until their retirement signal is issued.
     lock.unlock();
     if(!mirror::execute(queue,count,lists)){mirror::InternalCall internal;
+        arc::InterceptCpuMeter::Native application_work;
         if(meter.outer){const auto start=CpuMeter::Clock::now();queue->ExecuteCommandLists(count,lists);original_submit_ns.fetch_add(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(CpuMeter::Clock::now()-start).count()),std::memory_order_relaxed);}
         else queue->ExecuteCommandLists(count,lists);
     }

@@ -1,3 +1,5 @@
+#include "generic_cpu_workers.hpp"
+#include "arc/intercept_cpu_meter.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_command_mirror.hpp"
 #include <windows.h>
@@ -100,7 +102,7 @@ public:
     Lifetime(void* p,int k):object(p),kind(k){}
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out)override{if(!out)return E_POINTER;*out=nullptr;if(iid!=IID_IUnknown)return E_NOINTERFACE;*out=this;AddRef();return S_OK;}
     ULONG STDMETHODCALLTYPE AddRef()override{return ++refs;}
-    ULONG STDMETHODCALLTYPE Release()override{const auto n=--refs;if(!n){safe([&]{if(kind==1)state().pipelines.erase(static_cast<ID3D12PipelineState*>(object));else if(kind==2)state().signatures.erase(static_cast<ID3D12CommandSignature*>(object));else retire_record(static_cast<ID3D12GraphicsCommandList*>(object));});delete this;}return n;}
+    ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--refs;if(!n){safe([&]{if(kind==1)state().pipelines.erase(static_cast<ID3D12PipelineState*>(object));else if(kind==2)state().signatures.erase(static_cast<ID3D12CommandSignature*>(object));else retire_record(static_cast<ID3D12GraphicsCommandList*>(object));});delete this;}return n;}
 };
 bool track(ID3D12Object* object,int kind){auto* token=new Lifetime(object,kind);const auto result=object->SetPrivateDataInterface(lifetime_guid,token);token->Release();return SUCCEEDED(result);}
 std::string digest(const D3D12_SHADER_BYTECODE& code){
@@ -115,7 +117,7 @@ public:
     explicit Blob(D3D12_SHADER_BYTECODE b):bytes(b){}
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out)override{if(!out)return E_POINTER;*out=nullptr;if(iid!=IID_IUnknown&&iid!=__uuidof(IDxcBlob))return E_NOINTERFACE;*out=this;AddRef();return S_OK;}
     ULONG STDMETHODCALLTYPE AddRef()override{return ++refs;}
-    ULONG STDMETHODCALLTYPE Release()override{auto n=--refs;if(!n)delete this;return n;}
+    ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());auto n=--refs;if(!n)delete this;return n;}
     LPVOID STDMETHODCALLTYPE GetBufferPointer()override{return const_cast<void*>(bytes.pShaderBytecode);}
     SIZE_T STDMETHODCALLTYPE GetBufferSize()override{return bytes.BytecodeLength;}
 };
