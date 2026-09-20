@@ -6,6 +6,8 @@
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
 std::uint64_t cpu_nanoseconds() noexcept;
+void cpu_snapshot(std::ostream&);
+void coverage_snapshot(std::ostream&);
 // Explicit environment-based diagnostic setup, called before application PSOs.
 // No environment variables -> disabled, unchanged observer behavior.
 bool initialize() noexcept;
@@ -16,6 +18,7 @@ struct DescriptorWrite {std::unique_lock<std::recursive_mutex> lock;};
 DescriptorWrite descriptor_write() noexcept;
 void root_created(ID3D12RootSignature*,const void*,SIZE_T) noexcept;
 void compute_created(ID3D12PipelineState*,const D3D12_COMPUTE_PIPELINE_STATE_DESC*) noexcept;
+void stream_created(ID3D12PipelineState*,const D3D12_PIPELINE_STATE_STREAM_DESC*) noexcept;
 void heap_created(ID3D12DescriptorHeap*) noexcept;
 void resource_created(ID3D12Resource*,ID3D12Heap* heap=nullptr,UINT64 offset=0) noexcept;
 void srv(ID3D12Resource*,const D3D12_SHADER_RESOURCE_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE) noexcept;

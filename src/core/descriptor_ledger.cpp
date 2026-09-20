@@ -53,6 +53,25 @@ void DescriptorLedger::forget(std::uint64_t address){
         auto found=h.references.find(entry);if(--found->second==0)h.references.erase(found);release(entry);entry=0;--known_;}
     else if(auto it=orphans_.find(address);it!=orphans_.end()){release(it->second);orphans_.erase(it);--known_;}
 }
+bool DescriptorLedger::copy_one(std::uint64_t destination,std::uint64_t source){
+    if(!destination)return false;
+    const auto source_heap=heap_at(source),destination_heap=heap_at(destination);std::uint32_t value=0,old=0;
+    if(source_heap){const auto& h=heaps_.at(source_heap);value=h.entries[(source-h.start)/h.stride];}
+    else if(const auto it=orphans_.find(source);it!=orphans_.end())value=it->second;
+    if(!value){forget(destination);return true;}
+    Heap* target=nullptr;std::size_t index=0;
+    if(destination_heap){target=&heaps_.at(destination_heap);index=(destination-target->start)/target->stride;old=target->entries[index];}
+    else{
+        auto it=starts_.upper_bound(destination);if(it!=starts_.begin()){--it;const auto& h=heaps_.at(it->second);if(destination-h.start<std::uint64_t(h.entries.size())*h.stride)return false;}
+        const auto orphan=orphans_.find(destination);if(orphan!=orphans_.end())old=orphan->second;else if(orphans_.size()>=limits_.orphan_slots)return false;
+    }
+    if(old==value)return true;
+    // Retain before releasing the old destination, including self/alias copies.
+    ++values_[value].references;if(!values_[value].data.kind)++nulls_;
+    if(target){++target->references[value];target->entries[index]=value;if(old){auto it=target->references.find(old);if(--it->second==0)target->references.erase(it);}}
+    else orphans_[destination]=value;
+    if(!old)++known_;release(old);return true;
+}
 std::optional<DescriptorValue> DescriptorLedger::read(std::uint64_t address)const{
     const auto heap=heap_at(address);std::uint32_t id=0;
     if(heap){const auto& h=heaps_.at(heap);id=h.entries[(address-h.start)/h.stride];}

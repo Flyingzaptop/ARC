@@ -10,6 +10,9 @@
 #include <vector>
 
 namespace arc::dx12::binding {
+// Decode only complete compute streams. Unknown/graphics subobjects and
+// duplicate fields are never treated as an equivalent compute pipeline.
+std::optional<D3D12_COMPUTE_PIPELINE_STATE_DESC> compute_stream(const D3D12_PIPELINE_STATE_STREAM_DESC&);
 
 struct Range {
     D3D12_DESCRIPTOR_RANGE_TYPE type{};
@@ -64,8 +67,10 @@ public:
     bool descriptor(UINT parameter, D3D12_ROOT_PARAMETER_TYPE type, UINT64 address) noexcept;
     bool constants(UINT parameter, UINT offset, std::span<const UINT> words) noexcept;
     void invalidate_tables() noexcept;
-    [[nodiscard]] std::optional<Argument> argument(UINT parameter) const noexcept;
-    [[nodiscard]] std::optional<Argument> raw_argument(UINT parameter) const noexcept;
+    // Borrowed until the next mutation; callers hold the recording lock or own
+    // an immutable submission snapshot. Avoid copying 64 constants per lookup.
+    [[nodiscard]] const Argument* argument(UINT parameter) const noexcept;
+    [[nodiscard]] const Argument* raw_argument(UINT parameter) const noexcept;
     [[nodiscard]] std::optional<Location> locate(D3D12_DESCRIPTOR_RANGE_TYPE type,
         UINT shader_register, UINT space, D3D12_SHADER_VISIBILITY stage) const noexcept;
     [[nodiscard]] std::uint64_t identity() const noexcept { return identity_; }
@@ -73,7 +78,9 @@ public:
 private:
     std::uint64_t identity_{};
     std::shared_ptr<const Layout> layout_;
-    std::array<Argument, 64> arguments_{};
+    // Most signatures have only a few parameters. A fixed 64 * 64-word array
+    // made every command-list lifetime/reset zero and copy ~18 KiB needlessly.
+    std::vector<Argument> arguments_;
 };
 
 } // namespace arc::dx12::binding

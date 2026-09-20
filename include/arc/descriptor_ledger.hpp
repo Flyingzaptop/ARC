@@ -34,6 +34,9 @@ public:
     bool register_heap(std::uint64_t id,std::uint64_t start,std::uint32_t stride,std::uint32_t count);
     void retire_heap(std::uint64_t id);
     bool write(std::uint64_t address,DescriptorValue);
+    // Preserve the interned identity for the common single-descriptor copy.
+    // Unknown source contents invalidate the destination.
+    bool copy_one(std::uint64_t destination,std::uint64_t source);
     void forget(std::uint64_t address);
     [[nodiscard]] std::optional<DescriptorValue> read(std::uint64_t address)const;
     [[nodiscard]] std::uint64_t heap_at(std::uint64_t address)const;

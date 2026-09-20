@@ -209,7 +209,7 @@ HRESULT STDMETHODCALLTYPE compute_pso(ID3D12Device* d,const D3D12_COMPUTE_PIPELI
 using StreamPsoFn=decltype(ID3D12Device2Vtbl::CreatePipelineState);StreamPsoFn original_stream_pso{};
 HRESULT STDMETHODCALLTYPE stream_pso(ID3D12Device2* d,const D3D12_PIPELINE_STATE_STREAM_DESC* desc,REFIID iid,void** out){
     const auto result=[&]{mirror::InternalCall native_call;return original_stream_pso(d,desc,iid,out);}();
-    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_stream_created(p,desc);profile::stream_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_stream_created(p,desc);profile::stream_created(p,desc);optimizer::stream_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using RateFn=decltype(ID3D12GraphicsCommandList5Vtbl::RSSetShadingRate);RateFn original_rate{};
 void STDMETHODCALLTYPE rate(ID3D12GraphicsCommandList5* c,D3D12_SHADING_RATE value,const D3D12_SHADING_RATE_COMBINER* combiners){
@@ -288,7 +288,7 @@ void snapshot(){
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
-        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
+        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
     file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
@@ -474,7 +474,6 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){
     if(!value)return 1;const auto* mode=static_cast<const wchar_t*>(value);
     if(wcscmp(mode,L"off")==0)return mirror::configure(0)?0:2;
     if(wcscmp(mode,L"2x2")!=0||!mirror_hooks_ready)return 3;
-    if(optimizer::enabled())return 8; // shared submission scheduling not enabled yet
     if(profile::busy())return 7;
     if(!set_passive_hooks(false))return 5;
     return mirror::configure(D3D12_SHADING_RATE_2X2)?0:4;
@@ -491,6 +490,6 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestGpuProfile(void* path){
     }catch(...){return 3;}
 }
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){profile::stop();return 0;}
-extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(!mode||!optimizer::enabled())return 1;if(mirror::requested_rate())return 2;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(!mode||!optimizer::enabled())return 1;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){autotune::stop();return 0;}

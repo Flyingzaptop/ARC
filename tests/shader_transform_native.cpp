@@ -103,9 +103,15 @@ RWTexture2D<float4> target:register(u5,space3);
     auto submit=[&]{auto* helper=policy.prepare(queue.Get(),{&desired,1});if(helper)queue->ExecuteCommandLists(1,&helper);ID3D12CommandList* lists[]{list.Get()};queue->ExecuteCommandLists(1,lists);policy.submitted(queue.Get());hr(queue->Signal(fence.Get(),++serial));hr(fence->SetEventOnCompletion(serial,event));check(WaitForSingleObject(event,5000)==WAIT_OBJECT_0,"GPU timeout");};
     auto execute=[&]{policy.record_neutralize(list.Get());hr(list->Close());submit();};
     D3D12_DESCRIPTOR_RANGE ranges[3]{{D3D12_DESCRIPTOR_RANGE_TYPE_SRV,5,3,2,0},{D3D12_DESCRIPTOR_RANGE_TYPE_UAV,1,4,3,5},{D3D12_DESCRIPTOR_RANGE_TYPE_UAV,1,7,3,6}};
-    D3D12_ROOT_PARAMETER parameters[2]{};parameters[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameters[0].DescriptorTable={3,ranges};
+    D3D12_ROOT_PARAMETER parameters[6]{};parameters[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameters[0].DescriptorTable={3,ranges};
     parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_CBV;parameters[1].Descriptor={0,controlled.control_space};
-    D3D12_ROOT_SIGNATURE_DESC rd{};rd.NumParameters=2;rd.pParameters=parameters;
+    D3D12_DESCRIPTOR_RANGE unused_bindless{D3D12_DESCRIPTOR_RANGE_TYPE_SRV,UINT_MAX,0,42,0};
+    parameters[2].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameters[2].DescriptorTable={1,&unused_bindless};
+    parameters[3].ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameters[3].Constants={9,7,2};
+    D3D12_DESCRIPTOR_RANGE unused_outputs{D3D12_DESCRIPTOR_RANGE_TYPE_UAV,UINT_MAX,0,43,0};
+    parameters[4].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameters[4].DescriptorTable={1,&unused_outputs};
+    parameters[5].ParameterType=D3D12_ROOT_PARAMETER_TYPE_SRV;parameters[5].Descriptor={8,9};
+    D3D12_ROOT_SIGNATURE_DESC rd{};rd.NumParameters=6;rd.pParameters=parameters;
     ComPtr<ID3DBlob> root_blob,error;hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&root_blob,&error));ComPtr<ID3D12RootSignature> root;hr(device->CreateRootSignature(0,root_blob->GetBufferPointer(),root_blob->GetBufferSize(),IID_PPV_ARGS(&root)));
     std::array<ComPtr<ID3D12PipelineState>,4> pipelines;
     IDxcBlob* codes[]{original.Get(),neutral_code.Get(),coarse_code.Get(),controlled_code.Get()};
@@ -200,7 +206,7 @@ RWTexture2D<float4> target:register(u4,space3);
     const std::string zero_source=R"(
 Texture2D<float4> source:register(t3,space2);RWTexture2D<float4> target:register(u4,space3);
 [numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){float4 c=source[p.xy];float value=0;
- if(c.a>0){float gate=saturate(c.r-0.4);float3 v=c.rgb+0.01;
+ [branch]if(c.a>0){float gate=saturate(c.r-0.4);float3 v=c.rgb+0.01;
  [unroll]for(int i=0;i<24;i++){v=sin(v*1.1+i*0.031)*0.5+0.5;}
  value=dot(v,float3(0.2,0.3,0.4))*gate;}
  target[p.xy]=float4(value,value*0.5,value*0.25,1);
@@ -250,7 +256,12 @@ RWTexture2D<float4> target:register(u4,space3);
     rd.pStaticSamplers=&regular;root_blob.Reset();error.Reset();hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&root_blob,&error));
     ComPtr<ID3D12RootSignature> mip_root;hr(device->CreateRootSignature(0,root_blob->GetBufferPointer(),root_blob->GetBufferSize(),IID_PPV_ARGS(&mip_root)));
     std::array<ComPtr<ID3D12PipelineState>,2> mip_pipelines;IDxcBlob* mip_codes[]{mip_original.Get(),mip_code.Get()};
-    for(unsigned i=0;i<2;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=mip_root.Get();p.CS={mip_codes[i]->GetBufferPointer(),mip_codes[i]->GetBufferSize()};hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&mip_pipelines[i])));}
+    for(unsigned i=0;i<2;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=mip_root.Get();p.CS={mip_codes[i]->GetBufferPointer(),mip_codes[i]->GetBufferSize()};
+        if(!i){struct alignas(void*) RootItem{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;ID3D12RootSignature* value;};struct alignas(void*) CodeItem{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_SHADER_BYTECODE value;};
+            struct {RootItem root;CodeItem code;} stream{{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE,p.pRootSignature},{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS,p.CS}};
+            D3D12_PIPELINE_STATE_STREAM_DESC desc{sizeof(stream),&stream};ComPtr<ID3D12Device2> device2;hr(device.As(&device2));hr(device2->CreatePipelineState(&desc,IID_PPV_ARGS(&mip_pipelines[i])));
+        }else hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&mip_pipelines[i])));
+    }
     wait_prepared(4);
     auto mip_desc=td;mip_desc.Flags=D3D12_RESOURCE_FLAG_NONE;mip_desc.MipLevels=3;hp.Type=D3D12_HEAP_TYPE_DEFAULT;
     ComPtr<ID3D12Resource> mip_texture,mip_upload;hr(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&mip_desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&mip_texture)));
@@ -314,6 +325,47 @@ RaytracingAccelerationStructure scene:register(t3,space2);RWTexture2D<float4> ta
         }else submit();
         D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[0]->Map(0,&range,&ptr));
         for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=coarse_rays?x&~1u:x,sy=coarse_rays?y&~1u:y;const float rx=(float(sx)+.5f)/width*2-1,ry=(float(sy)+.5f)/height*2-1;const bool hit=ry>=-.7f&&ry<=.7f&&std::abs(rx)<=(.7f-ry)*.5f;const Pixel expected{hit?1.f:0.f,float(sx)/64,float(sy)/64,1};Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Inline rays, coarsened output and rollback must match geometric CPU oracle");}readbacks[0]->Unmap(0,&empty);
+    }
+    if(arc_mode){
+        std::string bindless_source=R"(
+Texture2D<float4> sources[]:register(t0,space42);RWTexture2D<float4> targets[]:register(u0,space43);
+cbuffer Choice:register(b9,space7){uint inputIndex;uint outputIndex;}
+[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){targets[outputIndex][p.xy]=sources[inputIndex][p.xy];}
+)";
+        auto bindless_code=compiler.compile(bindless_source);auto bindless_contract=arc::dx12::shader::coarse_compute(compiler.disassemble(bindless_code.Get()),1,1,true);
+        check(bindless_contract.admitted,"Bindless shader requires runtime access proof");
+        check(!arc::dx12::shader::coarse_compute(compiler.disassemble(bindless_code.Get()),2,2).admitted,"Static bindless transform must refuse missing output extent proof");
+        auto varying=bindless_source;const auto where=varying.find("sources[inputIndex]");varying.replace(where,19,"sources[p.x%5]");auto varying_code=compiler.compile(varying);
+        std::array<ComPtr<ID3D12PipelineState>,2> bindless_pipelines;IDxcBlob* bindless_codes[]{bindless_code.Get(),varying_code.Get()};
+        for(unsigned i=0;i<2;++i){D3D12_COMPUTE_PIPELINE_STATE_DESC p{};p.pRootSignature=mip_root.Get();p.CS={bindless_codes[i]->GetBufferPointer(),bindless_codes[i]->GetBufferSize()};hr(device->CreateComputePipelineState(&p,IID_PPV_ARGS(&bindless_pipelines[i])));}wait_prepared(7);
+        srv.Texture2D.MipLevels=1;device->CreateShaderResourceView(textures[0].Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
+        for(unsigned mode=0;mode<5;++mode){const auto* setting=mode==0||mode==3?L"off":mode==1?L"neutral":L"2x2";check(arc_mode(const_cast<wchar_t*>(setting))==0,"Bindless policy switch");desired={1,1,width,height};const unsigned output_index=mode==0?0:1;
+            if(mode==0||mode==1||mode==4){begin();copy_in(textures[output_index+1].Get(),initial.Get());transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(mip_root.Get());list->SetComputeRootDescriptorTable(2,heap->GetGPUDescriptorHandleForHeapStart());auto output_table=heap->GetGPUDescriptorHandleForHeapStart();output_table.ptr+=5*increment;list->SetComputeRootDescriptorTable(4,output_table);const UINT indices[]{mode==0?0u:4u,output_index};list->SetComputeRoot32BitConstants(3,2,indices,0);list->SetPipelineState(bindless_pipelines[mode==4?1:0].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
+                transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[output_index].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[output_index+1].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[output_index+1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();
+            }else submit();
+            D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[output_index]->Map(0,&range,&ptr));
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const auto& expected=input[(mode==2?(y&~1u):y)*width+(mode==2?(x&~1u):x)];Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Uniform bindless access, varying-index refusal and rollback must match each pixel");}readbacks[output_index]->Unmap(0,&empty);
+        }
+    }
+    if(arc_mode){
+        const auto packed_code=compiler.compile(R"(
+ByteAddressBuffer packed:register(t8,space9);RWTexture2D<float4> target:register(u4,space3);
+[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){uint w,h;target.GetDimensions(w,h);if(p.x>=w||p.y>=h)return;
+ float value=f16tof32(packed.Load((p.y*w+p.x)*4));target[p.xy]=float4(value,float(p.x)/64,float(p.y)/64,1);}
+)");
+        const auto packed_ir=compiler.disassemble(packed_code.Get());check(arc::dx12::shader::coarse_compute(packed_ir,1,1,true).admitted,"Readonly raw buffer and packed half conversion classification");
+        ComPtr<ID3D12PipelineState> packed_pipeline;D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=mip_root.Get();pd.CS={packed_code->GetBufferPointer(),packed_code->GetBufferSize()};hr(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&packed_pipeline)));wait_prepared(8);
+        auto packed=ray_buffer(UINT64(width)*height*4,D3D12_HEAP_TYPE_UPLOAD,D3D12_RESOURCE_STATE_GENERIC_READ,D3D12_RESOURCE_FLAG_NONE);hr(packed->Map(0,&empty,&ptr));
+        for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x)static_cast<UINT*>(ptr)[y*width+x]=(x+y)%2?0x3800u:0x3400u;packed->Unmap(0,nullptr);
+        for(unsigned mode=0;mode<4;++mode){const auto* setting=mode==0||mode==3?L"off":mode==1?L"neutral":L"2x2";check(arc_mode(const_cast<wchar_t*>(setting))==0,"Packed buffer policy switch");desired={1,1,width,height};
+            if(mode<2){begin();copy_in(textures[1].Get(),initial.Get());transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(mip_root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootShaderResourceView(5,packed->GetGPUVirtualAddress());list->SetPipelineState(packed_pipeline.Get());list->Dispatch((width+7)/8,(height+7)/8,1);
+                transition(textures[1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[0].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[1].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();
+            }else submit();
+            D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[0]->Map(0,&range,&ptr));
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=mode==2?x&~1u:x,sy=mode==2?y&~1u:y;const Pixel expected{(sx+sy)%2?.5f:.25f,float(sx)/64,float(sy)/64,1};Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Packed root-buffer SRV, dimensions and rollback must match CPU oracle");}readbacks[0]->Unmap(0,&empty);
+        }
     }
     unsigned validation_errors=0;for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size{};hr(diagnostics->GetMessage(i,nullptr,&size));std::vector<char> memory(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(memory.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';++validation_errors;}}
     check(validation_errors==0,"D3D12 validation failed");CloseHandle(event);

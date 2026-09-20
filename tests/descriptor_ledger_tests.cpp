@@ -22,5 +22,16 @@ int main(){
     check(small.write(10000,{3,1,0,1})&&!small.write(10032,{3,1,0,1}),"orphan bound");
     for(int i=0;i<10000;++i){ledger.retire_heap(2);check(ledger.register_heap(2,0x100000,32,4),"heap churn");check(ledger.write(0x100000,{std::uint64_t(i+1),1,0,1}),"value churn");}
     check(ledger.value_count()==1,"no intern-table history leak");
+    arc::DescriptorLedger copied;
+    check(copied.register_heap(1,32,32,4)&&copied.register_heap(2,1024,32,4),"copy heaps");
+    check(copied.write(32,{7,1,0,4})&&copied.copy_one(1024,32)&&copied.copy_one(1056,1024),"copy interned identity across heaps");
+    check(copied.known_count()==3&&copied.value_count()==1&&copied.read(1056)->resource==7,"copy accounting");
+    check(copied.copy_one(32,32)&&copied.known_count()==3,"self copy");
+    check(copied.write(64,{})&&copied.copy_one(1024,64)&&copied.null_count()==2,"known null copied");
+    check(copied.copy_one(1056,96)&&!copied.read(1056)&&copied.known_count()==3,"unknown source invalidates old destination");
+    check(!copied.copy_one(33,32),"misaligned copy destination rejected");
+    check(copied.copy_one(4096,32)&&copied.read(4096)->resource==7,"copy to orphan");
+    copied.retire_heap(1);copied.retire_heap(2);check(copied.known_count()==1&&copied.null_count()==0&&copied.value_count()==1,"copy references survive source retirement");
+    copied.forget(4096);check(copied.known_count()==0&&copied.value_count()==0,"copy reference retirement complete");
     std::cout<<"Descriptor ledger: million-slot deduplication, reuse, null/unknown distinction and bounded churn PASS\n";
 }

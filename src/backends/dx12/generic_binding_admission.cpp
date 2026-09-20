@@ -37,18 +37,28 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
     if(!x||!y||z!=1||!transform.threads[0]||!transform.threads[1])return reject("dispatch_shape");
     unsigned bindings=0;
     for(const auto& contract:transform.resources){
-        if(!contract.count||contract.count>256||bindings>1024-contract.count)return reject("binding_capacity");bindings+=contract.count;
+        if(!contract.count)return reject("binding_capacity");
+        if(contract.count!=UINT_MAX&&contract.count-1>UINT_MAX-contract.shader_register)return reject("register_overflow");
+        std::vector<unsigned> registers;
+        if(usage&&usage->complete){
+            const auto range=usage->ranges.find({contract.resource_class,contract.range_id});
+            if(range==usage->ranges.end())continue;
+            if(!range->second.all){
+                if(range->second.indices.size()>256)return reject("binding_capacity");
+                for(const auto reg:range->second.indices){if(reg<contract.shader_register||(contract.count!=UINT_MAX&&reg-contract.shader_register>=contract.count))return reject("access_proof_out_of_range");registers.push_back(reg);}
+            }else if(contract.count==UINT_MAX)return reject("unbounded_access_not_uniform");
+            else{if(contract.count>256)return reject("binding_capacity");for(unsigned i=0;i<contract.count;++i)registers.push_back(contract.shader_register+i);}
+        }else{
+            if(contract.count==UINT_MAX)return reject("unbounded_access_proof_missing");
+            if(contract.count>256)return reject("binding_capacity");for(unsigned i=0;i<contract.count;++i)registers.push_back(contract.shader_register+i);
+        }
+        if(bindings>1024-registers.size())return reject("binding_capacity");bindings+=static_cast<unsigned>(registers.size());
         const auto type=contract.resource_class==0?D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
             contract.resource_class==1?D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
             contract.resource_class==2?D3D12_DESCRIPTOR_RANGE_TYPE_CBV:D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-        for(unsigned element=0;element<contract.count;++element){
-            out.binding_class=contract.resource_class;out.binding_register=contract.shader_register+element;out.binding_space=contract.space;
-            if(contract.shader_register>UINT_MAX-element)return reject("register_overflow");
-            if(usage&&usage->complete&&contract.resource_class==0){
-                const auto range=usage->ranges.find({0,contract.range_id});
-                if(range==usage->ranges.end()||(!range->second.all&&!range->second.indices.contains(contract.shader_register+element)))continue;
-            }
-            auto location=arguments.locate(type,contract.shader_register+element,contract.space,D3D12_SHADER_VISIBILITY_ALL);
+        for(const auto reg:registers){
+            out.binding_class=contract.resource_class;out.binding_register=reg;out.binding_space=contract.space;
+            auto location=arguments.locate(type,reg,contract.space,D3D12_SHADER_VISIBILITY_ALL);
             if(!location)return reject("unbound_register");
             if(location->static_sampler||location->constants)continue;
             const auto arg=arguments.argument(location->parameter);if(!arg)return reject("uninitialized_argument");
@@ -74,8 +84,9 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
                 // This first pixel-compute contract admits root CBVs only;
                 // texture resources cannot be bound as raw root descriptors.
                 const bool acceleration=contract.resource_class==0&&contract.kind==16;
-                if(contract.resource_class!=2&&!acceleration)return reject("unsupported_root_view");
-                const auto required_bytes=acceleration?1u:contract.kind;
+                const bool buffer_srv=contract.resource_class==0&&(contract.kind==11||contract.kind==12);
+                if(contract.resource_class!=2&&!acceleration&&!buffer_srv)return reject("unsupported_root_view");
+                const auto required_bytes=acceleration||buffer_srv?1u:contract.kind;
                 const Allocation* found=nullptr;
                 if(buffers)found=buffers->resolve(allocations,arg->address,required_bytes);
                 else for(const auto& [id,a]:allocations){(void)id;if(a.description.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER||!a.gpu_address||arg->address<a.gpu_address)continue;
@@ -84,15 +95,20 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
                     if(found)return reject("ambiguous_root_address");found=&a;
                 }
                 if(!found)return reject("unknown_root_address");
-                view.resource=found->id;view.kind=acceleration?1:6;view.shape.known=true;
+                view.resource=found->id;view.kind=acceleration||buffer_srv?1:6;view.shape.known=true;
                 view.shape.byte_offset=arg->address-found->gpu_address;view.shape.byte_size=required_bytes;
                 if(acceleration)view.shape.dimension=D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+                if(buffer_srv){view.shape.dimension=D3D12_SRV_DIMENSION_BUFFER;view.shape.byte_size=found->description.Width-view.shape.byte_offset;}
             }
             if(contract.resource_class==0&&contract.kind==16&&(!view.resource||view.shape.dimension!=D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE))return reject("unknown_acceleration_structure");
             if(!view.resource){if(contract.resource_class==1)return reject("null_output");continue;}
             const auto resource=allocations.find(view.resource);
             if(resource==allocations.end()||!allocation_known(resource->second))return reject("unknown_allocation");
             BoundResource bound{contract,view,resource->second};
+            if(contract.resource_class==0&&contract.kind==16&&
+               (bound.allocation.description.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER||!bound.allocation.gpu_address||
+                view.shape.byte_offset>=bound.allocation.description.Width||
+                (bound.allocation.gpu_address+view.shape.byte_offset)%D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT))return reject("acceleration_view_bounds");
             if(contract.resource_class!=1){out.inputs.push_back(bound);continue;}
             const auto& d=bound.allocation.description;
             if(view.shape.counter_resource||view.shape.dimension!=D3D12_UAV_DIMENSION_TEXTURE2D||

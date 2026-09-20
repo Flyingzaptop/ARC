@@ -35,6 +35,15 @@ std::shared_ptr<Layout> make_layout(bool unbounded = false) {
 }
 
 int main() {
+    struct alignas(void*) RootItem{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE};ID3D12RootSignature* value{reinterpret_cast<ID3D12RootSignature*>(0x100)};};
+    struct alignas(void*) CodeItem{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS};D3D12_SHADER_BYTECODE value{};};
+    const unsigned bytecode=0;struct {RootItem root;CodeItem code;} stream;
+    stream.code.value={&bytecode,sizeof(bytecode)};
+    D3D12_PIPELINE_STATE_STREAM_DESC stream_desc{sizeof(stream),&stream};
+    const auto decoded=compute_stream(stream_desc);assert(decoded&&decoded->pRootSignature==stream.root.value&&decoded->CS.pShaderBytecode==&bytecode);
+    --stream_desc.SizeInBytes;assert(!compute_stream(stream_desc));++stream_desc.SizeInBytes;
+    stream.code.type=D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS;assert(!compute_stream(stream_desc));stream.code.type=D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
+    struct {RootItem root;CodeItem a,b;} duplicate{stream.root,stream.code,stream.code};assert(!compute_stream({sizeof(duplicate),&duplicate}));
     assert(!Layout::parse({}).complete);
     const std::byte invalid[]{std::byte{0}, std::byte{1}};
     assert(!Layout::parse(invalid).complete);
@@ -47,7 +56,9 @@ int main() {
     assert(!root->locate(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 2, D3D12_SHADER_VISIBILITY_ALL));
     assert(root->locate(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 2, 8, D3D12_SHADER_VISIBILITY_PIXEL)->static_sampler);
     assert(!root->locate(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 2, 8, D3D12_SHADER_VISIBILITY_VERTEX));
-    assert(!make_layout(true)->complete);
+    const auto unbounded=make_layout(true);assert(unbounded->complete);
+    assert(unbounded->locate(D3D12_DESCRIPTOR_RANGE_TYPE_UAV,6,3,D3D12_SHADER_VISIBILITY_ALL)->table_offset==8);
+    assert(!unbounded->locate(D3D12_DESCRIPTOR_RANGE_TYPE_UAV,UINT_MAX,3,D3D12_SHADER_VISIBILITY_ALL));
 
     Arguments state; state.signature(1, root);
     assert(!state.locate(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7, 2, D3D12_SHADER_VISIBILITY_ALL));

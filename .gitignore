@@ -1,4 +1,5 @@
 /build/
+/build-wicked-generic/
 /traces/
 *.arcbin
 *.sqlite

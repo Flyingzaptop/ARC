@@ -2,6 +2,7 @@
 #include "generic_optimizer.hpp"
 #include "generic_runtime.hpp"
 #include "generic_gpu_profile.hpp"
+#include "generic_command_mirror.hpp"
 #include "arc/optimizer_session.hpp"
 #include "json.hpp"
 #include <atomic>
@@ -119,7 +120,7 @@ DWORD WINAPI run(void*){
 }
 }
 bool start(const wchar_t* config_path)noexcept{
-    if(!config_path||!optimizer::enabled())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
+    if(!config_path||!optimizer::enabled()||mirror::requested_rate())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
     try{const auto config=read_json(config_path);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
         s.python=config.at("python").get<std::string>();s.critic=config.at("critic").get<std::string>();s.directory=config.at("output").get<std::string>();s.maximum_seconds=config.value("maximum_seconds",0u);
         if(!s.python.is_absolute()||!s.critic.is_absolute()||!s.directory.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");

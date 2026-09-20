@@ -2,8 +2,30 @@
 #include <wrl/client.h>
 #include <algorithm>
 #include <limits>
+#include <cstring>
 
 namespace arc::dx12::binding {
+std::optional<D3D12_COMPUTE_PIPELINE_STATE_DESC> compute_stream(const D3D12_PIPELINE_STATE_STREAM_DESC& stream){
+    if(!stream.pPipelineStateSubobjectStream||!stream.SizeInBytes||stream.SizeInBytes>65536)return {};
+    D3D12_COMPUTE_PIPELINE_STATE_DESC description{};std::size_t offset=0;std::uint64_t seen=0;
+    const auto* bytes=static_cast<const std::byte*>(stream.pPipelineStateSubobjectStream);
+    auto read=[&]<class T>(T& output){struct alignas(void*) Item{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;T value;};
+        if(sizeof(Item)>stream.SizeInBytes-offset)return false;Item item;std::memcpy(&item,bytes+offset,sizeof(item));output=item.value;offset+=sizeof(Item);return true;};
+    while(offset<stream.SizeInBytes){if(stream.SizeInBytes-offset<sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE))return {};
+        D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;std::memcpy(&type,bytes+offset,sizeof(type));
+        if(type<0||type>=64||(seen&(UINT64(1)<<type)))return {};seen|=UINT64(1)<<type;bool valid=false;
+        switch(type){
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:valid=read(description.pRootSignature);break;
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS:valid=read(description.CS);break;
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK:valid=read(description.NodeMask);break;
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO:valid=read(description.CachedPSO);break;
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS:valid=read(description.Flags);break;
+        default:return {};
+        }if(!valid)return {};
+    }
+    if(!description.pRootSignature||!description.CS.pShaderBytecode||!description.CS.BytecodeLength)return {};
+    return description;
+}
 namespace {
 bool visible(D3D12_SHADER_VISIBILITY parameter, D3D12_SHADER_VISIBILITY stage) noexcept {
     return parameter == D3D12_SHADER_VISIBILITY_ALL || parameter == stage;
@@ -29,11 +51,9 @@ Layout Layout::parse(std::span<const std::byte> bytes) {
     const auto& root = versioned->Desc_1_1;
     out.flags = root.Flags;
     if (root.NumParameters > 64 || root.NumStaticSamplers > 2048) return reject("root_capacity");
-    // Direct heap indexing needs per-instruction dynamic index tracking. A table
-    // inventory alone is not evidence that such a shader's bindings are known.
-    if (root.Flags & (D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
-                      D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED))
-        return reject("direct_heap_indexing");
+    // A shared root may expose bindless ranges unused by this shader. Preserve
+    // their flags/ranges; the shader contract separately rejects unbounded or
+    // direct-heap accesses. A root inventory alone never authorizes a mutation.
     if (root.NumStaticSamplers)
         out.samplers.assign(root.pStaticSamplers, root.pStaticSamplers + root.NumStaticSamplers);
     std::size_t range_count{};
@@ -46,16 +66,17 @@ Layout Layout::parse(std::span<const std::byte> bytes) {
             const auto& table = p.DescriptorTable;
             range_count += table.NumDescriptorRanges;
             if (!table.NumDescriptorRanges || range_count > 4096) return reject("range_capacity");
-            UINT next{};
+            UINT next{};bool next_known=true;
             for (UINT j = 0; j < table.NumDescriptorRanges; ++j) {
                 const auto& r = table.pDescriptorRanges[j];
+                if(r.OffsetInDescriptorsFromTableStart==D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND&&!next_known)return reject("append_after_unbounded_range");
                 const UINT offset = r.OffsetInDescriptorsFromTableStart == D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
                     ? next : r.OffsetInDescriptorsFromTableStart;
-                if (!fits(offset, r.NumDescriptors) || !fits(r.BaseShaderRegister, r.NumDescriptors))
-                    return reject("unbounded_or_overflowing_range");
+                if(r.NumDescriptors!=UINT_MAX&&(!fits(offset, r.NumDescriptors) || !fits(r.BaseShaderRegister, r.NumDescriptors)))
+                    return reject("overflowing_range");
                 item.ranges.push_back({r.RangeType, r.BaseShaderRegister, r.RegisterSpace,
                     r.NumDescriptors, offset, r.Flags});
-                next = offset + r.NumDescriptors;
+                next_known=r.NumDescriptors!=UINT_MAX;if(next_known)next=offset+r.NumDescriptors;
             }
             break;
         }
@@ -91,6 +112,7 @@ std::optional<Location> Layout::locate(D3D12_DESCRIPTOR_RANGE_TYPE type,
             for (const auto& r : p.ranges) {
                 if (r.type != type || r.space != space || reg < r.first_register ||
                     reg - r.first_register >= r.count) continue;
+                if(reg-r.first_register>UINT_MAX-r.table_offset)return {};
                 if (found) return {}; // Ambiguity cannot authorize a mutation.
                 found = Location{i, r.table_offset + reg - r.first_register, true};
             }
@@ -136,11 +158,14 @@ std::vector<std::byte> append_control_cbv(std::span<const std::byte> original,UI
     const auto* begin=static_cast<const std::byte*>(blob->GetBufferPointer());return {begin,begin+blob->GetBufferSize()};
 }
 
-void Arguments::reset() noexcept { identity_ = 0; layout_.reset(); arguments_ = {}; }
+void Arguments::reset() noexcept { identity_ = 0; layout_.reset(); arguments_.clear(); }
 void Arguments::signature(std::uint64_t identity, std::shared_ptr<const Layout> layout) {
     if (identity && identity == identity_) return;
-    reset(); identity_ = identity; layout_ = std::move(layout);
-    if (!identity_ || !layout_ || !layout_->complete) return;
+    reset();
+    if (!identity || !layout || !layout->complete || layout->parameters.size()>64) return;
+    // Publish the new layout only after allocation succeeds. An allocation
+    // failure must leave an unbound state, never a layout with missing values.
+    arguments_.resize(layout->parameters.size());identity_ = identity; layout_ = std::move(layout);
     for (UINT i = 0; i < layout_->parameters.size(); ++i) arguments_[i].type = layout_->parameters[i].type;
 }
 bool Arguments::table(UINT parameter, D3D12_GPU_DESCRIPTOR_HANDLE handle) noexcept {
@@ -168,13 +193,13 @@ bool Arguments::constants(UINT parameter, UINT offset, std::span<const UINT> wor
 void Arguments::invalidate_tables() noexcept {
     for (auto& a : arguments_) if (a.type == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE) a.initialized = false;
 }
-std::optional<Argument> Arguments::argument(UINT parameter) const noexcept {
+const Argument* Arguments::argument(UINT parameter) const noexcept {
     if (!layout_ || !layout_->complete || parameter >= layout_->parameters.size() || !arguments_[parameter].initialized) return {};
-    return arguments_[parameter];
+    return &arguments_[parameter];
 }
-std::optional<Argument> Arguments::raw_argument(UINT parameter) const noexcept {
+const Argument* Arguments::raw_argument(UINT parameter) const noexcept {
     if(!layout_||!layout_->complete||parameter>=layout_->parameters.size())return {};
-    return arguments_[parameter];
+    return &arguments_[parameter];
 }
 std::optional<Location> Arguments::locate(D3D12_DESCRIPTOR_RANGE_TYPE type,
     UINT reg, UINT space, D3D12_SHADER_VISIBILITY stage) const noexcept {

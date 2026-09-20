@@ -18,6 +18,7 @@
 #include <chrono>
 #include <tuple>
 #include <cmath>
+#include <source_location>
 
 namespace arc::dx12::optimizer {
 namespace {
@@ -51,22 +52,29 @@ struct State {
     binding::BufferIndex buffers;
     DescriptorLedger descriptors;
     std::deque<std::shared_ptr<Pipeline>> jobs;
+    std::size_t queued_code_bytes{};
     std::vector<std::shared_ptr<GpuControl>> controls;
     std::map<std::uint64_t,VariantStats> history;
     std::uint64_t next{1},prepared{},declined{},modified_dispatches{},coarse_submissions{},neutral_submissions{},faults{},pool_misses{};
     std::string last_error;std::map<std::string,std::uint64_t> admission_reasons;
+    std::map<std::string,std::uint64_t> pipeline_declines;
 };
 State& state(){static auto* s=new State;return *s;}
 std::atomic<std::uint64_t> cpu_ns{};
+std::atomic<bool> cpu_timing{};
+struct CpuSample {std::atomic<const char*> name{};std::atomic<std::uint64_t> ns{},calls{};};
+std::array<CpuSample,128> cpu_samples;
+std::atomic<unsigned> next_cpu_sample{};
+unsigned register_cpu_sample(const char* name){const auto id=next_cpu_sample.fetch_add(1);if(id<cpu_samples.size())cpu_samples[id].name=name;return id;}
 thread_local unsigned metering_depth{};
 struct CpuMeter {
     using Clock=std::chrono::steady_clock;
-    bool outer{metering_depth++==0};Clock::time_point start;
-    CpuMeter(){if(outer)start=Clock::now();}
-    ~CpuMeter(){--metering_depth;if(outer)cpu_ns.fetch_add(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-start).count()),std::memory_order_relaxed);}
+    bool outer{metering_depth++==0&&cpu_timing.load(std::memory_order_relaxed)};Clock::time_point start;unsigned sample;
+    explicit CpuMeter(unsigned id=UINT_MAX):sample(id){if(outer)start=Clock::now();}
+    ~CpuMeter(){--metering_depth;if(outer){const auto elapsed=static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-start).count());cpu_ns.fetch_add(elapsed,std::memory_order_relaxed);if(sample<cpu_samples.size()){cpu_samples[sample].ns.fetch_add(elapsed,std::memory_order_relaxed);cpu_samples[sample].calls.fetch_add(1,std::memory_order_relaxed);}}}
 };
 void check(HRESULT value){if(FAILED(value))throw std::runtime_error("Optimizer HRESULT "+std::to_string(value));}
-template<class F>void safe(F&& action)noexcept{CpuMeter meter;try{std::lock_guard lock(state().mutex);action();}catch(const std::exception& error){std::lock_guard lock(state().mutex);auto& s=state();++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;s.last_error=error.what();}catch(...){std::lock_guard lock(state().mutex);++state().faults;state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().last_error="unknown exception";}}
+template<class F>void safe(F&& action,std::source_location source=std::source_location::current())noexcept{static const auto sample=register_cpu_sample(source.function_name());CpuMeter meter(sample);try{std::lock_guard lock(state().mutex);action();}catch(const std::exception& error){std::lock_guard lock(state().mutex);auto& s=state();++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;s.last_error=error.what();}catch(...){std::lock_guard lock(state().mutex);++state().faults;state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().last_error="unknown exception";}}
 constexpr GUID lifetime_guid{0x109dd36a,0xb6f3,0x4f98,{0x89,0x7c,0xf3,0x2c,0xa2,0x60,0xb5,0xb4}};
 class Lifetime final:public IUnknown {
     std::atomic<ULONG> count{1};void* object;unsigned kind;
@@ -212,17 +220,24 @@ DWORD WINAPI worker(void*){
             auto variant=prepare_variant(job);std::vector<std::shared_ptr<GpuControl>> controls;
             bool needs_pool=false;{std::lock_guard lock(state().mutex);needs_pool=std::none_of(state().controls.begin(),state().controls.end(),[&](const auto& c){return c->device()==job->device.Get();});}
             if(needs_pool){if(state().controls.size()+8>64)throw std::runtime_error("control pool capacity");mirror::InternalCall internal;for(unsigned i=0;i<8;++i)controls.push_back(std::make_shared<GpuControl>(job->device.Get()));}
-            std::lock_guard lock(state().mutex);job->variant=std::move(variant);job->reason="prepared_neutral";job->code.clear();job->code.shrink_to_fit();++state().prepared;state().controls.insert(state().controls.end(),controls.begin(),controls.end());
-        }catch(const std::exception& error){std::lock_guard lock(state().mutex);job->reason=error.what();job->code.clear();job->code.shrink_to_fit();++state().declined;}
+            std::lock_guard lock(state().mutex);job->variant=std::move(variant);job->reason="prepared_neutral";state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().prepared;state().controls.insert(state().controls.end(),controls.begin(),controls.end());
+        }catch(const std::exception& error){std::lock_guard lock(state().mutex);job->reason=error.what();state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().declined;}
     }
 }
 }
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
+void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
+    out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
+void cpu_snapshot(std::ostream& out){
+    out<<"{\"enabled\":"<<(cpu_timing?"true":"false")<<",\"measurement\":\"optimizer_intercept_wall_including_native_calls\",\"total_ms\":"<<cpu_ns.load()/1.e6<<",\"sites\":[";
+    bool first=true;for(const auto& sample:cpu_samples){const auto name=sample.name.load();const auto calls=sample.calls.load();if(!name||!calls)continue;if(!first)out<<',';first=false;out<<"{\"name\":"<<std::quoted(name)<<",\"calls\":"<<calls<<",\"ms\":"<<sample.ns.load()/1.e6<<'}';}out<<"]}";
+}
 bool initialize()noexcept{
     bool result=true;safe([&]{auto& s=state();if(s.enabled)return;
         const auto worker_path=environment(L"ARC_OPTIMIZER_WORKER");if(worker_path.empty())return;
         s.worker=worker_path;s.compiler=environment(L"ARC_OPTIMIZER_COMPILER");s.cache=environment(L"ARC_OPTIMIZER_CACHE");
+        cpu_timing=environment(L"ARC_OPTIMIZER_CPU_TIMING")==L"1";
         if(!s.worker.is_absolute()||!s.compiler.is_absolute()||!s.cache.is_absolute()||!std::filesystem::is_regular_file(s.worker)||!std::filesystem::is_regular_file(s.compiler)) {result=false;return;}
         s.cache/=std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64());std::filesystem::create_directories(s.cache);
         HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);if(!thread){result=false;return;}CloseHandle(thread);s.enabled=true;
@@ -251,14 +266,22 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
 });return accepted;}
 DescriptorWrite descriptor_write()noexcept{DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().mutex);return result;}
 void root_created(ID3D12RootSignature* native,const void* bytes,SIZE_T size)noexcept{if(!enabled()||!native||!bytes||!size||size>65536)return;safe([&]{auto& s=state();if(s.roots.size()>=1024)return;auto root=std::make_shared<Root>();root->id=s.next++;root->native=native;const auto* data=static_cast<const std::byte*>(bytes);root->bytes.assign(data,data+size);root->layout=std::make_shared<binding::Layout>(binding::Layout::parse(root->bytes));if(track(native,1))s.roots[native]=std::move(root);});}
-void compute_created(ID3D12PipelineState* native,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)noexcept{if(!enabled()||!native||!desc||desc->NodeMask>1||!desc->CS.pShaderBytecode||!desc->CS.BytecodeLength||desc->CS.BytecodeLength>2*1024*1024)return;const auto profile_id=gpu_profile::pipeline_identity(native);safe([&]{auto& s=state();if(s.pipelines.size()>=128||s.jobs.size()>=64)return;const auto root=s.roots.find(desc->pRootSignature);if(root==s.roots.end()||!root->second->layout->complete)return;
+void compute_created(ID3D12PipelineState* native,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)noexcept{if(!enabled()||!native||!desc||desc->NodeMask>1||!desc->CS.pShaderBytecode||!desc->CS.BytecodeLength||desc->CS.BytecodeLength>2*1024*1024)return;const auto profile_id=gpu_profile::pipeline_identity(native);safe([&]{auto& s=state();
+    auto decline=[&](const std::string& reason){if(s.pipeline_declines.size()<64||s.pipeline_declines.contains(reason))++s.pipeline_declines[reason];};
+    if(s.pipelines.contains(native))return;
+    if(s.pipelines.size()>=512||s.jobs.size()>=256||desc->CS.BytecodeLength>64u*1024u*1024u-s.queued_code_bytes){decline("pipeline_or_worker_capacity");return;}
+    const auto root=s.roots.find(desc->pRootSignature);if(root==s.roots.end()){decline("unobserved_root_signature");return;}if(!root->second->layout->complete){decline("root:"+root->second->layout->rejection);return;}
     auto p=std::make_shared<Pipeline>();p->id=s.next++;p->profile_id=profile_id;p->root=root->second;check(native->GetDevice(IID_PPV_ARGS(&p->device)));if(p->device->GetNodeCount()!=1)return;
-    const auto* bytes=static_cast<const std::byte*>(desc->CS.pShaderBytecode);p->code.assign(bytes,bytes+desc->CS.BytecodeLength);if(!track(native,2))return;s.pipelines[native]=p;s.jobs.push_back(std::move(p));s.changed.notify_one();
+    const auto* bytes=static_cast<const std::byte*>(desc->CS.pShaderBytecode);p->code.assign(bytes,bytes+desc->CS.BytecodeLength);if(!track(native,2))return;s.pipelines[native]=p;s.jobs.push_back(std::move(p));s.queued_code_bytes+=desc->CS.BytecodeLength;s.changed.notify_one();
 });}
 void heap_created(ID3D12DescriptorHeap* native)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();if(s.heaps.contains(native)||s.heaps.size()>=4096)return;mirror::InternalCall guard;const auto desc=native->GetDesc();Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));
     binding::DescriptorHeap h{s.next++,native->GetCPUDescriptorHandleForHeapStart().ptr,0,device->GetDescriptorHandleIncrementSize(desc.Type),desc.NumDescriptors,desc.Type};if(desc.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)h.gpu=native->GetGPUDescriptorHandleForHeapStart().ptr;
     if(!s.descriptors.register_heap(h.id,h.cpu,h.stride,h.count))return;if(!track(native,4)){s.descriptors.retire_heap(h.id);return;}s.heaps[native]=h;s.heaps_by_id[h.id]=h;
 });}
+void stream_created(ID3D12PipelineState* native,const D3D12_PIPELINE_STATE_STREAM_DESC* stream)noexcept{
+    if(!enabled()||!native||!stream)return;
+    try{if(const auto description=binding::compute_stream(*stream))compute_created(native,&*description);}catch(...){}
+}
 void resource_created(ID3D12Resource* native,ID3D12Heap* heap,UINT64 offset)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();const auto id=resource_identity(native);if(!id)return;auto& a=s.allocations.at(id);a.kind=heap?binding::AllocationKind::Placed:binding::AllocationKind::Committed;
     if(heap){auto it=s.allocation_heaps.find(heap);if(it==s.allocation_heaps.end()){if(s.allocation_heaps.size()>=4096||!track(heap,6)){a.kind=binding::AllocationKind::Unknown;return;}it=s.allocation_heaps.emplace(heap,s.next++).first;}a.heap=it->second;a.offset=offset;}
     Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));a.bytes=device->GetResourceAllocationInfo(0,1,&a.description).SizeInBytes;if(a.bytes==UINT64_MAX)a.kind=binding::AllocationKind::Unknown;
@@ -284,13 +307,15 @@ void cbv(const D3D12_CONSTANT_BUFFER_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE
     });
 }
 void sampler(const D3D12_SAMPLER_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle)noexcept{if(!enabled())return;safe([&]{DescriptorValue v;v.kind=5;v.shape.known=desc!=nullptr;write_view(handle,v);});}
-void copy_descriptors(UINT count,D3D12_CPU_DESCRIPTOR_HANDLE destination,D3D12_CPU_DESCRIPTOR_HANDLE source,UINT stride)noexcept{if(!enabled())return;safe([&]{auto& ledger=state().descriptors;if(!stride||count>65536)throw std::runtime_error("descriptor copy capacity");std::vector<std::optional<DescriptorValue>> values;values.reserve(count);for(UINT i=0;i<count;++i)values.push_back(ledger.read(source.ptr+UINT64(i)*stride));for(UINT i=0;i<count;++i){const auto address=destination.ptr+UINT64(i)*stride;if(values[i]){if(!ledger.write(address,*values[i]))ledger.forget(address);}else ledger.forget(address);}});}
+void copy_descriptors(UINT count,D3D12_CPU_DESCRIPTOR_HANDLE destination,D3D12_CPU_DESCRIPTOR_HANDLE source,UINT stride)noexcept{if(!enabled())return;safe([&]{auto& ledger=state().descriptors;if(!stride||count>65536)throw std::runtime_error("descriptor copy capacity");if(count==1){if(!ledger.copy_one(destination.ptr,source.ptr))ledger.forget(destination.ptr);return;}std::vector<std::optional<DescriptorValue>> values;values.reserve(count);for(UINT i=0;i<count;++i)values.push_back(ledger.read(source.ptr+UINT64(i)*stride));for(UINT i=0;i<count;++i){const auto address=destination.ptr+UINT64(i)*stride;if(values[i]){if(!ledger.write(address,*values[i]))ledger.forget(address);}else ledger.forget(address);}});}
 void descriptor_ranges(UINT dc,const D3D12_CPU_DESCRIPTOR_HANDLE* dst,const UINT* ds,UINT sc,const D3D12_CPU_DESCRIPTOR_HANDLE* src,const UINT* ss,UINT stride)noexcept{if(!enabled())return;safe([&]{if(dc>1024||sc>1024||!stride||(!dst&&dc)||(!src&&sc))throw std::runtime_error("descriptor ranges unavailable");std::vector<std::uint64_t> addresses;std::vector<std::optional<DescriptorValue>> values;auto& ledger=state().descriptors;
     for(UINT r=0;r<dc;++r){const auto count=ds?ds[r]:1;if(count>65536||addresses.size()+count>65536)throw std::runtime_error("descriptor range capacity");for(UINT i=0;i<count;++i)addresses.push_back(dst[r].ptr+UINT64(i)*stride);}
     for(UINT r=0;r<sc;++r){const auto count=ss?ss[r]:1;if(count>65536||values.size()+count>65536)throw std::runtime_error("descriptor range capacity");for(UINT i=0;i<count;++i)values.push_back(ledger.read(src[r].ptr+UINT64(i)*stride));}
     for(std::size_t i=0;i<addresses.size();++i){if(addresses.size()==values.size()&&values[i]){if(!ledger.write(addresses[i],*values[i]))ledger.forget(addresses[i]);}else ledger.forget(addresses[i]);}
 });}
-void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it==s.commands.end()){if(s.commands.size()>=256||!track(native,3))return;it=s.commands.emplace(native,Recording{}).first;}it->second=Recording{};it->second.pipeline=pipeline;});}
+void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();auto it=s.commands.find(native);if(it==s.commands.end()){if(s.commands.size()>=256||!track(native,3))return;it=s.commands.emplace(native,Recording{}).first;}
+    auto& c=it->second;c.pipeline=pipeline;c.root.reset();c.arguments.reset();c.heaps.clear();c.control.reset();c.uses.clear();c.valid=true;c.closed=c.epilogue=c.render_pass=false;
+});}
 void pipeline(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pipeline)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native))c->pipeline=pipeline;});}
 void heaps(ID3D12GraphicsCommandList* native,UINT count,ID3D12DescriptorHeap*const* heaps)noexcept{if(!enabled())return;safe([&]{auto* c=recording(native);if(!c)return;if(count>2||(!heaps&&count)){c->valid=false;return;}std::vector<std::uint64_t> next;for(UINT i=0;i<count;++i){heap_created(heaps[i]);const auto it=state().heaps.find(heaps[i]);if(it==state().heaps.end()){c->valid=false;return;}next.push_back(it->second.id);}if(next!=c->heaps){c->arguments.invalidate_tables();c->heaps=std::move(next);}});}
 void root(ID3D12GraphicsCommandList* native,ID3D12RootSignature* root)noexcept{if(!enabled())return;safe([&]{auto* c=recording(native);if(!c)return;const auto it=state().roots.find(root);c->root=it==state().roots.end()?nullptr:it->second;c->arguments.signature(c->root?c->root->id:0,c->root?c->root->layout:nullptr);});}
@@ -312,7 +337,7 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
 void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->control&&c->valid&&!c->closed&&!c->render_pass&&!c->uses.empty()){mirror::InternalCall internal;c->control->record_neutralize(native);c->epilogue=true;}c->closed=true;}});}
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
     if(!enabled()||!queue||(!lists&&count))return false;
-    CpuMeter meter;
+    static const auto sample=register_cpu_sample("execute");CpuMeter meter(sample);
     auto& s=state();std::lock_guard lock(s.mutex);
     std::array<GpuControl*,64> controls{};unsigned used=0;
     auto fault=[&](const char* message){++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;try{s.last_error=message;}catch(...) {}};
@@ -329,12 +354,17 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
             if(!s.faults&&c.valid&&c.closed&&c.epilogue)for(unsigned n=0;n<c.uses.size();++n){
                 const auto& use=c.uses[n];std::vector<binding::DescriptorHeap> heaps;
                 for(auto id:use.heaps){const auto h=s.heaps_by_id.find(id);if(h!=s.heaps_by_id.end())heaps.push_back(h->second);}
-                auto admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,nullptr,&s.buffers);
-                if(!admitted.admitted&&admitted.reason=="unknown_descriptor"&&admitted.binding_class==0&&use.variant->access){
+                auto prove=[&]{
                     auto& stats=*use.variant;const auto started=std::chrono::steady_clock::now();++stats.uniform_attempts;
                     const auto usage=uniform_usage(use,heaps);stats.uniform_steps+=usage.steps;stats.uniform_reason=usage.reason;
                     stats.uniform_cpu_ms+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count();
-                    if(usage.complete){++stats.uniform_proven;admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,&usage,&s.buffers);}
+                    if(usage.complete)++stats.uniform_proven;return usage;
+                };
+                const bool needs_proof=std::any_of(use.variant->contract.resources.begin(),use.variant->contract.resources.end(),[](const auto& r){return r.count==UINT_MAX;});
+                shader::ResourceUsage usage;if(needs_proof&&use.variant->access)usage=prove();
+                auto admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,usage.complete?&usage:nullptr,&s.buffers);
+                if(!needs_proof&&!admitted.admitted&&admitted.reason=="unknown_descriptor"&&admitted.binding_class==0&&use.variant->access){
+                    usage=prove();if(usage.complete)admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,&usage,&s.buffers);
                 }
                 auto& v=*use.variant;++v.attempts;v.admitted+=admitted.admitted;v.last_reason=admitted.reason;v.binding_class=admitted.binding_class;v.binding_register=admitted.binding_register;v.binding_space=admitted.binding_space;
                 if(s.history.size()<256||s.history.contains(v.id))s.history[v.id]=v;
@@ -358,7 +388,11 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
     }
     // Never return false after submitting a helper: the original batch and all
     // retirement signals remain owned by this function even on preparation error.
-    {mirror::InternalCall internal;queue->ExecuteCommandLists(count,lists);
+    // VRS prepares its own independent control images and owns the same single
+    // original submission when present. Neither actuator replays application
+    // work; compute retirement follows that one combined submission.
+    if(!mirror::execute(queue,count,lists)){mirror::InternalCall internal;queue->ExecuteCommandLists(count,lists);}
+    {mirror::InternalCall internal;
         for(unsigned i=0;i<used;++i)try{controls[i]->submitted(queue);}catch(const std::exception& e){fault(e.what());}}
     return true;
 }

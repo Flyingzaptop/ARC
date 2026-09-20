@@ -28,7 +28,7 @@ std::vector<std::string> fields(std::string_view s) {
     }
     if(quoted||nesting)throw std::runtime_error("unbalanced");out.push_back(trim(std::string(s.substr(start))));return out;
 }
-unsigned integer(const std::string& s) {if(!s.starts_with("i32 "))throw std::runtime_error("i32 expected");return number(std::string_view(s).substr(4));}
+unsigned integer(const std::string& s) {if(s=="i32 -1")return UINT32_MAX;if(!s.starts_with("i32 "))throw std::runtime_error("i32 expected");return number(std::string_view(s).substr(4));}
 unsigned metadata_ref(const std::string& s) {if(s.empty()||s[0]!='!')throw std::runtime_error("metadata reference");return number(std::string_view(s).substr(1));}
 std::string code(std::string line) {
     // Semicolons inside quoted identifiers/metadata are not comments.
@@ -50,9 +50,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         std::map<std::string,unsigned> named;
         std::vector<std::string> lines;std::istringstream stream(text);std::string line;std::smatch m;
         const std::regex md(R"(^!([0-9]+) = !\{(.*)\}$)"), nm(R"(^!(dx\.[A-Za-z]+) = !\{!([0-9]+)\}$)");
-        unsigned functions=0;std::size_t begin=0,end=0;
+        unsigned functions=0,next_metadata=0;std::size_t begin=0,end=0;
+        const std::regex metadata_id(R"(^!([0-9]+) = )");
         while(std::getline(stream,line)){
             line=trim(line);
+            std::smatch identity;if(std::regex_search(line,identity,metadata_id)){const auto id=number(identity[1].str());if(id>=1000000)return reject("metadata_capacity");next_metadata=std::max(next_metadata,id+1);}
             if(std::regex_match(line,m,md))metadata.emplace(number(m[1].str()),fields(m[2].str()));
             else if(std::regex_match(line,m,nm))named.emplace(m[1].str(),number(m[2].str()));
             if(line.starts_with("define ")){++functions;begin=lines.size();}
@@ -77,8 +79,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             for(const auto& resource:metadata.at(metadata_ref(lists[cls]))){
                 const auto& r=metadata.at(metadata_ref(resource));if(r.size()<7)return reject("resource_metadata");
                 ResourceContract c{cls,integer(r[0]),integer(r[4]),integer(r[3]),integer(r[5]),integer(r[6])};
-                if(!c.count||c.count==UINT32_MAX||std::uint64_t(c.shader_register)+c.count>UINT32_MAX)return reject("unbounded_resource");
-                if(cls==1&&(c.kind!=2||c.count!=1||r.size()!=11||r[7]!="i1 false"||r[8]!="i1 false"||r[9]!="i1 false"))return reject("uav_contract");
+                if(!c.count||(c.count!=UINT32_MAX&&std::uint64_t(c.shader_register)+c.count>UINT32_MAX))return reject("resource_range");
+                // A runtime submission must resolve a finite set of uniform
+                // indices before any unbounded table can be activated.
+                if(c.count==UINT32_MAX&&(!runtime_control||cls==2))return reject("unbounded_resource_requires_runtime_proof");
+                if(cls==1&&(c.kind!=2||(!runtime_control&&c.count!=1)||r.size()!=11||r[7]!="i1 false"||r[8]!="i1 false"||r[9]!="i1 false"))return reject("uav_contract");
                 if(std::any_of(out.resources.begin(),out.resources.end(),[&](const auto& old){return old.resource_class==cls&&old.range_id==c.range_id;}))return reject("duplicate_range");
                 out.resources.push_back(c);
             }
@@ -93,6 +98,8 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             "dx.op.textureStore.f32","dx.op.cbufferLoadLegacy.f32","dx.op.cbufferLoadLegacy.i32","dx.op.sampleLevel.f32","dx.op.sampleCmpLevelZero.f32",
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
             "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32",
+            "dx.op.legacyF16ToF32","dx.op.legacyF32ToF16","dx.op.getDimensions",
+            "dx.op.bufferLoad.f32","dx.op.bufferLoad.i32","dx.op.rawBufferLoad.f32","dx.op.rawBufferLoad.i32",
             "dx.op.allocateRayQuery","dx.op.rayQuery_TraceRayInline","dx.op.rayQuery_Proceed.i1","dx.op.rayQuery_StateScalar.i32"};
         const std::set<std::string> allowed_instructions={"call","ret","br","phi","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
             "shl","lshr","ashr","and","or","xor","icmp","fcmp","select","fptoui","fptosi","uitofp","sitofp","fptrunc","fpext","zext","sext","trunc","bitcast","extractvalue","extractelement","insertelement","shufflevector"};
@@ -130,9 +137,12 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 const auto h=args[1].substr(args[1].find_last_of(' ')+1);
                 if(!handles.contains(h)||handles.at(h).cls!=1)return reject("store_handle");
                 stores.push_back({i,args});
-            } else if(name.starts_with("dx.op.textureLoad")||name.starts_with("dx.op.sample")){
+            } else if(name.starts_with("dx.op.textureLoad")||name.starts_with("dx.op.sample")||name.starts_with("dx.op.bufferLoad")||name.starts_with("dx.op.rawBufferLoad")){
                 if(args.size()<2)return reject("read_shape");const auto h=args[1].substr(args[1].find_last_of(' ')+1);
                 if(!handles.contains(h)||handles.at(h).cls!=0)return reject("uav_or_unknown_read");
+            } else if(name=="dx.op.getDimensions"){
+                if(args.size()!=3)return reject("dimension_shape");const auto h=args[1].substr(args[1].find_last_of(' ')+1);
+                if(!handles.contains(h)||handles.at(h).cls>1)return reject("dimension_handle");
             }
         }
         if(ids[0].empty()||ids[1].empty()||stores.empty())return reject("no_pixel_outputs");
@@ -147,7 +157,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             if(space==65536)return reject("control_register_space");out.control_space=space;
             for(const auto& r:out.resources)if(r.resource_class==2){if(r.range_id==UINT32_MAX)return reject("control_range");control_range=std::max(control_range,r.range_id+1);}
             const auto root_id=named.at("dx.resources");auto resource_lists=metadata.at(root_id);
-            unsigned next=metadata.rbegin()->first+1;if(next>1000000)return reject("metadata_capacity");
+            unsigned next=next_metadata;if(next>1000000)return reject("metadata_capacity");
             const unsigned control_id=next++,list_id=next++;
             auto cbuffers=resource_lists[2]=="null"?std::vector<std::string>{}:metadata.at(metadata_ref(resource_lists[2]));
             cbuffers.push_back("!"+std::to_string(control_id));resource_lists[2]="!"+std::to_string(list_id);

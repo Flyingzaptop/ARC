@@ -30,7 +30,7 @@ ZeroFactorTransform short_circuit_zero_factors(std::string_view input){
         std::map<std::string,Definition> definitions;std::map<std::string,std::set<unsigned>> users;
         std::map<unsigned,std::vector<std::string>> line_refs;
         const std::regex ref(R"(%[A-Za-z0-9_.$]+)"),def(R"(^(%[A-Za-z0-9_.$]+) = .*$)"),label(R"(^([A-Za-z0-9_.$]+):.*$)");
-        const std::regex jump(R"(^br label %([A-Za-z0-9_.$]+)$)"),branch(R"(^br i1 (%[A-Za-z0-9_.$]+|true|false), label %([A-Za-z0-9_.$]+), label %([A-Za-z0-9_.$]+)$)");
+        const std::regex jump(R"(^br label %([A-Za-z0-9_.$]+)(?:, !.*)?$)"),branch(R"(^br i1 (%[A-Za-z0-9_.$]+|true|false), label %([A-Za-z0-9_.$]+), label %([A-Za-z0-9_.$]+)(?:, !.*)?$)");
         std::istringstream source(result.ir);std::string line;std::smatch m;bool inside=false;unsigned current=UINT32_MAX;
         while(std::getline(source,line)){
             const unsigned index=static_cast<unsigned>(lines.size());lines.push_back(line);const auto comment=line.find(';');auto c=trim(line.substr(0,comment));code.push_back(c);

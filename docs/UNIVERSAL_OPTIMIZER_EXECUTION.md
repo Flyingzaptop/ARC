@@ -244,3 +244,61 @@ original, neutral, coarse and cached rollback modes, both directly and through
 the same DLL. Zero D3D12 debug errors. CPU binding tests also cover null/retired AS,
 root AS descriptors and placed-output rejection. This is a functionality result;
 no external ray-scene performance or universal DXR compatibility is claimed.
+
+## Checkpoint 8 (binding portability and CPU work; not full completion)
+
+Three alternating Cauldron pairs at `repeatability-af17a7d` retained the fixed
+quality limits at the final pose in every pair. Baseline FPS: 77.825, 76.925,
+76.865. Adaptive 2x2/.9 FPS: 83.716, 83.133, 82.057. Paired gains: 7.57%, 8.07%,
+6.76%. SSIM: .990627, .992444, .988883; tile p99: .023552, .020683, .020866.
+CPU preparation increased by roughly .86–1.22ms in those runs, so the own-CPU
+budget is NOT closed despite the net FPS gain. GPU lighting decreased from
+about 3.59–3.64ms to 2.78–2.84ms. Nested GPU intervals must not be summed.
+
+CPU diagnostics are now opt-in (`ARC_OPTIMIZER_CPU_TIMING=1`), with per-site
+wall time explicitly including native calls, not claiming complete own-cost
+accounting. Root argument storage follows actual parameter count instead of
+zeroing/copying ~18 KiB on every list. Resets preserve capacity; argument lookups
+borrow immutable values. A single-descriptor copy reuses interned identity
+instead of allocating a vector and re-interning metadata. Reference-count,
+null/unknown, self-copy, orphan and heap-retirement cases have tests.
+
+Compute pipeline streams are decoded with alignment, size, duplicate and type
+checks. The native mip fixture now creates its original PSO through that API.
+Shared roots may contain unused bindless ranges; their presence alone no longer
+blocks a bounded shader. For actual unbounded shader arrays, submission requires
+a complete finite uniform-access proof for SRVs/UAVs/samplers. Every accessed
+index is checked against the real heap and allocation. Unknown/pixel-varying
+unbounded access refuses mutation. `injected-bindless-01` and
+`injected-bindless-final-02` verify real uniform-index activation, varying-index
+refusal and exact cached rollback. The latter also tests original HLSL [branch]
+metadata: new metadata IDs account for distinct nodes, and zero-factor CFG
+analysis accepts branch hints without changing their semantics.
+
+Compute and VRS now share one original ExecuteCommandLists call, with their
+independent helpers/fences composed around it. `vrs-compute-enabled-01` passes
+the VRS cached/passive/cross-queue/native validation suite with compute enabled.
+This is not yet an automatically validated combined quality policy.
+
+The Wicked harness loads the exact same DLL before rendering, with the old
+host-action integration explicitly OFF. First attempts prepared no variants.
+Pipeline-stream coverage, bindless roots and newer DXIL validation were actual
+gaps. The pinned official DXC 1.9.2602.24 package is fetched and SHA-256 checked
+by `get-optimizer-dxc.ps1`; all native transform tests pass with that compiler.
+`wicked-dxc19` prepares 16 variants with zero faults, but no active mutation was
+selected. `wicked-discovery-after-load` moves profiling out of the loading screen;
+it measures compute intervals, yet still has no selected compatible action.
+Two-renderer optimization/quality/performance acceptance remains open.
+
+The compiler queue is bounded to 256 jobs, 512 live pipeline records and 64 MiB
+of pending bytecode. The earlier 64-job limit dropped much of Wicked's startup
+catalog. Unsupported shaders still decline; neither capacity increases nor
+successful compilation prove useful optimization.
+
+Readonly raw/structured-buffer SRVs (including root SRVs), packed half conversion
+and resource-dimension queries are now admitted as per-pixel inputs. UAV payload
+reads still reject. `injected-packed-buffer-01` verifies the raw root address,
+half decoding, dimension guard, coarsening and rollback against a CPU oracle.
+Wicked's timed hot-pipeline diagnostics identified these missing operations;
+shader hashes were used only to match diagnostic bytecode to measured records,
+never to authorize a runtime transformation.
