@@ -33,27 +33,31 @@ def gaussian(image):
     return sum(weight * padded[k:k + height] for k, weight in enumerate(weights))
 
 
-def compare(reference, candidate):
+def compare(reference, candidate, *, filter_fn=gaussian):
     if reference.shape != candidate.shape or min(reference.shape[:2]) < 11:
         raise ValueError("Matched RGB images at least 11x11 required")
     if not np.isfinite(reference).all() or not np.isfinite(candidate).all():
         raise ValueError("Non-finite image")
     luma = np.array([.2126, .7152, .0722])
     a, b = reference @ luma, candidate @ luma
-    ma, mb = gaussian(a), gaussian(b)
-    va = np.maximum(0, gaussian(a*a) - ma*ma)
-    vb = np.maximum(0, gaussian(b*b) - mb*mb)
-    covariance = gaussian(a*b) - ma*mb
+    ma, mb = filter_fn(a), filter_fn(b)
+    va = np.maximum(0, filter_fn(a*a) - ma*ma)
+    vb = np.maximum(0, filter_fn(b*b) - mb*mb)
+    covariance = filter_fn(a*b) - ma*mb
     ssim = ((2*ma*mb + .01**2) * (2*covariance + .03**2) /
             ((ma*ma + mb*mb + .01**2) * (va + vb + .03**2)))
     error = np.abs(reference**2.2 - candidate**2.2)
-    tiles = [float(error[y:y+8, x:x+8].mean())
-             for y in range(0, error.shape[0], 8)
-             for x in range(0, error.shape[1], 8)]
+    # Preserve partial edge-tile denominators without tens of thousands of
+    # individual Python slices/reductions for each full-resolution comparison.
+    rows = np.arange(0, error.shape[0], 8)
+    columns = np.arange(0, error.shape[1], 8)
+    sums = np.add.reduceat(np.add.reduceat(error.sum(axis=2), rows, axis=0), columns, axis=1)
+    counts = np.minimum(8, error.shape[0]-rows)[:, None] * np.minimum(8, error.shape[1]-columns)[None, :] * 3
+    tiles = (sums/counts).ravel()
     result = {"ssim_gaussian_luma": float(ssim[5:-5, 5:-5].mean()),
               "mean_linear_rgb_error": float(error.mean()),
               "p99_tile_linear_rgb_error": float(np.quantile(tiles, .99)),
-              "worst_tile_linear_rgb_error": max(tiles),
+              "worst_tile_linear_rgb_error": float(tiles.max()),
               "peak_linear_rgb_error": float(error.max())}
     result["moderate_pass"] = (result["ssim_gaussian_luma"] >= .98 and
                                result["mean_linear_rgb_error"] <= .01 and

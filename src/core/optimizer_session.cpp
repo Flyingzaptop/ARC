@@ -27,6 +27,13 @@ void OptimizerSession::candidates(std::vector<SessionAction> actions){
     for(const auto& a:actions){if(!a.id||!a.generation||!nonnegative(a.predicted_gain_ms)||!nonnegative(a.quality_cost)||
         std::find(ids.begin(),ids.end(),a.id)!=ids.end())throw std::invalid_argument("Invalid or duplicate action");ids.push_back(a.id);}
     std::stable_sort(actions.begin(),actions.end(),[](const auto& a,const auto& b){return a.predicted_gain_ms/(.01+a.quality_cost)>b.predicted_gain_ms/(.01+b.quality_cost);});
+    // A rejection belongs to a concrete generation, not the numeric action ID
+    // forever. Newly compiled/replaced pipelines must get their own trial.
+    std::erase_if(tried_,[&](auto id){
+        const auto old=std::find_if(actions_.begin(),actions_.end(),[&](const auto& a){return a.id==id;});
+        const auto next=std::find_if(actions.begin(),actions.end(),[&](const auto& a){return a.id==id;});
+        return old==actions_.end()||next==actions.end()||!next->ready||old->generation!=next->generation;
+    });
     actions_=std::move(actions);
     auto current=[&](std::uint64_t id,std::uint64_t generation){return std::any_of(actions_.begin(),actions_.end(),[&](const auto& action){return action.id==id&&action.generation==generation&&action.ready;});};
     if((pending_&&!current(pending_->id,pending_->generation))||

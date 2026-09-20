@@ -17,6 +17,8 @@ parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
+parser.add_argument("--compiler",type=Path)
+parser.add_argument("--measure-costs",action="store_true")
 args=parser.parse_args()
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
@@ -33,9 +35,12 @@ if args.edge_threshold is not None:
 if args.dll: env["ARC_BENCH_DLL"]=str(args.dll.resolve())
 for key in ("ARC_OPTIMIZER_WORKER","ARC_OPTIMIZER_COMPILER","ARC_OPTIMIZER_CACHE"):
     env.pop(key,None)
+for key in ("ARC_OPTIMIZER_CPU_TIMING","ARC_OPTIMIZER_GPU_CONTROL_TIMING"):
+    env.pop(key,None)
+    if args.measure_costs and args.dll: env[key]="1"
 if args.dll and args.mode.startswith("compute-"):
     worker=Path(__file__).resolve().parents[1]/"build/Release/arc-shader-tool.exe"
-    compiler=sdk/"framework/cauldron/framework/libs/dxc/bin/x64/dxcompiler.dll"
+    compiler=args.compiler.resolve() if args.compiler else sdk/"framework/cauldron/framework/libs/dxc/bin/x64/dxcompiler.dll"
     if not worker.is_file() or not compiler.is_file():
         raise RuntimeError("Compute experiment requires built ARC shader worker and pinned DXC")
     env["ARC_OPTIMIZER_WORKER"]=str(worker)
@@ -57,6 +62,8 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "automatic_target_fps":args.auto_target,
+          "cost_diagnostics":bool(args.measure_costs and args.dll),
+          "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))

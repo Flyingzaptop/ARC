@@ -415,3 +415,74 @@ hash tables with full-value equality, and descriptor mutation/submission locking
 is separated from other state updates. `runtime-hash-ledger-01` passes lifetime,
 copy and output checks; `descriptor-locks/optimized` measures 83.525 FPS and
 3.680ms CPU preparation. No claim that the CPU budget is met is justified.
+
+## Checkpoint 12 (measured control costs and applicable live candidates)
+
+Optional `ARC_OPTIMIZER_GPU_CONTROL_TIMING=1` measures policy-upload copies and
+their barriers with timestamp queries. Readback occurs only on the background
+collector after the submission fence completes. Four independently retired
+slots prefer already-consumed samples; exhaustion drops a diagnostic sample
+instead of delaying rendering. Counts distinguish collected/dropped/invalid
+samples. This excludes shader guards, neutralization and query overhead and is
+explicitly NOT complete GPU overhead evidence. `control-cost-02` collected all
+577 samples without drops: 1.10387ms total, approximately .00191ms per helper.
+The CPU diagnostic separates original native submission time and entry-lock
+waiting; it still is not complete optimizer overhead evidence.
+
+The optimizer state lock no longer spans the original driver submission.
+Descriptor mutation/submission ordering stays serialized, while shared control
+ownership prevents pool reuse until retirement is signaled. A prepared active
+helper cannot report itself retired; device removal cannot count as completion.
+`injected-unlocked-submit-01` verifies exact native outputs and cached rollback;
+`vrs-unlocked-submit-01` passes cached/passive/cross-queue regression with compute
+enabled. The new GPU-control test covers pending data, direct/compute queues,
+unread ring reuse, neutral operation, disabled timing and debug-layer errors.
+
+In the diagnostic heavy-scene pair, recording-reset lock waits fell from 43.09
+to 10.62ms over the process and lifetime-release waits from 41.68 to 20.72ms.
+FPS was 84.51 before and 84.74 after; preparation was 3.742 vs 3.775ms. This
+establishes less lock contention, NOT a significant end-to-end CPU/FPS gain or
+closure of the .2ms budget. Both runs include optional diagnostic overhead.
+
+Automatic candidates now derive readiness from the selected compiled shader's
+capabilities. Unsupported PCF/zero/edge/mip policies do not consume image trials.
+Evidence carries the selected pipeline generation; replacement invalidates an
+in-flight trial, and a previously rejected action may retry on a new generation.
+No observed active submission bypasses the expensive critic and rejects the
+trial. The fixed quality thresholds remain unchanged.
+
+Cadence measurement follows image analysis and uses incumbent/candidate/incumbent
+windows. More than 10% disagreement between incumbent windows makes performance
+evidence incomplete; their difference also enters the gain/noise gate. This
+prevents scene changes during the critic's execution being mistaken for savings.
+It does not establish same-frame GPU image provenance or total probe cost.
+
+`wicked-auto-bracketed-01` uses the SAME DLL, with host quality actions off, in a
+44.6-second process. Four real trials (1x2, 2x2, mip-half, mip1) pass the live
+image critic and retire their policies without ARC faults. Their bracketed
+candidate times are 1.711/3.514/2.496/21.086ms against respective incumbent means
+1.616/3.338/2.476/20.986ms: NONE demonstrates a speedup. Earlier unbracketed
+Wicked timings must not be treated as accepted performance evidence.
+
+The runners record compiler/DLL hashes and explicit diagnostic settings; Wicked
+can request bounded automatic trials and 1..35 measured seconds, retaining the
+hard 60-second process timeout. Full retention remains blocked by unavailable
+complete cost evidence. Geometry, temporal GI/shadow reuse, automatic spatial
+VRS, complete overhead/provenance accounting and final target matrix/packaging
+remain unfinished. This checkpoint does not complete the execution contract.
+
+The updated Cauldron automatic run `auto-capabilities-bracketed-01` completes
+3000 frames in a 45.93-second process, at 74.94 FPS INCLUDING live probes. Four
+trials pass image/retirement checks; adaptive 1x2 measures 12.417ms against a
+bracketed 13.000ms incumbent, but complete costs are still unavailable and it
+is not retained. This whole-run result is slower than the no-DLL baseline.
+
+Profiling the independent critic identifies its NumPy Gaussian and per-tile
+Python loops as the main CPU expense. The live worker now uses OpenCV's
+float64 separable filter with the SAME 11x11 sigma-1.5 kernel/reflection border;
+tile sums are vectorized with correct partial-edge denominators. Native image
+resolution, DIS flow resolution and every acceptance threshold are unchanged.
+On the same recorded trial, cProfile wall time decreases from 4.763 to 2.496s.
+SSIM changes by <1e-15 from summation order, linear mean/peak errors are identical.
+Independent Gaussian/tile oracles and damage/scene-cut/state-mismatch tests pass.
+This accelerates validation, not rendering by 2x.

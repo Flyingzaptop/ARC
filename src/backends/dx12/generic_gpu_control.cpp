@@ -16,7 +16,7 @@ void copy_policy(ID3D12GraphicsCommandList* list,ID3D12Resource* buffer,ID3D12Re
     barrier(list,buffer,D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 }
 }
-GpuControl::GpuControl(ID3D12Device* device):device_(device){
+GpuControl::GpuControl(ID3D12Device* device,bool measure):device_(device){
     if(!device||device->GetNodeCount()!=1)throw std::runtime_error("GPU control requires one node");
     D3D12_RESOURCE_DESC d{};d.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;d.Width=block_bytes;d.Height=d.DepthOrArraySize=d.MipLevels=d.SampleDesc.Count=1;d.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;
@@ -25,10 +25,20 @@ GpuControl::GpuControl(ID3D12Device* device):device_(device){
     d.Width*=4;check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&upload_)));
     void* data{};D3D12_RANGE none{};check(neutral_->Map(0,&none,&data));std::memset(data,0,block_bytes);
     for(unsigned i=0;i<capacity;++i){const ControlValue neutral;std::memcpy(static_cast<char*>(data)+i*256,&neutral,sizeof(neutral));}neutral_->Unmap(0,nullptr);
+    if(measure){
+        D3D12_QUERY_HEAP_DESC query{};query.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;query.Count=8;
+        check(device->CreateQueryHeap(&query,IID_PPV_ARGS(&timestamps_)));
+        hp.Type=D3D12_HEAP_TYPE_READBACK;d.Width=8*sizeof(UINT64);
+        check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&readback_)));
+    }
     for(unsigned type=0;type<2;++type){const auto kind=type?D3D12_COMMAND_LIST_TYPE_COMPUTE:D3D12_COMMAND_LIST_TYPE_DIRECT;
         check(device->CreateCommandAllocator(kind,IID_PPV_ARGS(&allocators_[type])));
         for(unsigned i=0;i<4;++i){check(device->CreateCommandList(0,kind,allocators_[type].Get(),nullptr,IID_PPV_ARGS(&copies_[type][i])));
-            copy_policy(copies_[type][i].Get(),buffer_.Get(),upload_.Get(),i*block_bytes);check(copies_[type][i]->Close());}
+            auto* list=copies_[type][i].Get();
+            if(timestamps_)list->EndQuery(timestamps_.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2);
+            copy_policy(list,buffer_.Get(),upload_.Get(),i*block_bytes);
+            if(timestamps_){list->EndQuery(timestamps_.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2+1);list->ResolveQueryData(timestamps_.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2,2,readback_.Get(),i*2*sizeof(UINT64));}
+            check(list->Close());}
     }
     check(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence_)));
     Ptr<ID3D12CommandQueue> queue;D3D12_COMMAND_QUEUE_DESC qd{};check(device->CreateCommandQueue(&qd,IID_PPV_ARGS(&queue)));
@@ -63,8 +73,18 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
     if(values.size()>capacity)throw std::runtime_error("GPU control capacity");
     bool coarse=false;for(const auto& value:values)coarse|=value.x==2||value.y==2||value.comparison_taps==9||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=4);
     if(!coarse)return nullptr;
-    for(unsigned i=0;i<4;++i)if(retired_[i]<=completed){pending_=static_cast<int>(i);break;}
+    // Prefer completed slots already consumed by the background collector.
+    // Fall back to overwriting an unread slot rather than delaying the game.
+    for(unsigned i=0;i<4;++i)if(retired_[i]<=completed&&!unread_[i]){pending_=static_cast<int>(i);break;}
+    if(pending_<0)for(unsigned i=0;i<4;++i)if(retired_[i]<=completed){pending_=static_cast<int>(i);break;}
     if(pending_<0)return nullptr; // previous recording's GPU epilogue is neutral
+    if(timestamps_){
+        // Slow collectors must not stall application submissions or read data
+        // that a reused ring slot is about to overwrite.
+        if(unread_[pending_]){++timing_.dropped;unread_[pending_]=false;}
+        pending_frequency_=0;
+        if(FAILED(queue->GetTimestampFrequency(&pending_frequency_)))pending_frequency_=0;
+    }
     void* data{};D3D12_RANGE none{};check(upload_->Map(0,&none,&data));
     auto* block=static_cast<char*>(data)+pending_*block_bytes;std::memset(block,0,block_bytes);
     for(unsigned i=0;i<capacity;++i){const ControlValue value=i<values.size()?values[i]:ControlValue{};std::memcpy(block+i*256,&value,sizeof(value));}
@@ -75,8 +95,23 @@ void GpuControl::submitted(ID3D12CommandQueue* queue){
     last_queue_=queue;
     const auto value=++sequence_;
     if(FAILED(queue->Signal(fence_.Get(),value))){fault_=true;throw std::runtime_error("GPU control retirement signal failed");}
-    if(pending_>=0)retired_[pending_]=value;pending_=-1;
+    if(pending_>=0){retired_[pending_]=value;if(timestamps_){frequencies_[pending_]=pending_frequency_;unread_[pending_]=true;}}pending_=-1;
 }
-bool GpuControl::ready()const noexcept{return !fault_&&fence_->GetCompletedValue()>=sequence_;}
+void GpuControl::collect_timing()noexcept{
+    if(!timestamps_||fault_)return;
+    const auto completed=fence_->GetCompletedValue();
+    if(completed==UINT64_MAX)return; // device removal is not completed evidence
+    for(unsigned i=0;i<4;++i){
+        if(!unread_[i]||retired_[i]>completed)continue;
+        unread_[i]=false;
+        D3D12_RANGE range{i*2*sizeof(UINT64),(i*2+2)*sizeof(UINT64)};void* data{};
+        if(FAILED(readback_->Map(0,&range,&data))){++timing_.invalid;continue;}
+        UINT64 ticks[2];std::memcpy(ticks,static_cast<const char*>(data)+range.Begin,sizeof(ticks));
+        D3D12_RANGE none{};readback_->Unmap(0,&none);
+        if(!frequencies_[i]||ticks[1]<ticks[0]){++timing_.invalid;continue;}
+        timing_.milliseconds+=double(ticks[1]-ticks[0])*1000.0/double(frequencies_[i]);++timing_.samples;
+    }
+}
+bool GpuControl::ready()const noexcept{const auto completed=fence_->GetCompletedValue();return !fault_&&pending_<0&&completed!=UINT64_MAX&&completed>=sequence_;}
 void GpuControl::release_completed_queue()noexcept{if(ready())last_queue_.Reset();}
 }

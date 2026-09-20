@@ -42,7 +42,7 @@ struct State {
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
     bool heaviest_only{};std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
-    bool protect_edges{},instrumentation{true};float edge_threshold{.08f};
+    bool protect_edges{},instrumentation{true},measure_control{};float edge_threshold{.08f};
     std::filesystem::path worker,compiler,cache;
     std::unordered_map<ID3D12RootSignature*,std::shared_ptr<Root>> roots;
     std::unordered_map<ID3D12PipelineState*,std::shared_ptr<Pipeline>> pipelines;
@@ -71,8 +71,9 @@ struct State {
 };
 State& state(){static auto* s=new State;return *s;}
 std::atomic<std::uint64_t> cpu_ns{};
+std::atomic<std::uint64_t> original_submit_ns{};
 std::atomic<bool> cpu_timing{};
-struct CpuSample {std::atomic<const char*> name{};std::atomic<std::uint64_t> ns{},calls{};};
+struct CpuSample {std::atomic<const char*> name{};std::atomic<std::uint64_t> ns{},calls{},lock_ns{};};
 std::array<CpuSample,128> cpu_samples;
 std::atomic<unsigned> next_cpu_sample{};
 unsigned register_cpu_sample(const char* name){const auto id=next_cpu_sample.fetch_add(1);if(id<cpu_samples.size())cpu_samples[id].name=name;return id;}
@@ -81,10 +82,11 @@ struct CpuMeter {
     using Clock=std::chrono::steady_clock;
     bool outer{metering_depth++==0&&cpu_timing.load(std::memory_order_relaxed)};Clock::time_point start;unsigned sample;
     explicit CpuMeter(unsigned id=UINT_MAX):sample(id){if(outer)start=Clock::now();}
+    void locked(){if(outer&&sample<cpu_samples.size())cpu_samples[sample].lock_ns.fetch_add(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-start).count()),std::memory_order_relaxed);}
     ~CpuMeter(){--metering_depth;if(outer){const auto elapsed=static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-start).count());cpu_ns.fetch_add(elapsed,std::memory_order_relaxed);if(sample<cpu_samples.size()){cpu_samples[sample].ns.fetch_add(elapsed,std::memory_order_relaxed);cpu_samples[sample].calls.fetch_add(1,std::memory_order_relaxed);}}}
 };
 void check(HRESULT value){if(FAILED(value))throw std::runtime_error("Optimizer HRESULT "+std::to_string(value));}
-template<class F>void safe(F&& action,std::source_location source=std::source_location::current())noexcept{static const auto sample=register_cpu_sample(source.function_name());CpuMeter meter(sample);try{std::lock_guard lock(state().mutex);action();}catch(const std::exception& error){std::lock_guard lock(state().mutex);auto& s=state();++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;s.last_error=error.what();}catch(...){std::lock_guard lock(state().mutex);++state().faults;state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().last_error="unknown exception";}}
+template<class F>void safe(F&& action,std::source_location source=std::source_location::current())noexcept{static const auto sample=register_cpu_sample(source.function_name());CpuMeter meter(sample);try{std::lock_guard lock(state().mutex);meter.locked();action();}catch(const std::exception& error){std::lock_guard lock(state().mutex);auto& s=state();++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;s.last_error=error.what();}catch(...){std::lock_guard lock(state().mutex);++state().faults;state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().last_error="unknown exception";}}
 constexpr GUID lifetime_guid{0x109dd36a,0xb6f3,0x4f98,{0x89,0x7c,0xf3,0x2c,0xa2,0x60,0xb5,0xb4}};
 class Lifetime final:public IUnknown {
     std::atomic<ULONG> count{1};void* object;unsigned kind;
@@ -258,7 +260,7 @@ DWORD WINAPI worker(void*){
         try{
             auto variant=prepare_variant(job);std::vector<std::shared_ptr<GpuControl>> controls;
             bool needs_pool=false;{std::lock_guard lock(state().mutex);needs_pool=std::none_of(state().controls.begin(),state().controls.end(),[&](const auto& c){return c->device()==job->device.Get();});}
-            if(needs_pool){if(state().controls.size()+8>64)throw std::runtime_error("control pool capacity");mirror::InternalCall internal;for(unsigned i=0;i<8;++i)controls.push_back(std::make_shared<GpuControl>(job->device.Get()));}
+            if(needs_pool){if(state().controls.size()+8>64)throw std::runtime_error("control pool capacity");mirror::InternalCall internal;for(unsigned i=0;i<8;++i)controls.push_back(std::make_shared<GpuControl>(job->device.Get(),state().measure_control));}
             std::lock_guard lock(state().mutex);job->variant=std::move(variant);job->reason="prepared_neutral";state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().prepared;state().controls.insert(state().controls.end(),controls.begin(),controls.end());
         }catch(const std::exception& error){std::lock_guard lock(state().mutex);job->reason=error.what();state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().declined;}
     }
@@ -274,15 +276,25 @@ void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);ou
     out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected","root_arguments_uncertain"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
     out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
+CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities result;safe([&]{const auto& s=state();if(s.faults||!s.selected_pipeline)return;
+    for(const auto& [native,p]:s.pipelines){(void)native;if(p->id!=s.selected_pipeline||!p->variant)continue;const auto& c=p->variant->contract;
+        result={p->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0,c.mip_samples!=0};break;}
+});return result;}
+void control_timing_snapshot(std::ostream& out){
+    std::lock_guard lock(state().mutex);GpuControl::Timing total;
+    for(const auto& control:state().controls){const auto value=control->timing();total.samples+=value.samples;total.dropped+=value.dropped;total.invalid+=value.invalid;total.milliseconds+=value.milliseconds;}
+    out<<"{\"enabled\":"<<(state().measure_control?"true":"false")<<",\"measurement\":\"policy_upload_copy_and_barriers_only\",\"complete_overhead_evidence\":false,\"samples\":"<<total.samples<<",\"dropped\":"<<total.dropped<<",\"invalid\":"<<total.invalid<<",\"gpu_ms\":"<<total.milliseconds<<'}';
+}
 void cpu_snapshot(std::ostream& out){
-    out<<"{\"enabled\":"<<(cpu_timing?"true":"false")<<",\"measurement\":\"optimizer_intercept_wall_including_native_calls\",\"total_ms\":"<<cpu_ns.load()/1.e6<<",\"sites\":[";
-    bool first=true;for(const auto& sample:cpu_samples){const auto name=sample.name.load();const auto calls=sample.calls.load();if(!name||!calls)continue;if(!first)out<<',';first=false;out<<"{\"name\":"<<std::quoted(name)<<",\"calls\":"<<calls<<",\"ms\":"<<sample.ns.load()/1.e6<<'}';}out<<"]}";
+    out<<"{\"enabled\":"<<(cpu_timing?"true":"false")<<",\"measurement\":\"optimizer_intercept_wall_including_native_calls\",\"total_ms\":"<<cpu_ns.load()/1.e6<<",\"original_submit_ms\":"<<original_submit_ns.load()/1.e6<<",\"complete_overhead_evidence\":false,\"sites\":[";
+    bool first=true;for(const auto& sample:cpu_samples){const auto name=sample.name.load();const auto calls=sample.calls.load();if(!name||!calls)continue;if(!first)out<<',';first=false;out<<"{\"name\":"<<std::quoted(name)<<",\"calls\":"<<calls<<",\"ms\":"<<sample.ns.load()/1.e6<<",\"entry_lock_ms\":"<<sample.lock_ns.load()/1.e6<<'}';}out<<"]}";
 }
 bool initialize()noexcept{
     bool result=true;safe([&]{auto& s=state();if(s.enabled)return;
         const auto worker_path=environment(L"ARC_OPTIMIZER_WORKER");if(worker_path.empty())return;
         s.worker=worker_path;s.compiler=environment(L"ARC_OPTIMIZER_COMPILER");s.cache=environment(L"ARC_OPTIMIZER_CACHE");
         cpu_timing=environment(L"ARC_OPTIMIZER_CPU_TIMING")==L"1";
+        s.measure_control=environment(L"ARC_OPTIMIZER_GPU_CONTROL_TIMING")==L"1";
         if(!s.worker.is_absolute()||!s.compiler.is_absolute()||!s.cache.is_absolute()||!std::filesystem::is_regular_file(s.worker)||!std::filesystem::is_regular_file(s.compiler)) {result=false;return;}
         s.cache/=std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64());std::filesystem::create_directories(s.cache);
         HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);if(!thread){result=false;return;}CloseHandle(thread);s.enabled=true;
@@ -435,17 +447,17 @@ void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe(
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
     if(!enabled()||!queue||(!lists&&count))return false;
     static const auto sample=register_cpu_sample("execute");CpuMeter meter(sample);
-    auto& s=state();std::lock_guard descriptors(s.descriptor_mutex);std::lock_guard lock(s.mutex);
-    std::array<GpuControl*,64> controls{};unsigned used=0;
+    auto& s=state();std::lock_guard descriptors(s.descriptor_mutex);std::unique_lock lock(s.mutex);meter.locked();
+    std::array<std::shared_ptr<GpuControl>,64> controls{};unsigned used=0;
     auto fault=[&](const char* message){++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;try{s.last_error=message;}catch(...) {}};
-    auto remember=[&](GpuControl* c){for(unsigned j=0;j<used;++j)if(controls[j]==c)return false;if(used>=controls.size()){fault("control capacity");return false;}controls[used++]=c;return true;};
+    auto remember=[&](const std::shared_ptr<GpuControl>& c){for(unsigned j=0;j<used;++j)if(controls[j]==c)return false;if(used>=controls.size()){fault("control capacity");return false;}controls[used++]=c;return true;};
     if(count>1024){
         // An oversized native batch still executes exactly once. Conservatively
         // order every retained control, with neutral policy and bounded storage.
-        for(auto& c:s.controls)if(remember(c.get()))try{mirror::InternalCall internal;c->prepare(queue,{});}catch(const std::exception& e){fault(e.what());}
+        for(auto& c:s.controls)if(remember(c))try{mirror::InternalCall internal;c->prepare(queue,{});}catch(const std::exception& e){fault(e.what());}
     }else for(UINT i=0;i<count;++i){
         const auto found=s.commands.find(reinterpret_cast<ID3D12GraphicsCommandList*>(lists[i]));if(found==s.commands.end())continue;
-        auto& c=found->second;if(!c.control||!remember(c.control.get()))continue;
+        auto& c=found->second;if(!c.control||!remember(c.control))continue;
         try{
             std::array<ControlValue,GpuControl::capacity> values{};
             if(!s.faults&&c.valid&&c.closed&&c.epilogue)for(unsigned n=0;n<c.uses.size();++n){
@@ -495,14 +507,23 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
     // VRS prepares its own independent control images and owns the same single
     // original submission when present. Neither actuator replays application
     // work; compute retirement follows that one combined submission.
-    if(!mirror::execute(queue,count,lists)){mirror::InternalCall internal;queue->ExecuteCommandLists(count,lists);}
+    // The driver may block here. Unrelated recording threads must not wait on
+    // the optimizer state mutex for the duration of that native submission.
+    // Descriptor writes/submissions remain serialized; shared ownership keeps
+    // controls out of the reuse pool until their retirement signal is issued.
+    lock.unlock();
+    if(!mirror::execute(queue,count,lists)){mirror::InternalCall internal;
+        if(meter.outer){const auto start=CpuMeter::Clock::now();queue->ExecuteCommandLists(count,lists);original_submit_ns.fetch_add(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(CpuMeter::Clock::now()-start).count()),std::memory_order_relaxed);}
+        else queue->ExecuteCommandLists(count,lists);
+    }
+    lock.lock();
     {mirror::InternalCall internal;
         for(unsigned i=0;i<used;++i)try{controls[i]->submitted(queue);}catch(const std::exception& e){fault(e.what());}}
     return true;
 }
 void collect()noexcept{
     if(!enabled())return;bool need_costs=false;
-    safe([&]{auto& s=state();for(auto& control:s.controls)control->release_completed_queue();need_costs=s.heaviest_only&&(!s.selected_pipeline||s.cost_prepared!=s.prepared);});
+    safe([&]{auto& s=state();mirror::InternalCall internal;for(auto& control:s.controls){control->collect_timing();control->release_completed_queue();}need_costs=s.heaviest_only&&(!s.selected_pipeline||s.cost_prepared!=s.prepared);});
     if(!need_costs)return;
     const auto costs=gpu_profile::compute_costs();
     safe([&]{auto& s=state();if(!s.heaviest_only||costs.empty())return;double best=0;std::uint64_t selected=0;

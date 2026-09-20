@@ -52,5 +52,13 @@ int main(){
     assert(changed.evidence(evidence).kind==arc::SessionRequestKind::Restore);
     assert(changed.snapshot().accepted==0);
     changed.restored(true);
+    arc::OptimizerSession retry_generation(config);retry_generation.candidates({{9,1,4,.1,true},{10,1,8,.01,false}});
+    retry_generation.frame(16);retry_generation.frame(16);assert(retry_generation.frame(16).action==9);
+    evidence={9,1,true,true,true,16,12,.05,.9,.001,.01,.1,.1};retry_generation.evidence(evidence);
+    retry_generation.frame(16);retry_generation.frame(16);assert(retry_generation.snapshot().phase==arc::SessionPhase::Limited);
+    retry_generation.candidates({{9,1,4,.1,true},{10,1,8,.01,false}});
+    assert(retry_generation.frame(16).kind==arc::SessionRequestKind::None); // unchanged rejected candidate stays rejected
+    retry_generation.candidates({{9,2,4,.1,true},{10,2,8,.01,false}});
+    assert(retry_generation.frame(16).action==9); // new generation can retry; unsupported candidate never chosen
     std::cout<<"Target control, independent quality, generation, cost budgets, recovery and fault latch passed\n";
 }

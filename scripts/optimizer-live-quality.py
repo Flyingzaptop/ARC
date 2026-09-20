@@ -16,6 +16,16 @@ sys.path.insert(0, str(repo / "build/quality-worker"))
 import cv2
 cv2.setNumThreads(1)
 metrics = runpy.run_path(str(repo / "scripts/optimizer-quality.py"))
+gaussian_coordinates = np.arange(-5, 6)
+gaussian_weights = np.exp(-(gaussian_coordinates**2)/(2*1.5**2))
+gaussian_weights /= gaussian_weights.sum()
+
+
+def fast_gaussian(pixels):
+    # Same float64 11x11 separable Gaussian and reflect-without-repeating-edge
+    # border as the independent NumPy implementation; no resolution reduction.
+    return cv2.sepFilter2D(pixels, cv2.CV_64F, gaussian_weights, gaussian_weights,
+                           borderType=cv2.BORDER_REFLECT_101)
 
 
 def state_fraction(samples):
@@ -132,9 +142,9 @@ def assess(before, candidate, after, fraction=.5):
             (cv2.dilate(lb, kernel)-cv2.erode(lb, kernel) <= 2/255))
     agreement = np.max(np.abs(warp_a**2.2-warp_b**2.2), axis=2) <= .001
     coverage = float((inside & (consistent | (flat & agreement))).mean())
-    reference_check = metrics["compare"](warp_a, warp_b)
+    reference_check = metrics["compare"](warp_a, warp_b, filter_fn=fast_gaussian)
     predicted = warp_a*(1-fraction)+warp_b*fraction
-    quality = metrics["compare"](predicted, candidate)
+    quality = metrics["compare"](predicted, candidate, filter_fn=fast_gaussian)
     motion = float(np.quantile(np.linalg.norm(forward, axis=2), .99))
     confident = (informative and coverage >= .95 and motion <= 64 and reference_check["ssim_gaussian_luma"] >= .99 and
                  reference_check["mean_linear_rgb_error"] <= .002)

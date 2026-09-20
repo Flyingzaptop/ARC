@@ -90,42 +90,64 @@ DWORD WINAPI run(void*){
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         arc::OptimizerSession policy(config);
         const std::vector<std::wstring> modes={L"zero|heaviest",L"pcf9|heaviest",L"adaptive-1x2@0.5|heaviest",L"adaptive-2x2@0.5|heaviest",L"adaptive-2x2@0.75|heaviest",L"adaptive-2x2@0.9|heaviest",L"1x2|heaviest",L"2x2|heaviest",L"mip-half|heaviest",L"mip1|heaviest",L"mip2|heaviest"};
-        std::vector<SessionAction> actions;for(unsigned i=0;i<modes.size();++i)actions.push_back({i+1,1,.2+double(i)*.2,.02+double(i)*.1,true});policy.candidates(std::move(actions));
+        auto refresh_candidates=[&]{
+            const auto c=optimizer::candidate_capabilities();
+            const bool ready[]{c.zero,c.comparison,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse,c.coarse,c.mips,c.mips,c.mips};
+            std::vector<SessionAction> actions;for(unsigned i=0;i<modes.size();++i)actions.push_back({i+1,c.pipeline?c.pipeline:1,.2+double(i)*.2,.02+double(i)*.1,ready[i]});
+            policy.candidates(std::move(actions));return c.pipeline;
+        };
+        refresh_candidates();
         UINT64 last=0,trial=0,profile=0;std::uint64_t retained=0;
         publish({{"phase","warmup"},{"target_fps",s.target},{"quality_reference","live_motion_qualified"}});
         while(!s.cancel){
             if(s.maximum_seconds&&std::chrono::duration<double>(Clock::now()-started).count()>s.maximum_seconds)break;
             if(!wait_frames(1)){select(L"off");publish({{"phase","inactive"},{"reason","no_present_progress"}});continue;}
             const auto now=frame_number();if(now==last)continue;last=now;
-            const auto request=policy.frame(period());
+            const auto generation=refresh_candidates();const auto request=policy.frame(period());
             if(request.kind==SessionRequestKind::Profile){
                 select(L"neutral|heaviest");const auto path=s.directory/(L"profile-"+std::to_wstring(++profile)+L".json");
                 if(!gpu_profile::request(path.wstring(),16)||!wait_file(path,12000))throw std::runtime_error("GPU discovery unavailable");
                 publish({{"phase","discovery_complete"},{"target_fps",s.target}});
             }else if(request.kind==SessionRequestKind::Probe){
                 const auto dir=s.directory/(L"trial-"+std::to_wstring(++trial));std::filesystem::create_directory(dir);
-                const auto mode=modes.at(request.action-1);select(retained?modes.at(retained-1):L"off");if(!wait_frames(40))break;const auto baseline_ms=period();
+                const auto mode=modes.at(request.action-1);select(retained?modes.at(retained-1):L"off");if(!wait_frames(40))break;double baseline_ms=period();
                 // The final-image reference always uses the ORIGINAL policy,
                 // even when comparing a replacement against a retained setting.
                 const auto a=dir/L"before.json",b=dir/L"candidate.json",c=dir/L"after.json";
                 bool submitted=false;if(!capture_trial({a,b,c},mode,submitted))throw std::runtime_error("Consecutive reference capture unavailable");
-                auto judgement=quality(a,b,c,dir/L"quality.json");
+                // No observed active submission cannot establish an effect.
+                // Avoid spending a CPU-heavy image trial on unchanged work.
+                auto judgement=submitted?quality(a,b,c,dir/L"quality.json"):Json{{"accepted_quality",false},{"matched_reference",false},{"reason","no_policy_submission"},
+                    {"quality",{{"ssim_gaussian_luma",0.0},{"mean_linear_rgb_error",1.0},{"p99_tile_linear_rgb_error",1.0}}}};
                 if(s.cancel)break;
-                double candidate_ms=baseline_ms;
-                if(submitted&&judgement.value("accepted_quality",false)){select(mode);if(!wait_frames(48))break;candidate_ms=period();}
+                double candidate_ms=baseline_ms,baseline_before_ms=baseline_ms,baseline_after_ms=baseline_ms;bool timing_stable=false;
+                if(submitted&&judgement.value("accepted_quality",false)){
+                    // Image analysis can take seconds. Measure cadence only
+                    // afterwards, with incumbent windows on BOTH sides of B.
+                    // A scene transition must not masquerade as a speedup.
+                    select(retained?modes.at(retained-1):L"off");if(!wait_frames(40))break;baseline_before_ms=period();
+                    select(mode);if(!wait_frames(48))break;candidate_ms=period();
+                    select(L"off");if(!wait_restoration())throw std::runtime_error("Timing policy retirement not confirmed");
+                    select(retained?modes.at(retained-1):L"off");if(!wait_frames(40))break;baseline_after_ms=period();
+                    baseline_ms=(baseline_before_ms+baseline_after_ms)*.5;
+                    timing_stable=std::isfinite(baseline_ms)&&baseline_ms>0&&std::abs(baseline_before_ms-baseline_after_ms)<=baseline_ms*.1;
+                }
                 select(L"off");if(!wait_restoration())throw std::runtime_error("GPU policy retirement not confirmed");
                 const bool restored_original=true;
                 select(retained?modes.at(retained-1):L"off");if(!wait_frames(8))break;
                 const auto& q=judgement.at("quality");OptimizerTrialEvidence evidence;
-                evidence.action=request.action;evidence.generation=1;evidence.complete=submitted;evidence.restoration_confirmed=restored_original;evidence.matched_reference=submitted&&judgement.value("matched_reference",false);
-                evidence.baseline_frame_ms=baseline_ms;evidence.candidate_frame_ms=candidate_ms;evidence.baseline_noise_ms=baseline_ms*.03;
+                evidence.action=request.action;evidence.generation=generation;evidence.complete=submitted&&timing_stable;evidence.restoration_confirmed=restored_original;evidence.matched_reference=submitted&&judgement.value("matched_reference",false);
+                evidence.baseline_frame_ms=baseline_ms;evidence.candidate_frame_ms=candidate_ms;evidence.baseline_noise_ms=std::max(baseline_ms*.03,std::abs(baseline_before_ms-baseline_after_ms));
                 evidence.ssim=q.at("ssim_gaussian_luma");evidence.mean_error=q.at("mean_linear_rgb_error");evidence.tile_p99=q.at("p99_tile_linear_rgb_error");
                 // Until own CPU/GPU overhead is measured, the evidence must not
                 // pass the cost gate. A fast-looking cadence is insufficient.
                 evidence.cpu_overhead_ms=std::numeric_limits<double>::infinity();evidence.gpu_overhead_ms=std::numeric_limits<double>::infinity();
+                refresh_candidates(); // invalidate evidence if pipeline selection changed during the trial
                 const auto decision=policy.evidence(evidence);
                 if(decision.kind==SessionRequestKind::Apply){select(mode);retained=decision.action;policy.applied(retained,true);}
+                else if(decision.kind==SessionRequestKind::Restore){select(L"off");retained=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("Changed pipeline retirement not confirmed");}
                 const auto state=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"submission_observed",submitted},{"quality_pass",judgement.value("accepted_quality",false)},{"baseline_frame_ms",baseline_ms},{"candidate_frame_ms",candidate_ms},{"accepted",state.accepted},{"rejected",state.rejected},{"retained",retained},{"cost_evidence_available",false},{"original_policy_retired",restored_original}};
+                report["pipeline_generation"]=generation;report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
                 {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));
             }else if(request.kind==SessionRequestKind::Restore){select(L"off");retained=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("GPU policy retirement not confirmed");}
         }
