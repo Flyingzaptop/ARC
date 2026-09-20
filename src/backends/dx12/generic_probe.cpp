@@ -55,7 +55,7 @@ thread_local bool inside_present{};
 bool observe_api() noexcept {return recording.load(std::memory_order_relaxed)&&!inside_present&&!mirror::internal();}
 void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
     if(!recording.load(std::memory_order_relaxed)||(flags&DXGI_PRESENT_TEST))return;
-    presents.fetch_add(1,std::memory_order_relaxed);
+    presents.fetch_add(1,std::memory_order_relaxed);if(result==S_OK)arc::dx12::placement::present(self);
     if(FAILED(result)){
         present_failures.fetch_add(1,std::memory_order_relaxed);last_present_error=result;last_present_sync=sync;last_present_flags=flags;
         ID3D12Device* device=nullptr;
@@ -294,13 +294,13 @@ void snapshot(){
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
-        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
+        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
     file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 DWORD WINAPI logger(void*){
     arc::dx12::cpu_cost::Registration worker_cpu;
-    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();optimizer::collect();runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
+    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
 }
 }
 
@@ -459,6 +459,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
     if(queue)ID3D12CommandQueue_Release(queue);if(device)ID3D12Device_Release(device);
     if(window)DestroyWindow(window);UnregisterClassW(L"ARCReadOnlyBootstrap",module);
     if(result){MH_DisableHook(MH_ALL_HOOKS);MH_Uninitialize();try{snapshot();}catch(...){}return result;}
+    arc::dx12::placement::initialize();
     if(!optimizer::initialize())return 8;
     initialized=true;recording=true;HANDLE thread=CreateThread(nullptr,0,logger,nullptr,0,nullptr);
     if(!thread){recording=false;return 6;}CloseHandle(thread);
@@ -500,3 +501,5 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){profile::
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(!mode||!optimizer::enabled())return 1;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){autotune::stop();return 0;}
+
+extern "C" __declspec(dllexport) DWORD WINAPI ArcWorkerPlacement(void* mode){return mode&&arc::dx12::placement::configure(static_cast<const wchar_t*>(mode))?0:1;}

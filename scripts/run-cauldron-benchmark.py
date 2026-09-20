@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import time
 import shutil
+from benchmark_thermal_gate import wait_for_cool_gpu
 
 parser=argparse.ArgumentParser()
 parser.add_argument("sdk",type=Path)
@@ -19,11 +20,18 @@ parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
 parser.add_argument("--compiler",type=Path)
 parser.add_argument("--measure-costs",action="store_true")
+parser.add_argument("--worker-placement",choices=['normal','prefer','core','partition','adaptive'],default='normal')
+parser.add_argument("--max-start-temperature",type=float)
 args=parser.parse_args()
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
 exe=sdk/"bin/FFX_BRIXELIZER_GI_DX12.exe"
 env=os.environ.copy()
+for key in list(env):
+    if key.startswith('ARC_WORKER_'): env.pop(key)
+if args.worker_placement!='normal' and not args.dll: raise ValueError('Worker placement requires ARC DLL')
+env['ARC_WORKER_PLACEMENT']=args.worker_placement
+if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_FRAMES"]=str(args.frames)
 env.pop("ARC_BENCH_DLL",None)
@@ -63,9 +71,12 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "automatic_target_fps":args.auto_target,
           "cost_diagnostics":bool(args.measure_costs and args.dll),
+          "worker_placement":args.worker_placement,
           "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
+(output/"manifest.json").write_text(json.dumps(manifest,indent=2))
+manifest['thermal_gate']=wait_for_cool_gpu(args.max_start_temperature)
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
 started=time.monotonic()
@@ -97,6 +108,8 @@ log=exe.parent/"Cauldron.log"
 if log.exists(): (output/"Cauldron.log").write_bytes(log.read_bytes())
 if code: raise RuntimeError(f"Host failed: {code}")
 rows=[json.loads(line) for line in (output/"frames.jsonl").read_text().splitlines()]
+manifest['actual_frames']=len(rows);manifest['measurement_complete']=len(rows)==args.frames
+(output/"manifest.json").write_text(json.dumps(manifest,indent=2))
 if len(rows)!=args.frames: raise RuntimeError(f"Incomplete measurement: {len(rows)}/{args.frames}")
 fps=1000*len(rows)/sum(row["frame_ms"] for row in rows)
 print(json.dumps({"output":str(output),"frames":len(rows),"fps":fps,"process_seconds":manifest["process_seconds"]}))

@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import time
 import sys
+from benchmark_thermal_gate import wait_for_cool_gpu
 
 parser=argparse.ArgumentParser()
 parser.add_argument("wicked",type=Path)
@@ -17,12 +18,17 @@ parser.add_argument("--compute-mode",choices=['neutral','neutral|heaviest','1x2|
 parser.add_argument("--auto-target",type=float)
 parser.add_argument("--measure-costs",action="store_true")
 parser.add_argument("--seconds",type=int,choices=range(1,36),default=10)
+parser.add_argument("--worker-placement",choices=['normal','prefer','core','partition','adaptive'],default='normal')
+parser.add_argument("--max-start-temperature",type=float)
 args=parser.parse_args()
 root=args.wicked.resolve();output=args.output.resolve();output.mkdir(parents=True,exist_ok=False)
 exe=root/"BUILD/x64/Release/Tests/Tests.exe"
 env=os.environ.copy()
 for key in list(env):
-    if key.startswith(('ARC_WICKED_','ARC_BENCH_','ARC_OPTIMIZER_','ARC_AUTO_')): env.pop(key)
+    if key.startswith(('ARC_WICKED_','ARC_BENCH_','ARC_OPTIMIZER_','ARC_AUTO_','ARC_WORKER_')): env.pop(key)
+if args.worker_placement!='normal' and not args.dll: raise ValueError('Worker placement requires ARC DLL')
+env['ARC_WORKER_PLACEMENT']=args.worker_placement
+if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_OUTPUT=str(output/'renderer.json'),ARC_WICKED_SECONDS=str(args.seconds),ARC_WICKED_WARMUP_SECONDS='2',ARC_WICKED_SCENE_SETTLE_MS='500',ARC_WICKED_HOOK_TIMING='0')
 if args.dll:
     if not args.compiler or not args.compiler.is_file(): raise ValueError("Pinned DXC required")
@@ -43,8 +49,10 @@ manifest={'host_quality_actions':'off','native_resolution':[1920,1080],'dll_sha2
           'exe_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'mode':args.compute_mode if args.dll else 'baseline',
           'automatic_target_fps':args.auto_target,'cost_diagnostics':bool(args.measure_costs and args.dll),
           'measurement_seconds':args.seconds,
+          'worker_placement':args.worker_placement,
           'compiler_sha256':hashlib.sha256(args.compiler.read_bytes()).hexdigest() if args.dll else None}
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
+manifest['thermal_gate']=wait_for_cool_gpu(args.max_start_temperature)
 start=time.monotonic()
 with (output/'stdout.txt').open('w') as out,(output/'stderr.txt').open('w') as err:
     process=subprocess.Popen([str(exe),'alwaysactive','dx12'],cwd=root/'Samples/Tests',env=env,stdout=out,stderr=err,startupinfo=startup)

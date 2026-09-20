@@ -16,7 +16,7 @@ bool read(const Entry& entry,std::uint64_t& ns){
     if(total<entry.initial)return false;ns=total-entry.initial;return true;
 }
 }
-Registration::Registration(Kind kind,HANDLE process)noexcept{
+Registration::Registration(Kind kind,HANDLE process,HANDLE primary_thread)noexcept:placement_(kind==Kind::Thread?nullptr:process,primary_thread){
     auto& s=state();std::lock_guard lock(s.mutex);Entry entry;entry.kind=kind;
     const auto source=kind==Kind::Thread?GetCurrentThread():process;
     if(!source||!DuplicateHandle(GetCurrentProcess(),source,GetCurrentProcess(),&entry.handle,0,FALSE,DUPLICATE_SAME_ACCESS)){++s.failures;return;}
