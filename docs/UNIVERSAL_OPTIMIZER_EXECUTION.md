@@ -335,3 +335,45 @@ index and replaces its descriptor with a narrower texture: the stale assumption
 is not reused and the incompatible dispatch stays original. Every output is
 checked and the D3D12 debug layer remains clean. New performance measurements
 for these final CPU changes are pending.
+
+## Checkpoint 10 (asynchronous proofs, DXBC and inherited state)
+
+Uniform-access interpretation now runs on the existing background worker. The
+submission thread captures at most 256 requested CPU-visible vectors and checks
+completed proofs against current values. Missing inputs never become permanent
+unknown cache entries; pending/over-budget analysis leaves the original rate.
+The queue is bounded to 64 proof jobs and difficult cases back off. Native tests
+wait explicitly for readiness and then verify changed indices, replaced views,
+unsafe varying indices and rollback. `async-proof-heavy` activates after three
+neutral submissions and measures 83.973 FPS, with no ARC faults.
+
+Pointer lookup tables and unchanged descriptor-heap binds avoid tree searches
+and temporary vector allocations. `cpu-pointer-index/optimized` measured 85.337
+FPS (single run, not a new accepted comparison). `cpu-fast-path-29fe5c9` measured
+83.590 vs 77.781 FPS; CPU preparation 3.687 vs 3.018ms. CPU budget remains open.
+
+The DXBC path now normalizes system-converter output into public DXIL: canonical
+target information, descriptor-array LLVM types matching binding counts, and
+removal of genuinely unused external declarations. Validation is still mandatory.
+`injected-dxbc-valid-02` compares the original SM5.1 bytecode against the validated
+converted/controlled shader and checks every pixel plus cached rollback.
+
+Resource indices can become lane-varying when pixels are remapped. Dynamic
+createHandle indices therefore retain per-lane selection instead of a stale
+uniformity hint. Native arrays now contain five distinct textures and exercise
+both x/y group-boundary crossings, so identical test inputs cannot mask this bug.
+
+Known ExecuteIndirect signatures preserve unrelated compute bindings and apply
+the documented zero/null resets to changed constants/root descriptors. Graphics
+indirect work does not erase compute-root knowledge. Explicit null descriptors
+are distinguished from unobserved state and restored accurately. After genuinely
+opaque work, merely rebinding the same root cannot authorize even a neutral
+replacement until its arguments are known again. `injected-indirect-root-04`
+verifies inherited tables, constant/CBV reset, cached execution, and refusal to
+touch an opaque-state dispatch, with exact pixels and zero debug errors.
+
+`async-indirect-heavy`: 84.065 FPS, 576 active control submissions, zero ARC
+faults; comparison to the saved 29fe5c9 baseline passes SSIM .990209, mean error
+.000936 and tile p99 .021215. It is a checkpoint, not full-plan acceptance.
+Automatic quality provenance/retention, complete overhead accounting, geometry,
+temporal GI/shadow reuse and the final two-renderer matrix remain unfinished.

@@ -85,6 +85,10 @@ int wmain(int argc, wchar_t** argv) try {
         else source = text;
     }
     unsigned control_space=UINT32_MAX;
+    if(converted&&mode!=L"dump"){
+        const auto normalized=arc::dx12::shader::normalize_converted_dxil({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()});
+        source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(normalized.data(),static_cast<UINT32>(normalized.size()),CP_UTF8,&source),"Create normalized converter IR");
+    }
     arc::dx12::shader::Transform contract;
     std::string original_ir;
     if (transform) {

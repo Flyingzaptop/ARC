@@ -55,6 +55,7 @@ struct Argument {
     std::array<UINT, 64> words{};
     std::uint64_t written{};
     bool initialized{};
+    bool observed{}; // Includes an explicitly set/reset null root descriptor.
 };
 
 // One graphics OR compute root namespace for one native recording generation.

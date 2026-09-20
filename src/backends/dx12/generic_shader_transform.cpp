@@ -38,6 +38,45 @@ std::string code(std::string line) {
     return trim(line);
 }
 }
+std::string normalize_converted_dxil(std::string_view input){
+    if(input.empty()||input.size()>8*1024*1024)throw std::runtime_error("Converted IR size");
+    std::string text(input);while(!text.empty()&&text.back()=='\0')text.pop_back();
+    std::vector<std::string> lines;std::map<unsigned,std::vector<std::string>> nodes;std::map<unsigned,std::size_t> positions;
+    unsigned resources=UINT_MAX;bool layout=false,triple=false;std::smatch match;
+    const std::regex node(R"(^!([0-9]+) = !\{(.*)\}$)"),root(R"(^!dx.resources = !\{!([0-9]+)\}$)");
+    std::istringstream source(text);std::string line;
+    while(std::getline(source,line)){const auto clean=trim(line);
+        if(std::regex_match(clean,match,node)){const auto id=number(match[1].str());nodes[id]=fields(match[2].str());positions[id]=lines.size();}
+        else if(std::regex_match(clean,match,root))resources=number(match[1].str());
+        layout|=clean.starts_with("target datalayout =");triple|=clean.starts_with("target triple =");lines.push_back(line);
+    }
+    if(resources==UINT_MAX||nodes.at(resources).size()!=4)throw std::runtime_error("Converted resource metadata");
+    const std::regex pointer(R"(^(%[A-Za-z0-9_.$]+)( addrspace\([0-9]+\))?\* undef$)");
+    for(const auto& list:nodes.at(resources)){if(list=="null")continue;for(const auto& reference:nodes.at(metadata_ref(list))){
+        const auto id=metadata_ref(reference);auto& resource=nodes.at(id);if(resource.size()<7)throw std::runtime_error("Converted resource shape");
+        const auto count=integer(resource[5]);if(count==1)continue;if(!count)throw std::runtime_error("Converted resource count");
+        if(resource[1].starts_with('['))continue;
+        if(!std::regex_match(resource[1],match,pointer))throw std::runtime_error("Converted resource type unsupported");
+        const auto element=match[1].str(),space=match[2].str();resource[1]="["+std::to_string(count==UINT_MAX?0:count)+" x "+element+"]"+space+"* undef";
+        std::string replacement="!"+std::to_string(id)+" = !{";for(unsigned i=0;i<resource.size();++i){if(i)replacement+=", ";replacement+=resource[i];}lines.at(positions.at(id))=replacement+"}";
+    }}
+    std::ostringstream output;
+    if(!layout)output<<"target datalayout = \"e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64\"\n";
+    if(!triple)output<<"target triple = \"dxil-ms-dx\"\n";
+    const std::regex declaration(R"(^declare .*@([A-Za-z0-9_.$]+)\()" );
+    for(const auto& original:lines){
+        const auto clean=trim(original);
+        if(std::regex_search(clean,match,declaration)){
+            const auto symbol="@"+match[1].str();unsigned references=0;std::size_t cursor=0;
+            while((cursor=text.find(symbol,cursor))!=text.npos){cursor+=symbol.size();const char next=cursor<text.size()?text[cursor]:'\0';
+                const bool identifier=(next>='a'&&next<='z')||(next>='A'&&next<='Z')||(next>='0'&&next<='9')||next=='_'||next=='.'||next=='$';if(!identifier)++references;}
+            if(references==1)continue; // Never remove an operation that is used.
+        }
+        output<<original<<'\n';
+    }
+    return output.str();
+}
+
 Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,bool runtime_control,unsigned requested_control_space) {
     Transform out;
     auto reject=[&](std::string reason){out.reason=std::move(reason);out.ir.clear();return out;};
@@ -99,6 +138,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
             "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32",
             "dx.op.legacyF16ToF32","dx.op.legacyF32ToF16","dx.op.getDimensions",
+            "dx.op.binaryWithTwoOuts.i32",
             "dx.op.bufferLoad.f32","dx.op.bufferLoad.i32","dx.op.rawBufferLoad.f32","dx.op.rawBufferLoad.i32",
             "dx.op.allocateRayQuery","dx.op.rayQuery_TraceRayInline","dx.op.rayQuery_Proceed.i1","dx.op.rayQuery_StateScalar.i32"};
         const std::set<std::string> allowed_instructions={"call","ret","br","phi","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
@@ -117,6 +157,12 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 const auto cls=number(std::string_view(args[1]).substr(3)),range=integer(args[2]);
                 if(cls>3||std::none_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==cls&&r.range_id==range;}))return reject("handle_range");
                 handles.emplace(value,Handle{cls,range});
+                // Remapping virtual pixels can turn a group-uniform resource
+                // index into a varying index. Preserve per-lane selection;
+                // never retain a uniformity hint made false by the transform.
+                if((runtime_control||x_rate>1||y_rate>1)&&args[3].starts_with("i32 %")&&args[4]=="i1 false"){
+                    const auto flag=c.rfind("i1 false");if(flag==c.npos)return reject("handle_uniformity");lines[i].replace(flag,8,"i1 true");
+                }
             } else if(name=="dx.op.allocateRayQuery"){
                 if(args.size()!=2||args[0]!="i32 178"||value.empty()||ray_queries.size()>=16)return reject("ray_query_allocation");
                 ray_queries.insert(value);

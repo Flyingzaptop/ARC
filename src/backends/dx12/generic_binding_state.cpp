@@ -171,13 +171,13 @@ void Arguments::signature(std::uint64_t identity, std::shared_ptr<const Layout> 
 bool Arguments::table(UINT parameter, D3D12_GPU_DESCRIPTOR_HANDLE handle) noexcept {
     if (!layout_ || !layout_->complete || parameter >= layout_->parameters.size() ||
         arguments_[parameter].type != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE) return false;
-    auto& a = arguments_[parameter]; a.address = handle.ptr; a.initialized = handle.ptr != 0; return a.initialized;
+    auto& a = arguments_[parameter]; a.address = handle.ptr; a.initialized = handle.ptr != 0; a.observed=true;return a.initialized;
 }
 bool Arguments::descriptor(UINT parameter, D3D12_ROOT_PARAMETER_TYPE type, UINT64 address) noexcept {
     if (type != D3D12_ROOT_PARAMETER_TYPE_CBV && type != D3D12_ROOT_PARAMETER_TYPE_SRV &&
         type != D3D12_ROOT_PARAMETER_TYPE_UAV) return false;
     if (!layout_ || !layout_->complete || parameter >= layout_->parameters.size() || arguments_[parameter].type != type) return false;
-    auto& a = arguments_[parameter]; a.address = address; a.initialized = address != 0; return a.initialized;
+    auto& a = arguments_[parameter]; a.address = address; a.initialized = address != 0; a.observed=true;return a.initialized;
 }
 bool Arguments::constants(UINT parameter, UINT offset, std::span<const UINT> words) noexcept {
     if (!layout_ || !layout_->complete || parameter >= layout_->parameters.size() ||
@@ -185,6 +185,7 @@ bool Arguments::constants(UINT parameter, UINT offset, std::span<const UINT> wor
     const UINT count = layout_->parameters[parameter].constants;
     if (offset > count || words.size() > count - offset) return false;
     auto& a = arguments_[parameter];
+    a.observed=true;
     std::copy(words.begin(), words.end(), a.words.begin() + offset);
     if (!words.empty()) a.written |= mask(static_cast<UINT>(words.size())) << offset;
     a.initialized = a.written == mask(count);

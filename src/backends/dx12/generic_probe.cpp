@@ -158,13 +158,13 @@ void STDMETHODCALLTYPE descriptor_ranges(ID3D12Device* d,UINT dc,const D3D12_CPU
 HRESULT STDMETHODCALLTYPE signal(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_signal(q,f,value);if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,false);return result;}
 HRESULT STDMETHODCALLTYPE wait(ID3D12CommandQueue* q,ID3D12Fence* f,UINT64 value){const auto result=original_wait(q,f,value);if(observe_api()&&SUCCEEDED(result))if(detailed_tracking.load(std::memory_order_relaxed))runtime::fence(q,f,value,true);return result;}
 void STDMETHODCALLTYPE indirect(ID3D12GraphicsCommandList* c,ID3D12CommandSignature* signature,UINT count,ID3D12Resource* arguments,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){
-    if(observe_api()){profile::indirect(c,signature,count);optimizer::state_unknown(c);}
+    if(observe_api())profile::indirect(c,signature,count);
     mirror::Lease lease;
     if(observe_api()&&mirror::requested_rate()){
         if(mirror::raster_indirect(signature))lease=mirror::acquire_draw(c);else mirror::invalidate(c);
     }
     const bool changed=mirror::before_draw(lease);
-    {mirror::InternalCall native_call;original_indirect(c,signature,count,arguments,offset,counts,count_offset);}if(changed)mirror::after_draw(lease);
+    {mirror::InternalCall native_call;original_indirect(c,signature,count,arguments,offset,counts,count_offset);}if(changed)mirror::after_draw(lease);if(observe_api())optimizer::after_indirect(c,signature);
     if(observe_api()&&detailed_tracking)runtime::unsupported();
 }
 
@@ -195,7 +195,7 @@ void STDMETHODCALLTYPE compute_root(ID3D12GraphicsCommandList* c,ID3D12RootSigna
 using SignatureFn=decltype(ID3D12DeviceVtbl::CreateCommandSignature);SignatureFn original_signature{};
 HRESULT STDMETHODCALLTYPE command_signature(ID3D12Device* d,const D3D12_COMMAND_SIGNATURE_DESC* desc,ID3D12RootSignature* root,REFIID iid,void** out){
     const auto result=original_signature(d,desc,root,iid,out);
-    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12CommandSignature* signature=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12CommandSignature,reinterpret_cast<void**>(&signature)))){mirror::signature_created(signature,desc);profile::signature_created(signature,desc);ID3D12CommandSignature_Release(signature);}}return result;
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12CommandSignature* signature=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12CommandSignature,reinterpret_cast<void**>(&signature)))){mirror::signature_created(signature,desc);profile::signature_created(signature,desc);optimizer::signature_created(signature,desc,root);ID3D12CommandSignature_Release(signature);}}return result;
 }
 using GraphicsPsoFn=decltype(ID3D12DeviceVtbl::CreateGraphicsPipelineState);GraphicsPsoFn original_graphics_pso{};
 HRESULT STDMETHODCALLTYPE graphics_pso(ID3D12Device* d,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc,REFIID iid,void** out){
