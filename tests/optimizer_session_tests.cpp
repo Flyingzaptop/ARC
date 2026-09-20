@@ -92,4 +92,13 @@ int main(){
     retry_generation.candidates({{9,2,4,.1,true},{10,2,8,.01,false}});
     assert(retry_generation.frame(16).action==9); // new generation can retry; unsupported candidate never chosen
     std::cout<<"Target control, independent quality, generation, cost budgets, recovery and fault latch passed\n";
+    arc::OptimizerSessionConfig maxconfig;maxconfig.maximize_fps=true;maxconfig.warmup_samples=1;maxconfig.hold_samples=0;maxconfig.settle_samples=0;
+    arc::OptimizerSession maximize(maxconfig);maximize.candidates({{99,1,1,.1,true}});
+    assert(maximize.frame(4).kind==arc::SessionRequestKind::Profile);
+    assert(maximize.frame(4).kind==arc::SessionRequestKind::Probe);
+    arc::OptimizerTrialEvidence fast{99,1,true,true,true,4,3,.01,.99,.001,.01,.1,.1};
+    assert(maximize.evidence(fast).kind==arc::SessionRequestKind::Apply);maximize.applied(99,true);
+    assert(maximize.frame(3).kind!=arc::SessionRequestKind::Restore);
+    arc::OptimizerSession bad(maxconfig);bad.candidates({{99,1,1,.1,true}});bad.frame(4);bad.frame(4);fast.ssim=.5;
+    assert(bad.evidence(fast).kind==arc::SessionRequestKind::None&&bad.snapshot().accepted==0);
 }

@@ -30,6 +30,7 @@ struct State {
     std::array<double,128> periods{};unsigned count{},cursor{};
     Json status{{"phase","off"}};
     std::filesystem::path directory,python,critic;
+    bool maximize{true};
     double target{};unsigned maximum_seconds{0};
     std::atomic<double> requested_target{};
     bool capture_active{};unsigned capture_stage{};arc::PolicyBundle capture_bundle;
@@ -161,7 +162,7 @@ DWORD WINAPI run(void*){
     auto& s=state();SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);const auto started=Clock::now();
     placement::configure(L"normal"); // one decision loop; no concurrent affinity experiment
     try{
-        arc::OptimizerSessionConfig config;config.target_fps=s.target;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
+        arc::OptimizerSessionConfig config;config.target_fps=s.target;config.maximize_fps=s.maximize;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         arc::OptimizerSession policy(config);
         struct Choice {arc::PolicyBundle bundle;double cost{};bool cpu{};};
         std::vector<Choice> choices;arc::PolicyBundle incumbent;std::uint64_t next_choice=0;
@@ -194,7 +195,7 @@ DWORD WINAPI run(void*){
         };
         rebuild_choices();
         UINT64 last=0,trial=0,profile=0,catalog_check=0;std::uint64_t retained=0;
-        std::string idle_phase;
+        std::string idle_phase;auto last_discovery=Clock::now();double scene_reference=0;unsigned scene_drift=0;
         publish({{"phase","warmup"},{"target_fps",s.target},{"quality_reference","live_motion_qualified"}});
         while(!s.cancel){
             if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);publish({{"phase","target_updated"},{"target_fps",s.target}});}
@@ -221,15 +222,20 @@ DWORD WINAPI run(void*){
                 const bool same=next.size()==catalog.size()&&std::equal(next.begin(),next.end(),catalog.begin(),[](const auto& a,const auto& b){return a.capabilities.pipeline==b.capabilities.pipeline&&a.profile_session==b.profile_session;});
                 if(!same){catalog=std::move(next);rebuild_choices();}
             }
-            const auto request=policy.frame(period());
+            const auto current_period=period();
+            if(!scene_reference)scene_reference=current_period;
+            scene_drift=(current_period>scene_reference*1.75||current_period<scene_reference*.55)?scene_drift+1:0;
+            auto request=scene_drift>=8?policy.scene_changed():policy.frame(current_period);
+            if(scene_drift>=8){scene_reference=current_period;scene_drift=0;}
+            if(request.kind==SessionRequestKind::None&&policy.snapshot().phase==SessionPhase::Limited&&!policy.snapshot().active_action&&Clock::now()-last_discovery>std::chrono::seconds(15))request={SessionRequestKind::Profile,0};
             if(request.kind==SessionRequestKind::None){const auto current=policy.snapshot();
                 if(current.phase==SessionPhase::Active||current.phase==SessionPhase::Limited){
-                    const std::string phase=current.phase==SessionPhase::Limited?"limited":current.filtered_frame_ms<=current.target_frame_ms?"target_met":"holding";
+                    const std::string phase=current.phase==SessionPhase::Limited?"limited":!s.maximize&&current.filtered_frame_ms<=current.target_frame_ms?"target_met":"holding";
                     if(phase!=idle_phase){idle_phase=phase;publish({{"phase",phase},{"target_fps",s.target},{"filtered_frame_ms",current.filtered_frame_ms},{"active_action",current.active_action},{"accepted",current.accepted},{"rejected",current.rejected}});}
                 }
             }else idle_phase.clear();
             if(request.kind==SessionRequestKind::Profile){
-                select(L"off");const auto path=s.directory/(L"profile-"+std::to_wstring(++profile)+L".json");
+                last_discovery=Clock::now();select(L"off");const auto path=s.directory/(L"profile-"+std::to_wstring(++profile)+L".json");
                 if(!gpu_profile::request(path.wstring(),16)||!wait_file(path,12000))throw std::runtime_error("GPU discovery unavailable");
                 catalog=optimizer::candidate_catalog();rebuild_choices();
                 publish({{"phase","discovery_complete"},{"target_fps",s.target},{"measured_work_candidates",catalog.size()},{"policy_candidates",choices.size()}});
@@ -308,7 +314,7 @@ DWORD WINAPI run(void*){
 }
 bool start(const wchar_t* config_path)noexcept{
     if(!config_path||!optimizer::enabled()||mirror::requested_rate()||gpu_profile::busy()||!generic::gpu_helpers_idle())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
-    try{const auto config=read_json(config_path);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
+    try{const auto config=read_json(config_path);s.maximize=config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
         s.python=std::filesystem::u8path(config.at("python").get<std::string>());s.critic=std::filesystem::u8path(config.at("critic").get<std::string>());s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
         if(!s.python.is_absolute()||!s.critic.is_absolute()||!s.directory.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
         std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.swapchain=nullptr;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
@@ -346,7 +352,7 @@ void present(void* swap,HRESULT result,UINT flags)noexcept{
     if(s.last_qpc){const auto elapsed=(double(qpc.QuadPart)-double(s.last_qpc))*1000/s.frequency;if(elapsed>0&&elapsed<1000){s.periods[s.cursor++%s.periods.size()]=elapsed;s.count=std::min<unsigned>(s.count+1,static_cast<unsigned>(s.periods.size()));}}
     s.last_qpc=qpc.QuadPart;++s.frames;s.changed.notify_all();
 }
-void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto status=s.status;status["present_samples"]=s.frames;
+void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto status=s.status;status["present_samples"]=s.frames;status["objective"]=s.maximize?"maximize_fps":"target_fps";
     const auto count=std::min(32u,s.count);if(count){double total=0;for(unsigned i=0;i<count;++i)total+=s.periods[(s.cursor+s.periods.size()-1-i)%s.periods.size()];if(total>0){status["current_fps"]=1000*count/total;status["current_frame_ms"]=total/count;}}
     out<<status.dump();}
 }

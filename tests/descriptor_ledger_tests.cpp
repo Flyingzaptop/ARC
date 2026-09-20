@@ -42,4 +42,8 @@ int main(){
     auto moved=std::move(copied);
     check(moved.read(8208)->resource==22&&!copied.read(8208),"moved-from lookup cannot retain stale heap pointers");
     std::cout<<"Descriptor ledger: million-slot deduplication, reuse, null/unknown distinction and bounded churn PASS\n";
+    copied.forget_all();check(copied.known_count()==0&&copied.value_count()==0,"bulk invalidation drops all values");
+    arc::DescriptorLedger reset;check(reset.register_heap(99,3200,32,4),"reset heap");reset.write(3200,{7,1,0,1});reset.write(99999,{8,1,0,1});
+    reset.forget_all();check(reset.heap_at(3200)==99&&reset.slot_count()==4&&!reset.read(3200)&&!reset.read(99999),"bulk invalidation preserves heaps, not stale descriptors");
+    check(reset.write(3200,{9,1,0,1})&&reset.read(3200)->resource==9,"observations recover after invalidation");
 }

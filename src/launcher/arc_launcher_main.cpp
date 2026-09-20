@@ -53,7 +53,7 @@ double target(){const auto value=text(target_edit);std::size_t used{};const auto
 std::filesystem::path configuration(bool launch){
     const auto root=directory();const auto runtime=root/L"runtime";
     const std::pair<const char*,std::filesystem::path> files[]{{"worker",root/L"arc-shader-tool.exe"},{"compiler",runtime/L"dxc/dxcompiler.dll"},{"python",runtime/L"python/python.exe"},{"critic",root/L"scripts/optimizer-live-quality.py"}};
-    Json config{{"target_fps",target()},{"maximum_seconds",0}};
+    Json config{{"target_fps",target()},{"maximize_fps",true},{"maximum_seconds",0}};
     for(const auto& [key,path]:files){if(!std::filesystem::is_regular_file(path))throw std::runtime_error("Incomplete ARC package: "+utf8(path));config[key]=utf8(path);}
     if(!std::filesystem::is_regular_file(root/L"arc-dx12-probe.dll")||!std::filesystem::is_regular_file(root/L"arc-dx12-probe-launch.exe"))throw std::runtime_error("ARC runtime files are missing");
     SYSTEMTIME now{};GetLocalTime(&now);wchar_t stamp[96]{};swprintf_s(stamp,L"%04u%02u%02u-%02u%02u%02u-%llu",now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,GetTickCount64());
@@ -131,7 +131,7 @@ void poll(){
         std::wstring label=L"Измерение и подбор настроек…";
         if(phase=="target_met")label=automatic.value("active_action",0ull)?L"Цель достигнута. Оптимизация активна.":L"Цель достигнута на исходном качестве.";
         else if(phase=="holding")label=L"Оптимизация активна.";
-        else if(phase=="limited")label=L"Подтверждённых способов достичь цели пока нет.";
+        else if(phase=="limited")label=L"Пока нет подтверждённого прироста. Наблюдение и поиск продолжаются.";
         else if(phase=="render_metadata_missing")label=L"Кадры получены, но нет данных шейдеров. Закройте игру и выберите «Запустить с ARC».";
         else if(phase=="inactive")label=L"Ожидание кадров DX12.";
         else if(phase=="stopped"){label=automatic.value("restoration_confirmed",false)?L"Оптимизация отключена. Исходный рендер восстановлен.":L"Ожидание подтверждения восстановления…";if(automatic.value("restoration_confirmed",false))target_pid=0;}
@@ -154,7 +154,8 @@ LRESULT CALLBACK window(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
         control(hwnd,L"BUTTON",L"Строка для Steam",0,355,245,190,32,SteamOptions);
         path_label=control(hwnd,L"STATIC",L"Приложение не выбрано",SS_PATHELLIPSIS,20,287,700,25);
         control(hwnd,L"STATIC",L"Аргументы запуска",0,20,325,155,25);arguments=control(hwnd,L"EDIT",L"",ES_AUTOHSCROLL,180,322,540,28,Arguments);
-        control(hwnd,L"STATIC",L"Целевой FPS",0,20,367,120,25);target_edit=control(hwnd,L"EDIT",L"60",ES_NUMBER,145,363,75,30,Target);control(hwnd,L"BUTTON",L"Изменить цель",0,235,363,155,32,ApplyTarget);
+        control(hwnd,L"STATIC",L"Режим ARC",0,20,367,120,25);target_edit=control(hwnd,L"EDIT",L"60",ES_NUMBER,145,363,75,30,Target);control(hwnd,L"BUTTON",L"Изменить цель",0,235,363,155,32,ApplyTarget);
+        ShowWindow(target_edit,SW_HIDE);ShowWindow(GetDlgItem(hwnd,ApplyTarget),SW_HIDE);control(hwnd,L"STATIC",L"Максимальный FPS · проверка качества",0,145,367,550,25);
         control(hwnd,L"BUTTON",L"Запустить с ARC",BS_DEFPUSHBUTTON,20,410,210,38,Launch);
         control(hwnd,L"STATIC",L"PID",0,250,419,35,25);pid_edit=control(hwnd,L"EDIT",L"",ES_NUMBER,290,414,95,30,Pid);control(hwnd,L"BUTTON",L"Подключить",0,400,410,140,38,Attach);
         control(hwnd,L"BUTTON",L"Отключить ARC",0,555,410,165,38,Stop);

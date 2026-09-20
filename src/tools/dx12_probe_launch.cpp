@@ -125,7 +125,7 @@ int wmain(int argc,wchar_t** argv)try{
         if(start_auto||stop_auto||target_fps||policy){
             const auto name=start_auto?"ArcStartOptimizer":stop_auto?"ArcStopOptimizer":target_fps?"ArcSetTargetFps":"ArcExperimentalPolicy";
             const auto argument=stop_auto?L"":target_fps?std::wstring(argv[4]):output.wstring();
-            const auto code=call_export(process.h,remote_base,dll,name,argument);require(code==0,"ARC control request refused");return 0;
+            const auto code=call_export(process.h,remote_base,dll,name,argument);if(code)throw std::runtime_error("ARC control request refused, runtime status "+std::to_string(code));return 0;
         }
         HMODULE local=LoadLibraryExW(dll.c_str(),nullptr,DONT_RESOLVE_DLL_REFERENCES);require(local!=nullptr,"read capture export");
         auto request=GetProcAddress(local,profile?"ArcRequestGpuProfile":profile_stop?"ArcStopGpuProfile":features?"ArcRequestFeatures":passive?"ArcUsePassiveMode":lean?"ArcUseLeanMode":experiment?"ArcExperimentalVrs":timing?"ArcRequestTiming":image?"ArcRequestImage":"ArcRequestFrame");const auto offset=reinterpret_cast<std::uintptr_t>(request)-reinterpret_cast<std::uintptr_t>(local);FreeLibrary(local);require(request!=nullptr,"capture export");

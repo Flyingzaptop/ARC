@@ -91,3 +91,38 @@ not a live Steam or Bodycam success claim. The user performs that final check.
 
 The dead-process UI now clears its stale PID/details and directs Steam users to
 the wrapper route rather than indefinitely suggesting another direct launch.
+
+## Maximum-FPS mode and descriptor capacity (development package 04)
+
+The user requested maximizing FPS rather than stopping at a numerical target.
+Launcher sessions now explicitly enable `maximize_fps`; the numerical target UI
+is replaced with the maximum-FPS mode label. Old Steam command lines still parse
+their numeric argument, but it does not stop maximum-mode search. The legacy
+target policy remains available to explicit diagnostic configurations.
+
+Maximum mode continues discovery and accepts measured quality-qualified gains
+even above the old target. It does not restore an accepted setting merely because
+FPS is high. Quality thresholds, evidence expiry and overhead budgets are unchanged.
+After all trials are exhausted with no active setting, discovery repeats no more
+often than every 15 seconds. A sustained large frame-period change resets the
+scene's decision history, so loading-screen decisions do not certify gameplay.
+
+The Bodycam session had 4412 successful intercepted Presents but its automatic
+session faulted at 929 samples: `descriptor ranges unavailable`, then `Optimizer
+bundle refused`. Descriptor-copy capacity limits now invalidate cached contents
+(including the exact view cache) and record a coverage limitation rather than
+throwing a fatal optimizer exception. Heap identities survive invalidation.
+The tracked range count increased from 1024 to 65536; per-call descriptor-count
+bounds remain. This is not a claim of unlimited metadata capacity.
+
+The live compute PSO count ceiling increased from 512 to 16384; the 64-MiB pending
+shader-bytecode budget remains. This removes the observed 512-entry barrier but
+does not implement unbounded or disk-backed shader capture.
+
+The native connection fixture now retains 600 distinct additional PSOs and performs
+a real CopyDescriptors call with 1025 source ranges. Early direct/child/suspended
+child runs register 602 compute PSOs with zero optimizer faults or unknown roots.
+Unit tests prove gain acceptance above target, preserved quality rejection, and
+safe descriptor invalidation/recovery. These are correctness tests, not FPS-gain
+measurements. Swapchain recreation and full GPU cost/provenance acceptance remain
+separate work; no Bodycam fullscreen-transition fix or automatic gain is claimed.

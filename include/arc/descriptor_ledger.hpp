@@ -50,6 +50,7 @@ public:
     // Unknown source contents invalidate the destination.
     bool copy_one(std::uint64_t destination,std::uint64_t source);
     void forget(std::uint64_t address);
+    void forget_all(); // preserve heap identities, invalidate every cached value
     [[nodiscard]] std::optional<DescriptorValue> read(std::uint64_t address)const;
     [[nodiscard]] std::uint64_t heap_at(std::uint64_t address)const;
     [[nodiscard]] std::size_t slot_count()const noexcept{return slots_;}

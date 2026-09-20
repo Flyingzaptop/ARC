@@ -20,7 +20,7 @@ results = {}
 for mode in ('late', 'direct', 'child', 'child-suspended'):
     case = evidence / mode
     case.mkdir()
-    config = dict(target_fps=1, maximum_seconds=10, output=str(case / 'automatic'),
+    config = dict(target_fps=1, maximize_fps=False, maximum_seconds=10, output=str(case / 'automatic'),
                   worker=str(binary / 'arc-shader-tool.exe'),
                   compiler=str(package / 'runtime/dxc/dxcompiler.dll'),
                   cache=str(evidence / 'shader-cache'), python=str(package / 'runtime/python/python.exe'),
@@ -63,6 +63,7 @@ for mode in ('late', 'direct', 'child', 'child-suspended'):
     data = json.loads(metrics.read_text())
     assert data['pid'] == renderer['pid'] and data['present_calls'] >= 100
     assert data['present_failures'] == data['hook_failures'] == 0
+    assert data['optimizer']['faults'] == 0, data['optimizer']
     coverage = data['optimizer_coverage']
     if mode == 'late':
         assert coverage['observed_root_signatures'] == coverage['observed_compute_pipelines'] == 0
@@ -71,7 +72,7 @@ for mode in ('late', 'direct', 'child', 'child-suspended'):
         assert not list((case / 'automatic').glob('trial-*')), 'late attach ran unrelated trials'
     else:
         assert coverage['observed_root_signatures'] >= 1, coverage
-        assert coverage['observed_compute_pipelines'] >= 1, coverage
+        assert coverage['observed_compute_pipelines'] > 512, coverage
         assert coverage['dispatch_declines']['root_unknown'] == 0, coverage
     results[mode] = dict(pid=renderer['pid'], arc_before_main=renderer['arc_before_main'],
                          presents=data['present_calls'], roots=coverage['observed_root_signatures'],

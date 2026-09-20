@@ -6,6 +6,7 @@
 namespace arc {
 struct OptimizerSessionConfig {
     double target_fps{60};
+    bool maximize_fps{false};
     double min_ssim{.98},max_mean_error{.01},max_tile_p99{.04};
     double min_gain_ms{.1},min_gain_fraction{.02};
     double max_cpu_overhead_ms{.2},max_gpu_overhead_ms{.25};

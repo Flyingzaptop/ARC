@@ -3,6 +3,11 @@
 #include <array>
 
 namespace arc {
+void DescriptorLedger::forget_all(){
+    if(!known_)return;
+    for(auto& [id,heap]:heaps_){for(auto& entry:heap.entries)entry=0;heap.references.clear();}
+    lookup_.clear();values_.resize(1);values_[0]={};free_.clear();orphans_.clear();known_=nulls_=0;
+}
 const DescriptorLedger::Heap* DescriptorLedger::locate_heap(std::uint64_t address)const {
     // Cache only numeric hints, never heap pointers. A fresh map lookup and
     // bounds check make copied ledgers, retirement and address reuse safe.

@@ -48,6 +48,11 @@ for mode in ('direct', 'child'):
         assert data['optimizer_coverage']['observed_compute_pipelines'] > 0
         assert data['optimizer_coverage']['dispatch_declines']['root_unknown'] == 0
         assert data['automatic_session']['target_fps'] == 1
+        assert data['automatic_session']['objective'] == 'maximize_fps'
+        assert data['automatic_session']['phase'] != 'target_met'
+        assert any((case / 'ARC/sessions').rglob('trial-1')), 'max mode stopped above target instead of probing'
+        assert data['optimizer']['faults'] == 0
+        assert data['optimizer_coverage']['observed_compute_pipelines'] > 512
         print(mode, 'Steam-wrapper entry PASS (synthetic context)', flush=True)
     finally:
         # Only the exact owned test wrapper is stopped; never enumerate/kill games.

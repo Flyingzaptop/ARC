@@ -30,6 +30,20 @@ int wmain(int argc,wchar_t** argv)try{
     const char source[]="[numthreads(1,1,1)] void main() {}";ComPtr<ID3DBlob> shader;hr(D3DCompile(source,sizeof(source)-1,nullptr,nullptr,nullptr,"main","cs_5_0",0,0,&shader,nullptr));
     D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{};pso_desc.pRootSignature=root.Get();pso_desc.CS={shader->GetBufferPointer(),shader->GetBufferSize()};
     ComPtr<ID3D12PipelineState> pso;hr(device->CreateComputePipelineState(&pso_desc,IID_PPV_ARGS(&pso)));
+    // Keep >512 distinct live PSOs: an early fixed catalog used to stop here.
+    std::vector<ComPtr<ID3D12RootSignature>> extra_roots;
+    std::vector<ComPtr<ID3D12PipelineState>> extra_pipelines;
+    for(unsigned i=0;i<600;++i){D3D12_ROOT_PARAMETER parameter{};parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;parameter.Constants={0,i+1,1};
+        D3D12_ROOT_SIGNATURE_DESC description{1,&parameter,0,nullptr,D3D12_ROOT_SIGNATURE_FLAG_NONE};ComPtr<ID3DBlob> blob;hr(D3D12SerializeRootSignature(&description,D3D_ROOT_SIGNATURE_VERSION_1,&blob,nullptr));
+        ComPtr<ID3D12RootSignature> r;hr(device->CreateRootSignature(0,blob->GetBufferPointer(),blob->GetBufferSize(),IID_PPV_ARGS(&r)));
+        auto d=pso_desc;d.pRootSignature=r.Get();ComPtr<ID3D12PipelineState> p;hr(device->CreateComputePipelineState(&d,IID_PPV_ARGS(&p)));extra_roots.push_back(r);extra_pipelines.push_back(p);}
+    D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.NumDescriptors=1025;hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    ComPtr<ID3D12DescriptorHeap> source_heap,destination_heap;hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&source_heap)));hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&destination_heap)));
+    const auto stride=device->GetDescriptorHandleIncrementSize(hd.Type);std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> sources;
+    D3D12_SHADER_RESOURCE_VIEW_DESC view{};view.Format=DXGI_FORMAT_R8G8B8A8_UNORM;view.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;view.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;view.Texture2D.MipLevels=1;
+    for(unsigned i=0;i<1025;++i){auto handle=source_heap->GetCPUDescriptorHandleForHeapStart();handle.ptr+=SIZE_T(i)*stride;device->CreateShaderResourceView(nullptr,&view,handle);sources.push_back(handle);}
+    const auto destination=destination_heap->GetCPUDescriptorHandleForHeapStart();UINT count=1025;
+    device->CopyDescriptors(1,&destination,&count,count,sources.data(),nullptr,hd.Type);
     D3D12_COMMAND_QUEUE_DESC queue_desc{};ComPtr<ID3D12CommandQueue> queue;hr(device->CreateCommandQueue(&queue_desc,IID_PPV_ARGS(&queue)));
     ComPtr<ID3D12CommandAllocator> allocator;hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)));
     ComPtr<ID3D12GraphicsCommandList> list;hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)));hr(list->Close());
