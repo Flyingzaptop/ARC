@@ -1,0 +1,91 @@
+{
+  "status": "checkpoint_not_complete",
+  "source_commit": "8a4baf933e2fdc837274f5d82aff2cbe0edb5c6b",
+  "shader_bytecode_or_ir_published": false,
+  "archives": [
+    {
+      "name": "repeatability-af17a7d.zip",
+      "files": 38,
+      "bytes": 11046168,
+      "sha256": "88933ba109a72dbc370989617655c7b5fc060f99e6192599172cf6be4e515691"
+    },
+    {
+      "name": "adaptive-quality.zip",
+      "files": 24,
+      "bytes": 6736235,
+      "sha256": "af3df793c97f6d5450134b6d34265a10812bc87e2cd46324e037c0ca90d9d1b4"
+    },
+    {
+      "name": "mip-first.zip",
+      "files": 13,
+      "bytes": 3727815,
+      "sha256": "044206ba79d07701227cee7377c36854e27f1a311f86014111ff67a721a61509"
+    },
+    {
+      "name": "auto-dis.zip",
+      "files": 37,
+      "bytes": 20053462,
+      "sha256": "cd74d10991cbbce1ba98632da0ec8ae463ba6a2632747ff5d2dd047978a659f8"
+    },
+    {
+      "name": "injected-indirect-root-04.zip",
+      "files": 2,
+      "bytes": 2040,
+      "sha256": "175fe8fe1ac73a95ebb08642cd83f1626c04f512ee64f97eec98b662d8f25311"
+    },
+    {
+      "name": "injected-interned-root-01.zip",
+      "files": 2,
+      "bytes": 1978,
+      "sha256": "06433f4a37f1344d8e0adbf219d044022dda01a1e551ea6ad8378b0d5a903b70"
+    },
+    {
+      "name": "profile-interned-pso-01.zip",
+      "files": 2,
+      "bytes": 2152,
+      "sha256": "b54d4700ce61f3b173ba25aede6cd46c888de1c1b438ea90a65dd910f790e240"
+    },
+    {
+      "name": "vrs-compute-enabled-01.zip",
+      "files": 19,
+      "bytes": 4534,
+      "sha256": "dfd375acdac63c6d2000d31128d56623364e203046dd123f62648e5b11eb7c68"
+    },
+    {
+      "name": "wicked-interned-root.zip",
+      "files": 4,
+      "bytes": 18858,
+      "sha256": "1c624adf88159a0ce94ceed92e48d635c6241592a4a98d5352d94513755883cf"
+    },
+    {
+      "name": "wicked-coarse-first.zip",
+      "files": 4,
+      "bytes": 19273,
+      "sha256": "7faed6187787bf063db09aac14fbf3e1ee5fdc1f9916c6450045d4b1f28dd7a8"
+    },
+    {
+      "name": "lean-hooks.zip",
+      "files": 12,
+      "bytes": 3683492,
+      "sha256": "4af51d0039ae06943766189da97b283cf6d4e503fa3c0245b5244bd201f39f91"
+    },
+    {
+      "name": "cpu-fast-path-29fe5c9.zip",
+      "files": 12,
+      "bytes": 3679937,
+      "sha256": "f8aa66202907df20fe5c4d5d93abe2b954dd999b1219cad648a46cb5fa077740"
+    },
+    {
+      "name": "async-proof-heavy.zip",
+      "files": 7,
+      "bytes": 1833386,
+      "sha256": "b57de82ab2d0849324fb345bc700a25d20f66c2140d5e7be3a37b852222d6c1c"
+    },
+    {
+      "name": "async-indirect-heavy.zip",
+      "files": 8,
+      "bytes": 1836680,
+      "sha256": "c282784c13a22a26ec27b6d8a253dbcfa853f87fedf289cf3108f00af83d635f"
+    }
+  ]
+}
