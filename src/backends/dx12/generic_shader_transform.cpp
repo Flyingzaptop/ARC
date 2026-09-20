@@ -84,12 +84,14 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             }
         }
         struct Handle {unsigned cls{},range{};};std::map<std::string,Handle> handles;
-        std::array<std::string,3> ids;
+        std::array<std::string,3> ids;std::array<std::set<std::string>,3> thread_ids;
+        std::string entry_label="arc_coarse_orig_0";bool named_entry=false;
+        for(std::size_t i=begin+1;i<end;++i){const auto first=code(lines[i]);if(first.empty())continue;if(first.ends_with(':')){entry_label=first.substr(0,first.size()-1);named_entry=true;}break;}
         struct Store {std::size_t line{};std::vector<std::string> args;};std::vector<Store> stores;
         const std::set<std::string> allowed_calls={"dx.op.createHandle","dx.op.threadId.i32","dx.op.textureLoad.f32","dx.op.textureLoad.i32",
             "dx.op.textureStore.f32","dx.op.cbufferLoadLegacy.f32","dx.op.cbufferLoadLegacy.i32","dx.op.sampleLevel.f32","dx.op.sampleCmpLevelZero.f32",
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
-            "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32"};
+            "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32"};
         const std::set<std::string> allowed_instructions={"call","ret","br","phi","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
             "shl","lshr","ashr","and","or","xor","icmp","fcmp","select","fptoui","fptosi","uitofp","sitofp","fptrunc","fpext","zext","sext","trunc","bitcast","extractvalue","extractelement","insertelement","shufflevector"};
         const std::regex call(R"(^(?:(%[A-Za-z0-9_.$]+) = )?call [^@]+@([A-Za-z0-9_.$]+)\((.*)\)(?: #[0-9]+)?$)");
@@ -107,7 +109,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 if(cls>3||std::none_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==cls&&r.range_id==range;}))return reject("handle_range");
                 handles.emplace(value,Handle{cls,range});
             } else if(name=="dx.op.threadId.i32"){
-                if(args.size()!=2)return reject("thread_id");const auto dim=integer(args[1]);if(dim>1||!ids[dim].empty())return reject("thread_id");ids[dim]=value;
+                if(args.size()!=2)return reject("thread_id");const auto dim=integer(args[1]);if(dim>1)return reject("thread_id");if(ids[dim].empty())ids[dim]=value;thread_ids[dim].insert(value);
             } else if(name=="dx.op.textureStore.f32"){
                 if(args.size()!=10||args[4]!="i32 undef"||args[9]!="i8 15")return reject("store_shape");
                 const auto h=args[1].substr(args[1].find_last_of(' ')+1);
@@ -119,7 +121,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             }
         }
         if(ids[0].empty()||ids[1].empty()||stores.empty())return reject("no_pixel_outputs");
-        for(const auto& s:stores)if(s.args[2]!="i32 "+ids[0]||s.args[3]!="i32 "+ids[1])return reject("nonlocal_store");
+        for(const auto& s:stores)if(!s.args[2].starts_with("i32 ")||!s.args[3].starts_with("i32 ")||!thread_ids[0].contains(s.args[2].substr(4))||!thread_ids[1].contains(s.args[3].substr(4)))return reject("nonlocal_store");
         out.stores=static_cast<unsigned>(stores.size());
         unsigned control_range{};
         std::string appended_metadata;
@@ -199,21 +201,22 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                         <<"  %arc_coarse_bounded = select i1 %arc_coarse_is_coarse, i1 %arc_coarse_inside, i1 true\n";
                     generated<<"  %arc_coarse_active = and i1 %arc_coarse_group_active, "<<(runtime_control?"%arc_coarse_bounded":"%arc_coarse_inside")<<"\n";
                 }else generated<<"  %arc_coarse_active = and i1 %arc_coarse_group_active, true\n";
-                generated<<"  br i1 %arc_coarse_active, label %arc_coarse_orig_0, label %arc_coarse_exit\n"
-                    <<"arc_coarse_exit:\n  ret void\narc_coarse_orig_0:\n";
+                generated<<"  br i1 %arc_coarse_active, label %"<<entry_label<<", label %arc_coarse_exit\n"
+                    <<"arc_coarse_exit:\n  ret void\n";
+                if(!named_entry)generated<<entry_label<<":\n";
             }
         }
         auto transformed=generated.str();
         // Replace original thread-id definitions, leaving the prelude calls
         // alone. All original instructions consequently use remapped pixels.
-        for(unsigned d=0;d<2;++d){
-            const auto id=std::regex_replace(ids[d],local,"%arc_coarse_orig_$1");
+        for(unsigned d=0;d<2;++d)for(const auto& original_id:thread_ids[d]){
+            const auto id=std::regex_replace(original_id,local,"%arc_coarse_orig_$1");
             for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);if(!c.starts_with(id+" = call i32 @dx.op.threadId.i32("))continue;
                 const auto pos=transformed.find(lines[i]);transformed.replace(pos,lines[i].size(),id+" = add i32 %arc_coarse_coord_"+(d?"y":"x")+", 0");}
         }
         unsigned serial{};std::size_t store_cursor{};
         std::map<std::string,std::string> predecessors;
-        std::string current_block="arc_coarse_orig_0";std::size_t block_cursor=begin+1;
+        std::string current_block=entry_label;std::size_t block_cursor=begin+1;
         for(const auto& s:stores){
             for(;block_cursor<s.line;++block_cursor){const auto c=code(lines[block_cursor]);if(c.ends_with(':'))current_block=c.substr(0,c.size()-1);}
             const auto original=lines[s.line];const auto pos=transformed.find(original,store_cursor);if(pos==transformed.npos)return reject("store_rewrite");

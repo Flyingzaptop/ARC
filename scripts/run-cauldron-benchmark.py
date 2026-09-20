@@ -16,6 +16,7 @@ parser.add_argument("--mode",choices=["vrs","observe","profile","compute-neutral
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
+parser.add_argument("--auto-target",type=float)
 args=parser.parse_args()
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
@@ -40,11 +41,22 @@ if args.dll and args.mode.startswith("compute-"):
     env["ARC_OPTIMIZER_WORKER"]=str(worker)
     env["ARC_OPTIMIZER_COMPILER"]=str(compiler)
     env["ARC_OPTIMIZER_CACHE"]=str(output/"shader-cache")
+env.pop("ARC_AUTO_CONFIG",None)
+if args.auto_target is not None:
+    if not args.dll or not args.mode.startswith("compute-") or not 0 < args.auto_target <= 1000:
+        raise ValueError("Automatic target requires a compute-enabled DLL and FPS in (0,1000]")
+    import sys
+    config=output/"automatic-config.json"
+    config.write_text(json.dumps({"target_fps":args.auto_target,"python":sys.executable,
+        "critic":str(Path(__file__).resolve().parent/"optimizer-live-quality.py"),
+        "output":str(output/"automatic"),"maximum_seconds":50},indent=2))
+    env["ARC_AUTO_CONFIG"]=str(config)
 command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.frames+120}",f"path={output}","json","-screenshot"]
 hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
+          "automatic_target_fps":args.auto_target,
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))

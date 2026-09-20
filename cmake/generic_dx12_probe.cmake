@@ -17,7 +17,7 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
     target_include_directories(arc-generic-shader-transform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12)
     add_executable(arc-shader-tool ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/shader_tool.cpp)
     target_compile_definitions(arc-shader-tool PRIVATE UNICODE _UNICODE NOMINMAX)
-    target_link_libraries(arc-shader-tool PRIVATE arc-generic-shader-transform)
+    target_link_libraries(arc-shader-tool PRIVATE arc-generic-shader-transform ole32)
     add_library(arc-generic-binding STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_binding_state.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_binding_admission.cpp)
@@ -34,16 +34,18 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_runtime.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_readback.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_optimizer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_auto_session.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_gpu_profile.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_command_mirror.cpp)
     target_compile_definitions(arc-dx12-probe PRIVATE UNICODE _UNICODE NOMINMAX)
+    target_include_directories(arc-dx12-probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/json)
     target_link_libraries(arc-dx12-probe PRIVATE arc::core arc-minhook arc-generic-binding arc-generic-gpu-control arc-generic-shader-transform d3d12 dxgi dxguid user32 d3dcompiler bcrypt)
     add_executable(arc-dx12-probe-launch ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/dx12_probe_launch.cpp)
     target_compile_definitions(arc-dx12-probe-launch PRIVATE UNICODE _UNICODE NOMINMAX)
     if(ARC_BUILD_TESTS)
         add_executable(arc-shader-transform-native-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/shader_transform_native.cpp)
         target_compile_definitions(arc-shader-transform-native-tests PRIVATE UNICODE _UNICODE NOMINMAX)
-        target_link_libraries(arc-shader-transform-native-tests PRIVATE arc-generic-shader-transform arc-generic-gpu-control d3d12 dxgi)
+        target_link_libraries(arc-shader-transform-native-tests PRIVATE arc-generic-shader-transform arc-generic-gpu-control d3d12 dxgi d3dcompiler)
         add_executable(arc-generic-binding-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/generic_binding_state_tests.cpp)
         target_link_libraries(arc-generic-binding-tests PRIVATE arc-generic-binding)
         add_test(NAME arc-generic-binding-tests COMMAND arc-generic-binding-tests)

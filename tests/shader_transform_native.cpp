@@ -3,6 +3,7 @@
 #include <d3d12sdklayers.h>
 #include <dxgi1_6.h>
 #include <dxcapi.h>
+#include <d3dcompiler.h>
 #include <wrl/client.h>
 #include "generic_shader_transform.hpp"
 #include "generic_gpu_control.hpp"
@@ -57,6 +58,7 @@ RWTexture2D<float4> output_aux:register(u7,space3);
     output_aux[pixel.xy]=float4(c.b,c.r,c.g,0.5);
 })";
     auto original=compiler.compile(source);auto ir=compiler.disassemble(original.Get());
+    {ComPtr<ID3DBlob> legacy,errors;hr(D3DCompile(source.data(),source.size(),nullptr,nullptr,nullptr,"MainCS","cs_5_1",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&legacy,&errors));std::ofstream file(directory/"legacy-input.bin",std::ios::binary);file.write(static_cast<const char*>(legacy->GetBufferPointer()),legacy->GetBufferSize());check(bool(file),"Write independent DXBC fixture");}
     const auto neutral=arc::dx12::shader::coarse_compute(ir,1,1),coarse=arc::dx12::shader::coarse_compute(ir,2,2);
     check(neutral.admitted&&coarse.admitted,"Independent typed pixel writes should be admitted");
     check(coarse.resources.size()==3&&coarse.stores==3,"All bindings/stores captured");
@@ -182,7 +184,9 @@ RWTexture2D<float4> target:register(u4,space3);
     srv.Format=DXGI_FORMAT_R32_FLOAT;device->CreateShaderResourceView(depth_texture.Get(),&srv,heap->GetCPUDescriptorHandleForHeapStart());
     std::vector<Pixel> pcf_reference;
     for(unsigned mode=0;mode<(arc_mode?7u:4u);++mode){desired={1,1,width,height,mode==2?9u:0u};const bool reduced=mode==2||mode==5;
-        if(mode>=4){const wchar_t* value=mode==5?L"pcf9":L"off";check(arc_mode(const_cast<wchar_t*>(value))==0,"Injected comparison filter switch");}
+        // Neutral records a reversible variant for cached replay. Off deliberately
+        // leaves newly recorded application work uninstrumented.
+        if(mode>=4){const wchar_t* value=mode==4?L"neutral":mode==5?L"pcf9":L"off";check(arc_mode(const_cast<wchar_t*>(value))==0,"Injected comparison filter switch");}
         if(mode<2||mode==4){begin();copy_in(textures[1].Get(),initial.Get());transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             ID3D12DescriptorHeap* heaps[]{heap.Get()};list->SetDescriptorHeaps(1,heaps);list->SetComputeRootSignature(pcf_root.Get());list->SetComputeRootDescriptorTable(0,heap->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pcf_pipelines[mode==4?0:mode].Get());list->Dispatch((width+7)/8,(height+7)/8,1);
             transition(textures[1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},s{};d.pResource=readbacks[0].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;s.pResource=textures[1].Get();s.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&s,nullptr);transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();

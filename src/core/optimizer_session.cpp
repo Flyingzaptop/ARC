@@ -9,7 +9,7 @@ bool positive(double x){return std::isfinite(x)&&x>0;}
 bool nonnegative(double x){return std::isfinite(x)&&x>=0;}
 }
 OptimizerSession::OptimizerSession(OptimizerSessionConfig config):config_(config){
-    if(!positive(config.target_fps)||config.target_fps>1000||!config.warmup_samples||
+    if(!positive(config.target_fps)||config.target_fps>1000||!config.warmup_samples||!config.max_evidence_samples||
         !nonnegative(config.min_ssim)||config.min_ssim>1||!nonnegative(config.max_mean_error)||
         !nonnegative(config.max_tile_p99)||!nonnegative(config.min_gain_ms)||
         !nonnegative(config.min_gain_fraction)||!nonnegative(config.max_cpu_overhead_ms)||
@@ -28,9 +28,13 @@ void OptimizerSession::candidates(std::vector<SessionAction> actions){
         std::find(ids.begin(),ids.end(),a.id)!=ids.end())throw std::invalid_argument("Invalid or duplicate action");ids.push_back(a.id);}
     std::stable_sort(actions.begin(),actions.end(),[](const auto& a,const auto& b){return a.predicted_gain_ms/(.01+a.quality_cost)>b.predicted_gain_ms/(.01+b.quality_cost);});
     actions_=std::move(actions);
+    auto current=[&](std::uint64_t id,std::uint64_t generation){return std::any_of(actions_.begin(),actions_.end(),[&](const auto& action){return action.id==id&&action.generation==generation&&action.ready;});};
+    if((pending_&&!current(pending_->id,pending_->generation))||
+       (state_.active_action&&!current(state_.active_action,active_generation_)))candidate_epoch_changed_=true;
 }
 SessionRequest OptimizerSession::frame(double frame_ms,bool stable){
     if(state_.phase==SessionPhase::Faulted)return {};
+    if(candidate_epoch_changed_||(state_.active_action&&++evidence_age_>=config_.max_evidence_samples))return scene_changed();
     if(!positive(frame_ms)||frame_ms>10000)return scene_changed();
     state_.filtered_frame_ms=samples_?state_.filtered_frame_ms*.8+frame_ms*.2:frame_ms;++samples_;
     if(!stable)return scene_changed();
@@ -52,8 +56,9 @@ SessionRequest OptimizerSession::frame(double frame_ms,bool stable){
     state_.phase=SessionPhase::Limited;return {};
 }
 SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
+    if(candidate_epoch_changed_)return scene_changed();
     if(!pending_||state_.phase!=SessionPhase::Probe||e.action!=pending_->id||e.generation!=pending_->generation)return {};
-    const auto id=pending_->id;pending_.reset();
+    const auto id=pending_->id,generation=pending_->generation;pending_.reset();
     if(!e.restoration_confirmed){state_.phase=SessionPhase::Faulted;++state_.rejected;return {};}
     const bool finite=positive(e.baseline_frame_ms)&&positive(e.candidate_frame_ms)&&nonnegative(e.baseline_noise_ms)&&
         nonnegative(e.ssim)&&e.ssim<=1&&nonnegative(e.mean_error)&&nonnegative(e.tile_p99)&&
@@ -64,7 +69,7 @@ SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
         e.cpu_overhead_ms<=config_.max_cpu_overhead_ms&&e.gpu_overhead_ms<=config_.max_gpu_overhead_ms&&
         gain>std::max({config_.min_gain_ms,e.baseline_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms});
     if(!accept){++state_.rejected;state_.phase=SessionPhase::Settle;settle_=config_.settle_samples;return {};}
-    retained_gain_ms_+=gain;apply_pending_=true;state_.active_action=id;return {SessionRequestKind::Apply,id};
+    retained_gain_ms_+=gain;apply_pending_=true;state_.active_action=id;active_generation_=generation;evidence_age_=0;return {SessionRequestKind::Apply,id};
 }
 void OptimizerSession::applied(std::uint64_t action,bool success){
     if(!apply_pending_||state_.active_action!=action)return;apply_pending_=false;
@@ -74,11 +79,12 @@ void OptimizerSession::applied(std::uint64_t action,bool success){
 void OptimizerSession::restored(bool success){
     if(!restore_pending_)return;restore_pending_=false;
     if(!success){state_.phase=SessionPhase::Faulted;return;}
-    state_.active_action=0;retained_gain_ms_=0;pending_.reset();apply_pending_=false;settle_=config_.settle_samples;hold_=0;
+    state_.active_action=0;active_generation_=0;evidence_age_=0;retained_gain_ms_=0;pending_.reset();apply_pending_=false;settle_=config_.settle_samples;hold_=0;
     state_.phase=SessionPhase::Settle;
 }
 SessionRequest OptimizerSession::scene_changed(){
     if(state_.phase==SessionPhase::Faulted||restore_pending_)return {};
+    candidate_epoch_changed_=false;
     tried_.clear();profile_requested_=false;samples_=0;hold_=0;
     if(state_.active_action||pending_||apply_pending_){const auto action=state_.active_action?state_.active_action:pending_->id;pending_.reset();apply_pending_=false;restore_pending_=true;state_.phase=SessionPhase::Recover;++state_.restores;return {SessionRequestKind::Restore,action};}
     state_.phase=SessionPhase::Warmup;return {};

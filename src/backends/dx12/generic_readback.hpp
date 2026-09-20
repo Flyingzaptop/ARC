@@ -16,6 +16,7 @@ public:
     void presented(HRESULT result) noexcept {if(!present_seen_){present_result_=result;present_seen_=true;}}
     bool ready() const noexcept;
     bool write(); // worker only, after ready(); false reports GPU/IO failure
+    void color_space(UINT value,bool known) noexcept {color_space_=value;color_space_known_=known;}
     void release_queue_for_cache() noexcept {list_.Reset();allocator_.Reset();queue_.Reset();}
     [[nodiscard]] bool submitted() const noexcept {return submitted_;}
 private:
@@ -41,5 +42,6 @@ private:
     std::uint64_t mutations_{};UINT experimental_rate_{};
     bool features_{};UINT tiles_x_{},tiles_y_{};UINT64 output_bytes_{};
     bool reused_storage_{};
+    UINT color_space_{};bool color_space_known_{};UINT64 capture_qpc_{};
 };
 }

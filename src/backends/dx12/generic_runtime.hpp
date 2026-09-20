@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <cstdint>
 #include <iosfwd>
+#include <array>
 
 namespace arc::dx12::generic {
 // Called only after successful native operations; no raw pointer is kept alive
@@ -33,10 +34,17 @@ void end_capture(const std::filesystem::path&) noexcept;
 void snapshot(std::ostream&);
 void unsupported() noexcept;
 void observe_swapchain(IDXGISwapChain*,IUnknown*) noexcept;
+void observe_color_space(IDXGISwapChain*,DXGI_COLOR_SPACE_TYPE) noexcept;
+void invalidate_color_spaces() noexcept;
 std::uint64_t before_present(IDXGISwapChain*) noexcept;
 void after_present(IDXGISwapChain*,std::uint64_t,HRESULT,UINT flags) noexcept;
 bool request_frame(const std::filesystem::path&) noexcept;
 bool request_image(const std::filesystem::path&,bool features=false) noexcept;
+// Three consecutive real Presents of one known swapchain. Disk writes and
+// readback completion never delay the next capture. Ordinary requests are
+// excluded until all three jobs finish. Progress means submitted, not written.
+bool request_image_sequence(const std::array<std::filesystem::path,3>&,IDXGISwapChain*) noexcept;
+unsigned image_sequence_progress() noexcept;
 void flush_image() noexcept;
 bool request_timing(const std::filesystem::path&,UINT seconds=60) noexcept;
 void flush_timing() noexcept;

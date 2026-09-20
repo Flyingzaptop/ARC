@@ -5,6 +5,7 @@
 
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
+std::uint64_t cpu_nanoseconds() noexcept;
 // Explicit environment-based diagnostic setup, called before application PSOs.
 // No environment variables -> disabled, unchanged observer behavior.
 bool initialize() noexcept;

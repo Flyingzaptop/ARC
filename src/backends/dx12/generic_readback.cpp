@@ -57,6 +57,7 @@ bool ImageReadback::prepare_feature_device(ID3D12Device* device){
     std::lock_guard lock(cache.mutex);if(cache.devices.contains(device))return true;if(cache.devices.size()>=4)return false;cache.devices.emplace(device,std::move(prepared));return true;
 }
 bool ImageReadback::enqueue(IDXGISwapChain* swap,ID3D12CommandQueue* queue,const std::filesystem::path& path,std::uint64_t mutations,UINT rate,bool features){
+    LARGE_INTEGER qpc{};QueryPerformanceCounter(&qpc);capture_qpc_=static_cast<UINT64>(qpc.QuadPart);
     const bool completed=ready(),old_features=features_;const auto old_width=width_,old_height=height_,old_format=format_;const auto* old_device=device_.Get();
     submitted_=present_seen_=false;signal_result_=present_result_=E_PENDING;
     const auto start=std::chrono::steady_clock::now();path_=path;queue_=queue;mutations_=mutations;experimental_rate_=rate;features_=features;
@@ -164,7 +165,7 @@ bool ImageReadback::write(){
     out<<",\"analysis_gpu_ms\":"<<double(elapsed)*1000.0/double(frequency_)<<",\"enqueue_cpu_ms\":"<<enqueue_cpu_ms_<<",\"reused_storage\":"<<(reused_storage_?"true":"false");
     if(features_)out<<",\"full_image_readback\":false,\"tile_size\":16,\"tiles_x\":"<<tiles_x_<<",\"tiles_y\":"<<tiles_y_<<",\"readback_bytes\":"<<output_bytes_<<",\"tile_layout\":\"float32_le_mean_variance_max_edge_pixel_count\",\"pixel_count\":"<<count<<",\"mean_encoded_luma\":"<<(count?sum/count:0)<<",\"max_encoded_edge\":"<<max_edge;
     out
-        <<",\"present_hresult\":"<<present_result_<<",\"gpu_frame_timing_available\":false,\"color_space_known\":false,\"reproducible_state\":false,\"cumulative_modified_draws_at_copy\":"<<mutations_<<",\"experimental_vrs_rate_at_copy\":"<<experimental_rate_<<'}';
+        <<",\"present_hresult\":"<<present_result_<<",\"gpu_frame_timing_available\":false,\"capture_qpc\":"<<capture_qpc_<<",\"color_space_known\":"<<(color_space_known_?"true":"false")<<",\"color_space\":"<<color_space_<<",\"reproducible_state\":false,\"cumulative_modified_draws_at_copy\":"<<mutations_<<",\"experimental_vrs_rate_at_copy\":"<<experimental_rate_<<'}';
     out.close();if(!out)return false;std::filesystem::rename(temporary,path_);return true;
 }
 }

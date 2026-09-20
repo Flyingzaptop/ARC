@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <cstring>
 #include "generic_shader_transform.hpp"
 #include "generic_pcf_transform.hpp"
 #include "generic_zero_transform.hpp"
@@ -14,6 +15,10 @@
 
 using Microsoft::WRL::ComPtr;
 namespace {
+struct __declspec(uuid("5F956ED5-78D1-4B15-8247-F7187614A041")) DxbcConverter: IUnknown {
+    virtual HRESULT STDMETHODCALLTYPE Convert(LPCVOID,UINT32,LPCWSTR,LPVOID*,UINT32*,LPWSTR*)=0;
+};
+constexpr CLSID converter_class{0x4900391e,0xb752,0x4edd,{0xa8,0x85,0x6f,0xb7,0x6e,0x25,0xad,0xdb}};
 struct Module {
     HMODULE handle{};
     explicit Module(const std::filesystem::path& path) {
@@ -34,6 +39,22 @@ ComPtr<IDxcBlob> result(IDxcOperationResult* operation) {
     }
     ComPtr<IDxcBlob> blob; require(operation->GetResult(&blob), "Missing shader result"); return blob;
 }
+bool has_dxil(const std::vector<char>& bytes){
+    if(bytes.size()<32||std::memcmp(bytes.data(),"DXBC",4)!=0)throw std::runtime_error("Shader container expected");
+    UINT32 count{};std::memcpy(&count,bytes.data()+28,4);if(count>64||32+std::size_t(count)*4>bytes.size())throw std::runtime_error("Shader chunk table");
+    for(UINT32 i=0;i<count;++i){UINT32 offset{};std::memcpy(&offset,bytes.data()+32+i*4,4);if(offset>bytes.size()-8)throw std::runtime_error("Shader chunk bounds");if(std::memcmp(bytes.data()+offset,"DXIL",4)==0)return true;}
+    return false;
+}
+void convert_dxbc(std::vector<char>& bytes){
+    wchar_t system[MAX_PATH]{};const auto length=GetSystemDirectoryW(system,MAX_PATH);if(!length||length>=MAX_PATH)throw std::runtime_error("System directory unavailable");
+    Module converter_module(std::filesystem::path(system)/"dxilconv.dll");auto create=reinterpret_cast<DxcCreateInstanceProc>(GetProcAddress(converter_module.handle,"DxcCreateInstance"));if(!create)throw std::runtime_error("DXBC converter entry point");
+    ComPtr<DxbcConverter> converter;require(create(converter_class,IID_PPV_ARGS(&converter)),"Create DXBC converter");
+    void* data{};UINT32 size{};wchar_t* diagnostics{};const auto status=converter->Convert(bytes.data(),static_cast<UINT32>(bytes.size()),nullptr,&data,&size,&diagnostics);
+    if(diagnostics){std::wcerr<<diagnostics;CoTaskMemFree(diagnostics);}
+    if(FAILED(status)||!data||!size||size>32*1024*1024){CoTaskMemFree(data);throw std::runtime_error("DXBC conversion failed");}
+    try{const auto* start=static_cast<const char*>(data);bytes.assign(start,start+size);}catch(...){CoTaskMemFree(data);throw;}CoTaskMemFree(data);
+    if(!has_dxil(bytes))throw std::runtime_error("Converter did not produce DXIL");
+}
 }
 int wmain(int argc, wchar_t** argv) try {
     if (argc != 5) throw std::runtime_error("Usage: arc-shader-tool dump|assemble|roundtrip|coarse2x2|coarse1x2|coarse2x1|neutral INPUT NEW_OUTPUT ABSOLUTE_DXCOMPILER_DLL");
@@ -47,6 +68,7 @@ int wmain(int argc, wchar_t** argv) try {
     if (!std::filesystem::is_regular_file(input) || std::filesystem::exists(output)) throw std::runtime_error("Input file and fresh output required");
     if (std::filesystem::file_size(input) > 32 * 1024 * 1024) throw std::runtime_error("Shader input exceeds 32 MiB");
     std::ifstream file(input, std::ios::binary); std::vector<char> bytes{std::istreambuf_iterator<char>(file), {}};
+    const auto original_bytes=bytes.size();const bool converted=mode!=L"assemble"&&!has_dxil(bytes);if(converted)convert_dxbc(bytes);
     Module validator_module(compiler_path.parent_path() / "dxil.dll"), compiler(compiler_path);
     auto create = reinterpret_cast<DxcCreateInstanceProc>(GetProcAddress(compiler.handle, "DxcCreateInstance"));
     auto create_validator = reinterpret_cast<DxcCreateInstanceProc>(GetProcAddress(validator_module.handle, "DxcCreateInstance"));
@@ -97,7 +119,7 @@ int wmain(int argc, wchar_t** argv) try {
         manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
         if(controlled){auto access_path=output;access_path+=L".access.ll";if(std::filesystem::exists(access_path))throw std::runtime_error("Fresh access program required");std::ofstream access(access_path,std::ios::binary);access.write(original_ir.data(),original_ir.size());access.close();if(!access)throw std::runtime_error("Write access program");}
     }
-    std::cout << "{\"input_bytes\":" << bytes.size() << ",\"output_bytes\":" << generated->GetBufferSize()
-        << ",\"control_space\":" << control_space << ",\"validated\":" << (mode == L"dump" ? "false" : "true") << "}\n";
+    std::cout << "{\"input_bytes\":" << original_bytes << ",\"output_bytes\":" << generated->GetBufferSize()
+        << ",\"control_space\":" << control_space << ",\"converted_from_dxbc\":"<<(converted?"true":"false")<<",\"validated\":" << (mode == L"dump" ? "false" : "true") << "}\n";
     return 0;
 } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

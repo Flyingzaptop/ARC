@@ -9,6 +9,7 @@
 #include "generic_command_mirror.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_optimizer.hpp"
+#include "generic_auto_session.hpp"
 #include <atomic>
 #include <filesystem>
 #include <fstream>
@@ -22,6 +23,7 @@ namespace runtime=arc::dx12::generic;
 namespace mirror=arc::dx12::mirror;
 namespace profile=arc::dx12::gpu_profile;
 namespace optimizer=arc::dx12::optimizer;
+namespace autotune=arc::dx12::autotune;
 std::atomic<bool> mirror_hooks_ready{};
 std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> passive_hooks{};
@@ -37,6 +39,8 @@ std::filesystem::path output;
 HMODULE module{};
 using PresentFn=decltype(IDXGISwapChainVtbl::Present);
 using Present1Fn=decltype(IDXGISwapChain1Vtbl::Present1);
+using ColorSpaceFn=decltype(IDXGISwapChain3Vtbl::SetColorSpace1);ColorSpaceFn original_color_space{};
+HRESULT STDMETHODCALLTYPE color_space(IDXGISwapChain3* swap,DXGI_COLOR_SPACE_TYPE value){const auto result=original_color_space(swap,value);if(recording&&SUCCEEDED(result))runtime::observe_color_space(reinterpret_cast<IDXGISwapChain*>(swap),value);return result;}
 using ExecuteFn=decltype(ID3D12CommandQueueVtbl::ExecuteCommandLists);
 using DrawFn=decltype(ID3D12GraphicsCommandListVtbl::DrawInstanced);
 using IndexedFn=decltype(ID3D12GraphicsCommandListVtbl::DrawIndexedInstanced);
@@ -60,12 +64,12 @@ void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
 HRESULT STDMETHODCALLTYPE present(IDXGISwapChain* self,UINT sync,UINT flags){
     const bool outer=!inside_present;inside_present=true;const auto resource=outer&&recording&&!(flags&DXGI_PRESENT_TEST)?runtime::before_present(self):0;
     const HRESULT result=original_present(self,sync,flags);inside_present=!outer;
-    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present();observe_present(self,sync,flags,result);if(recording)runtime::after_present(self,resource,result,flags);}return result;
+    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present();observe_present(self,sync,flags,result);if(recording)runtime::after_present(self,resource,result,flags);autotune::present(self,result,flags);}return result;
 }
 HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1* self,UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS* parameters){
     const bool outer=!inside_present;inside_present=true;auto* base=reinterpret_cast<IDXGISwapChain*>(self);const auto resource=outer&&recording&&!(flags&DXGI_PRESENT_TEST)?runtime::before_present(base):0;
     const HRESULT result=original_present1(self,sync,flags,parameters);inside_present=!outer;
-    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present();observe_present(base,sync,flags,result);if(recording)runtime::after_present(base,resource,result,flags);}return result;
+    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present();observe_present(base,sync,flags,result);if(recording)runtime::after_present(base,resource,result,flags);autotune::present(base,result,flags);}return result;
 }
 void STDMETHODCALLTYPE execute(ID3D12CommandQueue* self,UINT count,ID3D12CommandList* const* commands){
     const bool observed=observe_api();auto ticket=observed?profile::before_submit(self,count,commands):profile::Submission{};
@@ -257,7 +261,7 @@ template<class T>bool install_detailed(T target,T replacement,T* original){
 }
 bool set_passive_hooks(bool passive){
     std::lock_guard lock(hook_mode_mutex);
-    if(passive)optimizer::invalidate_all();
+    if(passive){optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
     for(std::size_t i=3;i<installed_count;++i){const bool enabled=!passive&&(detailed_tracking||optimizer::enabled()||!detailed_only_targets.contains(installed_targets[i]));const auto result=enabled?MH_QueueEnableHook(installed_targets[i]):MH_QueueDisableHook(installed_targets[i]);if(result!=MH_OK)return false;}
@@ -284,7 +288,7 @@ void snapshot(){
         <<",\"submitted_lists\":"<<lists.load()<<",\"draw_calls\":"<<draws.load()
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
-        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);
+        <<",\"runtime\":";runtime::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);
     file<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
@@ -315,6 +319,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(reinterpret_cast<PresentFn>(swapchain->lpVtbl->Present),present,&original_present)&&ok;
         ok=install(swapchain->lpVtbl->Present1,present1,&original_present1)&&ok;
         ok=install(queue->lpVtbl->ExecuteCommandLists,execute,&original_execute)&&ok;
+        {IDXGISwapChain3* extra=nullptr;if(SUCCEEDED(IDXGISwapChain1_QueryInterface(swapchain,IID_IDXGISwapChain3,reinterpret_cast<void**>(&extra)))){ok=install(extra->lpVtbl->SetColorSpace1,color_space,&original_color_space)&&ok;IDXGISwapChain3_Release(extra);}}
         ok=install(command->lpVtbl->DrawInstanced,draw,&original_draw)&&ok;
         ok=install(command->lpVtbl->DrawIndexedInstanced,draw_indexed,&original_indexed)&&ok;
         ok=install(command->lpVtbl->Dispatch,dispatch,&original_dispatch)&&ok;
@@ -449,7 +454,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
     if(result){MH_DisableHook(MH_ALL_HOOKS);MH_Uninitialize();try{snapshot();}catch(...){}return result;}
     if(!optimizer::initialize())return 8;
     initialized=true;recording=true;HANDLE thread=CreateThread(nullptr,0,logger,nullptr,0,nullptr);
-    if(!thread){recording=false;return 6;}CloseHandle(thread);return 0;
+    if(!thread){recording=false;return 6;}CloseHandle(thread);
+    wchar_t automatic_config[32768]{};const auto config_size=GetEnvironmentVariableW(L"ARC_AUTO_CONFIG",automatic_config,32768);
+    if(config_size&&config_size<32768&&!autotune::start(automatic_config))return 9;
+    return 0;
 }
 BOOL WINAPI DllMain(HINSTANCE instance,DWORD reason,LPVOID){
     if(reason==DLL_PROCESS_ATTACH){module=instance;DisableThreadLibraryCalls(instance);}return TRUE;
@@ -484,3 +492,5 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestGpuProfile(void* path){
 }
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){profile::stop();return 0;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(!mode||!optimizer::enabled())return 1;if(mirror::requested_rate())return 2;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcStopOptimizer(void*){autotune::stop();return 0;}

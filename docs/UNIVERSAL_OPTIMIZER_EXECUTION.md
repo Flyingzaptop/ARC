@@ -162,3 +162,50 @@ original rather than being wrapped in an unused neutral variant.
 generation checks, settling, incumbent retention, restoration and fault latching.
 It is not yet connected to a generic runtime reference/probe acquisition path.
 Do not report an automatic arbitrary-game quality loop as complete.
+
+## Checkpoint 5 (live trial plumbing; acceptance remains closed)
+
+`ArcStartOptimizer` / `ArcStopOptimizer` and optional `ARC_AUTO_CONFIG` connect the
+target session policy to real Present cadence, GPU discovery and A/B/A image
+trials. The JSON config uses absolute `python`, `critic`, fresh `output`,
+`target_fps` and optional `maximum_seconds` paths/settings. The benchmark runner
+exposes `--auto-target`. The implementation is experimental: CPU/GPU cost
+evidence is deliberately unavailable, so it cannot retain a setting yet.
+
+Image capture observes successful explicit `SetColorSpace1` calls. Unknown/HDR
+color spaces, blank references, nonfinite pixels and failed Presents refuse live
+quality admission. Three capture jobs now enqueue on consecutive Presents of
+one swapchain; readback/file IO cannot delay the next capture. Policy switches
+occur at those Present boundaries. This is still a temporal proxy, not exact
+same-input replay: queued rendering and temporal history are not reconstructed.
+
+`optimizer-live-quality.py` estimates bidirectional motion only from original
+references (OpenCV DIS medium at up to 1920 pixels wide, one worker thread).
+Candidate pixels never train the alignment. Existing image limits are unchanged;
+extra confidence requirements are 95% alignment coverage, reference SSIM .99,
+mean error .002 and p99 motion <=64 pixels. The worker belongs to a Windows job
+that kills it on host exit, and cancellation interrupts its process wait.
+
+Evidence in `universal-optimizer/auto-consecutive` and `auto-dis` shows successful
+1800-frame (~30-second) runs around 78.30 FPS, with zero retained actions.
+Consecutive capture substantially reduces motion mismatch. Offline DIS comparison
+qualified one of four saved trials; a fresh live run still rejected all four
+references. This is a real remaining blocker, not evidence of quality success.
+Do not weaken the quality/confidence gate to manufacture acceptance.
+
+Session evidence now expires after a bounded number of Presents even when the
+target FPS is met. Candidate replacement/generation changes invalidate pending
+or retained evidence. Tests cover both cases. `off` leaves future recordings
+uninstrumented; `neutral` explicitly creates variants for later cached replay.
+
+The optional DXBC conversion experiment uses the system converter and the same
+mandatory DXIL validator. `dxbc-fixture` conversion does not validate, including
+unmodified roundtrip. Consequently DXBC optimization is NOT supported by this
+checkpoint; no driver validation is bypassed. Named entries/repeated thread IDs
+are handled by the IR parser and existing native DXIL regression passes.
+
+Checks: full Release build; 49 non-GPU tests; independent/live quality tests;
+`injected-autosession-regression-01` (every output and rollback verified);
+`runtime-sequence-regression-01` (native interception/lifetimes/data verified).
+Automatic retention, complete overhead accounting, VRS composition, mip/ray/
+geometry/temporal actuators and second-renderer portability remain unfinished.

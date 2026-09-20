@@ -35,5 +35,22 @@ int main(){
     session.evidence(invalid);assert(session.snapshot().phase==arc::SessionPhase::Faulted);
     assert(session.frame(16).kind==arc::SessionRequestKind::None);
     bool rejected=false;try{session.target(std::numeric_limits<double>::quiet_NaN());}catch(...){rejected=true;}assert(rejected);
+    // Reaching the target does not exempt a retained setting from revalidation.
+    config.max_evidence_samples=3;
+    arc::OptimizerSession expiry(config);expiry.candidates({{7,1,4,.1,true}});
+    expiry.frame(16);expiry.frame(16);assert(expiry.frame(16).action==7);
+    evidence={7,1,true,true,true,16,8,.05,.99,.001,.01,.1,.1};
+    assert(expiry.evidence(evidence).kind==arc::SessionRequestKind::Apply);expiry.applied(7,true);
+    assert(expiry.frame(8).kind==arc::SessionRequestKind::None);
+    assert(expiry.frame(8).kind==arc::SessionRequestKind::None);
+    assert(expiry.frame(8).kind==arc::SessionRequestKind::Restore);
+    expiry.restored(true);assert(expiry.snapshot().active_action==0);
+    // Reloaded pipelines cannot inherit an old trial merely by reusing its ID.
+    arc::OptimizerSession changed(config);changed.candidates({{8,1,4,.1,true}});
+    changed.frame(16);changed.frame(16);assert(changed.frame(16).action==8);
+    changed.candidates({{8,2,4,.1,true}});evidence.action=8;evidence.generation=1;
+    assert(changed.evidence(evidence).kind==arc::SessionRequestKind::Restore);
+    assert(changed.snapshot().accepted==0);
+    changed.restored(true);
     std::cout<<"Target control, independent quality, generation, cost budgets, recovery and fault latch passed\n";
 }

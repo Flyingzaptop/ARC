@@ -10,6 +10,9 @@ struct OptimizerSessionConfig {
     double min_gain_ms{.1},min_gain_fraction{.02};
     double max_cpu_overhead_ms{.2},max_gpu_overhead_ms{.25};
     std::uint32_t warmup_samples{32},settle_samples{8},hold_samples{120};
+    // A successful image trial is not a permanent quality certificate. Return
+    // to the original and acquire fresh evidence even while meeting the target.
+    std::uint32_t max_evidence_samples{600};
 };
 struct OptimizerTrialEvidence {
     std::uint64_t action{},generation{};
@@ -54,6 +57,9 @@ private:
     std::optional<SessionAction> pending_;
     std::uint32_t samples_{},settle_{},hold_{};
     bool profile_requested_{},apply_pending_{},restore_pending_{};
+    bool candidate_epoch_changed_{};
+    std::uint64_t active_generation_{};
+    std::uint32_t evidence_age_{};
     double retained_gain_ms_{};
 };
 }

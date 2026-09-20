@@ -37,7 +37,7 @@ struct State {
     std::recursive_mutex mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{};
     bool heaviest_only{};std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
-    bool protect_edges{};float edge_threshold{.08f};
+    bool protect_edges{},instrumentation{true};float edge_threshold{.08f};
     std::filesystem::path worker,compiler,cache;
     std::map<ID3D12RootSignature*,std::shared_ptr<Root>> roots;
     std::map<ID3D12PipelineState*,std::shared_ptr<Pipeline>> pipelines;
@@ -57,8 +57,16 @@ struct State {
     std::string last_error;std::map<std::string,std::uint64_t> admission_reasons;
 };
 State& state(){static auto* s=new State;return *s;}
+std::atomic<std::uint64_t> cpu_ns{};
+thread_local unsigned metering_depth{};
+struct CpuMeter {
+    using Clock=std::chrono::steady_clock;
+    bool outer{metering_depth++==0};Clock::time_point start;
+    CpuMeter(){if(outer)start=Clock::now();}
+    ~CpuMeter(){--metering_depth;if(outer)cpu_ns.fetch_add(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-start).count()),std::memory_order_relaxed);}
+};
 void check(HRESULT value){if(FAILED(value))throw std::runtime_error("Optimizer HRESULT "+std::to_string(value));}
-template<class F>void safe(F&& action)noexcept{try{std::lock_guard lock(state().mutex);action();}catch(const std::exception& error){std::lock_guard lock(state().mutex);auto& s=state();++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;s.last_error=error.what();}catch(...){std::lock_guard lock(state().mutex);++state().faults;state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().last_error="unknown exception";}}
+template<class F>void safe(F&& action)noexcept{CpuMeter meter;try{std::lock_guard lock(state().mutex);action();}catch(const std::exception& error){std::lock_guard lock(state().mutex);auto& s=state();++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;s.last_error=error.what();}catch(...){std::lock_guard lock(state().mutex);++state().faults;state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;state().last_error="unknown exception";}}
 constexpr GUID lifetime_guid{0x109dd36a,0xb6f3,0x4f98,{0x89,0x7c,0xf3,0x2c,0xa2,0x60,0xb5,0xb4}};
 class Lifetime final:public IUnknown {
     std::atomic<ULONG> count{1};void* object;unsigned kind;
@@ -210,6 +218,7 @@ DWORD WINAPI worker(void*){
 }
 }
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
+std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
 bool initialize()noexcept{
     bool result=true;safe([&]{auto& s=state();if(s.enabled)return;
         const auto worker_path=environment(L"ARC_OPTIMIZER_WORKER");if(worker_path.empty())return;
@@ -235,7 +244,8 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     else if(wcscmp(value,L"adaptive-2x2")==0){s.x_rate=s.y_rate=2;accepted=true;}
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
-    if(accepted){s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;if(heaviest){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
+    if(accepted){s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
+        if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
 DescriptorWrite descriptor_write()noexcept{DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().mutex);return result;}
 void root_created(ID3D12RootSignature* native,const void* bytes,SIZE_T size)noexcept{if(!enabled()||!native||!bytes||!size||size>65536)return;safe([&]{auto& s=state();if(s.roots.size()>=1024)return;auto root=std::make_shared<Root>();root->id=s.next++;root->native=native;const auto* data=static_cast<const std::byte*>(bytes);root->bytes.assign(data,data+size);root->layout=std::make_shared<binding::Layout>(binding::Layout::parse(root->bytes));if(track(native,1))s.roots[native]=std::move(root);});}
@@ -287,7 +297,7 @@ void state_unknown(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())retu
 void render_pass(ID3D12GraphicsCommandList* native,bool begin,D3D12_RENDER_PASS_FLAGS flags)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){c->render_pass=begin;if(flags&(D3D12_RENDER_PASS_FLAG_SUSPENDING_PASS|D3D12_RENDER_PASS_FLAG_RESUMING_PASS))c->valid=false;}});}
 void invalidate_all()noexcept{if(!enabled())return;safe([&]{state().x_rate=state().y_rate=1;state().comparison_taps=0;state().zero_factor=0;for(auto& [native,c]:state().commands){(void)native;c.valid=false;}});}
 bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if(!enabled())return false;bool changed=false;safe([&]{auto& s=state();auto* c=recording(native);if(!c||!c->valid||c->closed||c->render_pass||!c->root||c->uses.size()>=GpuControl::capacity)return;const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()||!p->second->variant||p->second->root!=c->root)return;
-    if(s.heaviest_only&&p->second->id!=s.selected_pipeline)return;
+    if(!s.instrumentation||(s.heaviest_only&&p->second->id!=s.selected_pipeline))return;
     const auto variant=p->second->variant;
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z});c->control->keep_alive.push_back(variant);
@@ -297,6 +307,7 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
 void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe([&]{if(auto* c=recording(native)){if(c->control&&c->valid&&!c->closed&&!c->render_pass&&!c->uses.empty()){mirror::InternalCall internal;c->control->record_neutralize(native);c->epilogue=true;}c->closed=true;}});}
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
     if(!enabled()||!queue||(!lists&&count))return false;
+    CpuMeter meter;
     auto& s=state();std::lock_guard lock(s.mutex);
     std::array<GpuControl*,64> controls{};unsigned used=0;
     auto fault=[&](const char* message){++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;try{s.last_error=message;}catch(...) {}};

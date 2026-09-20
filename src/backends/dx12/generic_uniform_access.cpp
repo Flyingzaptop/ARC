@@ -52,7 +52,7 @@ struct UniformAccessProgram::Impl {std::vector<Block> blocks;unsigned registers{
 std::shared_ptr<const UniformAccessProgram> UniformAccessProgram::compile(std::string_view input){
     try{
         if(input.size()>8*1024*1024)return {};auto impl=std::make_shared<Impl>();impl->blocks.emplace_back();
-        std::map<std::string,unsigned> registers,labels{{"0",0}};unsigned next_reg=1,current=0;bool inside=false,finished=false;
+        std::map<std::string,unsigned> registers,labels{{"0",0}};unsigned next_reg=1,current=0;bool inside=false,finished=false,body_seen=false;
         auto reg=[&](const std::string& s){auto [it,inserted]=registers.emplace(s,next_reg);if(inserted)++next_reg;if(next_reg>8192)throw std::runtime_error("register capacity");return it->second;};
         auto operand=[&](const std::string& text){const auto s=trim(text);if(s=="undef"||s=="poison")return Operand{};if(s=="true")return Operand{1,true};if(s=="false")return Operand{0,true};if(s.starts_with('%'))return Operand{reg(s),false};return Operand{integer(s),true};};
         auto label=[&](const std::string& s){auto [it,inserted]=labels.emplace(s,static_cast<unsigned>(impl->blocks.size()));if(inserted)impl->blocks.emplace_back();if(impl->blocks.size()>2048)throw std::runtime_error("block capacity");return it->second;};
@@ -69,8 +69,9 @@ std::shared_ptr<const UniformAccessProgram> UniformAccessProgram::compile(std::s
         const std::map<std::string,Op> operations={{"add",Op::Add},{"sub",Op::Sub},{"mul",Op::Mul},{"and",Op::And},{"or",Op::Or},{"xor",Op::Xor},{"shl",Op::Shl},{"lshr",Op::Lshr},{"ashr",Op::Ashr},{"udiv",Op::Udiv},{"sdiv",Op::Sdiv},{"urem",Op::Urem},{"srem",Op::Srem},{"eq",Op::Eq},{"ne",Op::Ne},{"ult",Op::Ult},{"ule",Op::Ule},{"ugt",Op::Ugt},{"uge",Op::Uge},{"slt",Op::Slt},{"sle",Op::Sle},{"sgt",Op::Sgt},{"sge",Op::Sge}};
         std::istringstream source{std::string(input)};std::string line;std::smatch m;unsigned instructions=0;
         while(std::getline(source,line)){line=trim(line);if(line.starts_with("define ")){if(inside||finished)return {};inside=true;continue;}if(!inside)continue;if(line=="}"){inside=false;finished=true;continue;}
-            if(std::regex_match(line,m,block)||std::regex_match(line,m,named_block)){current=label(m[1].str());continue;}
-            const auto comment=line.find(';');if(comment!=line.npos)line=trim(line.substr(0,comment));if(line.empty())continue;
+            if(std::regex_match(line,m,block)||std::regex_match(line,m,named_block)){if(!body_seen){labels[m[1].str()]=0;current=0;}else current=label(m[1].str());body_seen=true;continue;}
+            const auto comment=line.find(';');if(comment!=line.npos)line=trim(line.substr(0,comment));if(line.empty())continue;body_seen=true;
+            const auto attachment=line.find(", !");if(attachment!=line.npos)line.resize(attachment);
             Instruction ins;bool added=true;
             if(std::regex_match(line,m,handle)){ins.op=Op::Handle;ins.target=reg(m[1]);ins.extra=integer(m[2]);ins.extra2=integer(m[3]);ins.a=operand(m[4]);}
             else if(std::regex_match(line,m,load)){ins.op=Op::Load;ins.target=reg(m[1]);ins.a=operand(m[2]);ins.b=operand(m[3]);}
