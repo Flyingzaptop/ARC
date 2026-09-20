@@ -23,6 +23,7 @@ add_library(arc-core STATIC
     src/core/resource_graph.cpp
     src/core/descriptor_ledger.cpp
     src/core/frame_timing_window.cpp
+    src/core/optimizer_session.cpp
     src/core/resource_semantics.cpp
     src/core/scene_understanding.cpp
     src/core/gpu_attribution.cpp
@@ -99,6 +100,9 @@ if(WIN32)
 endif()
 
 if(ARC_BUILD_TESTS)
+    add_executable(arc-optimizer-session-tests tests/optimizer_session_tests.cpp)
+    target_link_libraries(arc-optimizer-session-tests PRIVATE arc::core)
+    add_test(NAME arc-optimizer-session-tests COMMAND arc-optimizer-session-tests)
     enable_testing()
     add_executable(arc-frame-timing-window-tests tests/frame_timing_window_tests.cpp)
     target_link_libraries(arc-frame-timing-window-tests PRIVATE arc::core)

@@ -1,6 +1,7 @@
 #pragma once
 #include "generic_binding_state.hpp"
 #include "generic_shader_transform.hpp"
+#include "generic_uniform_access.hpp"
 #include "arc/descriptor_ledger.hpp"
 #include <map>
 #include <string>
@@ -16,6 +17,17 @@ struct DescriptorHeap {
     std::uint64_t id{}, cpu{}, gpu{};
     UINT stride{}, count{};
     D3D12_DESCRIPTOR_HEAP_TYPE type{};
+};
+class BufferIndex {
+public:
+    void observe(const Allocation&);
+    void retire(std::uint64_t id);
+    [[nodiscard]] const Allocation* resolve(const std::map<std::uint64_t,Allocation>&,
+        std::uint64_t address,std::uint64_t bytes)const noexcept;
+private:
+    std::multimap<std::uint64_t,std::uint64_t> addresses_;
+    std::map<std::uint64_t,std::uint64_t> bases_;
+    std::uint64_t maximum_width_{};
 };
 struct BoundResource {
     shader::ResourceContract contract;
@@ -36,5 +48,7 @@ struct Admission {
 Admission admit_compute(const Arguments&, const shader::Transform&,
     const DescriptorLedger&, const std::vector<DescriptorHeap>& bound_heaps,
     const std::map<std::uint64_t,Allocation>& allocations,
-    UINT groups_x, UINT groups_y, UINT groups_z);
+    UINT groups_x, UINT groups_y, UINT groups_z,
+    const shader::ResourceUsage* same_submission_usage=nullptr,
+    const BufferIndex* buffers=nullptr);
 }

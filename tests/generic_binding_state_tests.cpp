@@ -103,5 +103,13 @@ int main() {
     assert(!admit_compute(submitted,transform,ledger,heaps,allocations,8,5,2).admitted);
     assert(ledger.write(0x1000+4*32,view(0,1)));assert(admit().admitted); // explicit null SRV is known
     submitted.invalidate_tables();assert(!admit().admitted);
+    BufferIndex buffers;auto buffer=image;buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=4096;
+    allocations[10]={10,0,0,4096,0x100000,AllocationKind::Committed,buffer};buffers.observe(allocations[10]);
+    assert(buffers.resolve(allocations,0x100100,512)->id==10);
+    assert(!buffers.resolve(allocations,0x100fff,2));
+    allocations[11]=allocations[10];allocations[11].id=11;buffers.observe(allocations[11]);
+    assert(!buffers.resolve(allocations,0x100100,512)); // overlapping aliases are ambiguous
+    buffers.retire(11);allocations.erase(11);assert(buffers.resolve(allocations,0x100100,512)->id==10);
+    buffers.retire(10);allocations.erase(10);assert(!buffers.resolve(allocations,0x100100,512));
     std::cout << "Root ranges, spaces, APPEND, visibility, constants and invalidation passed\n";
 }

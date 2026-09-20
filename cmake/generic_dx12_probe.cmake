@@ -8,7 +8,12 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
     target_include_directories(arc-generic-gpu-control PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12)
     target_compile_definitions(arc-generic-gpu-control PUBLIC NOMINMAX)
     target_link_libraries(arc-generic-gpu-control PUBLIC d3d12)
-    add_library(arc-generic-shader-transform STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_shader_transform.cpp)
+    add_library(arc-generic-shader-transform STATIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_shader_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_pcf_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_zero_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_edge_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_uniform_access.cpp)
     target_include_directories(arc-generic-shader-transform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12)
     add_executable(arc-shader-tool ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/shader_tool.cpp)
     target_compile_definitions(arc-shader-tool PRIVATE UNICODE _UNICODE NOMINMAX)
@@ -32,7 +37,7 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_gpu_profile.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_command_mirror.cpp)
     target_compile_definitions(arc-dx12-probe PRIVATE UNICODE _UNICODE NOMINMAX)
-    target_link_libraries(arc-dx12-probe PRIVATE arc::core arc-minhook arc-generic-binding arc-generic-gpu-control d3d12 dxgi dxguid user32 d3dcompiler bcrypt)
+    target_link_libraries(arc-dx12-probe PRIVATE arc::core arc-minhook arc-generic-binding arc-generic-gpu-control arc-generic-shader-transform d3d12 dxgi dxguid user32 d3dcompiler bcrypt)
     add_executable(arc-dx12-probe-launch ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/dx12_probe_launch.cpp)
     target_compile_definitions(arc-dx12-probe-launch PRIVATE UNICODE _UNICODE NOMINMAX)
     if(ARC_BUILD_TESTS)

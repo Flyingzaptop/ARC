@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <iosfwd>
+#include <vector>
 
 namespace arc::dx12::gpu_profile {
 void graphics_created(ID3D12PipelineState*,const D3D12_GRAPHICS_PIPELINE_STATE_DESC*) noexcept;
@@ -35,4 +36,9 @@ void stop() noexcept;
 void present() noexcept;
 void collect() noexcept;
 void snapshot(std::ostream&);
+struct ComputeCost {ID3D12PipelineState* pipeline{};std::uint64_t session{},pipeline_identity{};double total_gpu_ms{};};
+// Only completed, healthy captures; retired PSOs are never matched by an old
+// address. Consumers must call before taking their own submission lock.
+std::vector<ComputeCost> compute_costs() noexcept;
+std::uint64_t pipeline_identity(ID3D12PipelineState*) noexcept;
 }

@@ -12,9 +12,10 @@ parser=argparse.ArgumentParser()
 parser.add_argument("sdk",type=Path)
 parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
-parser.add_argument("--mode",choices=["vrs","observe","profile","compute-neutral","compute-2x1","compute-1x2","compute-2x2"],default="vrs")
+parser.add_argument("--mode",choices=["vrs","observe","profile","compute-neutral","compute-2x1","compute-1x2","compute-2x2","compute-pcf9","compute-zero","compute-neutral-hot","compute-2x1-hot","compute-1x2-hot","compute-2x2-hot","compute-pcf9-hot","compute-zero-hot","compute-adaptive-1x2-hot","compute-adaptive-2x2-hot"],default="vrs")
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--process-sampler",type=Path)
+parser.add_argument("--edge-threshold",type=float)
 args=parser.parse_args()
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
@@ -24,6 +25,10 @@ env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_FRAMES"]=str(args.frames)
 env.pop("ARC_BENCH_DLL",None)
 env["ARC_BENCH_MODE"]=args.mode
+if args.edge_threshold is not None:
+    if not args.mode.startswith("compute-adaptive-") or not 0 <= args.edge_threshold <= 2:
+        raise ValueError("Edge threshold 0..2 requires an adaptive compute mode")
+    env["ARC_BENCH_MODE"]=args.mode.replace("-hot", f"@{args.edge_threshold}-hot")
 if args.dll: env["ARC_BENCH_DLL"]=str(args.dll.resolve())
 for key in ("ARC_OPTIMIZER_WORKER","ARC_OPTIMIZER_COMPILER","ARC_OPTIMIZER_CACHE"):
     env.pop(key,None)
@@ -39,6 +44,7 @@ command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.fram
 hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
+          "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))

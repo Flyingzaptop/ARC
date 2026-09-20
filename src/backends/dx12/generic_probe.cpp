@@ -96,6 +96,11 @@ HRESULT STDMETHODCALLTYPE resource(ID3D12Device* self,const D3D12_HEAP_PROPERTIE
 using HeapFn=decltype(ID3D12DeviceVtbl::CreateDescriptorHeap);HeapFn original_heap{};
 using RootCreateFn=decltype(ID3D12DeviceVtbl::CreateRootSignature);RootCreateFn original_root_create{};
 using PlacedFn=decltype(ID3D12DeviceVtbl::CreatePlacedResource);PlacedFn original_placed{};
+using Resource1Fn=decltype(ID3D12Device4Vtbl::CreateCommittedResource1);Resource1Fn original_resource1{};
+HRESULT STDMETHODCALLTYPE resource1(ID3D12Device4* device,const D3D12_HEAP_PROPERTIES* heap,D3D12_HEAP_FLAGS flags,const D3D12_RESOURCE_DESC* desc,D3D12_RESOURCE_STATES state,const D3D12_CLEAR_VALUE* clear,ID3D12ProtectedResourceSession* protected_session,REFIID iid,void** out){
+    const auto result=original_resource1(device,heap,flags,desc,state,clear,protected_session,iid,out);
+    if(observe_api()&&optimizer::enabled()&&!protected_session&&SUCCEEDED(result)&&out&&*out){ID3D12Resource* resource=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12Resource,reinterpret_cast<void**>(&resource)))){optimizer::resource_created(resource);ID3D12Resource_Release(resource);}}return result;
+}
 HRESULT STDMETHODCALLTYPE root_create(ID3D12Device* d,UINT node,const void* data,SIZE_T size,REFIID iid,void** out){
     const auto result=original_root_create(d,node,data,size,iid,out);
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12RootSignature* root=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12RootSignature,reinterpret_cast<void**>(&root)))){optimizer::root_created(root,data,size);ID3D12RootSignature_Release(root);}}return result;
@@ -316,6 +321,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install_detailed(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
         ok=install_detailed(device->lpVtbl->CreatePlacedResource,placed,&original_placed)&&ok;
         ok=install_detailed(device->lpVtbl->CreateRootSignature,root_create,&original_root_create)&&ok;
+        {ID3D12Device4* extra=nullptr;if(SUCCEEDED(ID3D12Device_QueryInterface(device,IID_ID3D12Device4,reinterpret_cast<void**>(&extra)))){ok=install_detailed(extra->lpVtbl->CreateCommittedResource1,resource1,&original_resource1)&&ok;ID3D12Device4_Release(extra);}}
         ok=install(factory->lpVtbl->CreateSwapChainForHwnd,swap_hwnd,&original_swap_hwnd)&&ok;
         ok=install(reinterpret_cast<SwapFn>(factory->lpVtbl->CreateSwapChain),create_swap,&original_swap)&&ok;
         ok=install_detailed(device->lpVtbl->CreateDescriptorHeap,heap,&original_heap)&&ok;
@@ -460,6 +466,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){
     if(!value)return 1;const auto* mode=static_cast<const wchar_t*>(value);
     if(wcscmp(mode,L"off")==0)return mirror::configure(0)?0:2;
     if(wcscmp(mode,L"2x2")!=0||!mirror_hooks_ready)return 3;
+    if(optimizer::enabled())return 8; // shared submission scheduling not enabled yet
     if(profile::busy())return 7;
     if(!set_passive_hooks(false))return 5;
     return mirror::configure(D3D12_SHADING_RATE_2X2)?0:4;

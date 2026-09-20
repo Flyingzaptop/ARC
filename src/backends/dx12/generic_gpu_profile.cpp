@@ -57,6 +57,7 @@ struct Span {
 };
 struct Row {Span span;std::uint64_t recording{},frame{},queue{},submission{},start{},end{},frequency{};};
 struct Session {
+    std::uint64_t id{};
     std::filesystem::path path;Clock::time_point deadline,drain_deadline;
     UINT wanted{},presents{};bool stopped{},written{},publishing{},export_failed{},timed_out{};
     std::uint64_t recorded{},submitted{},declined{},unsupported{},overwritten{},faults{},dropped{};
@@ -81,7 +82,7 @@ struct State {
     std::map<ID3D12CommandQueue*,std::shared_ptr<Queue>> queues;
     std::array<std::shared_ptr<Recording>,max_records> pool;
     std::array<Job,max_jobs> jobs;
-    std::uint64_t next_pipeline{},next_record{},next_queue{},faults{};
+    std::uint64_t next_pipeline{},next_record{},next_queue{},next_session{},faults{};
 };
 State& state(){static auto* s=new State;return *s;}
 template<class F>void safe(F&& fn)noexcept{
@@ -317,7 +318,7 @@ void after_submit(Submission& submission,ID3D12CommandQueue* native)noexcept{
 }
 bool request(const std::wstring& path,UINT windows)noexcept{
     bool accepted=false;safe([&]{auto& s=state();if(path.empty()||windows<1||windows>32||(s.session&&!s.session->written&&!s.session->export_failed)||!std::filesystem::is_directory(std::filesystem::absolute(path).parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path+L".tmp"))return;
-        auto session=std::make_shared<Session>();session->path=path;session->wanted=windows;session->deadline=Clock::now()+std::chrono::seconds(10);session->drain_deadline=session->deadline+std::chrono::seconds(5);session->rows.reserve(max_rows);s.session=std::move(session);s.capturing=true;accepted=true;});return accepted;
+        auto session=std::make_shared<Session>();session->id=++s.next_session;session->path=path;session->wanted=windows;session->deadline=Clock::now()+std::chrono::seconds(10);session->drain_deadline=session->deadline+std::chrono::seconds(5);session->rows.reserve(max_rows);s.session=std::move(session);s.capturing=true;accepted=true;});return accepted;
 }
 bool busy()noexcept{bool result=true;safe([&]{auto& s=state();result=s.open||s.capturing||(s.session&&!s.session->written&&!s.session->export_failed);});return result;}
 void stop()noexcept{safe([&]{auto& s=state();s.capturing=false;if(s.session){s.session->stopped=true;s.session->drain_deadline=Clock::now()+std::chrono::seconds(5);}});}
@@ -349,4 +350,14 @@ void collect()noexcept{
     if(publication){try{write_report(*publication,publication_pending);safe([&]{owner->written=true;owner->publishing=false;});}catch(...){safe([&]{owner->publishing=false;owner->export_failed=true;++owner->faults;++state().faults;});}}
 }
 void snapshot(std::ostream& out){auto& s=state();std::lock_guard lock(s.mutex);out<<"{\"capturing\":"<<(s.capturing?"true":"false")<<",\"export_failed\":"<<(s.session&&s.session->export_failed?"true":"false")<<",\"live_pipelines\":"<<s.pipelines.size()<<",\"tracked_recordings\":"<<s.tracked.load()<<",\"retained_gpu_recordings\":"<<std::count_if(s.pool.begin(),s.pool.end(),[](const auto& r){return bool(r);})<<",\"faults\":"<<s.faults<<'}';}
+std::vector<ComputeCost> compute_costs()noexcept{
+    std::vector<ComputeCost> result;
+    safe([&]{const auto& s=state();if(!s.session||!s.session->written||s.session->faults||s.session->rows.empty())return;
+        std::map<const Pipeline*,double> costs;
+        for(const auto& row:s.session->rows)if(row.span.kind==2&&row.span.pipeline&&!row.span.mixed_pipeline)
+            costs[row.span.pipeline.get()]+=double(row.end-row.start)*1000.0/double(row.frequency);
+        for(const auto& [native,pipeline]:s.pipelines)if(auto it=costs.find(pipeline.get());it!=costs.end())result.push_back({native,s.session->id,pipeline->id,it->second});
+    });return result;
+}
+std::uint64_t pipeline_identity(ID3D12PipelineState* native)noexcept{std::uint64_t id{};safe([&]{if(auto p=lookup(native))id=p->id;});return id;}
 }

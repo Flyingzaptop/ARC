@@ -14,9 +14,24 @@ bool overlaps(const Allocation& a,const Allocation& b) {
     return a.heap==b.heap&&a.offset<b.offset+b.bytes&&b.offset<a.offset+a.bytes;
 }
 }
+void BufferIndex::observe(const Allocation& a){
+    retire(a.id);if(a.description.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER||!a.gpu_address)return;
+    addresses_.emplace(a.gpu_address,a.id);bases_[a.id]=a.gpu_address;maximum_width_=std::max(maximum_width_,a.description.Width);
+}
+void BufferIndex::retire(std::uint64_t id){const auto base=bases_.find(id);if(base==bases_.end())return;auto [first,last]=addresses_.equal_range(base->second);for(auto it=first;it!=last;)if(it->second==id)it=addresses_.erase(it);else ++it;bases_.erase(base);}
+const Allocation* BufferIndex::resolve(const std::map<std::uint64_t,Allocation>& allocations,std::uint64_t address,std::uint64_t bytes)const noexcept{
+    const Allocation* found=nullptr;const auto end=addresses_.upper_bound(address);
+    for(auto it=addresses_.lower_bound(address>maximum_width_?address-maximum_width_:0);it!=end;++it){
+        const auto resource=allocations.find(it->second);if(resource==allocations.end())continue;const auto& a=resource->second;
+        if(address<a.gpu_address)continue;const auto offset=address-a.gpu_address;
+        if(offset>a.description.Width||bytes>a.description.Width-offset)continue;
+        if(found)return nullptr;found=&a;
+    }
+    return found;
+}
 Admission admit_compute(const Arguments& arguments,const shader::Transform& transform,
     const DescriptorLedger& ledger,const std::vector<DescriptorHeap>& heaps,
-    const std::map<std::uint64_t,Allocation>& allocations,UINT x,UINT y,UINT z) {
+    const std::map<std::uint64_t,Allocation>& allocations,UINT x,UINT y,UINT z,const shader::ResourceUsage* usage,const BufferIndex* buffers) {
     Admission out;auto reject=[&](const char* reason){out.reason=reason;return out;};
     if(!transform.admitted||!arguments.layout()||!arguments.layout()->complete)return reject("missing_shader_or_root_contract");
     if(!x||!y||z!=1||!transform.threads[0]||!transform.threads[1])return reject("dispatch_shape");
@@ -29,6 +44,10 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
         for(unsigned element=0;element<contract.count;++element){
             out.binding_class=contract.resource_class;out.binding_register=contract.shader_register+element;out.binding_space=contract.space;
             if(contract.shader_register>UINT_MAX-element)return reject("register_overflow");
+            if(usage&&usage->complete&&contract.resource_class==0){
+                const auto range=usage->ranges.find({0,contract.range_id});
+                if(range==usage->ranges.end()||(!range->second.all&&!range->second.indices.contains(contract.shader_register+element)))continue;
+            }
             auto location=arguments.locate(type,contract.shader_register+element,contract.space,D3D12_SHADER_VISIBILITY_ALL);
             if(!location)return reject("unbound_register");
             if(location->static_sampler||location->constants)continue;
@@ -56,7 +75,8 @@ Admission admit_compute(const Arguments& arguments,const shader::Transform& tran
                 // texture resources cannot be bound as raw root descriptors.
                 if(contract.resource_class!=2)return reject("unsupported_root_view");
                 const Allocation* found=nullptr;
-                for(const auto& [id,a]:allocations){(void)id;if(a.description.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER||!a.gpu_address||arg->address<a.gpu_address)continue;
+                if(buffers)found=buffers->resolve(allocations,arg->address,contract.kind);
+                else for(const auto& [id,a]:allocations){(void)id;if(a.description.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER||!a.gpu_address||arg->address<a.gpu_address)continue;
                     const auto offset=arg->address-a.gpu_address;
                     if(offset>a.description.Width||contract.kind>a.description.Width-offset)continue;
                     if(found)return reject("ambiguous_root_address");found=&a;

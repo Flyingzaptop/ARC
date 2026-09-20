@@ -88,3 +88,77 @@ array entry is unused, and never hardcode this shader's layout or hash.
 Descriptor volatility is handled at submission, not just recording; see the
 [D3D12 descriptor contract](https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-version-1-1).
 Captured application shader bytecode/IR caches remain local, outside Git.
+
+## Checkpoint 3 (in progress, not an accepted optimizer)
+
+Generic integer/control-flow abstract execution now resolves reachable resource
+array indices from submission-time UPLOAD/inline constant data. Pixel-dependent
+branches are explored conservatively; unavailable data/budget exhaustion decline.
+Proof caching rechecks every observed uniform read. CommittedResource1 tracking
+was necessary to observe the renderer's actual constant buffers. The expensive
+lighting shader now passes real binding/alias admission without filling unknown
+descriptors or hardcoding its layout. A GPU-address interval index avoids scanning
+all textures for each CBV lookup.
+
+Experimental shader mechanisms now include independently recognized normalized
+5x5 comparison filters (9-tap alternative) and pure acyclic zero-factor regions
+using the shader's existing fast-math contract. Native tests verify each pixel,
+bit-exact neutral/rollback, comparison filtering against a CPU oracle, and zero
+factor side-effect rejection. DXIL branch hints preserve intended control flow;
+they did not produce a measurable additional win on the current external scene.
+
+The shader worker contract is version 3; source IR used for uniform analysis is
+private local cache data. `pcf9` and `zero` are additional experimental modes.
+Suffix `|heaviest` delays activation until a healthy GPU profile selects the most
+expensive compatible PSO. Selection uses measured costs and lifetime identities,
+not engine labels or fixed shader hashes. Manual VRS+compute combination is refused
+until shared submission scheduling is implemented.
+
+External exploratory results (single pairs, not final acceptance):
+
+- `compute-uniform`: all eligible compute passes at 2x2: 93.335 vs 77.391 FPS;
+  image SSIM .89752 and tile p99 .16726 fail the moderate profile.
+- `pcf-first`: 78.048 vs 78.066 FPS; image passes, no performance benefit.
+- `zero-first`: 77.334 vs 77.995 FPS; image passes, no performance benefit.
+- `branch-hints`: zero 77.052, pcf9 77.285, baseline 77.514 FPS; no accepted win.
+- `hottest-first`: only the automatically selected hot shader, 2x2 92.419 vs
+  77.360 FPS. SSIM .98150 passes, but tile p99 .04603 exceeds .04: rejected.
+- Same selected shader at 2x1: 80.066 FPS; SSIM .98744, mean linear error .001170,
+  tile p99 .01894 pass at this one pose. More poses/repeats are still required.
+- A 1x2 selected-shader measurement is the next pending comparison.
+
+`scripts/optimizer-quality.py` fixes independent SDR metrics: Gaussian 11x11
+SSIM, sigma 1.5, encoded luma; linear RGB error after gamma 2.2; 8x8 tile p99.
+The limits are unchanged. These tests are not wired into an automatic runtime
+quality gate yet. No final two-renderer/target-FPS/ray/geometry closure exists.
+
+Next priorities: finish isolated action comparisons, spatial quality protection
+if needed, GPU same-input probe/rollback and target controller. Then complete the
+remaining approved domains and independent renderer portability. Do not stop at
+the current infrastructure/experimental actuators or claim all stages complete.
+
+## Checkpoint 4 (spatial actuator verified; automatic session integration pending)
+
+Isolated 1x2 is fast (90.919 FPS, SSIM .98810 at final pose) but fails SSIM at
+three other poses (.9781/.9789/.9792). It is not a generally accepted setting.
+The input-edge guard evaluates nine points in current, proven screen-aligned
+float SRVs per macro-group; it uses no prior-frame image or engine labels.
+Macro-groups with excessive contrast remain full rate. Native tests verify full
+protection, coarse output, partial edges and cached rollback exactly.
+
+Adaptive 2x2 with feature threshold .9 produced 84.060 vs baseline 77.835 FPS and
+passed the final pose (SSIM .99341, mean .000805, tile p99 .02091). Independent
+poses 270/420/570 also pass: SSIM .98701/.98445/.99060, tile p99
+.02456/.01996/.01407. Their measured FPS were 83.10/84.71/83.76. Image limits
+remain .98/.01/.04; .9 is the input-feature selection threshold, not a relaxed
+quality limit. End-to-end repeatability and own CPU overhead still need closure.
+
+Current worker contract is version 4. Modes include adaptive-1x2/adaptive-2x2,
+optional feature threshold `@value`, and `|heaviest` GPU-cost selection.
+The benchmark runner exposes `--edge-threshold`. Nonselected PSOs now remain
+original rather than being wrapped in an unused neutral variant.
+
+`OptimizerSession` adds tested serial target/quality/performance decisions,
+generation checks, settling, incumbent retention, restoration and fault latching.
+It is not yet connected to a generic runtime reference/probe acquisition path.
+Do not report an automatic arbitrary-game quality loop as complete.

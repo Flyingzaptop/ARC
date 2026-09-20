@@ -137,7 +137,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             auto format=[](unsigned id,const std::vector<std::string>& f){std::string s="!"+std::to_string(id)+" = !{";for(unsigned j=0;j<f.size();++j){if(j)s+=", ";s+=f[j];}return s+"}";};
             for(auto& l:lines)if(l.starts_with("!"+std::to_string(root_id)+" = "))l=format(root_id,resource_lists);
             appended_metadata="\n"+format(list_id,cbuffers)+"\n!"+std::to_string(control_id)+" = !{i32 "+std::to_string(control_range)+
-                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 16, null}\n";
+                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 32, null}\n";
         }
         // Numeric SSA ids and anonymous block ids must be named before adding
         // instructions. Renumbering only definitions would corrupt PHI edges.
@@ -153,7 +153,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             if(text.find("declare %dx.types.Dimensions @dx.op.getDimensions(")==text.npos)generated<<"declare %dx.types.Dimensions @dx.op.getDimensions(i32, %dx.types.Handle, i32)\n";
         }
         if(runtime_control){
-            generated<<"%arc_coarse_control_buffer = type { i32, i32, i32, i32 }\n";
+            generated<<"%arc_coarse_control_buffer = type { i32, i32, i32, i32, i32, i32, i32, i32 }\n";
             if(text.find("%dx.types.CBufRet.i32 = type")==text.npos)generated<<"%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }\n";
             if(text.find("declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(")==text.npos)
                 generated<<"declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32, %dx.types.Handle, i32)\n";
