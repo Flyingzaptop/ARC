@@ -339,6 +339,7 @@ DWORD WINAPI run(void*){
                 const auto choice=std::find_if(choices.begin(),choices.end(),[&](const auto& c){return c.bundle.id==request.action;});
                 if(choice==choices.end())throw std::runtime_error("Unknown bundle request");
                 const auto candidate=choice->bundle;const auto generation=candidate.id;const auto candidate_mode=choice->mode;const auto candidate_pipeline=choice->pipeline;
+                publish({{"phase","trial_started"},{"trial",trial},{"candidate_action",candidate.id},{"active_action",retained},{"pipeline",candidate_pipeline},{"evidence_directory",dir.string()}});
                 if(!candidate.compute.empty()){
                     void* swap{};{std::lock_guard lock(s.mutex);swap=s.swapchain;}
                     Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;queue.Attach(generic::acquire_presentation_queue(reinterpret_cast<IDXGISwapChain*>(swap)));
