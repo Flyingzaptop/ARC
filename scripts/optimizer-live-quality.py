@@ -15,6 +15,8 @@ import traceback
 import json
 import runpy
 import sys
+if hasattr(sys.stdin,"reconfigure"):sys.stdin.reconfigure(encoding="utf-8")
+if hasattr(sys.stdout,"reconfigure"):sys.stdout.reconfigure(encoding="utf-8")
 from pathlib import Path
 import numpy as np
 
@@ -73,10 +75,68 @@ def state_fraction(samples):
             "source": "original_game_float_constants"}
 
 
+_linear_tables={}
+def linear_table(divisor,subpixels=1):
+    key=(divisor,subpixels)
+    if key not in _linear_tables:
+        _linear_tables[key]=cv2.pow(np.arange(divisor*subpixels+1,dtype=np.float64)/(divisor*subpixels),2.2).reshape(-1)
+    return _linear_tables[key]
+
+class PackedImage:
+    """Integer display pixels (or exact unscaled bilinear floats), decoded by stripe."""
+    ndim=3
+    def __init__(self, raw, divisor=255, bilinear=False):
+        self.raw=np.ascontiguousarray(raw)
+        self.divisor=divisor
+        self.bilinear=bilinear
+        self.shape=self.raw.shape
+    def __getitem__(self, region):
+        return self.raw[region].astype(np.float64)/self.divisor
+    def linear_region(self, region):
+        raw=self.raw[region]
+        if np.issubdtype(raw.dtype,np.integer):return linear_table(self.divisor)[raw]
+        if self.bilinear:return linear_table(self.divisor,1024)[(raw*1024).astype(np.int32)]
+        return cv2.pow(self[region],2.2)
+
+class BlendedImage:
+    ndim=3
+    def __init__(self, first, second, fraction):
+        self.first,self.second,self.fraction=first,second,fraction
+        self.shape=first.shape
+    def __getitem__(self, region):
+        first=self.first[region];first*=1-self.fraction
+        second=self.second[region];second*=self.fraction
+        first+=second
+        return first
+
+def normalized_valid(pixels):
+    if isinstance(pixels,PackedImage):
+        return np.isfinite(pixels.raw).all() and pixels.raw.min()>=0 and pixels.raw.max()<=pixels.divisor
+    return np.isfinite(pixels).all() and pixels.min()>=0 and pixels.max()<=1
+
+def image_luma(pixels, byte=False):
+    h,w=pixels.shape[:2]
+    result=np.empty((h,w),dtype=np.uint8 if byte else np.float32)
+    weights=np.array([.2126,.7152,.0722])
+    for row in range(0,h,128):
+        values=pixels[row:row+128]@weights
+        result[row:row+128]=np.clip(values*255,0,255).astype(np.uint8) if byte else values.astype(np.float32)
+    return result
+
+def remap_image(pixels,x,y,*,packed=False):
+    if isinstance(pixels,PackedImage):
+        if not packed:return cv2.remap(pixels[:],x,y,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+        # INTER_LINEAR uses 5-bit fractional coordinates. Integer 8/10-bit
+        # samples and their 1/1024 weighted sums are exactly representable in
+        # float32. Normalize AFTER interpolation to avoid precision loss.
+        raw=cv2.remap(pixels.raw.astype(np.float32),x,y,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+        return PackedImage(raw,pixels.divisor,bilinear=True)
+    return cv2.remap(pixels,x,y,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+
 def image(path, shared=None):
     if path.suffix.lower() != ".json":
-        return metrics["load"](path), {}
-    metadata = json.loads(path.read_text())
+        return PackedImage(np.asarray(metrics["Image"].open(path).convert("RGB"),dtype=np.uint8)), {}
+    metadata = json.loads(path.read_text(encoding="utf-8"))
     if (not metadata.get("readback_complete") or not metadata.get("color_space_known") or
             metadata.get("gpu_features_only") or metadata.get("present_hresult") != 0):
         raise ValueError("Readback/color-space contract unavailable")
@@ -96,19 +156,17 @@ def image(path, shared=None):
         rgb = raw.reshape(height, width, 4)[:, :, :3]
         if fmt == 87:
             rgb = rgb[:, :, ::-1]
-        decoded=rgb.astype(np.float64);decoded/=255
-        return decoded, metadata
+        return PackedImage(rgb.copy()), metadata
     if fmt == 24:
         packed = raw.view("<u4").reshape(height, width)
-        return np.stack([packed & 1023, (packed >> 10) & 1023, (packed >> 20) & 1023], axis=2)/1023, metadata
+        return PackedImage(np.stack([packed & 1023, (packed >> 10) & 1023, (packed >> 20) & 1023], axis=2).astype(np.uint16),1023), metadata
     raise ValueError("Unsupported display format")
 
 
 def assess(before, candidate, after, fraction=.5, profile="balanced", return_images=False):
     if before.shape != candidate.shape or before.shape != after.shape or not 0 < fraction < 1:
         raise ValueError("Matched images and an interior reference time required")
-    if any(not np.isfinite(pixels).all() or pixels.min() < 0 or pixels.max() > 1
-           for pixels in (before, candidate, after)):
+    if any(not normalized_valid(pixels) for pixels in (before,candidate,after)):
         raise ValueError("Finite normalized pixels required")
     height, width = before.shape[:2]
     # Preserve small edges at the native 1080p acceptance resolution. DIS gives
@@ -117,7 +175,7 @@ def assess(before, candidate, after, fraction=.5, profile="balanced", return_ima
     scale = min(1, 1920/width)
     size = (max(16, round(width*scale)), max(16, round(height*scale)))
     def gray(pixels):
-        value = np.clip((pixels @ np.array([.2126, .7152, .0722]))*255, 0, 255).astype(np.uint8)
+        value = image_luma(pixels,byte=True)
         return cv2.resize(value, size, interpolation=cv2.INTER_AREA)
     a, b = gray(before), gray(after)
     informative = float(a.std()) >= 2 and float(b.std()) >= 2
@@ -136,48 +194,62 @@ def assess(before, candidate, after, fraction=.5, profile="balanced", return_ima
         return sx, sy
     ax, ay = inverse(forward, fraction)
     bx, by = inverse(backward, 1-fraction)
-    warp_a = cv2.remap(before, ax, ay, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
-    warp_b = cv2.remap(after, bx, by, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
     fa = cv2.remap(forward, ax, ay, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
     back_at_end = cv2.remap(backward, ax+fa[:, :, 0], ay+fa[:, :, 1], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
     consistent = np.linalg.norm(fa+back_at_end, axis=2) <= 1.5
+    motion = float(np.quantile(np.linalg.norm(forward, axis=2), .99))
+    del fa, back_at_end, forward, x, y
     inside = (ax >= 0) & (ay >= 0) & (ax < width-1) & (ay < height-1) & (bx >= 0) & (by >= 0) & (bx < width-1) & (by < height-1)
     flow_coverage = float((inside & consistent).mean())
+    warp_a = remap_image(before,ax,ay)
+    warp_b = remap_image(after,bx,by)
+    del bx,by
     # Motion is not identifiable on flat surfaces (the aperture problem), but
     # their predicted colour can still be identifiable. Accept that evidence
     # only when BOTH original references are locally flat and agree closely.
     # Candidate pixels never contribute to this confidence mask.
-    la = (warp_a @ np.array([.2126, .7152, .0722])).astype(np.float32)
-    lb = (warp_b @ np.array([.2126, .7152, .0722])).astype(np.float32)
+    la = image_luma(warp_a)
+    lb = image_luma(warp_b)
     kernel = np.ones((3, 3), np.uint8)
     flat = ((cv2.dilate(la, kernel)-cv2.erode(la, kernel) <= 2/255) &
             (cv2.dilate(lb, kernel)-cv2.erode(lb, kernel) <= 2/255))
+    del la, lb
     agreement=np.empty((height,width),dtype=bool)
     for row in range(0,height,128):
-        agreement[row:row+128]=np.max(cv2.absdiff(cv2.pow(warp_a[row:row+128],2.2),cv2.pow(warp_b[row:row+128],2.2)),axis=2)<=.001
+        region=slice(row,row+128)
+        linear_a=warp_a.linear_region(region) if isinstance(warp_a,PackedImage) else cv2.pow(warp_a[region],2.2)
+        linear_b=warp_b.linear_region(region) if isinstance(warp_b,PackedImage) else cv2.pow(warp_b[region],2.2)
+        agreement[region]=np.max(cv2.absdiff(linear_a,linear_b),axis=2)<=.001
+    del linear_a,linear_b
     coverage = float((inside & (consistent | (flat & agreement))).mean())
-    del fa, back_at_end, bx, by, x, y
+    flat_fraction=float((inside & flat & agreement).mean())
+    del inside, flat, agreement, consistent
     if not return_images: del ax, ay, backward
     reference_check = compare_striped(warp_a, warp_b, filter_fn=fast_gaussian)
-    warp_a*=1-fraction;warp_b*=fraction;warp_a+=warp_b
-    predicted=warp_a
+    if isinstance(warp_a,PackedImage):
+        predicted=BlendedImage(warp_a,warp_b,fraction)
+    else:
+        warp_a*=1-fraction;warp_b*=fraction;warp_a+=warp_b
+        predicted=warp_a
     del warp_a, warp_b
+    if isinstance(candidate,PackedImage):candidate=candidate[:]
     quality = compare_striped(predicted, candidate, filter_fn=fast_gaussian)
-    motion = float(np.quantile(np.linalg.norm(forward, axis=2), .99))
     confident = (informative and coverage >= .95 and motion <= 64 and reference_check["ssim_gaussian_luma"] >= .99 and
                  reference_check["mean_linear_rgb_error"] <= .002)
     result = {"schema": 2, "quality_profile": profile, "quality_limits": PROFILES[profile], "reference_kind": "motion_interpolated_originals", "same_state_replay": False,
             "flow_method": "opencv_dis_medium", "flow_width": size[0], "opencv_version": cv2.__version__,
             "matched_reference": confident, "alignment_coverage": coverage, "motion_p99_pixels": motion,
             "flow_consistency_coverage": flow_coverage,
-            "flat_reference_agreement_fraction": float((inside & flat & agreement).mean()),
+            "flat_reference_agreement_fraction": flat_fraction,
             "informative_reference": informative,
             "reference_check": reference_check, "quality": quality,
             "accepted_quality": confident and accepts(quality, profile)}
     if return_images:
         residual=np.empty(candidate.shape,dtype=np.float32)
         for row in range(0,height,128):
-            residual[row:row+128]=cv2.subtract(cv2.pow(candidate[row:row+128],2.2),cv2.pow(predicted[row:row+128],2.2))
+            region=slice(row,row+128)
+            linear=candidate.linear_region(region) if isinstance(candidate,PackedImage) else cv2.pow(candidate[region],2.2)
+            residual[region]=cv2.subtract(linear,cv2.pow(predicted[region],2.2))
         return result, residual, {"backward":backward,"origin_x":ax,"origin_y":ay}
     return result
 
@@ -198,7 +270,7 @@ def main():
         fraction = (times[1]-times[0])/(times[2]-times[0])
     timing = {"source": "present_qpc" if am and bm and cm else "midpoint", "fraction": fraction}
     if args.state:
-        estimated = state_fraction(json.loads(args.state.read_text()))
+        estimated = state_fraction(json.loads(args.state.read_text(encoding="utf-8")))
         if estimated:
             timing = estimated
             fraction = estimated["fraction"]

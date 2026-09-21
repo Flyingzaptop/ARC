@@ -4,6 +4,7 @@
 #include <mutex>
 #include <iosfwd>
 #include <array>
+#include <optional>
 #include <vector>
 #include <string>
 #include "arc/optimizer_policy.hpp"
@@ -17,13 +18,18 @@ bool enabled() noexcept;
 std::uint64_t cpu_nanoseconds() noexcept;
 void cpu_snapshot(std::ostream&);
 void intercept_cpu_snapshot(std::ostream&);
+bool control_costs_enabled() noexcept;
 void control_timing_snapshot(std::ostream&);
 void coverage_snapshot(std::ostream&);
 #ifndef CINTERFACE
 std::vector<GpuControl::ExecutionReadback> capture_execution(ID3D12CommandQueue*) noexcept;
 #endif
 void require_presentation_queue(ID3D12CommandQueue*) noexcept;
-void present_frame(std::uint64_t frame) noexcept;
+void present_frame(std::uint64_t frame,std::uint64_t qpc=0) noexcept;
+void reset_activity_counters() noexcept;
+std::uint64_t active_approved_policy() noexcept;
+void approve_policy(std::uint64_t policy,std::uint64_t until) noexcept;
+std::array<std::uint64_t,4> activity_counters() noexcept;
 std::uint64_t binding_evidence_revision() noexcept;
 bool seal_binding_evidence(std::uint64_t policy) noexcept;
 void reset_binding_evidence() noexcept;
@@ -37,11 +43,13 @@ struct ConnectionCoverage {std::size_t roots{},pipelines{};std::uint64_t unknown
 ConnectionCoverage connection_coverage() noexcept;
 struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{},selected_pipeline{};};
 PolicyStamp policy_stamp() noexcept;
+std::optional<arc::ComputePolicy> performance_proposal(std::uint64_t pipeline,const std::string& quality_profile) noexcept;
+void remember_performance_proposal(const arc::ComputePolicy&,const std::string& quality_profile) noexcept;
 void spatial_learning(bool enabled,float error_limit) noexcept;
 void pause_spatial_probes(bool) noexcept;
 bool begin_spatial_training(const arc::PolicyBundle&,std::uint64_t pipeline) noexcept;
 void end_spatial_training() noexcept;
-struct SpatialProgress {unsigned models{},sampled{},eligible{},probes{};float best_error{1000};};
+struct SpatialProgress {unsigned models{},sampled{},eligible{},probes{};float best_error{1000};double eligible_fraction{};};
 SpatialProgress spatial_progress() noexcept;
 struct CandidateCapabilities {std::uint64_t pipeline{};bool coarse{},comparison{},zero{},edges{},mips{},samples{};};
 CandidateCapabilities candidate_capabilities() noexcept;

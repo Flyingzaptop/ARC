@@ -50,7 +50,8 @@ def compare_striped(reference, candidate, *, filter_fn, stripe_rows=128):
         aa,bb,ab=filter_fn(a*a),filter_fn(b*b),filter_fn(a*b)
         if _native is not None:
             sums=np.empty(((end-y+7)//8,(w+7)//8),dtype=np.float64); totals=np.empty(3,dtype=np.float64)
-            linear_a,linear_b=cv2.pow(reference[y:end],2.2),cv2.pow(candidate[y:end],2.2)
+            linear_a=reference.linear_region(slice(y,end)) if hasattr(reference,"linear_region") else cv2.pow(ra[y-lo:end-lo],2.2)
+            linear_b=candidate.linear_region(slice(y,end)) if hasattr(candidate,"linear_region") else cv2.pow(rb[y-lo:end-lo],2.2)
             first,last=max(y,5)-y,max(max(y,5),min(end,h-5))-y
             first=min(first,end-y);last=min(last,end-y)
             if _native(ma,mb,aa,bb,ab,linear_a,linear_b,w,end-y,y-lo,first,last,sums,totals):raise ValueError('Native stripe contract')
@@ -66,7 +67,9 @@ def compare_striped(reference, candidate, *, filter_fn, stripe_rows=128):
         first, last = max(y, 5)-lo, min(end, h-5)-lo
         if last > first:
             ssim_sum += ssim[first:last, 5:-5].sum(dtype=np.float64)
-        err = cv2.absdiff(cv2.pow(reference[y:end],2.2), cv2.pow(candidate[y:end],2.2))
+        linear_a=reference.linear_region(slice(y,end)) if hasattr(reference,"linear_region") else cv2.pow(ra[y-lo:end-lo],2.2)
+        linear_b=candidate.linear_region(slice(y,end)) if hasattr(candidate,"linear_region") else cv2.pow(rb[y-lo:end-lo],2.2)
+        err = cv2.absdiff(linear_a,linear_b)
         error_sum += err.sum(dtype=np.float64)
         peak = max(peak, float(err.max()))
         rows = np.arange(0, end-y, 8)

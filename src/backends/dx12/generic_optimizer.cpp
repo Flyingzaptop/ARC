@@ -1,3 +1,6 @@
+#include "arc/uniform_scene_guard.hpp"
+#include "generic_performance_proposal.hpp"
+#include <dxgi1_6.h>
 #include "generic_spatial_probe.hpp"
 #include "arc/spatial_sensitivity.hpp"
 #include <bit>
@@ -37,7 +40,7 @@ struct Root {std::uint64_t id{};ID3D12RootSignature* native{};std::vector<std::b
 struct AllocationCache {Ptr<ID3D12Device> device;std::map<std::array<UINT64,11>,UINT64> sizes;};
 struct VariantStats {std::uint64_t id{},attempts{},admitted{},uniform_attempts{},uniform_proven{},uniform_steps{},uniform_known_reads{},uniform_unknown_reads{};double uniform_cpu_ms{};std::string last_reason,uniform_reason;UINT binding_class{},binding_register{},binding_space{};};
 using UniformReadKey=std::tuple<unsigned,unsigned,unsigned>;
-struct Variant:VariantStats {Ptr<ID3D12RootSignature> root,probe_root;Ptr<ID3D12PipelineState> pipeline,spatial_pipeline,probe_pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;std::vector<std::array<unsigned,3>> state_reads;bool proof_pending{};std::uint64_t retry_after{};};
+struct Variant:VariantStats {std::string analysis_key;Ptr<ID3D12RootSignature> root,probe_root;Ptr<ID3D12PipelineState> pipeline,spatial_pipeline,probe_pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;std::vector<std::array<unsigned,3>> state_reads;std::vector<unsigned> state_masks;std::vector<shader::UniformWords> scene_words;std::uint64_t scene_frame{};bool proof_pending{};std::uint64_t retry_after{};};
 struct UniformJob {std::shared_ptr<Variant> variant;std::map<UniformReadKey,shader::UniformWords> words;};
 struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};bool queued{};};
 struct Signature {bool known{},compute{};std::shared_ptr<Root> root;std::vector<D3D12_INDIRECT_ARGUMENT_DESC> resets;};
@@ -60,11 +63,12 @@ struct Recording {
     unsigned query_depth{};
 };
 struct SensitivityContext {
-    std::uint64_t id{},generation{},last_seen{};unsigned probes{};arc::SpatialSensitivity learner;arc::SpatialModelTable table;
+    std::uint64_t id{},generation{},last_seen{};unsigned probes{};arc::SpatialSensitivity learner;arc::SpatialModelTable table;std::array<double,256> observed_tiles{};
     SensitivityContext(std::uint64_t key,std::uint64_t epoch):id(key),generation(epoch),learner(key){table=learner.snapshot();}
 };
 struct PendingProbe {std::shared_ptr<SensitivityContext> context;std::uint64_t frame{},epoch{};bool noise{};};
 struct State {
+    std::array<std::array<std::uint64_t,4>,64> scene_events{};unsigned scene_event_count{};std::uint64_t scene_events_dropped{};
     bool spatial_learning{},probes_paused{};float spatial_limit{.02f};std::uint64_t sensitivity_generation{1};
     std::map<ID3D12Device*,std::shared_ptr<SpatialProbeGpu>> probe_pools;
     std::map<SpatialProbeGpu*,PendingProbe> pending_probes;
@@ -72,7 +76,7 @@ struct State {
     std::map<std::uint64_t,std::uint64_t> last_probe_frames;
     std::uint64_t training_pipeline{};arc::ComputePolicy training_recipe;std::set<std::uint64_t> training_models;
     arc::PolicyBindingEvidence binding_evidence;
-    bool center_priority{};std::set<std::uint64_t> presentation_resources;
+    UINT surface_width{},surface_height{},surface_format{};bool center_priority{};std::set<std::uint64_t> presentation_resources;
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
     std::atomic<bool> cpu_optimize{};std::atomic<std::uint64_t> cpu_generation{1},cpu_lookup_epoch{1};
@@ -116,12 +120,13 @@ struct State {
     Ptr<ID3D12CommandQueue> required_queue;
     arc::PolicyBundle learning_bundle;
     std::map<std::vector<std::uint64_t>,std::uint64_t> spatial_keys;
-    std::atomic<std::uint64_t> current_frame{};
+    std::atomic<std::uint64_t> current_frame{},approved_policy{},approved_until{},current_bundle{},approved_submission_frame{};
+    std::atomic<std::uint64_t> activity_frames{},activity_approved_frames{},activity_ticks{},activity_approved_ticks{},activity_last_qpc{};
     std::atomic<std::uint64_t> policy_valid_until{};
     bool spatial_capture_requested{};
 };
 State& state(){static auto* s=new State;return *s;}
-void event(nlohmann::json value)noexcept{try{LARGE_INTEGER time{};QueryPerformanceCounter(&time);value["event_qpc"]=time.QuadPart;auto text=value.dump();auto& s=state();std::lock_guard lock(s.mutex);if(s.events.size()>=256){s.events.pop_front();++s.events_dropped;}s.events.push_back(std::move(text));}catch(...) {}}
+void event(nlohmann::json value)noexcept{try{LARGE_INTEGER time{};QueryPerformanceCounter(&time);if(!value.contains("event_qpc"))value["event_qpc"]=time.QuadPart;value["queued_qpc"]=time.QuadPart;auto text=value.dump();auto& s=state();std::lock_guard lock(s.mutex);if(s.events.size()>=256){s.events.pop_front();++s.events_dropped;}s.events.push_back(std::move(text));}catch(...) {}}
 RawDescriptor& raw_view(UINT64 address){return state().cpu_views[((address>>5)^(address>>14))%state().cpu_views.size()];}
 void forget_raw_view(UINT64 address){auto& old=raw_view(address);if(old.address==address)old.address=0;}
 bool view_identity(unsigned kind,ID3D12Resource* native,ID3D12Resource* counter,const void* desc,std::size_t size,D3D12_CPU_DESCRIPTOR_HANDLE handle,RawDescriptor& result){
@@ -338,14 +343,14 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
         throw std::runtime_error(reason.empty()?"shader_worker_failed":reason);}
     }
     auto manifest=binary;manifest+=L".contract";std::ifstream description(manifest);std::string tag;description>>tag;
-    auto result=std::make_shared<Variant>();result->id=pipeline->id;auto& contract=result->contract;std::size_t count{};
+    auto result=std::make_shared<Variant>();result->id=pipeline->id;result->analysis_key=key;auto& contract=result->contract;std::size_t count{};
     description>>contract.control_space>>contract.threads[0]>>contract.threads[1]>>contract.threads[2]>>contract.stores>>count>>contract.comparison_filter_groups>>contract.zero_factor_regions>>contract.edge_input_mask>>contract.mip_samples;
     description>>contract.execution_marker>>contract.probe_outputs>>contract.group_shared>>contract.sample_loops;
     if(!description||tag!="ARC_SHADER_CONTRACT_12"||!contract.execution_marker||count>128||contract.control_space==UINT32_MAX)throw std::runtime_error("shader worker contract");
     for(std::size_t i=0;i<count;++i){shader::ResourceContract r;description>>r.resource_class>>r.range_id>>r.shader_register>>r.space>>r.count>>r.kind;contract.resources.push_back(r);}
     if(!description)throw std::runtime_error("truncated shader contract");contract.admitted=true;
     auto access_path=binary;access_path+=L".access.ll";
-    if(std::filesystem::is_regular_file(access_path)&&std::filesystem::file_size(access_path)<=8*1024*1024){std::ifstream access(access_path,std::ios::binary);std::string ir{std::istreambuf_iterator<char>(access),{}};result->access=shader::UniformAccessProgram::compile(ir);result->state_reads=shader::floating_uniform_reads(ir);}
+    if(std::filesystem::is_regular_file(access_path)&&std::filesystem::file_size(access_path)<=8*1024*1024){std::ifstream access(access_path,std::ios::binary);std::string ir{std::istreambuf_iterator<char>(access),{}};result->access=shader::UniformAccessProgram::compile(ir);for(const auto& read:shader::floating_uniform_components(ir)){result->state_reads.push_back({read[0],read[1],read[2]});result->state_masks.push_back(read[3]);}result->scene_words.resize(result->state_reads.size());}
     const auto root=binding::append_control_cbv(pipeline->root->bytes,contract.control_space,contract.execution_marker);if(root.empty())throw std::runtime_error("root_cannot_add_control");
     const auto size=std::filesystem::file_size(binary);if(!size||size>8*1024*1024)throw std::runtime_error("shader worker output size");
     std::ifstream input(binary,std::ios::binary);std::vector<char> bytes{std::istreambuf_iterator<char>(input),{}};
@@ -380,22 +385,34 @@ DWORD WINAPI worker(void*){
 }
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
 std::vector<std::string> drain_events()noexcept{std::vector<std::string> result;try{auto& s=state();std::lock_guard lock(s.mutex);result.reserve(s.events.size());while(!s.events.empty()){result.push_back(std::move(s.events.front()));s.events.pop_front();}}catch(...){}return result;}
+namespace {
+std::pair<std::filesystem::path,std::string> performance_location(std::uint64_t pipeline,const std::string& profile){
+    Ptr<ID3D12Device> device;std::string analysis;std::filesystem::path root;UINT width{},height{},format{};
+    {auto& s=state();std::lock_guard lock(s.mutex);for(const auto& [native,p]:s.pipelines)if(p->id==pipeline&&p->variant){device=p->device;analysis=p->variant->analysis_key;break;}root=s.persistent_cache/L"performance-proposals";width=s.surface_width;height=s.surface_height;format=s.surface_format;}
+    if(!device||analysis.empty()||!width||!height||(profile!="balanced"&&profile!="aggressive"))return {};
+    Ptr<IDXGIFactory4> factory;check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));Ptr<IDXGIAdapter1> adapter;check(factory->EnumAdapterByLuid(device->GetAdapterLuid(),IID_PPV_ARGS(&adapter)));DXGI_ADAPTER_DESC1 desc{};check(adapter->GetDesc1(&desc));LARGE_INTEGER driver{};check(adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice),&driver));
+    std::ostringstream identity;identity<<"ARC_PERFORMANCE_PROPOSAL_1:"<<analysis<<':'<<desc.VendorId<<':'<<desc.DeviceId<<':'<<desc.SubSysId<<':'<<desc.Revision<<':'<<driver.QuadPart<<':'<<width<<':'<<height<<':'<<format<<':'<<profile;
+    return {root,proposal::hash(identity.str())};
+}
+}
+std::optional<arc::ComputePolicy> performance_proposal(std::uint64_t pipeline,const std::string& profile)noexcept{try{const auto [root,key]=performance_location(pipeline,profile);auto result=proposal::load(root,key,pipeline);event({{"phase","performance_proposal_cache"},{"pipeline",pipeline},{"key",key},{"hit",bool(result)},{"requires_fresh_validation",true}});return result;}catch(...){return {};}}
+void remember_performance_proposal(const arc::ComputePolicy& policy,const std::string& profile)noexcept{try{const auto [root,key]=performance_location(policy.pipeline,profile);const bool saved=proposal::save(root,key,policy);event({{"phase","performance_proposal_saved"},{"pipeline",policy.pipeline},{"key",key},{"saved",saved},{"requires_fresh_validation",true}});}catch(...){}}
 void spatial_learning(bool enabled,float limit)noexcept{safe([&]{auto& s=state();if(s.spatial_learning!=enabled||s.spatial_limit!=limit){++s.sensitivity_generation;s.sensitivity.clear();s.training_models.clear();}s.spatial_learning=enabled;s.spatial_limit=std::clamp(limit,0.f,.08f);});}
 void pause_spatial_probes(bool paused)noexcept{safe([&]{state().probes_paused=paused;});}
 bool begin_spatial_training(const arc::PolicyBundle& bundle,std::uint64_t pipeline)noexcept{bool result=false;safe([&]{auto& s=state();const auto* recipe=bundle.find(pipeline);if(!recipe||!recipe->protect_edges||!s.spatial_learning)return;s.training_pipeline=pipeline;s.training_recipe=*recipe;s.training_models.clear();s.probes_paused=false;result=true;});return result;}
 void end_spatial_training()noexcept{safe([&]{state().training_pipeline=0;state().training_models.clear();});}
-SpatialProgress spatial_progress()noexcept{SpatialProgress result;safe([&]{auto& s=state();for(const auto& [key,model]:s.sensitivity){if(!s.training_models.contains(model->id))continue;++result.models;result.probes+=model->probes;bool sampled=false,eligible=false;for(const auto& e:model->table.entries){sampled|=e.samples>=3;eligible|=e.samples>=3&&!e.invalid&&e.error<=s.spatial_limit;result.best_error=std::min(result.best_error,e.error);}result.sampled+=sampled;result.eligible+=eligible;}});return result;}
+SpatialProgress spatial_progress()noexcept{SpatialProgress result;safe([&]{auto& s=state();double allowed=0,total=0;for(const auto& [key,model]:s.sensitivity){if(!s.training_models.contains(model->id))continue;++result.models;result.probes+=model->probes;bool sampled=false,eligible=false;for(unsigned bin=0;bin<256;++bin){const auto& e=model->table.entries[bin];const bool fresh=s.current_frame>=e.last_frame&&s.current_frame-e.last_frame<=600;sampled|=e.samples>=3&&fresh;const bool pass=e.samples>=3&&fresh&&!e.invalid&&e.error<=s.spatial_limit*std::clamp(s.training_recipe.edge_threshold,0.f,1.f);eligible|=pass;total+=model->observed_tiles[bin];if(pass)allowed+=model->observed_tiles[bin];result.best_error=std::min(result.best_error,e.error);}result.sampled+=sampled;result.eligible+=eligible;}result.eligible_fraction=total?allowed/total:0;});return result;}
 void request_spatial_diagnostics()noexcept{safe([&]{state().spatial_capture_requested=true;});}
-std::array<std::uint64_t,3> control_allocation_bytes()noexcept{std::array<std::uint64_t,3> result{};safe([&]{for(const auto& control:state().controls){const auto bytes=control->allocation_bytes();for(unsigned i=0;i<3;++i)result[i]+=bytes[i];}for(const auto& [device,pool]:state().probe_pools){result[0]+=pool->capacity()*2+sizeof(SpatialProbeGpu::Observation);result[2]+=sizeof(SpatialProbeGpu::Observation);}});return result;}
+std::array<std::uint64_t,3> control_allocation_bytes()noexcept{std::array<std::uint64_t,3> result{};safe([&]{for(const auto& control:state().controls){const auto bytes=control->allocation_bytes();for(unsigned i=0;i<3;++i)result[i]+=bytes[i];}for(const auto& [device,pool]:state().probe_pools){const auto bytes=pool->allocation_bytes();for(unsigned i=0;i<3;++i)result[i]+=bytes[i];}});return result;}
 std::string spatial_snapshot()noexcept{
     try{std::vector<GpuControl::SpatialReadback> candidates;std::uint64_t selected{};{std::lock_guard lock(state().mutex);selected=state().selected_pipeline;for(const auto& control:state().controls)if(auto map=control->spatial_readback())candidates.push_back(std::move(*map));}
         std::sort(candidates.begin(),candidates.end(),[&](const auto& a,const auto& b){const bool ap=a.pipeline==selected,bp=b.pipeline==selected;return ap!=bp?ap:a.frame>b.frame;});
         for(const auto& capture:candidates){std::vector<GpuControl::SpatialTile> tiles;if(!capture.read(tiles))continue;
             nlohmann::json values=nlohmann::json::array();unsigned unknown=0,coarse=0;
-            for(const auto& tile:tiles){const bool valid=tile.key==capture.key&&tile.frame==capture.frame&&tile.mode<=3&&std::isfinite(tile.importance)&&std::isfinite(tile.confidence)&&tile.confidence>=0&&tile.confidence<=1;
+            for(const auto& tile:tiles){const bool valid=tile.key==capture.key&&tile.frame==capture.frame&&tile.mode<=15&&std::isfinite(tile.importance)&&std::isfinite(tile.confidence)&&tile.confidence>=0&&tile.confidence<=1;
                 const bool confident=valid&&tile.confidence>0;unknown+=!confident;coarse+=confident&&tile.mode!=0;
                 values.push_back({valid?tile.importance:1000.f,confident?tile.mode:0u,confident?tile.confidence:0.f});}
-            return nlohmann::json{{"schema",1},{"coordinate_space",capture.screen_coordinates?"backbuffer_texel":"pass_texel"},{"final_screen_correspondence",capture.screen_coordinates},{"center_priority",capture.center_priority},{"quality_certificate",false},{"pipeline",capture.pipeline},{"binding_key",capture.key},{"frame",capture.frame},{"queue",capture.queue},{"width",capture.width},{"height",capture.height},{"tile_width",capture.tile_width},{"tile_height",capture.tile_height},{"tiles_x",(capture.width+capture.tile_width-1)/capture.tile_width},{"tiles_y",(capture.height+capture.tile_height-1)/capture.tile_height},{"edge_threshold",capture.threshold},{"unknown_tiles",unknown},{"coarse_tiles",coarse},{"layout","importance_mode_confidence"},{"tiles",std::move(values)}}.dump();
+            return nlohmann::json{{"schema",1},{"coordinate_space",capture.screen_coordinates?"backbuffer_texel":"pass_texel"},{"final_screen_correspondence",capture.screen_coordinates},{"center_priority",capture.center_priority},{"quality_certificate",false},{"pipeline",capture.pipeline},{"binding_key",capture.key},{"frame",capture.frame},{"queue",capture.queue},{"width",capture.width},{"height",capture.height},{"tile_width",capture.tile_width},{"tile_height",capture.tile_height},{"tiles_x",(capture.width+capture.tile_width-1)/capture.tile_width},{"tiles_y",(capture.height+capture.tile_height-1)/capture.tile_height},{"value_kind",capture.learned?"measured_transform_error_bound":"input_detail_heuristic"},{"rate",{capture.x_rate,capture.y_rate}},{"mip_steps",capture.mip_steps},{"sample_percent",capture.sample_percent},{"policy_budget_fraction",capture.threshold},{"edge_threshold",capture.learned?capture.local_error_limit:capture.threshold},{"unknown_tiles",unknown},{"coarse_tiles",coarse},{"layout","importance_mode_confidence"},{"tiles",std::move(values)}}.dump();
         }
     }catch(...){}return {};
 }
@@ -445,16 +462,21 @@ std::vector<GpuControl::ExecutionReadback> capture_execution(ID3D12CommandQueue*
 }
 std::uint64_t binding_evidence_revision()noexcept{std::uint64_t result{};safe([&]{result=state().binding_evidence.revision();});return result;}
 bool seal_binding_evidence(std::uint64_t policy)noexcept{bool result=false;safe([&]{result=state().binding_evidence.seal(policy);});return result;}
-void reset_binding_evidence()noexcept{safe([&]{state().binding_evidence.clear();++state().sensitivity_generation;state().sensitivity.clear();state().training_models.clear();});}
+void reset_binding_evidence()noexcept{safe([&]{state().binding_evidence.clear();state().approved_policy=0;++state().sensitivity_generation;state().sensitivity.clear();state().training_models.clear();});}
 void center_priority(bool enabled)noexcept{safe([&]{state().center_priority=enabled;});}
 void presentation_surface(IDXGISwapChain* swap)noexcept{try{
     std::vector<Ptr<ID3D12Resource>> buffers;DXGI_SWAP_CHAIN_DESC desc{};
     if(swap&&SUCCEEDED(swap->GetDesc(&desc))&&desc.BufferCount<=16){mirror::InternalCall internal;for(UINT i=0;i<desc.BufferCount;++i){Ptr<ID3D12Resource> buffer;if(SUCCEEDED(swap->GetBuffer(i,IID_PPV_ARGS(&buffer))))buffers.push_back(std::move(buffer));}}
-    safe([&]{auto& s=state();s.presentation_resources.clear();for(const auto& buffer:buffers)if(const auto id=resource_identity(buffer.Get()))s.presentation_resources.insert(id);});
+    safe([&]{auto& s=state();s.surface_width=desc.BufferDesc.Width;s.surface_height=desc.BufferDesc.Height;s.surface_format=desc.BufferDesc.Format;s.presentation_resources.clear();for(const auto& buffer:buffers)if(const auto id=resource_identity(buffer.Get()))s.presentation_resources.insert(id);});
 }catch(...){safe([&]{state().presentation_resources.clear();});}
 }
 void require_presentation_queue(ID3D12CommandQueue* queue)noexcept{Ptr<ID3D12CommandQueue> next=queue;safe([&]{state().required_queue.Swap(next);});}
-void present_frame(std::uint64_t frame)noexcept{state().current_frame.store(frame,std::memory_order_relaxed);}
+void present_frame(std::uint64_t frame,std::uint64_t qpc)noexcept{auto& s=state();const auto previous=s.current_frame.exchange(frame,std::memory_order_relaxed);const auto approved=s.approved_policy.load(std::memory_order_relaxed);const bool active=approved&&previous<s.approved_until.load(std::memory_order_relaxed)&&(s.approved_submission_frame.load(std::memory_order_relaxed)==previous||(s.cpu_optimize.load(std::memory_order_relaxed)&&s.current_bundle.load(std::memory_order_relaxed)==approved));
+    ++s.activity_frames;if(active)++s.activity_approved_frames;if(qpc){const auto last=s.activity_last_qpc.exchange(qpc);if(last&&qpc>=last){s.activity_ticks+=qpc-last;if(active)s.activity_approved_ticks+=qpc-last;}}}
+void reset_activity_counters()noexcept{auto& s=state();s.activity_frames=s.activity_approved_frames=s.activity_ticks=s.activity_approved_ticks=s.activity_last_qpc=0;s.approved_policy=0;}
+std::uint64_t active_approved_policy()noexcept{auto& s=state();const auto id=s.approved_policy.load();return id&&s.current_bundle.load()==id&&s.current_frame.load()<s.approved_until.load()?id:0;}
+void approve_policy(std::uint64_t policy,std::uint64_t until)noexcept{auto& s=state();s.approved_until=until;s.approved_policy=policy;}
+std::array<std::uint64_t,4> activity_counters()noexcept{auto& s=state();return {s.activity_frames.load(),s.activity_approved_frames.load(),s.activity_ticks.load(),s.activity_approved_ticks.load()};}
 bool restoration_ready()noexcept{bool ready=false;safe([&]{const auto& s=state();if(s.faults||!s.bundle.compute.empty()||s.x_rate!=1||s.y_rate!=1||s.comparison_taps||s.zero_factor||s.mip_steps)return;
     ready=std::all_of(s.controls.begin(),s.controls.end(),[](const auto& control){return SUCCEEDED(control->device()->GetDeviceRemovedReason())&&control->ready();});});return ready;}
 ConnectionCoverage connection_coverage()noexcept{ConnectionCoverage result;safe([&]{const auto& s=state();result={s.roots.size(),s.pipelines.size(),s.dispatch_declines[4]};});return result;}
@@ -467,7 +489,7 @@ void intercept_cpu_snapshot(std::ostream& out){const auto c=arc::InterceptCpuMet
 }
 CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities result;safe([&]{const auto& s=state();if(s.faults||!s.selected_pipeline)return;
     for(const auto& [native,p]:s.pipelines){(void)native;if(p->id!=s.selected_pipeline||!p->variant)continue;const auto& c=p->variant->contract;
-        result={p->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0,c.mip_samples!=0,c.sample_loops!=0};break;}
+        result={p->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0&&(!s.spatial_learning||p->variant->probe_pipeline),c.mip_samples!=0,c.sample_loops!=0};break;}
 });return result;}
 std::vector<WorkCandidate> candidate_catalog()noexcept{
     // Profiling has a separate lock; never acquire it under the submission lock.
@@ -491,7 +513,7 @@ std::vector<WorkCandidate> candidate_catalog()noexcept{
             const auto p=s.pipelines.find(cost.pipeline);
             if(p==s.pipelines.end()||!p->second->variant||p->second->profile_id!=cost.pipeline_identity||!cost.present_windows||!std::isfinite(cost.total_gpu_ms)||cost.total_gpu_ms<=0)continue;
             const auto& c=p->second->variant->contract;
-            result.push_back({{p->second->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0,c.mip_samples!=0,c.sample_loops!=0},cost.total_gpu_ms/cost.present_windows,cost.session});
+            result.push_back({{p->second->id,true,c.comparison_filter_groups!=0,c.zero_factor_regions!=0,c.edge_input_mask!=0&&(!s.spatial_learning||p->second->variant->probe_pipeline),c.mip_samples!=0,c.sample_loops!=0},cost.total_gpu_ms/cost.present_windows,cost.session});
         }
         std::sort(result.begin(),result.end(),[](const auto& a,const auto& b){return a.gpu_ms_per_window!=b.gpu_ms_per_window?a.gpu_ms_per_window>b.gpu_ms_per_window:a.capabilities.pipeline<b.capabilities.pipeline;});
         if(result.size()>arc::PolicyBundle::capacity)result.resize(arc::PolicyBundle::capacity);
@@ -509,7 +531,7 @@ bool configure_bundle(const arc::PolicyBundle& bundle,bool apply,std::uint64_t c
         }
         auto prepared=apply?bundle:arc::PolicyBundle{}; // allocation failure must leave the old policy intact
         auto targets=s.record_targets;if(!bundle.compute.empty()){targets.clear();for(const auto& p:bundle.compute)targets.push_back(p.pipeline);}
-        s.bundle=std::move(prepared);s.learning_bundle=apply?arc::PolicyBundle{}:bundle;s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=!bundle.compute.empty()||!apply;s.calibration_epoch=calibration_epoch;
+        s.bundle=std::move(prepared);s.current_bundle=s.bundle.id;s.learning_bundle=apply?arc::PolicyBundle{}:bundle;s.record_targets=std::move(targets);s.bundle_mode=true;s.heaviest_only=false;s.instrumentation=!bundle.compute.empty()||!apply;s.calibration_epoch=calibration_epoch;
         s.policy_valid_until=valid_until_frame;
         if(s.cpu_optimize!=(apply&&bundle.cpu_state_cache)){++s.cpu_generation;for(auto& view:s.cpu_views)view.address=0;s.cpu_optimize=apply&&bundle.cpu_state_cache;}
         if(calibration_epoch){s.calibration_measurement_epoch=calibration_epoch;s.calibration_expected=0;}
@@ -603,7 +625,7 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
     if(accepted&&command!=L"mip-half"&&command!=L"mip1"&&command!=L"mip2")s.mip_steps=0;
-    if(accepted){++s.policy_epoch;s.policy_valid_until=0;s.bundle_mode=false;s.bundle={};s.calibration_epoch=0;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
+    if(accepted){++s.policy_epoch;s.policy_valid_until=0;s.bundle_mode=false;s.bundle={};s.current_bundle=0;s.calibration_epoch=0;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
 });return accepted;}
 DescriptorWrite descriptor_write()noexcept{static const auto sample=register_cpu_sample("descriptor_write_lock");CpuMeter meter(sample);DescriptorWrite result;if(enabled())result.lock=std::unique_lock(state().descriptor_mutex);meter.locked();return result;}
@@ -793,7 +815,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 for(auto id:use.heaps){const auto h=s.heaps_by_id.find(id);if(h!=s.heaps_by_id.end())heaps.push_back(h->second);}
                 if(s.sample_state&&use.variant->id==s.selected_pipeline){mirror::InternalCall internal;std::map<std::pair<unsigned,unsigned>,UniformMemory> views;
                     FrameStateSample sample;sample.pipeline=use.variant->id;sample.submission=s.last_frame_state.submission+1;sample.keys=use.variant->state_reads;
-                    for(const auto& key:sample.keys){const auto value=read_uniform_memory(use,heaps,views,key[0],key[1],key[2]);sample.words.push_back(value.words);sample.valid.push_back(value.valid_mask);}s.last_frame_state=std::move(sample);
+                    for(unsigned index=0;index<sample.keys.size();++index){const auto& key=sample.keys[index];const auto value=read_uniform_memory(use,heaps,views,key[0],key[1],key[2]);sample.words.push_back(value.words);sample.valid.push_back(value.valid_mask&use.variant->state_masks[index]);}s.last_frame_state=std::move(sample);
                 }
                 auto prove=[&]{
                     auto& stats=*use.variant;const auto started=std::chrono::steady_clock::now();++stats.uniform_attempts;
@@ -815,6 +837,11 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                     for(const auto& input:admitted.inputs)if(input.allocation.description.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D)views.push_back(input.view);
                     for(const auto& output:admitted.outputs)views.push_back(output.view);
                     if(!s.binding_evidence.observe(learning?s.learning_bundle.id:s.bundle.id,use.variant->id,std::move(views))){admitted.admitted=false;admitted.reason="policy_texture_generation_changed";}
+                }
+                if(admitted.admitted&&requested&&!use.variant->state_reads.empty()&&use.variant->scene_frame!=s.current_frame){
+                    mirror::InternalCall internal;auto& variant=*use.variant;std::map<std::pair<unsigned,unsigned>,UniformMemory> views;arc::UniformChange change;
+                    for(unsigned index=0;index<variant.state_reads.size();++index){const auto& key=variant.state_reads[index];auto words=read_uniform_memory(use,heaps,views,key[0],key[1],key[2]);words.valid_mask&=variant.state_masks[index];arc::accumulate_uniform_change(variant.scene_words[index],words,change);variant.scene_words[index]=words;}
+                    variant.scene_frame=s.current_frame;if(change.changed()){s.binding_evidence.retire_pipeline(variant.id);s.approved_policy=0;admitted.admitted=false;admitted.reason="large_readable_uniform_change";LARGE_INTEGER timestamp{};QueryPerformanceCounter(&timestamp);if(s.scene_event_count<s.scene_events.size())s.scene_events[s.scene_event_count++]={s.current_frame.load(),variant.id,change.large,std::uint64_t(timestamp.QuadPart)};else ++s.scene_events_dropped;}
                 }
                 auto& v=*use.variant;++v.attempts;v.admitted+=admitted.admitted;v.last_reason=admitted.reason;v.binding_class=admitted.binding_class;v.binding_register=admitted.binding_register;v.binding_space=admitted.binding_space;
                 if(s.history.size()<256||s.history.contains(v.id))s.history[v.id]=v;
@@ -839,6 +866,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                             while(UINT64((admitted.width+values[n].spatial_tile_width-1)/values[n].spatial_tile_width)*((admitted.height+values[n].spatial_tile_height-1)/values[n].spatial_tile_height)>8192){values[n].spatial_tile_width*=2;values[n].spatial_tile_height*=2;}
                             if(s.spatial_learning){
                                 auto context=s.sensitivity.find(model_key);
+                                if(context==s.sensitivity.end()&&s.sensitivity.size()>=128){const auto oldest=std::min_element(s.sensitivity.begin(),s.sensitivity.end(),[](const auto& a,const auto& b){return a.second->last_seen<b.second->last_seen;});if(oldest!=s.sensitivity.end()&&frame>oldest->second->last_seen+600)s.sensitivity.erase(oldest);}
                                 if(context==s.sensitivity.end()&&s.sensitivity.size()<128)context=s.sensitivity.emplace(std::move(model_key),std::make_shared<SensitivityContext>(s.next++,s.sensitivity_generation)).first;
                                 if(context!=s.sensitivity.end()){
                                     auto model=context->second;model->last_seen=frame;values[n].model_key=model->id;values[n].model_limit=s.spatial_limit*std::clamp(setting.edge_threshold,0.f,1.f);values[n].spatial_flags|=32;c.control->model(n,model->table);
@@ -882,7 +910,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
     for(auto& pending:staged)try{
         if(invalid_bindings||s.faults){pending.values={};for(auto& pool:pending.pools){pool->cancel_unsubmitted();s.pending_probes.erase(pool.get());}pending.pools.clear();}
         mirror::InternalCall internal;auto* helper=pending.control->prepare(queue,{pending.values.data(),pending.count},{pending.probes.data(),pending.count});
-        if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;
+        if(helper){queue->ExecuteCommandLists(1,&helper);if(s.bundle.id&&s.bundle.id==s.approved_policy&&s.current_frame<s.approved_until&&!s.calibration_epoch&&std::any_of(pending.values.begin(),pending.values.begin()+pending.count,[](const auto& value){return value.x>1||value.y>1||value.comparison_taps||value.zero_factor||value.mip_steps||value.sample_percent!=100;}))s.approved_submission_frame=s.current_frame.load();++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;
             if(s.calibration_epoch)for(const auto& value:pending.values)if(value.calibration==s.calibration_epoch)++s.calibration_expected;
         }else{++s.neutral_submissions;for(auto& pool:pending.pools){pool->cancel_unsubmitted();s.pending_probes.erase(pool.get());}pending.pools.clear();}
     }catch(const std::exception& e){fault(e.what());}catch(...){fault("control upload failed");}
@@ -907,12 +935,13 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
         for(unsigned i=0;i<used;++i)try{controls[i]->submitted(queue);}catch(const std::exception& e){fault(e.what());}}
     return true;
 }
+bool control_costs_enabled()noexcept{return enabled()&&state().measure_control;}
 void collect()noexcept{
     if(!enabled())return;bool need_costs=false;
-    safe([&]{auto& s=state();mirror::InternalCall internal;for(auto& control:s.controls){control->collect_timing();control->release_completed_queue();}for(auto& [device,pool]:s.probe_pools)if(auto observation=pool->collect()){
+    safe([&]{auto& s=state();mirror::InternalCall internal;for(auto& control:s.controls){control->collect_timing();control->release_completed_queue();}for(unsigned i=0;i<s.scene_event_count;++i)event({{"phase","uniform_scene_change"},{"frame",s.scene_events[i][0]},{"pipeline",s.scene_events[i][1]},{"changed_components",s.scene_events[i][2]},{"event_qpc",s.scene_events[i][3]},{"meaning","readable_float_state_proxy_not_semantic_visibility"}});s.scene_event_count=0;for(auto& [device,pool]:s.probe_pools)if(auto observation=pool->collect()){
         const auto pending=s.pending_probes.find(pool.get());if(pending==s.pending_probes.end())continue;auto evidence=pending->second;s.pending_probes.erase(pending);auto& context=*evidence.context;
         if(context.generation!=s.sensitivity_generation||observation->epoch!=evidence.epoch||observation->frame!=evidence.frame||observation->errors[1])continue;
-        for(unsigned bin=0;bin<256;++bin){const auto& b=observation->bins[bin];if(b.valid_tiles||b.invalid_tiles)context.learner.observe(context.id,evidence.frame,bin,std::bit_cast<float>(b.error_bits),evidence.noise,b.invalid_tiles==0);}
+        for(unsigned bin=0;bin<256;++bin){const auto& b=observation->bins[bin];context.observed_tiles[bin]=context.observed_tiles[bin]*.8+b.valid_tiles+b.invalid_tiles;if(b.valid_tiles||b.invalid_tiles){const auto error=std::bit_cast<float>(b.error_bits);const bool valid=b.invalid_tiles==0&&std::isfinite(error)&&error>=0;context.learner.observe(context.id,evidence.frame,bin,valid?error:0.f,evidence.noise,valid);}}
         ++context.probes;context.table=context.learner.snapshot();event({{"phase","spatial_probe"},{"model",context.id},{"frame",evidence.frame},{"epoch",evidence.epoch},{"neutral",evidence.noise},{"unknown_tiles",observation->errors[0]},{"probes",context.probes}});
     }need_costs=s.heaviest_only&&(!s.selected_pipeline||s.cost_prepared!=s.prepared);});
     if(!need_costs)return;

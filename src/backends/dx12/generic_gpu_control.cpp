@@ -201,7 +201,7 @@ void GpuControl::submitted(ID3D12CommandQueue* queue){
     }
     const auto value=++sequence_;
     if(FAILED(queue->Signal(fence_.Get(),value))){fault_=true;throw std::runtime_error("GPU control retirement signal failed");}
-    if(map){const auto& control=spatial_values_[pending_];latest_spatial_=SpatialReadback{marker_leases_[pending_],spatial_readback_,fence_,value,UINT64(pending_)*spatial_page_bytes*2+(control.spatial_flags&1)*spatial_page_bytes,control.reserved,control.spatial_key,reinterpret_cast<UINT64>(queue),control.width,control.height,control.spatial_tile_width,control.spatial_tile_height,control.spatial_frame,control.edge_threshold,(control.spatial_flags&4)!=0,control.spatial_center>0};}
+    if(map){const auto& control=spatial_values_[pending_];latest_spatial_=SpatialReadback{marker_leases_[pending_],spatial_readback_,fence_,value,UINT64(pending_)*spatial_page_bytes*2+(control.spatial_flags&1)*spatial_page_bytes,control.reserved,control.spatial_key,reinterpret_cast<UINT64>(queue),control.width,control.height,control.spatial_tile_width,control.spatial_tile_height,control.spatial_frame,control.edge_threshold,(control.spatial_flags&4)!=0,control.spatial_center>0,(control.spatial_flags&32)!=0,control.model_limit,control.x,control.y,control.mip_steps,control.sample_percent};}
     if(pending_>=0){retired_[pending_]=value;if(timestamps_){frequencies_[pending_]=pending_frequency_;unread_[pending_]=true;}}pending_=-1;
 }
 void GpuControl::collect_timing()noexcept{

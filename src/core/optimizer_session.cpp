@@ -90,7 +90,18 @@ SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
         e.evidence_age_frames<config_.max_evidence_samples&&
         (!positive(e.original_frame_ms)||e.original_frame_ms-e.candidate_frame_ms>std::max({config_.min_gain_ms,e.original_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms}))&&
         gain>std::max({config_.min_gain_ms,e.baseline_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms});
-    if(!accept){++state_.rejected;state_.phase=SessionPhase::Settle;settle_=config_.settle_samples;return {};}
+    if(!accept){
+        ++state_.rejected;
+        // A failed new proposal does not revoke a still-valid incumbent. But a
+        // confirmed image defect in that incumbent itself invalidates its lease
+        // immediately, even though failed quality skipped the timing experiment.
+        const bool known_defect=!exact&&e.matched_reference&&(!config_.require_gpu_execution||e.gpu_execution_confirmed)&&
+            ((nonnegative(e.ssim)&&e.ssim<config_.min_ssim)||(nonnegative(e.mean_error)&&e.mean_error>config_.max_mean_error)||
+             (nonnegative(e.tile_p99)&&e.tile_p99>config_.max_tile_p99)||(config_.require_local_temporal_quality&&
+             ((nonnegative(e.worst_tile)&&e.worst_tile>config_.max_worst_tile)||(e.temporal_reference_matched&&nonnegative(e.temporal_p99)&&e.temporal_p99>config_.max_temporal_p99))));
+        if(id==state_.active_action&&generation==active_generation_&&known_defect){restore_pending_=true;state_.phase=SessionPhase::Recover;++state_.restores;return {SessionRequestKind::Restore,id};}
+        state_.phase=SessionPhase::Settle;settle_=config_.settle_samples;return {};
+    }
     if(positive(e.original_frame_ms))original_reference_ms_=e.original_frame_ms;
     else if(!state_.active_action)original_reference_ms_=e.baseline_frame_ms;
     // A replacement is a whole configuration. Adding improvements measured

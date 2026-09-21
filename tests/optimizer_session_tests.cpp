@@ -1,3 +1,4 @@
+#include "arc/uniform_scene_guard.hpp"
 #include "arc/optimizer_session.hpp"
 #include "arc/optimizer_policy.hpp"
 #include "arc/exact_state_cache.hpp"
@@ -8,6 +9,11 @@
 #include <iostream>
 
 int main(){
+    {struct Words {std::array<unsigned,4> words;unsigned valid_mask;};Words a{{std::bit_cast<unsigned>(.1f),std::bit_cast<unsigned>(.2f),std::bit_cast<unsigned>(1.f),0},7},b=a;
+    arc::UniformChange delta;b.words[0]=std::bit_cast<unsigned>(.105f);arc::accumulate_uniform_change(a,b,delta);assert(!delta.changed());
+    b.words[0]=std::bit_cast<unsigned>(-.3f);b.words[1]=std::bit_cast<unsigned>(.8f);delta={};arc::accumulate_uniform_change(a,b,delta);assert(delta.changed());
+    b.valid_mask=0;delta={};arc::accumulate_uniform_change(a,b,delta);assert(!delta.changed());}
+
     {arc::OptimizerSessionConfig c;c.warmup_samples=1;c.settle_samples=0;c.hold_samples=0;c.maximize_fps=true;c.require_local_temporal_quality=true;
     arc::OptimizerSession session(c);session.candidates({{31,31,0,.1,true,4,false,false,true}});
     assert(session.frame(16).action==31);
@@ -21,6 +27,13 @@ int main(){
     arc::OptimizerSession renew(c);renew.candidates({{31,31,0,.1,true,4,false,false,true}});renew.frame(16);e.evidence_age_frames=40;
     assert(renew.evidence(e).kind==arc::SessionRequestKind::Apply);renew.applied(31,true);assert(renew.revalidate().action==31);
     e.matched_reference=false;assert(renew.evidence(e).kind==arc::SessionRequestKind::None);assert(renew.snapshot().active_action==31);
+    assert(renew.revalidate().action==31);e.matched_reference=true;e.worst_tile=.2;e.complete=false;e.baseline_noise_ms=std::numeric_limits<double>::quiet_NaN();
+    assert(renew.evidence(e).kind==arc::SessionRequestKind::Restore);renew.restored(true);assert(renew.snapshot().active_action==0);
+    // A different candidate with the same defect must preserve the winner.
+    arc::OptimizerSession separate(c);separate.candidates({{31,31,0,.1,true,4,false,false,true}});separate.frame(16);e.complete=true;e.baseline_noise_ms=.05;e.worst_tile=.1;
+    assert(separate.evidence(e).kind==arc::SessionRequestKind::Apply);separate.applied(31,true);
+    separate.candidates({{31,31,0,.1,true,4,false,false,true},{32,32,0,.1,true,4,false,false,true}});assert(separate.frame(12).action==32);e.action=e.generation=32;e.worst_tile=.2;
+    assert(separate.evidence(e).kind==arc::SessionRequestKind::None);assert(separate.snapshot().active_action==31);
     }
     {const double flat[]{10,10,10,10},faster[]{8,8,8,8},noisy[]{6,10,6,10};
     auto a=arc::timing_window(flat),b=arc::timing_window(faster),c=arc::timing_window(noisy);

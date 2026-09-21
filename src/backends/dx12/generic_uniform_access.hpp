@@ -15,6 +15,7 @@ using UniformReader=std::function<UniformWords(unsigned range_id,unsigned shader
 // Optional motion-state telemetry, never an admission proof. Only literal
 // float CBV loads with statically known handles; no names/layout allowlists.
 std::vector<std::array<unsigned,3>> floating_uniform_reads(std::string_view);
+std::vector<std::array<unsigned,4>> floating_uniform_components(std::string_view);
 struct UsedRange {bool all{};std::set<unsigned> indices;};
 struct ResourceUsage {
     bool complete{};

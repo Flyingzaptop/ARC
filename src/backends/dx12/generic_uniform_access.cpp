@@ -61,6 +61,19 @@ std::vector<std::array<unsigned,3>> floating_uniform_reads(std::string_view inpu
         }result.assign(reads.begin(),reads.end());
     }catch(...){result.clear();}return result;
 }
+std::vector<std::array<unsigned,4>> floating_uniform_components(std::string_view input){
+    std::vector<std::array<unsigned,4>> result;if(input.size()>8*1024*1024)return result;
+    try{std::map<std::string,std::pair<unsigned,unsigned>> handles;std::map<std::string,std::array<unsigned,3>> loads;std::map<std::array<unsigned,3>,unsigned> masks;
+        const std::regex handle(R"(^(%[A-Za-z0-9_.$]+) = call %dx.types.Handle @dx.op.createHandle\(i32 57, i8 2, i32 ([0-9]+), i32 ([0-9]+), i1 (?:true|false)\).*$)");
+        const std::regex load(R"(^(%[A-Za-z0-9_.$]+) = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32\(i32 59, %dx.types.Handle (%[A-Za-z0-9_.$]+), i32 ([0-9]+)\).*$)");
+        const std::regex extract(R"(^%[A-Za-z0-9_.$]+ = extractvalue %dx.types.CBufRet.f32 (%[A-Za-z0-9_.$]+), ([0-3]).*$)");
+        std::istringstream source{std::string(input)};std::string line;std::smatch match;
+        while(std::getline(source,line)){line=trim(line);if(std::regex_match(line,match,handle))handles[match[1]]={integer(match[2]),integer(match[3])};
+            else if(std::regex_match(line,match,load)){const auto h=handles.find(match[2]);const auto row=integer(match[3]);if(h!=handles.end()&&row<=UINT32_MAX/16&&loads.size()<512)loads[match[1]]={h->second.first,h->second.second,row*16};}
+            else if(std::regex_match(line,match,extract)){const auto load=loads.find(match[1]);if(load!=loads.end()&&(masks.contains(load->second)||masks.size()<64))masks[load->second]|=1u<<integer(match[2]);}}
+        for(const auto& [key,mask]:masks)result.push_back({key[0],key[1],key[2],mask});
+    }catch(...){result.clear();}return result;
+}
 std::shared_ptr<const UniformAccessProgram> UniformAccessProgram::compile(std::string_view input){
     try{
         if(input.size()>8*1024*1024)return {};auto impl=std::make_shared<Impl>();impl->blocks.emplace_back();

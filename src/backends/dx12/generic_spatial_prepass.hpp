@@ -10,7 +10,7 @@ inline std::string compact_spatial_source(const Transform& contract){
     for(const auto& r:contract.resources)if(r.resource_class==0&&r.range_id<31&&(contract.edge_input_mask&(1u<<r.range_id)))
         out<<"Texture2D<float4> input"<<r.range_id<<":register(t"<<r.shader_register<<",space"<<r.space<<");\n";
     out<<R"(
-groupshared float4 minimums[64],maximums[64],sums[64];
+groupshared float4 minimums[64],maximums[64],sums[64],squares[64],gradients[64];
 groupshared uint counts[64],bad[64];
 [numthreads(64,1,1)]void MainCS(uint3 group:SV_GroupID,uint lane:SV_GroupIndex){
     uint width=control[0].z,height=control[0].w,capacity=control[5].x,frame=control[5].y;
@@ -23,23 +23,24 @@ groupshared uint counts[64],bad[64];
     uint2 tiles=(uint2(width,height)+tile-1)/tile;
     uint index=group.y*tiles.x+group.x;
     if(group.x>=tiles.x||group.y>=tiles.y||index>=capacity)return;
-    float error=0,feature=0;bool valid=true;uint sources=0;
+    float error=0,feature=0,variation=0;bool valid=true;uint sources=0;
 )";
     for(const auto& r:contract.resources)if(r.resource_class==0&&r.range_id<31&&(contract.edge_input_mask&(1u<<r.range_id))){
         out<<"if(mask & "<<(1u<<r.range_id)<<"u){\n"
-          <<"float4 lo=3.402823466e+38,hi=-3.402823466e+38,sum=0;uint count=0,invalid=0;\n"
-          <<"for(uint i=lane;i<tile.x*tile.y;i+=64){uint2 p=group.xy*tile+uint2(i%tile.x,i/tile.x);if(p.x<width&&p.y<height){float4 v=input"<<r.range_id<<".Load(int3(p,0));if(!all(isfinite(v)))invalid=1;lo=min(lo,v);hi=max(hi,v);sum+=v;++count;}}\n"
-          <<R"(minimums[lane]=lo;maximums[lane]=hi;sums[lane]=sum;counts[lane]=count;bad[lane]=invalid;
+          <<"float4 lo=3.402823466e+38,hi=-3.402823466e+38,sum=0,squared=0,gradient=0;uint count=0,invalid=0;\n"
+          <<"for(uint i=lane;i<tile.x*tile.y;i+=64){uint2 p=group.xy*tile+uint2(i%tile.x,i/tile.x);if(p.x<width&&p.y<height){float4 v=input"<<r.range_id<<".Load(int3(p,0));if(!all(isfinite(v)))invalid=1;lo=min(lo,v);hi=max(hi,v);sum+=v;squared+=v*v;uint2 neighbor=p+uint2(i&1,(i&1)^1);neighbor=min(neighbor,min(uint2(width,height)-1,(group.xy+1)*tile-1));float4 adjacent=input"<<r.range_id<<".Load(int3(neighbor,0));if(!all(isfinite(adjacent)))invalid=1;gradient+=abs(v-adjacent);++count;}}\n"
+          <<R"(minimums[lane]=lo;maximums[lane]=hi;sums[lane]=sum;squares[lane]=squared;gradients[lane]=gradient;counts[lane]=count;bad[lane]=invalid;
 GroupMemoryBarrierWithGroupSync();
-for(uint stride=32;stride;stride>>=1){if(lane<stride){minimums[lane]=min(minimums[lane],minimums[lane+stride]);maximums[lane]=max(maximums[lane],maximums[lane+stride]);sums[lane]+=sums[lane+stride];counts[lane]+=counts[lane+stride];bad[lane]|=bad[lane+stride];}GroupMemoryBarrierWithGroupSync();}
+for(uint stride=32;stride;stride>>=1){if(lane<stride){minimums[lane]=min(minimums[lane],minimums[lane+stride]);maximums[lane]=max(maximums[lane],maximums[lane+stride]);sums[lane]+=sums[lane+stride];squares[lane]+=squares[lane+stride];gradients[lane]+=gradients[lane+stride];counts[lane]+=counts[lane+stride];bad[lane]|=bad[lane+stride];}GroupMemoryBarrierWithGroupSync();}
 if(lane==0){float4 scale=max(.01,max(abs(minimums[0]),abs(maximums[0])));float4 range=(maximums[0]-minimums[0])/scale;
-error=max(error,max(max(range.x,range.y),max(range.z,range.w)));feature+=dot(sums[0]/max(1,counts[0]),float4(.23,.27,.31,.19));valid=valid&&!bad[0]&&counts[0]>0;++sources;}
+error=max(error,max(max(range.x,range.y),max(range.z,range.w)));float4 mean=sums[0]/max(1,counts[0]);float4 sigma=sqrt(max(0,squares[0]/max(1,counts[0])-mean*mean))/scale;float4 grad=gradients[0]/max(1,counts[0])/scale;float structure=dot(sigma+grad,float4(.25,.25,.25,.25));variation=max(variation,structure);feature+=dot(mean,float4(.23,.27,.31,.19))+structure*.03125;valid=valid&&!bad[0]&&counts[0]>0;++sources;}
 GroupMemoryBarrierWithGroupSync();
 }
 )";
     }
     out<<R"(
 if(lane)return;
+if(!valid||!isfinite(feature)||!isfinite(error)||!isfinite(variation)){valid=false;feature=0;error=1000;variation=0;}
 uint page=flags&1,base=32+index*32,previous=base+(page^1)*262144;
 uint4 header=map.Load4(previous),data=map.Load4(previous+16);
 uint age=frame-header.z;
@@ -56,7 +57,7 @@ bool central=asfloat(control[6].w)>0&&all(center>=.25)&&all(center<=.75);
 uint packed=0;
 if(flags&32){
     bool feature_known=confident;
-    float mean=abs(feature);uint a=min(7,(uint)(saturate(error/2)*8)),b=min(7,(uint)(saturate(mean/(1+mean))*8)),d=motion<.001?0:motion<.01?1:motion<.1?2:3;
+    float mean=abs(feature);uint a=min(7,(uint)(saturate(error/2)*8)),b=min(7,(uint)(saturate(mean/(1+mean)+variation*.5)*8)),d=motion<.001?0:motion<.01?1:motion<.1?2:3;
     uint bin=a+8*b+64*d;
     uint4 model=map.Load4(524320),entry=map.Load4(524336+bin*16);
     float bound=asfloat(entry.x),limit=asfloat(control[8].z);uint model_age=frame-entry.z;

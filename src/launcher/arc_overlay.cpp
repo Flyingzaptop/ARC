@@ -16,12 +16,13 @@ void paint(HDC dc){
     try{const auto fps=status.value("current_fps",0.0),ms=status.value("current_frame_ms",0.0);wchar_t value[128]{};swprintf_s(value,L"%.1f FPS   |   %.2f мс   |   Политика %llu",fps,ms,status.value("active_action",status.value("retained",0ull)));line(dc,38,value);
         const auto phase=status.value("phase",std::string("off"));std::wstring text=L"Измерение и проверка";
         if(phase=="holding")text=L"Принятое изменение активно";else if(phase=="limited")text=L"Подтверждённого прироста пока нет";else if(phase=="stopped"||phase=="off")text=L"Оптимизация отключена";else if(phase=="faulted")text=L"Остановлено: "+wide(status.value("reason",std::string{}));else if(phase=="inactive")text=L"Ожидание кадров";
-        line(dc,66,text,RGB(230,220,155),true);
+        line(dc,66,wide(status.value("quality_profile",std::string("balanced")))+L" · "+text,RGB(230,220,155),true);
         if(map.empty()||!map.contains("tiles")){line(dc,115,L"Карта прохода пока не получена.",RGB(175,185,195));line(dc,145,L"Неизвестные области не считаются маловажными.",RGB(175,185,195),true);}
         else{const auto nx=map.value("tiles_x",0u),ny=map.value("tiles_y",0u);const auto& tiles=map.at("tiles");
             if(!nx||!ny||std::uint64_t(nx)*ny>8192||tiles.size()!=std::uint64_t(nx)*ny)throw std::runtime_error("map dimensions");
             const auto frame=map.value("frame",0ull),current=status.value("present_samples",0ull);const auto age=current>=frame?current-frame:0;
-            line(dc,94,L"Последний снимок · проход "+std::to_wstring(map.value("pipeline",0ull))+L" · возраст "+std::to_wstring(age)+L" кадров",RGB(175,190,205),true);
+            const auto rate=map.value("rate",nlohmann::json::array({1,1}));const auto recipe=rate.is_array()&&rate.size()==2?L" · "+std::to_wstring(rate[0].get<unsigned>())+L"×"+std::to_wstring(rate[1].get<unsigned>()):std::wstring{};
+            line(dc,94,L"Последний снимок · проход "+std::to_wstring(map.value("pipeline",0ull))+L" · возраст "+std::to_wstring(age)+L" кадров"+recipe,RGB(175,190,205),true);
             std::vector<std::uint32_t> pixels;pixels.reserve(tiles.size());const auto threshold=std::max(.0001,map.value("edge_threshold",.5));
             for(const auto& tile:tiles){if(!tile.is_array()||tile.size()!=3)throw std::runtime_error("map cell");const double importance=tile[0],confidence=tile[2];const unsigned mode=tile[1];
                 std::uint32_t rgb=0x606875;if(confidence>0&&std::isfinite(importance)){const auto intensity=unsigned(std::clamp(importance/threshold,0.0,1.0)*110);rgb=mode?(0x207050u+(intensity<<8)):(0x903028u+(intensity<<16));}pixels.push_back(rgb);}
@@ -29,7 +30,7 @@ void paint(HDC dc){
             const double scale=std::min(492.0/nx,190.0/ny);const int map_width=std::max(1,int(nx*scale)),map_height=std::max(1,int(ny*scale));
             SetStretchBltMode(dc,COLORONCOLOR);StretchDIBits(dc,14+(492-map_width)/2,122+(190-map_height)/2,map_width,map_height,0,0,int(nx),int(ny),pixels.data(),&info,DIB_RGB_COLORS,SRCCOPY);
             line(dc,316,L"На снимке: зелёный — упрощение, красный — полный",RGB(205,220,205),true);
-            line(dc,339,L"Серый: нет уверенности. Карта в координатах прохода.",RGB(185,195,205),true);
+            line(dc,339,map.value("value_kind",std::string{})=="measured_transform_error_bound"?L"Ошибка преобразования; серый — нет свежего разрешения.":L"Признаки входов; серый — нет уверенности.",RGB(185,195,205),true);
             line(dc,362,map.value("final_screen_correspondence",false)?L"Координаты backbuffer; центр — приоритет, не взгляд.":L"Связь с экраном не доказана; это не карта объектов.",RGB(235,195,125),true);
         }
         line(dc,390,standalone?L"Отдельная диагностика: эксклюзивный Fullscreen":L"Клик проходит в игру · Ctrl+Alt+F10 — отключить ARC",RGB(155,175,190),true);

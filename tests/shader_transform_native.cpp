@@ -80,6 +80,7 @@ cbuffer OriginalState:register(b5,space6){float4 values[2];} RWTexture2D<float4>
 )");
     const auto state_reads=arc::dx12::shader::floating_uniform_reads(compiler.disassemble(motion_shader.Get()));
     check(state_reads==std::vector<std::array<unsigned,3>>{{0,5,0},{0,5,16}},"State telemetry must derive register and offsets from actual float loads");
+    {auto partial=compiler.compile("cbuffer State:register(b5,space6){float4 values;}RWTexture2D<float4> image:register(u0);[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){image[p.xy]=values.x+values.z;}");check(arc::dx12::shader::floating_uniform_components(compiler.disassemble(partial.Get()))==std::vector<std::array<unsigned,4>>{{0,5,0,5}},"Unused float CBV padding must not enter scene-change detection");}
     {ComPtr<ID3DBlob> legacy,errors;hr(D3DCompile(source.data(),source.size(),nullptr,nullptr,nullptr,"MainCS","cs_5_1",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&legacy,&errors));std::ofstream file(directory/"legacy-input.bin",std::ios::binary);file.write(static_cast<const char*>(legacy->GetBufferPointer()),legacy->GetBufferSize());check(bool(file),"Write independent DXBC fixture");}
     const auto neutral=arc::dx12::shader::coarse_compute(ir,1,1),coarse=arc::dx12::shader::coarse_compute(ir,2,2);
     check(neutral.admitted&&coarse.admitted,"Independent typed pixel writes should be admitted");

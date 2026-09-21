@@ -43,7 +43,7 @@ public:
         UINT64 completion{},offset{},pipeline{},key{},queue{};
         UINT width{},height{},tile_width{},tile_height{},frame{};
         float threshold{};
-        bool screen_coordinates{},center_priority{};
+        bool screen_coordinates{},center_priority{},learned{};float local_error_limit{};UINT x_rate{1},y_rate{1},mip_steps{},sample_percent{100};
         bool read(std::vector<SpatialTile>&)const noexcept;
     };
     std::optional<SpatialReadback> spatial_readback()const{return latest_spatial_;}
