@@ -1,6 +1,8 @@
 #pragma once
 // Host-only benchmark adapter. ARC receives only ordinary DX12 API traffic.
 #include <windows.h>
+#include "arc_timeline.h"
+#include "arc_async_writer.h"
 #include <chrono>
 #include <fstream>
 #include <string>
@@ -18,6 +20,7 @@ struct State {
     Clock::time_point measurement_start;
     std::wstring output;
     std::ofstream rows;
+    std::unique_ptr<AsyncWriter> writer;
     Clock::time_point frame_start,previous_start,previous_end,ready_start;
     double period_ms{},present_ms{},submit_ms{},wait_ms{},allocator_ms{};
     Api mode{},snapshot{},profile{},stop_profile{},stop_optimizer{};bool profile_requested{};
@@ -27,6 +30,7 @@ inline double ms(Clock::duration d){return std::chrono::duration<double,std::mil
 inline std::wstring env(const wchar_t* name){wchar_t value[32768]{};GetEnvironmentVariableW(name,value,32768);return value;}
 inline void initialize(){
     auto& s=state();s.output=env(L"ARC_BENCH_OUTPUT");s.enabled=!s.output.empty();if(!s.enabled)return;
+    arc::timeline::enable(env(L"ARC_BENCH_TRACE")==L"1");
     const auto frames=env(L"ARC_BENCH_FRAMES");if(!frames.empty())s.frames=std::stoul(frames);
     const auto oracle=env(L"ARC_BENCH_ORACLE_INTERVAL");if(!oracle.empty())s.oracle_interval=std::stoul(oracle);
     if(s.oracle_interval&&s.oracle_interval<300)throw std::runtime_error("Oracle capture interval must be at least 300 frames");
@@ -34,6 +38,7 @@ inline void initialize(){
     if(s.timed&&(s.measurement_seconds<1||s.measurement_seconds>60||s.initialization_seconds<0||s.initialization_seconds>120))throw std::runtime_error("Bounded benchmark durations required");
     if(s.frames<1||(!s.timed&&s.frames>3600))throw std::runtime_error("Benchmark frame count 1..3600 required in frame-count mode");
     s.rows.open(s.output+L"/frames.jsonl");if(!s.rows)throw std::runtime_error("Cannot open benchmark output");
+    s.writer.reset(new AsyncWriter(s.rows));
     const auto dll=env(L"ARC_BENCH_DLL");if(dll.empty())return;
     const auto module=LoadLibraryW(dll.c_str());if(!module)throw std::runtime_error("Cannot load ARC benchmark DLL");
     auto init=reinterpret_cast<Api>(GetProcAddress(module,"ArcInitialize"));
@@ -63,7 +68,7 @@ inline void before_frame(){auto& s=state();if(s.timed&&s.ready&&!s.measuring&&s.
 if(s.profile&&!s.profile_requested&&s.ready&&s.tick==s.warmup){
     auto argument=L"16|"+s.output+L"/gpu-profile.json";if(s.profile(&argument[0]))throw std::runtime_error("GPU profile request refused");s.profile_requested=true;
 }}
-inline void finish(){auto& s=state();s.rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){
+inline void finish(){auto& s=state();if(s.writer&&!s.writer->finish())throw std::runtime_error("Benchmark telemetry lost or failed");arc::timeline::flush(s.output+L"/cpu-timeline.json");s.rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){
     s.stop_profile(nullptr);const auto path=s.output+L"/gpu-profile.json";const auto until=GetTickCount64()+5000;
     while(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES&&GetTickCount64()<until)Sleep(10);
     if(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES)throw std::runtime_error("GPU profile publication timed out");

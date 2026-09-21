@@ -28,6 +28,8 @@ def patch(relative, changes):
     path.write_text(text, encoding="utf-8")
 
 shutil.copy2(repo / "benchmarks/cauldron/arc_benchmark.h", framework / "inc/arc_benchmark.h")
+shutil.copy2(repo / "include/arc/diagnostic_timeline.hpp", framework / "inc/arc_timeline.h")
+shutil.copy2(repo / "benchmarks/cauldron/arc_async_writer.h", framework / "inc/arc_async_writer.h")
 patch("framework/cauldron/application/main.cpp", [
     ('#include "core/win/framework_win.h"', '#include "arc_benchmark.h"\n#include "core/win/framework_win.h"'),
     ('    // Create the sample and kick it off', '    arc_bench::initialize();\n    // Create the sample and kick it off'),
@@ -37,7 +39,9 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
     ('#include <fstream>', '#include <fstream>\n#include "arc_benchmark.h"'),
     ('    void Framework::MainLoop()\n    {', '''    void Framework::MainLoop()
     {
+        arc::timeline::Scope loop_trace("main_loop");
         auto& bench=arc_bench::state();
+        arc::timeline::recorder().frame=bench.tick;
         if(bench.enabled&&bench.finished)return;
         if(bench.enabled){
             const auto now=arc_bench::Clock::now();
@@ -53,7 +57,8 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
         if(bench.enabled&&bench.ready){
             const auto frame_end=arc_bench::Clock::now();
             if(bench.timed?bench.measuring:bench.tick>=bench.warmup){
-                json row;row["frame"]=bench.measured_frames++;row["pose"]=bench.tick%600;row["scene_frame"]=bench.tick;
+                arc::timeline::Scope telemetry_trace("frame_telemetry");
+                json row;row["cpu_profiler_frame"]=bench.tick?bench.tick-1:0;row["frame"]=bench.measured_frames++;row["pose"]=bench.tick%600;row["scene_frame"]=bench.tick;
                 row["measurement_elapsed_ms"]=bench.timed?arc_bench::ms(frame_end-bench.measurement_start):0;
                 DWORD foreground_pid{};GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);row["foreground"]=foreground_pid==GetCurrentProcessId();
                 row["frame_ms"]=arc_bench::ms(frame_end-bench.previous_end);row["loop_ms"]=arc_bench::ms(arc_bench::Clock::now()-bench.frame_start);
@@ -69,7 +74,7 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
                     row["gpu_begin_ns"]=m_pProfiler->GetGPUTimings().front().StartTime.count();
                     row["gpu_end_ns"]=m_pProfiler->GetGPUTimings().back().EndTime.count();
                 }
-                bench.rows<<row.dump()<<'\\n';
+                bench.writer->push([row=std::move(row)](std::ostream& output){arc::timeline::Scope write_trace("frame_json_serialize_write");output<<row.dump()<<'\\n';});
             }
             bench.previous_end=frame_end;
             if(bench.oracle_interval&&bench.tick&&bench.tick%bench.oracle_interval==0&&bench.tick/bench.oracle_interval<=32){
@@ -128,6 +133,16 @@ patch("framework/cauldron/framework/src/render/rendermodules/ui/uirendermodule.c
 patch("framework/cauldron/framework/src/render/rendermodules/fpslimiter/fpslimiterrendermodule.cpp", [
     ('#include "fpslimiterrendermodule.h"', '#include "fpslimiterrendermodule.h"\n#include "arc_benchmark.h"'),
     ('    if (!m_LimitFPS)', '    if (arc_bench::state().enabled||!m_LimitFPS)'),
+])
+patch("framework/cauldron/framework/src/core/win/framework_win.cpp", [
+    ('#include "core/win/framework_win.h"', '#include "core/win/framework_win.h"\n#include "arc_benchmark.h"'),
+    ('            GetDevice()->UpdateAntiLag2();', '            arc::timeline::Scope outer_trace("outer_loop");\n            {arc::timeline::Scope trace("anti_lag");GetDevice()->UpdateAntiLag2();}'),
+    ('            while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))', '            {arc::timeline::Scope trace("message_pump");\n            while (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))'),
+    ('            // Only update if we', '            }\n            // Only update if we'),
+])
+patch("framework/cauldron/framework/src/core/win/inputmanager_win.cpp", [
+    ('#include "core/win/inputmanager_win.h"', '#include "core/win/inputmanager_win.h"\n#include "arc_benchmark.h"'),
+    ('        if (XInputGetState(0, &controllerState) == ERROR_SUCCESS)', '        const auto controllerResult=[&]{arc::timeline::Scope trace("xinput_get_state");return XInputGetState(0, &controllerState);}();\n        if (controllerResult == ERROR_SUCCESS)'),
 ])
 config = sdk / "framework/cauldron/framework/config/cauldronconfig.json"
 if not config.exists():

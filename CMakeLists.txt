@@ -100,6 +100,8 @@ if(WIN32)
 endif()
 
 if(ARC_BUILD_TESTS)
+    add_executable(arc-async-benchmark-writer-tests tests/async_benchmark_writer_tests.cpp)
+    add_test(NAME arc-async-benchmark-writer-tests COMMAND arc-async-benchmark-writer-tests)
     add_executable(arc-optimizer-session-tests tests/optimizer_session_tests.cpp)
     target_link_libraries(arc-optimizer-session-tests PRIVATE arc::core)
     add_test(NAME arc-optimizer-session-tests COMMAND arc-optimizer-session-tests)
