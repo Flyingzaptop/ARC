@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--dxc', required=True, type=Path)
     parser.add_argument('--build', type=Path, default=ROOT / 'build/Release')
     parser.add_argument('--downloads', type=Path, default=ROOT / 'build/package-downloads')
+    parser.add_argument('--report', type=Path)
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -94,11 +95,20 @@ def main():
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip())
     shutil.copy2(ROOT / 'docs/CONNECTION_HANDOFF_REPORT.md', output / 'CONNECTION_HANDOFF_REPORT.md')
+    if args.report:
+        shutil.copy2(args.report, output / 'REPORT.md')
+    (output / 'README.txt').write_text(
+        'ARC development package\n'
+        'Run arc-launcher.exe. Choose a DX12 executable or an explicit running process ID.\n'
+        'Default objective: maximum verified FPS with image-quality checks; native resolution.\n'
+        'Ctrl+Alt+F9 toggles the click-through diagnostic overlay. Ctrl+Alt+F10 stops optimization.\n'
+        'Intermediate-pass maps are not object-visibility or gaze measurements.\n'
+        'Logs: %LOCALAPPDATA%/ARC/sessions. See REPORT.md when supplied.\n'
+        'This is an experimental build, not a guarantee of a gain in every DX12 game.\n', encoding='utf-8')
     manifest = {'schema': 1, 'revision': revision, 'source_dirty': dirty, 'release_accepted': False,
                 'python': {'url': PYTHON_URL, 'sha256': PYTHON_SHA256}, 'dependencies': dependencies,
                 'files': {str(file.relative_to(output)): sha(file) for file in output.rglob('*') if file.is_file()}}
     (output / 'package-manifest.json').write_text(json.dumps(manifest, indent=2))
-    (output / 'README.txt').write_text('ARC development package\nRun arc-launcher.exe. Choose a DX12 executable or an explicit running process ID, set target FPS, and start.\nStop optimization with the button or Ctrl+Alt+F10. Logs: %LOCALAPPDATA%/ARC/sessions.\nThis build has not passed the full product acceptance matrix; see package-manifest.json.\n', encoding='utf-8')
     print(output)
 
 
