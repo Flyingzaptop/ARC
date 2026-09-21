@@ -1,11 +1,29 @@
 #include "arc/optimizer_session.hpp"
 #include "arc/optimizer_policy.hpp"
 #include "arc/exact_state_cache.hpp"
+#include "arc/policy_binding_evidence.hpp"
+#include "arc/timing_evidence.hpp"
 #include <cassert>
 #include <limits>
 #include <iostream>
 
 int main(){
+    {const double flat[]{10,10,10,10},faster[]{8,8,8,8},noisy[]{6,10,6,10};
+    auto a=arc::timing_window(flat),b=arc::timing_window(faster),c=arc::timing_window(noisy);
+    assert(a.mean==10&&a.variance==0&&arc::comparison_noise(a,b,a)==0);
+    assert(arc::comparison_noise(a,b,b)==2&&arc::comparison_noise(a,c,a)>2);
+    assert(!std::isfinite(arc::comparison_noise({},b,a)));}
+
+    {arc::PolicyBindingEvidence bindings;arc::DescriptorValue texture{42,1,0,1};texture.shape.known=true;
+    assert(!bindings.seal(1));assert(bindings.observe(1,10,{texture}));
+    auto rotated=texture;rotated.resource=43;assert(bindings.observe(1,10,{rotated}));assert(bindings.seal(1));
+    assert(bindings.observe(1,10,{texture})&&bindings.observe(1,10,{rotated}));
+    auto changed=texture;changed.first_mip=1;assert(!bindings.observe(1,10,{changed}));assert(bindings.revision()==1&&!bindings.seal(1));
+    bindings.clear();assert(bindings.observe(2,11,{texture})&&bindings.seal(2));bindings.retire(99);assert(bindings.revision()==1);
+    bindings.retire(42);assert(bindings.revision()==2&&!bindings.observe(2,11,{texture}));
+    bindings.clear();assert(bindings.observe(3,12,{texture})&&bindings.seal(3));bindings.retire_pipeline(12);assert(!bindings.observe(3,12,{texture}));
+
+    }
     arc::ExactStateCache states;unsigned stencil=3;
     assert(!states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));
     assert(states.repeat(arc::ExactStateCache::Stencil,&stencil,sizeof(stencil)));

@@ -1,5 +1,6 @@
 #pragma once
 #include <d3d12.h>
+#include <dxgi.h>
 #include <mutex>
 #include <iosfwd>
 #include <array>
@@ -23,6 +24,11 @@ std::vector<GpuControl::ExecutionReadback> capture_execution(ID3D12CommandQueue*
 #endif
 void require_presentation_queue(ID3D12CommandQueue*) noexcept;
 void present_frame(std::uint64_t frame) noexcept;
+std::uint64_t binding_evidence_revision() noexcept;
+bool seal_binding_evidence(std::uint64_t policy) noexcept;
+void reset_binding_evidence() noexcept;
+void center_priority(bool enabled) noexcept;
+void presentation_surface(IDXGISwapChain*) noexcept;
 std::vector<std::string> drain_events() noexcept;
 void request_spatial_diagnostics() noexcept;
 std::string spatial_snapshot() noexcept;

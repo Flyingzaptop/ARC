@@ -112,6 +112,8 @@ patch("framework/cauldron/framework/src/core/components/cameracomponent.cpp", [
             // if (animated)'''),
 ])
 patch("framework/cauldron/framework/src/render/dx12/swapchain_dx12.cpp", [
+    ('        pCmdList->GetImpl()->DX12CmdList()->CopyTextureRegion(&copyDest, 0, 0, 0, &copySrc, nullptr);',
+     '        pCmdList->GetImpl()->DX12CmdList()->CopyTextureRegion(&copyDest, 0, 0, 0, &copySrc, nullptr);\n        Barrier restore = Barrier::Transition(m_pRenderTarget->GetCurrentResource(), ResourceState::CopySource, ResourceState::Present);\n        ResourceBarrier(pCmdList, 1, &restore);'),
     ('        CauldronThrowOnFail(GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->Signal(pFence, 1));', ''),
     ('        GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->ExecuteCommandLists(1, CmdListList);',
      '        GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->ExecuteCommandLists(1, CmdListList);\n        CauldronThrowOnFail(GetDevice()->GetImpl()->DX12CmdQueue(CommandQueue::Graphics)->Signal(pFence, 1));'),

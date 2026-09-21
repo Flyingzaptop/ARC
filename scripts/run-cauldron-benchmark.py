@@ -102,8 +102,12 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "cpu_state_cache":args.cpu_state_cache,
           "worker_placement":args.worker_placement,
           "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
+          "worker_sha256":hashfile(worker) if args.dll and args.mode.startswith("compute-") else None,
           "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
+if shutil.which('nvidia-smi'):
+    hardware=subprocess.run(['nvidia-smi','--query-gpu=name,uuid,pci.device_id,driver_version,enforced.power.limit','--format=csv'],capture_output=True,text=True,timeout=5,creationflags=subprocess.CREATE_NO_WINDOW)
+    manifest['gpu_driver_context_csv']=hardware.stdout if hardware.returncode==0 else None
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
 manifest['thermal_gate']=wait_for_cool_gpu(args.max_start_temperature)
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
@@ -120,7 +124,7 @@ with (output/"stdout.txt").open("w") as stdout,(output/"stderr.txt").open("w") a
             if args.overlay and overlay is None and (output/'arc.json').exists():
                 overlay=subprocess.Popen([str(args.dll.resolve().parent/'arc-launcher.exe'),'--monitor',str(output/'arc.json')],startupinfo=monitor_startup,creationflags=subprocess.CREATE_NO_WINDOW)
             if (args.measurement_seconds or args.frames>=600) and shutil.which("nvidia-smi") and time.monotonic()>=next_gpu:
-                sample=subprocess.run(["nvidia-smi","--query-gpu=timestamp,utilization.gpu,utilization.memory,clocks.current.graphics,memory.used,temperature.gpu,power.draw,clocks.current.memory,clocks_event_reasons.active","--format=csv,nounits"],capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW)
+                sample=subprocess.run(["nvidia-smi","--query-gpu=timestamp,utilization.gpu,utilization.memory,clocks.current.graphics,memory.used,temperature.gpu,power.draw,clocks.current.memory,clocks_event_reasons.active,enforced.power.limit","--format=csv,nounits"],capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW)
                 gpu_rows.append({"elapsed_s":time.monotonic()-started,"measured_phase":rows_path.exists() and rows_path.stat().st_size>0,"csv":sample.stdout,"exit_code":sample.returncode})
                 with (output/'gpu-samples.jsonl').open('a') as telemetry:
                     telemetry.write(json.dumps(gpu_rows[-1])+'\n')

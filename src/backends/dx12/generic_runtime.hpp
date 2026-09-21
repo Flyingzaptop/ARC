@@ -7,6 +7,7 @@
 #include <array>
 
 namespace arc::dx12::generic {
+std::array<std::uint64_t,3> image_allocation_bytes() noexcept;
 // Called only after successful native operations; no raw pointer is kept alive
 // by the observer. ID3D12Object private lifetime tokens own identity retirement.
 void observe_resource(ID3D12Resource*) noexcept;

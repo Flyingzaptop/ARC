@@ -23,6 +23,7 @@ public:
     [[nodiscard]] bool submitted() const noexcept {return submitted_;}
     Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence()const noexcept{return SUCCEEDED(signal_result_)?fence_:nullptr;}
     bool unfenced_submission()const noexcept{return submitted_&&FAILED(signal_result_)&&device_&&SUCCEEDED(device_->GetDeviceRemovedReason());}
+    std::array<std::uint64_t,3> allocation_bytes()const noexcept{return allocation_bytes_;}
 private:
     template<class T> using Ptr=Microsoft::WRL::ComPtr<T>;
     Ptr<ID3D12Device> device_;
@@ -49,5 +50,6 @@ private:
     UINT color_space_{};bool color_space_known_{};UINT64 capture_qpc_{};
     std::vector<optimizer::GpuControl::ExecutionReadback> execution_;
     UINT64 capture_queue_{},capture_backbuffer_{};
+    std::array<std::uint64_t,3> allocation_bytes_{};
 };
 }

@@ -5,6 +5,7 @@
 #include "generic_gpu_profile.hpp"
 #include "generic_shader_cache.hpp"
 #include "arc/intercept_cpu_meter.hpp"
+#include "arc/policy_binding_evidence.hpp"
 #include "generic_cpu_workers.hpp"
 #include "json.hpp"
 #include <windows.h>
@@ -55,6 +56,8 @@ struct Recording {
     unsigned query_depth{};
 };
 struct State {
+    arc::PolicyBindingEvidence binding_evidence;
+    bool center_priority{};std::set<std::uint64_t> presentation_resources;
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
     std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
     std::atomic<bool> cpu_optimize{};std::atomic<std::uint64_t> cpu_generation{1},cpu_lookup_epoch{1};
@@ -149,12 +152,12 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()override{return ++count;}
     ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){safe([&]{auto& s=state();
         if(kind==1)s.roots.erase(static_cast<ID3D12RootSignature*>(object));
-        else if(kind==2){const auto it=s.pipelines.find(static_cast<ID3D12PipelineState*>(object));if(it!=s.pipelines.end()&&!it->second->queued)s.queued_code_bytes-=it->second->code.size();s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));++s.cpu_generation;}
+        else if(kind==2){const auto it=s.pipelines.find(static_cast<ID3D12PipelineState*>(object));if(it!=s.pipelines.end())s.binding_evidence.retire_pipeline(it->second->id);if(it!=s.pipelines.end()&&!it->second->queued)s.queued_code_bytes-=it->second->code.size();s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));++s.cpu_generation;}
         else if(kind==3){auto found=s.commands.find(static_cast<ID3D12GraphicsCommandList*>(object));
             if(found!=s.commands.end()&&found->second.cpu_cache){const auto& cpu=*found->second.cpu_cache;found->second.cpu_cache->usable=false;s.cpu_state_attempts+=cpu.attempts.load();s.cpu_state_skipped+=cpu.skipped.load();}
             ++s.cpu_lookup_epoch;s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));}
         else if(kind==4){auto it=s.heaps.find(static_cast<ID3D12DescriptorHeap*>(object));if(it!=s.heaps.end()){s.descriptors.retire_heap(it->second.id);s.heaps_by_id.erase(it->second.id);s.heaps.erase(it);}}
-        else if(kind==5){auto it=s.resource_ids.find(static_cast<ID3D12Resource*>(object));if(it!=s.resource_ids.end()){s.buffers.retire(it->second);s.resource_natives.erase(it->second);s.allocations.erase(it->second);s.resource_ids.erase(it);}}
+        else if(kind==5){auto it=s.resource_ids.find(static_cast<ID3D12Resource*>(object));if(it!=s.resource_ids.end()){s.binding_evidence.retire(it->second);s.buffers.retire(it->second);s.resource_natives.erase(it->second);s.allocations.erase(it->second);s.resource_ids.erase(it);}}
         else if(kind==6)s.allocation_heaps.erase(static_cast<ID3D12Heap*>(object));
         else if(kind==7)s.signatures.erase(static_cast<ID3D12CommandSignature*>(object));
     });delete this;}return n;}
@@ -359,7 +362,7 @@ std::string spatial_snapshot()noexcept{
             for(const auto& tile:tiles){const bool valid=tile.key==capture.key&&tile.frame==capture.frame&&tile.mode<=3&&std::isfinite(tile.importance)&&std::isfinite(tile.confidence)&&tile.confidence>=0&&tile.confidence<=1;
                 const bool confident=valid&&tile.confidence>0;unknown+=!confident;coarse+=confident&&tile.mode!=0;
                 values.push_back({valid?tile.importance:1000.f,confident?tile.mode:0u,confident?tile.confidence:0.f});}
-            return nlohmann::json{{"schema",1},{"coordinate_space","pass_texel"},{"final_screen_correspondence",false},{"quality_certificate",false},{"pipeline",capture.pipeline},{"binding_key",capture.key},{"frame",capture.frame},{"queue",capture.queue},{"width",capture.width},{"height",capture.height},{"tile_width",capture.tile_width},{"tile_height",capture.tile_height},{"tiles_x",(capture.width+capture.tile_width-1)/capture.tile_width},{"tiles_y",(capture.height+capture.tile_height-1)/capture.tile_height},{"edge_threshold",capture.threshold},{"unknown_tiles",unknown},{"coarse_tiles",coarse},{"layout","importance_mode_confidence"},{"tiles",std::move(values)}}.dump();
+            return nlohmann::json{{"schema",1},{"coordinate_space",capture.screen_coordinates?"backbuffer_texel":"pass_texel"},{"final_screen_correspondence",capture.screen_coordinates},{"center_priority",capture.center_priority},{"quality_certificate",false},{"pipeline",capture.pipeline},{"binding_key",capture.key},{"frame",capture.frame},{"queue",capture.queue},{"width",capture.width},{"height",capture.height},{"tile_width",capture.tile_width},{"tile_height",capture.tile_height},{"tiles_x",(capture.width+capture.tile_width-1)/capture.tile_width},{"tiles_y",(capture.height+capture.tile_height-1)/capture.tile_height},{"edge_threshold",capture.threshold},{"unknown_tiles",unknown},{"coarse_tiles",coarse},{"layout","importance_mode_confidence"},{"tiles",std::move(values)}}.dump();
         }
     }catch(...){}return {};
 }
@@ -406,6 +409,16 @@ void sample_frame_state(bool enabled)noexcept{safe([&]{state().sample_state=enab
 FrameStateSample frame_state_sample(){std::lock_guard lock(state().mutex);return state().last_frame_state;}
 std::vector<GpuControl::ExecutionReadback> capture_execution(ID3D12CommandQueue* queue)noexcept{
     std::vector<GpuControl::ExecutionReadback> result;safe([&]{for(const auto& control:state().controls)if(auto proof=control->execution_readback(queue))result.push_back(std::move(*proof));});return result;
+}
+std::uint64_t binding_evidence_revision()noexcept{std::uint64_t result{};safe([&]{result=state().binding_evidence.revision();});return result;}
+bool seal_binding_evidence(std::uint64_t policy)noexcept{bool result=false;safe([&]{result=state().binding_evidence.seal(policy);});return result;}
+void reset_binding_evidence()noexcept{safe([&]{state().binding_evidence.clear();});}
+void center_priority(bool enabled)noexcept{safe([&]{state().center_priority=enabled;});}
+void presentation_surface(IDXGISwapChain* swap)noexcept{try{
+    std::vector<Ptr<ID3D12Resource>> buffers;DXGI_SWAP_CHAIN_DESC desc{};
+    if(swap&&SUCCEEDED(swap->GetDesc(&desc))&&desc.BufferCount<=16){mirror::InternalCall internal;for(UINT i=0;i<desc.BufferCount;++i){Ptr<ID3D12Resource> buffer;if(SUCCEEDED(swap->GetBuffer(i,IID_PPV_ARGS(&buffer))))buffers.push_back(std::move(buffer));}}
+    safe([&]{auto& s=state();s.presentation_resources.clear();for(const auto& buffer:buffers)if(const auto id=resource_identity(buffer.Get()))s.presentation_resources.insert(id);});
+}catch(...){safe([&]{state().presentation_resources.clear();});}
 }
 void require_presentation_queue(ID3D12CommandQueue* queue)noexcept{Ptr<ID3D12CommandQueue> next=queue;safe([&]{state().required_queue.Swap(next);});}
 void present_frame(std::uint64_t frame)noexcept{state().current_frame.store(frame,std::memory_order_relaxed);}
@@ -703,6 +716,8 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
     static const auto sample=register_cpu_sample("execute");CpuMeter meter(sample);
     auto& s=state();std::lock_guard descriptors(s.descriptor_mutex);std::unique_lock lock(s.mutex);meter.locked();
     std::array<std::shared_ptr<GpuControl>,64> controls{};unsigned used=0;
+    struct Staged {std::shared_ptr<GpuControl> control;std::array<ControlValue,GpuControl::capacity> values;unsigned count{};};
+    std::vector<Staged> staged;const auto binding_revision=s.binding_evidence.revision();
     auto fault=[&](const char* message){++s.faults;s.x_rate=s.y_rate=1;s.comparison_taps=0;s.zero_factor=0;try{s.last_error=message;}catch(...) {}};
     auto remember=[&](const std::shared_ptr<GpuControl>& c){for(unsigned j=0;j<used;++j)if(controls[j]==c)return false;if(used>=controls.size()){fault("control capacity");return false;}controls[used++]=c;return true;};
     if(count>1024){
@@ -744,6 +759,12 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 if(!needs_proof&&!admitted.admitted&&admitted.reason=="unknown_descriptor"&&admitted.binding_class==0&&use.variant->access){
                     usage=prove();if(usage.complete)admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,&usage,&s.buffers);
                 }
+                if(admitted.admitted&&s.bundle_mode&&s.bundle.id&&requested&&!learning){
+                    std::vector<arc::DescriptorValue> views;
+                    for(const auto& input:admitted.inputs)if(input.allocation.description.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D)views.push_back(input.view);
+                    for(const auto& output:admitted.outputs)views.push_back(output.view);
+                    if(!s.binding_evidence.observe(s.bundle.id,use.variant->id,std::move(views))){admitted.admitted=false;admitted.reason="policy_texture_generation_changed";}
+                }
                 auto& v=*use.variant;++v.attempts;v.admitted+=admitted.admitted;v.last_reason=admitted.reason;v.binding_class=admitted.binding_class;v.binding_register=admitted.binding_register;v.binding_space=admitted.binding_space;
                 if(s.history.size()<256||s.history.contains(v.id))s.history[v.id]=v;
                 if(s.admission_reasons.size()<64||s.admission_reasons.contains(admitted.reason))++s.admission_reasons[admitted.reason];
@@ -758,6 +779,8 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                         }
                         if(mask){values[n].edge_sources=0x80000000u|mask;values[n].edge_threshold=setting.edge_threshold;
                             const auto found=s.spatial_keys.find(key);if(found!=s.spatial_keys.end())values[n].spatial_key=found->second;else if(s.spatial_keys.size()<4096)values[n].spatial_key=s.spatial_keys.emplace(std::move(key),s.next++).first->second;
+                            const bool screen=!admitted.outputs.empty()&&std::all_of(admitted.outputs.begin(),admitted.outputs.end(),[&](const auto& output){return s.presentation_resources.contains(output.allocation.id);});
+                            if(screen){values[n].spatial_flags|=4;if(s.center_priority)values[n].spatial_center=1;}
                             values[n].spatial_tile_width=use.variant->contract.threads[0]*2;values[n].spatial_tile_height=use.variant->contract.threads[1]*2;
                             const auto frame=s.current_frame.load(std::memory_order_relaxed);if(frame&&frame<UINT_MAX)values[n].spatial_frame=UINT(frame+1);
                             if(n==0&&s.spatial_capture_requested){values[n].spatial_flags|=8;s.spatial_capture_requested=false;}
@@ -775,13 +798,21 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                     }
                 }
             }
-            mirror::InternalCall internal;auto* helper=c.control->prepare(queue,{values.data(),c.uses.size()});
-            if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;
-                if(s.calibration_epoch)for(const auto& value:values)if(value.calibration==s.calibration_epoch)++s.calibration_expected;
-            }else ++s.neutral_submissions;
+            staged.push_back({c.control,std::move(values),static_cast<unsigned>(c.uses.size())});
         }catch(const std::exception& e){fault(e.what());try{mirror::InternalCall internal;c.control->prepare(queue,{});}catch(...) {}}
         catch(...){fault("submission preparation failed");try{mirror::InternalCall internal;c.control->prepare(queue,{});}catch(...) {}}
     }
+    // Validate the complete submitted bundle BEFORE uploading any controls.
+    // One new texture generation neutralizes every affected recording in this
+    // batch, including records visited before the invalid binding was found.
+    const bool invalid_bindings=s.binding_evidence.revision()!=binding_revision;
+    for(auto& pending:staged)try{
+        if(invalid_bindings||s.faults)pending.values={};
+        mirror::InternalCall internal;auto* helper=pending.control->prepare(queue,{pending.values.data(),pending.count});
+        if(helper){queue->ExecuteCommandLists(1,&helper);++s.coarse_submissions;s.last_active_epoch=s.policy_epoch;
+            if(s.calibration_epoch)for(const auto& value:pending.values)if(value.calibration==s.calibration_epoch)++s.calibration_expected;
+        }else ++s.neutral_submissions;
+    }catch(const std::exception& e){fault(e.what());}catch(...){fault("control upload failed");}
     // Never return false after submitting a helper: the original batch and all
     // retirement signals remain owned by this function even on preparation error.
     // VRS prepares its own independent control images and owns the same single

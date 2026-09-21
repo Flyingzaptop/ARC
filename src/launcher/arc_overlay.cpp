@@ -30,7 +30,7 @@ void paint(HDC dc){
             SetStretchBltMode(dc,COLORONCOLOR);StretchDIBits(dc,14+(492-map_width)/2,122+(190-map_height)/2,map_width,map_height,0,0,int(nx),int(ny),pixels.data(),&info,DIB_RGB_COLORS,SRCCOPY);
             line(dc,316,L"На снимке: зелёный — упрощение, красный — полный",RGB(205,220,205),true);
             line(dc,339,L"Серый: нет уверенности. Карта в координатах прохода.",RGB(185,195,205),true);
-            line(dc,362,L"Связь с экраном не доказана; это не карта объектов.",RGB(235,195,125),true);
+            line(dc,362,map.value("final_screen_correspondence",false)?L"Координаты backbuffer; центр — приоритет, не взгляд.":L"Связь с экраном не доказана; это не карта объектов.",RGB(235,195,125),true);
         }
         line(dc,390,standalone?L"Отдельная диагностика: эксклюзивный Fullscreen":L"Клик проходит в игру · Ctrl+Alt+F10 — отключить ARC",RGB(155,175,190),true);
     }catch(...){line(dc,115,L"Диагностические данные недоступны.",RGB(235,150,120));}

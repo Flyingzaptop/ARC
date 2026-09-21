@@ -101,6 +101,11 @@ bool ImageReadback::enqueue(IDXGISwapChain* swap,ID3D12CommandQueue* queue,const
     }
     data.Width=16;
     if(!reused_storage_&&FAILED(device_->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&data,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&timestamps_))))return false;
+    allocation_bytes_={};
+    for(auto* resource:{readback_.Get(),timestamps_.Get(),feature_output_.Get()})if(resource){
+        const auto resource_desc=resource->GetDesc();const auto bytes=device_->GetResourceAllocationInfo(0,1,&resource_desc).SizeInBytes;
+        if(bytes!=UINT64_MAX)allocation_bytes_[resource==feature_output_.Get()?0:2]+=bytes;
+    }
     D3D12_QUERY_HEAP_DESC query{};query.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;query.Count=2;
     if((!reused_storage_&&FAILED(device_->CreateQueryHeap(&query,IID_PPV_ARGS(&queries_))))||FAILED(queue->GetTimestampFrequency(&frequency_))||!frequency_)return false;
     if(FAILED(device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator_)))||

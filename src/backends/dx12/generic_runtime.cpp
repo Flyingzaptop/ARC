@@ -41,6 +41,7 @@ struct State {
     bool image_features{};
     std::unique_ptr<ImageReadback> image;
     std::unique_ptr<ImageReadback> image_spare;
+    std::array<std::uint64_t,3> image_writing_bytes{};
     std::uint64_t image_swapchain{},images_completed{},images_failed{};
     std::atomic<bool> image_pending{};
     bool image_writing{};
@@ -317,6 +318,7 @@ void flush_timing()noexcept{
     try{const auto temporary=std::filesystem::path(path.wstring()+L".tmp");std::ofstream out(temporary);out<<"{\"experimental_vrs_rate\":"<<rate<<",\"measurement\":";completed->write_json(out);out<<'}';out.close();if(out){std::filesystem::rename(temporary,path);written=true;}}catch(...){}
     safe([&]{auto& s=state();s.timing_writing=false;if(written&&completed->valid())++s.timing_completed;else ++s.timing_failed;});
 }
+std::array<std::uint64_t,3> image_allocation_bytes()noexcept{std::array<std::uint64_t,3> result{};safe([&]{const auto& s=state();result=s.image_writing_bytes;auto add=[&](const auto& image){if(image){const auto bytes=image->allocation_bytes();for(unsigned i=0;i<3;++i)result[i]+=bytes[i];}};add(s.image);add(s.image_spare);for(const auto& image:s.sequence_images)add(image);for(const auto& image:s.sequence_spares)add(image);});return result;}
 bool gpu_helpers_idle()noexcept{bool idle=false;safe([&]{const auto& s=state();idle=!s.image_pending&&!s.sequence_active&&s.sequence_images.empty()&&!s.image_writing&&(!s.image||s.image->ready());});return idle;}
 void flush_image()noexcept{
     std::unique_ptr<ImageReadback> image;
@@ -324,9 +326,9 @@ void flush_image()noexcept{
     safe([&]{auto& s=state();if(!s.sequence_images.empty()&&s.sequence_images.front()->ready()){
         image=std::move(s.sequence_images.front());s.sequence_images.pop_front();s.image_writing=true;sequence=true;
     }else if(!s.sequence_active&&s.image&&s.image->ready()){image=std::move(s.image);s.image_pending=false;s.image_writing=true;}});
-    if(!image)return;bool ok=false;try{ok=image->write();}catch(...){}
+    if(!image)return;safe([&]{state().image_writing_bytes=image->allocation_bytes();});bool ok=false;try{ok=image->write();}catch(...){}
     if(ok)image->release_queue_for_cache();
-    safe([&]{auto& s=state();s.image_writing=false;if(ok){++s.images_completed;if(sequence)s.sequence_spares.push_back(std::move(image));else s.image_spare=std::move(image);}else ++s.images_failed;
+    safe([&]{auto& s=state();s.image_writing=false;s.image_writing_bytes={};if(ok){++s.images_completed;if(sequence)s.sequence_spares.push_back(std::move(image));else s.image_spare=std::move(image);}else ++s.images_failed;
         if(sequence&&!s.image_pending&&!s.image&&s.sequence_images.empty())s.sequence_active=false;
     });
 }

@@ -17,8 +17,10 @@ MipTransform bias_explicit_mips(std::string_view input){
             while(std::getline(fields,arg,',')){const auto first=arg.find_first_not_of(" \t");args.push_back(first==arg.npos?"":arg.substr(first));}
             if(args.size()==11&&args[0]=="i32 62"&&args[10].starts_with("float ")&&args[10]!="float undef"){
                 const auto id=std::to_string(result.samples++),lod=args[10].substr(6);
+                const bool spatial=input.find("%arc_edge_allow =")!=input.npos;
+                if(spatial)output<<"  %arc_mip_spatial"<<id<<" = and i1 %arc_mip_enabled, %arc_edge_allow\n";
                 output<<"  %arc_mip_added"<<id<<" = fadd float "<<lod<<", %arc_mip_bias\n"
-                      <<"  %arc_mip_lod"<<id<<" = select i1 %arc_mip_enabled, float %arc_mip_added"<<id<<", float "<<lod<<"\n";
+                      <<"  %arc_mip_lod"<<id<<" = select i1 "<<(spatial?"%arc_mip_spatial"+id:"%arc_mip_enabled")<<", float %arc_mip_added"<<id<<", float "<<lod<<"\n";
                 args[10]="float %arc_mip_lod"+id;output<<match[1].str();
                 for(unsigned i=0;i<args.size();++i){if(i)output<<", ";output<<args[i];}output<<match[3].str()<<'\n';continue;
             }

@@ -38,6 +38,7 @@ public:
         UINT64 completion{},offset{},pipeline{},key{},queue{};
         UINT width{},height{},tile_width{},tile_height{},frame{};
         float threshold{};
+        bool screen_coordinates{},center_priority{};
         bool read(std::vector<SpatialTile>&)const noexcept;
     };
     std::optional<SpatialReadback> spatial_readback()const{return latest_spatial_;}
