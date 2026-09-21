@@ -128,5 +128,13 @@ int main(){
     execution.scene_changed();execution.frame(4);execution.frame(4);fast.gpu_execution_confirmed=true;
     assert(execution.evidence(fast).kind==arc::SessionRequestKind::Apply);
     execution.applied(99,true);
+    assert(execution.frame(3,true,1,false).kind==arc::SessionRequestKind::None);
     assert(execution.frame(3,true,maxconfig.max_evidence_samples).kind==arc::SessionRequestKind::Restore);
+    execution.restored(true);
+    execution.candidates({{99,1,1,.1,true,1,false,false,true}});
+    assert(execution.frame(4).kind==arc::SessionRequestKind::Probe);
+    assert(execution.snapshot().accepted==1); // old approval is only a proposal
+    assert(execution.evidence(fast).kind==arc::SessionRequestKind::Apply);
+    execution.applied(99,true);
+    assert(execution.snapshot().accepted==2);
 }

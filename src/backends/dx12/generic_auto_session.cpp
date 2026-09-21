@@ -220,10 +220,10 @@ DWORD WINAPI run(void*){
     try{
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.maximize_fps=s.maximize;config.enforce_component_budgets=false;config.require_gpu_execution=true;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         arc::OptimizerSession policy(config);
-        struct Choice {arc::PolicyBundle bundle;double cost{};bool cpu{};unsigned mode{};std::uint64_t pipeline{};double exploration{1};};
+        struct Choice {arc::PolicyBundle bundle;double cost{};bool cpu{};unsigned mode{};std::uint64_t pipeline{};double exploration{1};bool revalidation{};};
         struct Tuning {float good{},bad{2},current{.25f};unsigned rounds{};bool failed{};};
         const auto cpu_not_before=Clock::now()+std::chrono::seconds(15);
-        std::vector<Choice> choices;arc::PolicyBundle incumbent;std::uint64_t next_choice=0;
+        std::vector<Choice> choices;Choice verified;UINT64 last_probe_frames=256;arc::PolicyBundle incumbent;std::uint64_t next_choice=0;
         std::map<std::uint64_t,std::uint64_t> cpu_choices;
         std::map<std::string,std::uint64_t> gpu_choices;
         std::map<std::pair<std::uint64_t,unsigned>,Tuning> tuning;
@@ -232,7 +232,7 @@ DWORD WINAPI run(void*){
         auto refresh_candidates=[&]{
             std::vector<SessionAction> actions;
             const auto frame=frame_number();
-            for(const auto& choice:choices)actions.push_back({choice.bundle.id,choice.bundle.id,0,choice.exploration,(!choice.cpu||Clock::now()>=cpu_not_before)&&(!retry_after.contains(choice.bundle.id)||frame>=retry_after[choice.bundle.id]),choice.cost,false,choice.cpu&&choice.bundle.compute.empty(),false});
+            for(const auto& choice:choices)actions.push_back({choice.bundle.id,choice.bundle.id,0,choice.exploration,(!choice.cpu||Clock::now()>=cpu_not_before)&&(!retry_after.contains(choice.bundle.id)||frame>=retry_after[choice.bundle.id]),choice.cost,false,choice.cpu&&choice.bundle.compute.empty(),choice.revalidation});
             if(incumbent.id)actions.push_back({incumbent.id,incumbent.id,0,1,true,0,false,incumbent.compute.empty(),false});
             policy.candidates(std::move(actions));
         };
@@ -265,6 +265,9 @@ DWORD WINAPI run(void*){
                         choices.push_back({std::move(bundle),work.gpu_ms_per_window,false,mode,c.pipeline,exploration});
                     }
                 }
+            }
+            if(verified.bundle.id&&verified.bundle.id!=incumbent.id&&std::all_of(verified.bundle.compute.begin(),verified.bundle.compute.end(),[&](const auto& target){return std::any_of(catalog.begin(),catalog.end(),[&](const auto& work){return work.capabilities.pipeline==target.pipeline;});})){
+                std::erase_if(choices,[&](const auto& choice){return choice.bundle.id==verified.bundle.id;});choices.insert(choices.begin(),verified);
             }
             refresh_candidates();
         };
@@ -310,7 +313,7 @@ DWORD WINAPI run(void*){
             const auto current_period=period();
             if(!scene_reference)scene_reference=current_period;
             scene_drift=(current_period>scene_reference*1.75||current_period<scene_reference*.55)?scene_drift+1:0;
-            auto request=(changed_surface||changed_bindings||scene_drift>=8)?policy.scene_changed():policy.frame(current_period,true,elapsed_frames);
+            auto request=(changed_surface||changed_bindings||scene_drift>=8)?policy.scene_changed():policy.frame(current_period,true,elapsed_frames,!retained||now+last_probe_frames+64<s.retained_until);
             if(changed_surface||changed_bindings||scene_drift>=8){if(request.kind!=SessionRequestKind::Restore)optimizer::reset_binding_evidence();tuning.clear();retry_after.clear();rebuild_choices();}
             if(policy.snapshot().phase==SessionPhase::Faulted)throw std::runtime_error("Policy restoration not confirmed");
             if(changed_bindings)journal({{"phase","binding_evidence_invalidated"},{"binding_revision",last_bindings}});
@@ -334,12 +337,13 @@ DWORD WINAPI run(void*){
                 catalog=optimizer::candidate_catalog();rebuild_choices();
                 publish({{"phase","discovery_complete"},{"target_fps",s.target},{"measured_work_candidates",catalog.size()},{"policy_candidates",choices.size()}});
             }else if(request.kind==SessionRequestKind::Probe){
+                const auto probe_started=frame_number();
                 try{
                 const auto dir=s.directory/(L"trial-"+std::to_wstring(++trial));std::filesystem::create_directory(dir);
                 const auto choice=std::find_if(choices.begin(),choices.end(),[&](const auto& c){return c.bundle.id==request.action;});
                 if(choice==choices.end())throw std::runtime_error("Unknown bundle request");
-                const auto candidate=choice->bundle;const auto generation=candidate.id;const auto candidate_mode=choice->mode;const auto candidate_pipeline=choice->pipeline;
-                publish({{"phase","trial_started"},{"trial",trial},{"candidate_action",candidate.id},{"active_action",retained},{"pipeline",candidate_pipeline},{"evidence_directory",dir.string()}});
+                const auto candidate=choice->bundle;const auto generation=candidate.id;const auto candidate_mode=choice->mode;const auto candidate_pipeline=choice->pipeline?choice->pipeline:candidate.compute.empty()?0:candidate.compute.front().pipeline;const auto choice_cost=choice->cost;const auto choice_cpu=choice->cpu;const bool revalidation=choice->revalidation;
+                publish({{"phase","trial_started"},{"trial",trial},{"candidate_action",candidate.id},{"active_action",retained},{"pipeline",candidate_pipeline},{"revalidation",revalidation},{"evidence_directory",dir.string()}});
                 if(!candidate.compute.empty()){
                     void* swap{};{std::lock_guard lock(s.mutex);swap=s.swapchain;}
                     Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;queue.Attach(generic::acquire_presentation_queue(reinterpret_cast<IDXGISwapChain*>(swap)));
@@ -349,7 +353,7 @@ DWORD WINAPI run(void*){
                     auto evidence=cpu_trial(candidate,dir/L"cpu-trial.json");if(s.cancel)break;
                     if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);}
                     ensure_surface();const auto decision=policy.evidence(evidence);
-                    if(decision.kind==SessionRequestKind::Apply){if(!candidate.compute.empty()&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("binding_evidence_not_sealable");s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
+                    if(decision.kind==SessionRequestKind::Apply){if(!candidate.compute.empty()&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("binding_evidence_not_sealable");s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;verified={candidate,choice_cost,choice_cpu,candidate_mode,candidate_pipeline,.05,true};retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
                     const auto current=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"kind","exact_cpu_state"},{"accepted",current.accepted},{"rejected",current.rejected},{"retained",retained},{"baseline_frame_ms",evidence.baseline_frame_ms},{"candidate_frame_ms",evidence.candidate_frame_ms},{"cpu_overhead_ms",std::isfinite(evidence.cpu_overhead_ms)?Json(evidence.cpu_overhead_ms):Json(nullptr)},{"restoration_confirmed",evidence.restoration_confirmed}};
                     {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));continue;
                 }
@@ -405,17 +409,19 @@ DWORD WINAPI run(void*){
                 evidence.gpu_execution_confirmed=submitted;
                 if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);}
                 ensure_surface();const auto decision=policy.evidence(evidence);
-                if(candidate_mode>=1&&candidate_mode<=7&&candidate.find(candidate_pipeline)->protect_edges&&judgement.value("matched_reference",false)){
+                if(!revalidation&&candidate_mode>=1&&candidate_mode<=7&&candidate.find(candidate_pipeline)->protect_edges&&judgement.value("matched_reference",false)){
                     auto& search=tuning[{candidate_pipeline,candidate_mode}];++search.rounds;const auto before=search.current;
                     if(judgement.value("accepted_quality",false)){search.good=std::max(search.good,before);search.current=search.failed?(search.good+search.bad)*.5f:std::min(1.5f,before*2);}
                     else{search.failed=true;search.bad=std::min(search.bad,before);search.current=(search.good+search.bad)*.5f;}
                     if(std::abs(search.current-before)<.02f)search.rounds=8;
                     journal({{"phase","spatial_search_updated"},{"pipeline",candidate_pipeline},{"mode",candidate_mode},{"tested_threshold",before},{"next_threshold",search.current},{"quality_pass",judgement.value("accepted_quality",false)},{"round",search.rounds}});
                 }else if(!judgement.value("matched_reference",false))retry_after[candidate.id]=frame_number()+300;
-                if(decision.kind==SessionRequestKind::Apply){if(!candidate.compute.empty()&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("binding_evidence_not_sealable");s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
+                if(decision.kind==SessionRequestKind::Apply){if(!candidate.compute.empty()&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("binding_evidence_not_sealable");s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;verified={candidate,choice_cost,choice_cpu,candidate_mode,candidate_pipeline,.05,true};retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
                 else if(decision.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};s.retained_action=s.retained_until=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("Changed pipeline retirement not confirmed");rebuild_choices();}
+                if(revalidation&&decision.kind!=SessionRequestKind::Apply)verified={};
+                last_probe_frames=std::clamp<UINT64>(frame_number()-probe_started,128,480);
                 const auto state=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"submission_observed",submitted},{"quality_pass",judgement.value("accepted_quality",false)},{"baseline_frame_ms",baseline_ms},{"candidate_frame_ms",candidate_ms},{"accepted",state.accepted},{"rejected",state.rejected},{"retained",retained},{"cost_evidence_available",false},{"original_policy_retired",restored_original}};
-                report["pipeline_generation"]=generation;report["gpu_execution_confirmed"]=submitted;report["quality_reason"]=judgement.value("reason",std::string{});report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
+                report["revalidation"]=revalidation;report["pipeline_generation"]=generation;report["gpu_execution_confirmed"]=submitted;report["quality_reason"]=judgement.value("reason",std::string{});report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
                 report["cpu_cost_available"]=std::isfinite(cpu_overhead_ms);report["cpu_overhead_ms"]=std::isfinite(cpu_overhead_ms)?Json(cpu_overhead_ms):Json(nullptr);report["cpu_measured_intervals"]=cpu_frames;
                 report["gpu_calibration"]=gpu_calibration;report["quality"]=q;report["evidence_directory"]=dir.string();
                 report["measured_noise_ms"]=std::isfinite(evidence.baseline_noise_ms)?Json(evidence.baseline_noise_ms):Json(nullptr);report["noise_method"]="max_A_drift_and_two_standard_errors";

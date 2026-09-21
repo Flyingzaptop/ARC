@@ -39,7 +39,7 @@ void OptimizerSession::candidates(std::vector<SessionAction> actions){
     if((pending_&&!current(pending_->id,pending_->generation))||
        (state_.active_action&&!current(state_.active_action,active_generation_)))candidate_epoch_changed_=true;
 }
-SessionRequest OptimizerSession::frame(double frame_ms,bool stable,std::uint64_t elapsed_frames){
+SessionRequest OptimizerSession::frame(double frame_ms,bool stable,std::uint64_t elapsed_frames,bool allow_exploration){
     if(state_.phase==SessionPhase::Faulted)return {};
     if(candidate_epoch_changed_||(state_.active_action&&elapsed_frames>=config_.max_evidence_samples-evidence_age_))return scene_changed();
     if(state_.active_action)evidence_age_+=static_cast<std::uint32_t>(elapsed_frames);
@@ -56,6 +56,7 @@ SessionRequest OptimizerSession::frame(double frame_ms,bool stable,std::uint64_t
         if(!config_.maximize_fps&&state_.filtered_frame_ms<=state_.target_frame_ms)return {};
     }
     if(!config_.maximize_fps&&state_.filtered_frame_ms<=state_.target_frame_ms){state_.phase=SessionPhase::Active;return {};}
+    if(state_.active_action&&!allow_exploration){state_.phase=SessionPhase::Active;return {};}
     state_.phase=SessionPhase::Discover;
     for(const auto& action:actions_)if(action.ready&&action.before_profile&&std::find(tried_.begin(),tried_.end(),action.id)==tried_.end()){
         pending_=action;tried_.push_back(action.id);state_.phase=SessionPhase::Probe;++state_.probes;return {SessionRequestKind::Probe,action.id};
