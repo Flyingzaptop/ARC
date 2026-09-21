@@ -18,6 +18,7 @@ parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--initialization-seconds",type=float,default=0)
 parser.add_argument("--measurement-seconds",type=float,default=0)
 parser.add_argument("--oracle-interval",type=int,default=0,help="Separate quality-oracle run; invalidates performance comparison")
+parser.add_argument("--route",choices=["primary","holdout"],default="primary")
 parser.add_argument("--cache",type=Path)
 parser.add_argument("--overlay",action="store_true")
 parser.add_argument("--functional",action="store_true",help="Interactive correctness run, excluded from FPS comparisons")
@@ -42,7 +43,7 @@ if args.initialization_seconds and not args.measurement_seconds:
 if args.oracle_interval and args.oracle_interval<300: parser.error('Oracle interval must be at least 300 frames')
 if args.overlay and (not args.dll or args.auto_target is None):
     parser.error('Overlay test requires the automatic DLL session')
-process_budget=args.initialization_seconds+args.measurement_seconds+30 if args.measurement_seconds else 60
+process_budget=(120 if args.initialization_seconds>=100 else args.initialization_seconds)+args.measurement_seconds+30 if args.measurement_seconds else 60
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
 exe=sdk/"bin/FFX_BRIXELIZER_GI_DX12.exe"
@@ -55,6 +56,7 @@ env['ARC_OPTIMIZER_CPU_STATE_CACHE']='1' if args.cpu_state_cache else '0'
 if args.cpu_state_cache and not args.dll: raise ValueError('CPU state cache requires the ARC DLL')
 if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env["ARC_BENCH_OUTPUT"]=str(output)
+env["ARC_BENCH_ROUTE"]=args.route
 env["ARC_BENCH_FRAMES"]=str(args.frames)
 env["ARC_BENCH_ORACLE_INTERVAL"]=str(args.oracle_interval)
 for key in ('ARC_BENCH_MEASUREMENT_SECONDS','ARC_BENCH_INITIALIZATION_SECONDS'):
@@ -108,7 +110,7 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "worker_placement":args.worker_placement,
           "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
           "worker_sha256":hashfile(worker) if args.dll and args.mode.startswith("compute-") else None,
-          "simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
+          "route":args.route,"requested_gpu_power_limit_w":30,"simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 if shutil.which('nvidia-smi'):
     hardware=subprocess.run(['nvidia-smi','--query-gpu=name,uuid,pci.device_id,driver_version,enforced.power.limit','--format=csv'],capture_output=True,text=True,timeout=5,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -156,6 +158,9 @@ log=exe.parent/"Cauldron.log"
 if log.exists(): (output/"Cauldron.log").write_bytes(log.read_bytes())
 if code: raise RuntimeError(f"Host failed: {code}")
 rows=[json.loads(line) for line in (output/"frames.jsonl").read_text().splitlines()]
+phase_path=output/'measurement-phase.json'
+manifest['measurement_phase']=json.loads(phase_path.read_text()) if phase_path.exists() else None
+if manifest['measurement_phase'] is not None and not manifest['measurement_phase']['comparable']:manifest['performance_run']=False
 manifest['actual_frames']=len(rows);manifest['measurement_complete']=(bool(rows) and rows[-1].get('measurement_elapsed_ms',0)>=args.measurement_seconds*1000) if args.measurement_seconds else len(rows)==args.frames
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
 if not manifest['measurement_complete']: raise RuntimeError(f"Incomplete measurement: {len(rows)} frames")

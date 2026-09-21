@@ -108,7 +108,16 @@ patch("framework/cauldron/framework/src/core/components/cameracomponent.cpp", [
     ('#include "core/components/cameracomponent.h"', '#include "core/components/cameracomponent.h"\n#include "arc_benchmark.h"'),
     ('        if (m_SkipUpdate)', '        if (m_SkipUpdate&&!arc_bench::state().enabled)'),
     ('            // if (animated)', '''            if(arc_bench::state().enabled){
-                const float phase=float(arc_bench::state().tick%600)*6.28318530718f/600.f;
+                const unsigned pose=arc_bench::state().tick%600;
+                const float phase=float(pose)*6.28318530718f/600.f;
+                if(arc_bench::state().holdout){
+                    const float t=float(pose<180?pose:pose<240?180:pose-60)*6.28318530718f/540.f;
+                    const Vec3 right=m_ResetMatrix.getCol0().getXYZ(),forward=-m_ResetMatrix.getCol2().getXYZ();
+                    const Vec3 eye=m_ResetMatrix.getTranslation()+right*(sin(t)*1.1f)+forward*((1-cos(t))*.8f);
+                    const float turn=pose>=360&&pose<400?.9f:0.f;
+                    const Vec3 target=eye+forward*3.f+right*(sin(t*3.f)*.7f+turn);
+                    LookAt(Vec4(eye,1.f),Vec4(target,1.f));UpdateMatrices();return;
+                }
                 const Vec3 right=m_ResetMatrix.getCol0().getXYZ(),forward=-m_ResetMatrix.getCol2().getXYZ();
                 const Vec3 eye=m_ResetMatrix.getTranslation()+right*(sin(phase)*0.8f)+forward*((1-cos(phase))*0.65f);
                 const Vec3 target=eye+forward*3.f+right*(sin(phase*2.f)*0.5f);

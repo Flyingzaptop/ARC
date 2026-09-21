@@ -15,7 +15,7 @@ struct State {
     bool enabled{},ready{};
     unsigned tick{},warmup{120},frames{600};
     unsigned oracle_interval{};
-    bool timed{},measuring{},finished{};unsigned measured_frames{};
+    bool timed{},measuring{},finished{},phase_locked{},phase_comparable{true},holdout{};unsigned measurement_first_tick{};double actual_initialization_seconds{};unsigned measured_frames{};
     double initialization_seconds{},measurement_seconds{};
     Clock::time_point measurement_start;
     std::wstring output;
@@ -38,7 +38,7 @@ inline void initialize(){
     if(s.timed&&(s.measurement_seconds<1||s.measurement_seconds>60||s.initialization_seconds<0||s.initialization_seconds>120))throw std::runtime_error("Bounded benchmark durations required");
     if(s.frames<1||(!s.timed&&s.frames>3600))throw std::runtime_error("Benchmark frame count 1..3600 required in frame-count mode");
     s.rows.open(s.output+L"/frames.jsonl");if(!s.rows)throw std::runtime_error("Cannot open benchmark output");
-    s.writer.reset(new AsyncWriter(s.rows));
+    s.writer.reset(new AsyncWriter(s.rows));s.holdout=env(L"ARC_BENCH_ROUTE")==L"holdout";s.phase_locked=s.timed&&s.initialization_seconds>=100;
     const auto dll=env(L"ARC_BENCH_DLL");if(dll.empty())return;
     const auto module=LoadLibraryW(dll.c_str());if(!module)throw std::runtime_error("Cannot load ARC benchmark DLL");
     auto init=reinterpret_cast<Api>(GetProcAddress(module,"ArcInitialize"));
@@ -64,11 +64,11 @@ inline void initialize(){
         wchar_t enable[]=L"2x2";if(s.mode(enable))throw std::runtime_error("ARC VRS mode refused");
     }
 }
-inline void before_frame(){auto& s=state();if(s.timed&&s.ready&&!s.measuring&&s.tick>=s.warmup&&ms(Clock::now()-s.ready_start)>=s.initialization_seconds*1000){s.measuring=true;s.measurement_start=Clock::now();}
+inline void before_frame(){auto& s=state();if(s.timed&&s.ready&&!s.measuring&&s.tick>=s.warmup){const auto elapsed=ms(Clock::now()-s.ready_start)*.001;if(elapsed>=s.initialization_seconds&&(!s.phase_locked||s.tick%600==0||elapsed>120)){s.phase_comparable=!s.phase_locked||(s.tick%600==0&&elapsed<=120);s.actual_initialization_seconds=elapsed;s.measurement_first_tick=s.tick;s.measuring=true;s.measurement_start=Clock::now();}}
 if(s.profile&&!s.profile_requested&&s.ready&&s.tick==s.warmup){
     auto argument=L"16|"+s.output+L"/gpu-profile.json";if(s.profile(&argument[0]))throw std::runtime_error("GPU profile request refused");s.profile_requested=true;
 }}
-inline void finish(){auto& s=state();if(s.writer&&!s.writer->finish())throw std::runtime_error("Benchmark telemetry lost or failed");arc::timeline::flush(s.output+L"/cpu-timeline.json");s.rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){
+inline void finish(){auto& s=state();{std::ofstream phase(s.output+L"/measurement-phase.json");phase<<"{\"comparable\":"<<(s.phase_comparable?"true":"false")<<",\"initialization_seconds\":"<<s.actual_initialization_seconds<<",\"first_tick\":"<<s.measurement_first_tick<<",\"route\":\""<<(s.holdout?"holdout":"primary")<<"\"}\n";}if(s.writer&&!s.writer->finish())throw std::runtime_error("Benchmark telemetry lost or failed");arc::timeline::flush(s.output+L"/cpu-timeline.json");s.rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){
     s.stop_profile(nullptr);const auto path=s.output+L"/gpu-profile.json";const auto until=GetTickCount64()+5000;
     while(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES&&GetTickCount64()<until)Sleep(10);
     if(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES)throw std::runtime_error("GPU profile publication timed out");
