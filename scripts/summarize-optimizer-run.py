@@ -9,6 +9,7 @@ import io
 import json
 import math
 import statistics
+import struct
 from pathlib import Path
 
 
@@ -48,6 +49,15 @@ def summarize(directory):
                   wait_mean_ms=mean(r['swapchain_wait_ms'] for r in rows),
                   gpu_pass_mean_ms={k:mean(r['gpu_ms'].get(k, 0) for r in rows) for k in rows[0]['gpu_ms']},
                   gpu_passes_overlap_do_not_sum=True)
+    resolutions=set()
+    for path in directory.glob('*.png'):
+        with path.open('rb') as image:
+            header=image.read(24)
+        if header.startswith(b'\x89PNG\r\n\x1a\n') and len(header)==24:
+            resolutions.add(struct.unpack('>II',header[16:24]))
+    result['actual_resolution']=list(next(iter(resolutions))) if len(resolutions)==1 else None
+    result['requested_resolution']=[1920,1080]
+    result['host_cpu_profiler_lag_frames']=1
     samples = directory / 'gpu-samples.json'
     gpu = []
     if samples.exists():

@@ -20,6 +20,7 @@ parser.add_argument("--measurement-seconds",type=float,default=0)
 parser.add_argument("--oracle-interval",type=int,default=0,help="Separate quality-oracle run; invalidates performance comparison")
 parser.add_argument("--cache",type=Path)
 parser.add_argument("--overlay",action="store_true")
+parser.add_argument("--functional",action="store_true",help="Interactive correctness run, excluded from FPS comparisons")
 parser.add_argument("--visible",action="store_true",help="Show the owned renderer and diagnostics without activating them")
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
@@ -97,7 +98,7 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "automatic_target_fps":args.auto_target,
           "initialization_seconds":args.initialization_seconds,"measurement_seconds":args.measurement_seconds,"process_budget_seconds":process_budget,
           "overlay":args.overlay,"visible":args.visible,
-          "oracle_interval":args.oracle_interval,"performance_run":not bool(args.oracle_interval),
+          "oracle_interval":args.oracle_interval,"performance_run":not bool(args.oracle_interval or args.functional),
           "cost_diagnostics":bool(args.measure_costs and args.dll),
           "cpu_state_cache":args.cpu_state_cache,
           "worker_placement":args.worker_placement,

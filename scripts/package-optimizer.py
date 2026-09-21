@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--build', type=Path, default=ROOT / 'build/Release')
     parser.add_argument('--downloads', type=Path, default=ROOT / 'build/package-downloads')
     parser.add_argument('--report', type=Path)
+    parser.add_argument('--evidence', type=Path)
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -94,9 +95,15 @@ def main():
                     'import numpy,cv2,PIL; assert numpy.__version__=="2.2.6"; assert cv2.__version__=="4.12.0"; print("Packaged quality dependencies OK")'], check=True)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip())
-    shutil.copy2(ROOT / 'docs/CONNECTION_HANDOFF_REPORT.md', output / 'CONNECTION_HANDOFF_REPORT.md')
     if args.report:
-        shutil.copy2(args.report, output / 'REPORT.md')
+        report=args.report.read_text(encoding='utf-8')
+        if args.evidence:report=report.replace(str(args.evidence.resolve()).replace('\\','/'),'evidence')
+        (output/'REPORT.md').write_text(report,encoding='utf-8')
+    else:
+        shutil.copy2(ROOT / 'docs/CONNECTION_HANDOFF_REPORT.md', output / 'CONNECTION_HANDOFF_REPORT.md')
+    if args.evidence:
+        if output.is_relative_to(args.evidence.resolve()):raise ValueError('Package cannot be inside evidence source')
+        shutil.copytree(args.evidence,output/'evidence')
     (output / 'README.txt').write_text(
         'ARC development package\n'
         'Run arc-launcher.exe. Choose a DX12 executable or an explicit running process ID.\n'

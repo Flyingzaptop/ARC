@@ -45,17 +45,22 @@ LRESULT CALLBACK proc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
 }
 }
 void initialize(HINSTANCE instance,HWND parent){owner=parent;WNDCLASSW cls{};cls.hInstance=instance;cls.lpfnWndProc=proc;cls.lpszClassName=L"ARCImportanceOverlay";cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);RegisterClassW(&cls);
-    window=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW,cls.lpszClassName,L"ARC — карта важности",WS_POPUP,20,60,520,425,parent,nullptr,instance,nullptr);
+    window=CreateWindowExW(WS_EX_LAYERED|WS_EX_TRANSPARENT|WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW,cls.lpszClassName,L"ARC — карта важности",WS_POPUP,20,60,520,425,nullptr,nullptr,instance,nullptr);
     SetLayeredWindowAttributes(window,0,225,LWA_ALPHA);font=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");small_font=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");}
 void toggle(){visible=!visible;if(!visible&&window)ShowWindow(window,SW_HIDE);}
 bool enabled()noexcept{return visible;}
 void update(const nlohmann::json& automatic,const nlohmann::json& importance,DWORD pid){
     status=automatic;map=importance;if(!window||!visible)return;
     HWND target=reinterpret_cast<HWND>(std::uintptr_t(automatic.value("window_handle",0ull)));DWORD actual{};if(target)GetWindowThreadProcessId(target,&actual);
-    if(!target||actual!=pid||!IsWindow(target)||IsIconic(target)){ShowWindow(window,SW_HIDE);return;}
     const bool separate=automatic.value("exclusive_fullscreen",false);
+    if(!target||actual!=pid||!IsWindow(target)||(!separate&&IsIconic(target))){ShowWindow(window,SW_HIDE);return;}
+    DWORD foreground_pid{};GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);
+    if(!separate&&foreground_pid!=pid&&foreground_pid!=GetCurrentProcessId()){ShowWindow(window,SW_HIDE);return;}
     if(separate!=standalone){standalone=separate;SetWindowLongPtrW(window,GWL_EXSTYLE,WS_EX_LAYERED|WS_EX_TOOLWINDOW|(separate?0:WS_EX_TRANSPARENT|WS_EX_NOACTIVATE));SetWindowLongPtrW(window,GWL_STYLE,separate?WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU:WS_POPUP);}
-    POINT position{16,16};ClientToScreen(separate?owner:target,&position);SetWindowPos(window,separate?HWND_NOTOPMOST:HWND_TOPMOST,position.x,position.y,520,425,SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_FRAMECHANGED);InvalidateRect(window,nullptr,FALSE);
+    POINT position{16,16};
+    if(separate){MONITORINFO monitor{sizeof(monitor)};if(GetMonitorInfoW(MonitorFromWindow(target,MONITOR_DEFAULTTONEAREST),&monitor)){position.x+=monitor.rcWork.left;position.y+=monitor.rcWork.top;}}
+    else ClientToScreen(target,&position);
+    SetWindowPos(window,separate?HWND_NOTOPMOST:HWND_TOPMOST,position.x,position.y,520,425,SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_FRAMECHANGED);InvalidateRect(window,nullptr,FALSE);
 }
 void close(){if(window)DestroyWindow(window);window=nullptr;if(font)DeleteObject(font);if(small_font)DeleteObject(small_font);font=small_font=nullptr;}
 }
