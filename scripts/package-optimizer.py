@@ -43,11 +43,11 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     downloads = args.downloads.resolve()
     downloads.mkdir(parents=True, exist_ok=True)
-    for name in ['arc-launcher.exe', 'arc-dx12-probe-launch.exe', 'arc-dx12-probe.dll', 'arc-shader-tool.exe']:
+    for name in ['arc-launcher.exe', 'arc-dx12-probe-launch.exe', 'arc-dx12-probe.dll', 'arc-shader-tool.exe', 'arc-quality-metrics.dll']:
         shutil.copy2(args.build / name, output / name)
     scripts = output / 'scripts'
     scripts.mkdir()
-    for name in ['optimizer-live-quality.py', 'optimizer-quality.py']:
+    for name in ['optimizer-live-quality.py', 'optimizer-quality.py', 'optimizer_quality_metrics.py']:
         shutil.copy2(ROOT / 'scripts' / name, scripts / name)
     dxc = output / 'runtime/dxc'
     dxc.mkdir(parents=True)

@@ -1,3 +1,4 @@
+#include "generic_background_budget.hpp"
 #include "generic_optimizer.hpp"
 #include "generic_binding_admission.hpp"
 #include "generic_gpu_control.hpp"
@@ -106,7 +107,7 @@ struct State {
     bool spatial_capture_requested{};
 };
 State& state(){static auto* s=new State;return *s;}
-void event(nlohmann::json value)noexcept{try{auto& s=state();std::lock_guard lock(s.mutex);LARGE_INTEGER time{};QueryPerformanceCounter(&time);value["event_qpc"]=time.QuadPart;if(s.events.size()>=256){s.events.pop_front();++s.events_dropped;}s.events.push_back(value.dump());}catch(...) {}}
+void event(nlohmann::json value)noexcept{try{LARGE_INTEGER time{};QueryPerformanceCounter(&time);value["event_qpc"]=time.QuadPart;auto text=value.dump();auto& s=state();std::lock_guard lock(s.mutex);if(s.events.size()>=256){s.events.pop_front();++s.events_dropped;}s.events.push_back(std::move(text));}catch(...) {}}
 RawDescriptor& raw_view(UINT64 address){return state().cpu_views[((address>>5)^(address>>14))%state().cpu_views.size()];}
 void forget_raw_view(UINT64 address){auto& old=raw_view(address);if(old.address==address)old.address=0;}
 bool view_identity(unsigned kind,ID3D12Resource* native,ID3D12Resource* counter,const void* desc,std::size_t size,D3D12_CPU_DESCRIPTOR_HANDLE handle,RawDescriptor& result){
@@ -290,6 +291,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     if(s.compiler_identity.empty())s.compiler_identity=shader_cache::file_digest(s.worker)+shader_cache::file_digest(s.compiler);
     const auto identity=std::string("ARC_CONTROLLED_EXECUTION_1:")+shader_cache::digest(pipeline->code)+shader_cache::digest(pipeline->root->bytes)+s.compiler_identity+":"+std::to_string(space);
     const auto key=shader_cache::digest({reinterpret_cast<const std::byte*>(identity.data()),identity.size()});
+    event({{"phase","shader_identity"},{"pipeline",pipeline->id},{"pipeline_generation",pipeline->id},{"profile_identity",pipeline->profile_id},{"shader_sha256",shader_cache::digest(pipeline->code)},{"layout_sha256",shader_cache::digest(pipeline->root->bytes)},{"analysis_key",key}});
     if(const auto declined=shader_cache::restore_decline(s.persistent_cache,key);!declined.empty()){
         event({{"phase","analysis_cache_declined"},{"pipeline",pipeline->id},{"shader_key",key},{"reason",declined}});throw std::runtime_error(declined);
     }
@@ -297,6 +299,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     {std::lock_guard lock(s.mutex);if(cached)++s.cache_hits;else ++s.cache_misses;}
     event({{"phase",cached?"analysis_cache_hit":"analysis_cache_miss"},{"pipeline",pipeline->id},{"shader_key",key}});
     if(!cached){
+    std::lock_guard background_gate(background_compute_gate());
     for(const wchar_t* suffix:{L"",L".contract",L".access.ll"}){auto partial=binary;partial+=suffix;std::error_code ignored;std::filesystem::remove(partial,ignored);}
     {std::ofstream file(source,std::ios::binary);file.write(reinterpret_cast<const char*>(pipeline->code.data()),pipeline->code.size());file.close();if(!file)throw std::runtime_error("shader source cache IO");}
     auto command=quote(s.worker.wstring())+L" controlled-proof:"+std::to_wstring(space)+L" "+quote(source.wstring())+L" "+quote(binary.wstring())+L" "+quote(s.compiler.wstring());
@@ -320,7 +323,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     auto result=std::make_shared<Variant>();result->id=pipeline->id;auto& contract=result->contract;std::size_t count{};
     description>>contract.control_space>>contract.threads[0]>>contract.threads[1]>>contract.threads[2]>>contract.stores>>count>>contract.comparison_filter_groups>>contract.zero_factor_regions>>contract.edge_input_mask>>contract.mip_samples;
     description>>contract.execution_marker;
-    if(!description||tag!="ARC_SHADER_CONTRACT_6"||!contract.execution_marker||count>128||contract.control_space==UINT32_MAX)throw std::runtime_error("shader worker contract");
+    if(!description||tag!="ARC_SHADER_CONTRACT_7"||!contract.execution_marker||count>128||contract.control_space==UINT32_MAX)throw std::runtime_error("shader worker contract");
     for(std::size_t i=0;i<count;++i){shader::ResourceContract r;description>>r.resource_class>>r.range_id>>r.shader_register>>r.space>>r.count>>r.kind;contract.resources.push_back(r);}
     if(!description)throw std::runtime_error("truncated shader contract");contract.admitted=true;
     auto access_path=binary;access_path+=L".access.ll";
@@ -441,8 +444,13 @@ CandidateCapabilities candidate_capabilities()noexcept{CandidateCapabilities res
 std::vector<WorkCandidate> candidate_catalog()noexcept{
     // Profiling has a separate lock; never acquire it under the submission lock.
     auto costs=gpu_profile::compute_costs();std::vector<WorkCandidate> result;
+    std::vector<nlohmann::json> measured;static std::map<std::uint64_t,std::pair<std::uint64_t,std::string>> published;
     std::sort(costs.begin(),costs.end(),[](const auto& a,const auto& b){return a.total_gpu_ms>b.total_gpu_ms;});
     safe([&]{auto& s=state();if(s.faults)return;
+        for(const auto& cost:costs){const auto found=s.pipelines.find(cost.pipeline);if(found==s.pipelines.end()||found->second->profile_id!=cost.pipeline_identity||!cost.present_windows)continue;
+            const auto& p=*found->second;const auto tag=std::make_pair(cost.session,p.reason);if(published.contains(p.id)&&published[p.id]==tag)continue;if(published.size()>=16384)published.clear();published[p.id]=tag;
+            measured.push_back({{"phase","pipeline_cost"},{"pipeline",p.id},{"profile_identity",p.profile_id},{"profile_session",cost.session},{"gpu_ms_per_frame",cost.total_gpu_ms/cost.present_windows},{"present_windows",cost.present_windows},{"prepared",bool(p.variant)},{"reason",p.reason}});
+        }
         if(s.compile_on_demand){unsigned scheduled=0;
             for(const auto& cost:costs){const auto found=s.pipelines.find(cost.pipeline);if(found==s.pipelines.end()||found->second->profile_id!=cost.pipeline_identity)continue;auto& p=*found->second;
                 if(p.variant){if(++scheduled==arc::PolicyBundle::capacity)break;continue;}
@@ -460,7 +468,7 @@ std::vector<WorkCandidate> candidate_catalog()noexcept{
         std::sort(result.begin(),result.end(),[](const auto& a,const auto& b){return a.gpu_ms_per_window!=b.gpu_ms_per_window?a.gpu_ms_per_window>b.gpu_ms_per_window:a.capabilities.pipeline<b.capabilities.pipeline;});
         if(result.size()>arc::PolicyBundle::capacity)result.resize(arc::PolicyBundle::capacity);
         s.catalog_targets.clear();for(const auto& c:result)s.catalog_targets.push_back(c.capabilities.pipeline);
-    });return result;
+    });for(auto& row:measured)event(std::move(row));return result;
 }
 bool configure_bundle(const arc::PolicyBundle& bundle,bool apply,std::uint64_t calibration_epoch,std::uint64_t valid_until_frame)noexcept{
     if(!enabled()||!bundle.valid())return false;

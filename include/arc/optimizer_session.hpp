@@ -15,6 +15,8 @@ struct OptimizerSessionConfig {
     // A successful image trial is not a permanent quality certificate. Return
     // to the original and acquire fresh evidence even while meeting the target.
     std::uint32_t max_evidence_samples{600};
+    bool require_local_temporal_quality{};
+    double max_worst_tile{.15},max_temporal_p99{.02};
 };
 struct OptimizerTrialEvidence {
     std::uint64_t action{},generation{};
@@ -24,6 +26,9 @@ struct OptimizerTrialEvidence {
     double original_frame_ms{}; // zero means no fresh original-policy timing
     bool exact_native_state{}; // structural CPU equivalence, not a measured SSIM
     bool gpu_execution_confirmed{};
+    double worst_tile{},temporal_p99{};
+    bool temporal_reference_matched{};
+    std::uint64_t evidence_age_frames{};
 };
 enum class SessionPhase { Warmup,Discover,Probe,Settle,Active,Limited,Recover,Faulted };
 enum class SessionRequestKind { None,Profile,Probe,Apply,Restore };
@@ -57,6 +62,7 @@ public:
     void applied(std::uint64_t action,bool success);
     void restored(bool success);
     SessionRequest scene_changed();
+    SessionRequest revalidate();
     [[nodiscard]] SessionSnapshot snapshot()const noexcept{return state_;}
 private:
     OptimizerSessionConfig config_;

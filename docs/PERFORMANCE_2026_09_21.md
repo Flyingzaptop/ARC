@@ -48,3 +48,22 @@ package and archives. Report unresolved causes and unsupported transforms explic
 - Striped quality metrics match independent full-frame oracle within 1e-7, including
   11x11, partial tiles and 1080p. Resident worker protocol/shared-memory and temporal
   flicker tests pass. GPU integration is still under verification; not yet accepted.
+
+- Confirmed NumPy/OpenBLAS defaulted to 16 threads despite OpenCV's limit. Setting
+  numerical-library thread environment before imports reduced import private commit
+  from ~529.5MiB to ~46.1MiB. No game affinity was changed.
+- Added persistent job-bounded critic, named packed-image mappings, O/B/O/B/O GPU
+  proof, local/temporal quality limits and expiry measured from captured frames.
+  Native fused metric reductions match the independent oracle within 1e-7.
+- `perf-resident-expanded-05` is FUNCTIONAL, not a final performance comparison.
+  Trial 7 passed live quality and local A/B/A (12.327 -> 10.764ms); evidence age 535
+  frames leaves very little useful hold time. Critic/scheduling overhead still needs
+  work. Do not claim full-session gain from this trial.
+- Added constant/private array bounds, canonical group-coordinate expressions,
+  scalar output masks and additional pure FP operations. Native fixture (including
+  DLL binding/rollback paths) passed in `perf-expanded-native-02`.
+  Captured formerly declined ~0.303ms and ~0.148ms GI shader classes assemble/validate
+  with contract 7. Shared-memory/structured-state algorithms are still declined.
+- Remaining substantial work: group-coherent path, wider adaptive rates/sample
+  budgets, compact spatial prepass, same-input sensitivity probes, final matrix and
+  portable release. No final performance acceptance yet.

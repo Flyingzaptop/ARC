@@ -13,7 +13,7 @@ OptimizerSession::OptimizerSession(OptimizerSessionConfig config):config_(config
         !nonnegative(config.min_ssim)||config.min_ssim>1||!nonnegative(config.max_mean_error)||
         !nonnegative(config.max_tile_p99)||!nonnegative(config.min_gain_ms)||
         !nonnegative(config.min_gain_fraction)||!nonnegative(config.max_cpu_overhead_ms)||
-        !nonnegative(config.max_gpu_overhead_ms))throw std::invalid_argument("Invalid optimizer session configuration");
+        !nonnegative(config.max_gpu_overhead_ms)||!nonnegative(config.max_worst_tile)||!nonnegative(config.max_temporal_p99))throw std::invalid_argument("Invalid optimizer session configuration");
     state_.target_frame_ms=1000/config_.target_fps;
 }
 void OptimizerSession::target(double fps){
@@ -67,6 +67,12 @@ SessionRequest OptimizerSession::frame(double frame_ms,bool stable,std::uint64_t
     }
     state_.phase=SessionPhase::Limited;return {};
 }
+SessionRequest OptimizerSession::revalidate(){
+    if(!state_.active_action||pending_||restore_pending_||apply_pending_||state_.phase==SessionPhase::Faulted)return {};
+    const auto found=std::find_if(actions_.begin(),actions_.end(),[&](const auto& a){return a.id==state_.active_action&&a.generation==active_generation_&&a.ready;});
+    if(found==actions_.end())return scene_changed();
+    pending_=*found;state_.phase=SessionPhase::Probe;++state_.probes;return {SessionRequestKind::Probe,found->id};
+}
 SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
     if(candidate_epoch_changed_)return scene_changed();
     if(!pending_||state_.phase!=SessionPhase::Probe||e.action!=pending_->id||e.generation!=pending_->generation)return {};
@@ -76,10 +82,13 @@ SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
         (exact||(nonnegative(e.ssim)&&e.ssim<=1&&nonnegative(e.mean_error)&&nonnegative(e.tile_p99)))&&
         (!config_.enforce_component_budgets||(nonnegative(e.cpu_overhead_ms)&&nonnegative(e.gpu_overhead_ms)));
     const double gain=e.baseline_frame_ms-e.candidate_frame_ms;
-    const bool quality=exact||(e.matched_reference&&e.ssim>=config_.min_ssim&&e.mean_error<=config_.max_mean_error&&e.tile_p99<=config_.max_tile_p99);
+    const bool quality=exact||(e.matched_reference&&e.ssim>=config_.min_ssim&&e.mean_error<=config_.max_mean_error&&e.tile_p99<=config_.max_tile_p99&&
+        (!config_.require_local_temporal_quality||(e.temporal_reference_matched&&nonnegative(e.worst_tile)&&nonnegative(e.temporal_p99)&&e.worst_tile<=config_.max_worst_tile&&e.temporal_p99<=config_.max_temporal_p99)));
     const bool accept=e.complete&&quality&&finite&&nonnegative(e.original_frame_ms)&&(config_.maximize_fps||e.baseline_frame_ms>state_.target_frame_ms)&&
         (!config_.require_gpu_execution||exact||e.gpu_execution_confirmed)&&
         (!config_.enforce_component_budgets||(e.cpu_overhead_ms<=config_.max_cpu_overhead_ms&&e.gpu_overhead_ms<=config_.max_gpu_overhead_ms))&&
+        e.evidence_age_frames<config_.max_evidence_samples&&
+        (!positive(e.original_frame_ms)||e.original_frame_ms-e.candidate_frame_ms>std::max({config_.min_gain_ms,e.original_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms}))&&
         gain>std::max({config_.min_gain_ms,e.baseline_frame_ms*config_.min_gain_fraction,e.baseline_noise_ms});
     if(!accept){++state_.rejected;state_.phase=SessionPhase::Settle;settle_=config_.settle_samples;return {};}
     if(positive(e.original_frame_ms))original_reference_ms_=e.original_frame_ms;
@@ -87,7 +96,7 @@ SessionRequest OptimizerSession::evidence(const OptimizerTrialEvidence& e){
     // A replacement is a whole configuration. Adding improvements measured
     // against different incumbents invents a gain when the workload drifts.
     retained_gain_ms_=std::max(0.0,original_reference_ms_-e.candidate_frame_ms);
-    apply_pending_=true;state_.active_action=id;active_generation_=generation;evidence_age_=0;return {SessionRequestKind::Apply,id};
+    apply_pending_=true;state_.active_action=id;active_generation_=generation;evidence_age_=static_cast<std::uint32_t>(e.evidence_age_frames);return {SessionRequestKind::Apply,id};
 }
 void OptimizerSession::applied(std::uint64_t action,bool success){
     if(!apply_pending_||state_.active_action!=action)return;apply_pending_=false;

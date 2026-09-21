@@ -47,6 +47,16 @@ struct Pixel {float r,g,b,a;};
 int wmain(int argc,wchar_t** argv)try{
     check(argc==3||argc==4,"Compiler DLL, fresh result directory and optional probe DLL required");const std::filesystem::path directory=std::filesystem::absolute(argv[2]);check(!std::filesystem::exists(directory),"Fresh directory required");std::filesystem::create_directories(directory);
     Compiler compiler(argv[1]);
+    for(const auto& source:std::vector<std::string>{
+        "static const float table[8]={.1,.8,.2,.7,.3,.6,.4,.5}; RWTexture2D<float4> output:register(u0); [numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){output[p.xy]=table[p.x&7];}",
+        "Texture2D<float4> input:register(t0); RWTexture2D<float4> output:register(u0); [numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){float4 c=input[p.xy];float a[4]={c.r,c.g,c.b,c.a};output[p.xy]=a[p.x&3];}",
+        "RWTexture2D<float4> output:register(u0); [numthreads(8,8,1)]void MainCS(uint3 g:SV_GroupID,uint3 t:SV_GroupThreadID){uint2 p=g.xy*8+t.xy;output[p]=float4(p,0,1);}",
+        "Texture2D<float4> input:register(t0); RWTexture2D<float4> output:register(u0); [numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){float4 c=input[p.xy];output[p.xy]=isnan(c.r)?0:c;}",
+        "RWTexture2D<float> output:register(u0); [numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){float c=0;switch(p.x&3){case 0:c=.1;break;case 1:c=.7;break;case 2:c=.2;break;default:c=.9;}output[p.xy]=c;}"
+    }){const auto code=compiler.compile(source);const auto ir=compiler.disassemble(code.Get());const auto transform=arc::dx12::shader::coarse_compute(ir,1,1,true);
+        check(transform.admitted,transform.reason.c_str());compiler.assemble(transform.ir);}
+    {const auto code=compiler.compile("cbuffer State:register(b0){uint index;} Texture2D<float4> input:register(t0); RWTexture2D<float4> output:register(u0); [numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){float4 c=input[p.xy];float a[4]={c.r,c.g,c.b,c.a};output[p.xy]=a[index];}");
+     check(!arc::dx12::shader::coarse_compute(compiler.disassemble(code.Get()),1,1,true).admitted,"Unbounded private pointer index must decline");}
     const std::string source=R"(
 Texture2D<float4> input_color[5]:register(t3,space2);
 RWTexture2D<float4> output_color:register(u4,space3);

@@ -8,6 +8,20 @@
 #include <iostream>
 
 int main(){
+    {arc::OptimizerSessionConfig c;c.warmup_samples=1;c.settle_samples=0;c.hold_samples=0;c.maximize_fps=true;c.require_local_temporal_quality=true;
+    arc::OptimizerSession session(c);session.candidates({{31,31,0,.1,true,4,false,false,true}});
+    assert(session.frame(16).action==31);
+    arc::OptimizerTrialEvidence e{31,31,true,true,true,16,12,.05,.99,.001,.01,.1,.1};
+    e.worst_tile=.1;e.temporal_p99=.01;e.temporal_reference_matched=true;e.evidence_age_frames=599;
+    assert(session.evidence(e).kind==arc::SessionRequestKind::Apply);session.applied(31,true);
+    assert(session.frame(12,true,1).kind==arc::SessionRequestKind::Restore); // analysis time cannot refresh evidence
+    for(unsigned failure=0;failure<3;++failure){arc::OptimizerSession bad(c);bad.candidates({{31,31,0,.1,true,4,false,false,true}});bad.frame(16);auto rejected=e;
+        if(failure==0)rejected.worst_tile=.16;if(failure==1)rejected.temporal_reference_matched=false;if(failure==2)rejected.evidence_age_frames=600;
+        assert(bad.evidence(rejected).kind==arc::SessionRequestKind::None);}
+    arc::OptimizerSession renew(c);renew.candidates({{31,31,0,.1,true,4,false,false,true}});renew.frame(16);e.evidence_age_frames=40;
+    assert(renew.evidence(e).kind==arc::SessionRequestKind::Apply);renew.applied(31,true);assert(renew.revalidate().action==31);
+    e.matched_reference=false;assert(renew.evidence(e).kind==arc::SessionRequestKind::None);assert(renew.snapshot().active_action==31);
+    }
     {const double flat[]{10,10,10,10},faster[]{8,8,8,8},noisy[]{6,10,6,10};
     auto a=arc::timing_window(flat),b=arc::timing_window(faster),c=arc::timing_window(noisy);
     assert(a.mean==10&&a.variance==0&&arc::comparison_noise(a,b,a)==0);

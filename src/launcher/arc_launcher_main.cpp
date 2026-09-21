@@ -16,8 +16,8 @@
 
 namespace {
 using Json=nlohmann::json;
-enum { Games=1001,Scan,Choose,Launch,Attach,Pid,Target,ApplyTarget,Stop,Arguments,SteamOptions,Overlay };
-HWND list{},path_label{},arguments{},pid_edit{},target_edit{},state_label{},fps_label{},detail_label{};
+enum { Games=1001,Scan,Choose,Launch,Attach,Pid,Target,ApplyTarget,Stop,Arguments,SteamOptions,Overlay,QualityProfile };
+HWND quality_combo{},list{},path_label{},arguments{},pid_edit{},target_edit{},state_label{},fps_label{},detail_label{};
 std::vector<arc::SteamGame> games;
 std::filesystem::path selected,session,metrics;
 std::filesystem::path launch_scope;
@@ -55,7 +55,7 @@ double target(){const auto value=text(target_edit);std::size_t used{};const auto
 std::filesystem::path configuration(bool launch){
     const auto root=directory();const auto runtime=root/L"runtime";
     const std::pair<const char*,std::filesystem::path> files[]{{"worker",root/L"arc-shader-tool.exe"},{"compiler",runtime/L"dxc/dxcompiler.dll"},{"python",runtime/L"python/python.exe"},{"critic",root/L"scripts/optimizer-live-quality.py"}};
-    Json config{{"target_fps",target()},{"maximize_fps",true},{"diagnostics_overlay",arc::overlay::enabled()},{"maximum_seconds",0}};
+    Json config{{"quality_profile",SendMessageW(quality_combo,CB_GETCURSEL,0,0)==0?"balanced":"aggressive"},{"target_fps",target()},{"maximize_fps",true},{"diagnostics_overlay",arc::overlay::enabled()},{"maximum_seconds",0}};
     for(const auto& [key,path]:files){if(!std::filesystem::is_regular_file(path))throw std::runtime_error("Incomplete ARC package: "+utf8(path));config[key]=utf8(path);}
     if(!std::filesystem::is_regular_file(root/L"arc-dx12-probe.dll")||!std::filesystem::is_regular_file(root/L"arc-dx12-probe-launch.exe"))throw std::runtime_error("ARC runtime files are missing");
     SYSTEMTIME now{};GetLocalTime(&now);wchar_t stamp[96]{};swprintf_s(stamp,L"%04u%02u%02u-%02u%02u%02u-%llu",now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,GetTickCount64());
@@ -161,7 +161,9 @@ LRESULT CALLBACK window(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
         path_label=control(hwnd,L"STATIC",L"Приложение не выбрано",SS_PATHELLIPSIS,20,287,700,25);
         control(hwnd,L"STATIC",L"Аргументы запуска",0,20,325,155,25);arguments=control(hwnd,L"EDIT",L"",ES_AUTOHSCROLL,180,322,540,28,Arguments);
         control(hwnd,L"STATIC",L"Режим ARC",0,20,367,120,25);target_edit=control(hwnd,L"EDIT",L"60",ES_NUMBER,145,363,75,30,Target);control(hwnd,L"BUTTON",L"Изменить цель",0,235,363,155,32,ApplyTarget);
-        ShowWindow(target_edit,SW_HIDE);ShowWindow(GetDlgItem(hwnd,ApplyTarget),SW_HIDE);control(hwnd,L"STATIC",L"Максимальный FPS · проверка качества",0,145,367,550,25);
+        ShowWindow(target_edit,SW_HIDE);ShowWindow(GetDlgItem(hwnd,ApplyTarget),SW_HIDE);quality_combo=control(hwnd,L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_VSCROLL,145,363,555,160,QualityProfile);
+        SendMessageW(quality_combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"Balanced — максимальный FPS, близкое качество"));
+        SendMessageW(quality_combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"Aggressive — максимальный FPS, заметное упрощение"));SendMessageW(quality_combo,CB_SETCURSEL,1,0);
         control(hwnd,L"BUTTON",L"Запустить с ARC",BS_DEFPUSHBUTTON,20,410,210,38,Launch);
         control(hwnd,L"STATIC",L"PID",0,250,419,35,25);pid_edit=control(hwnd,L"EDIT",L"",ES_NUMBER,290,414,95,30,Pid);control(hwnd,L"BUTTON",L"Подключить",0,400,410,140,38,Attach);
         control(hwnd,L"BUTTON",L"Отключить ARC",0,555,410,165,38,Stop);
@@ -178,6 +180,7 @@ LRESULT CALLBACK window(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
         case Games:if(HIWORD(wparam)==LBN_SELCHANGE){const auto index=SendMessageW(list,LB_GETCURSEL,0,0);if(index>=0&&std::size_t(index)<games.size()){selected=game_executable(games[index]);launch_scope=games[index].install_dir;SetWindowTextW(path_label,selected.c_str());}}break;
         case Choose:{wchar_t path[32768]{};OPENFILENAMEW dialog{sizeof(dialog)};dialog.hwndOwner=hwnd;dialog.lpstrFilter=L"Приложения (*.exe)\0*.exe\0\0";dialog.lpstrFile=path;dialog.nMaxFile=32768;dialog.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;if(GetOpenFileNameW(&dialog)){selected=path;launch_scope=selected.parent_path();SetWindowTextW(path_label,selected.c_str());}break;}
         case Launch:launch(false);break;
+        case QualityProfile:if(HIWORD(wparam)==CBN_SELCHANGE)status(L"Профиль будет использован при следующем подключении ARC.");break;
         case Attach:launch(true);break;
         case Stop:stop();break;
         case ApplyTarget:if(target_pid){const auto fps=target();command(L"--target-fps "+std::to_wstring(target_pid)+L" "+quote((directory()/L"arc-dx12-probe.dll").wstring())+L" "+std::to_wstring(fps));status(L"Изменение целевого FPS…");}break;

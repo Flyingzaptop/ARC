@@ -45,7 +45,7 @@ struct State {
     std::uint64_t image_swapchain{},images_completed{},images_failed{};
     std::atomic<bool> image_pending{};
     bool image_writing{};
-    std::array<std::filesystem::path,3> sequence_paths;
+    std::vector<std::filesystem::path> sequence_paths;
     std::deque<std::unique_ptr<ImageReadback>> sequence_images;
     std::vector<std::unique_ptr<ImageReadback>> sequence_spares;
     std::uint64_t sequence_swapchain{};
@@ -238,7 +238,7 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
         const auto queue=s.image_queues.find(id);
         if(queue==s.image_queues.end()){++s.images_failed;s.image_pending=false;return;}
         if(s.sequence_active){
-            if(s.sequence_submitted>=3)return;
+            if(s.sequence_submitted>=s.sequence_paths.size())return;
             s.image_path=s.sequence_paths[s.sequence_submitted];s.image_features=false;
             if(!s.sequence_spares.empty()){s.image=std::move(s.sequence_spares.back());s.sequence_spares.pop_back();}
             else s.image=std::make_unique<ImageReadback>();
@@ -262,7 +262,7 @@ void after_present(IDXGISwapChain* swap,std::uint64_t resource,HRESULT result,UI
     safe([&]{auto& s=state();if(s.timing){if(s.timing_rate!=mirror::requested_rate())s.timing->expire();DWORD foreground_pid=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);s.timing->present(std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count(),swapchain_id(swap),result==S_OK,foreground_pid==GetCurrentProcessId());}});
     safe([&]{auto& s=state();if(s.image&&s.image_swapchain==swapchain_id(swap)){
         s.image->presented(result);
-        if(s.sequence_active){s.sequence_images.push_back(std::move(s.image));if(s.sequence_submitted>=3||result!=S_OK)s.image_pending=false;}
+        if(s.sequence_active){s.sequence_images.push_back(std::move(s.image));if(s.sequence_submitted>=s.sequence_paths.size()||result!=S_OK)s.image_pending=false;}
     }});
     safe([&]{auto& s=state();if(s.armed&&!s.capturing){if(FAILED(result))return;begin_capture();s.capture_swapchain=swapchain_id(swap);s.armed=false;return;}
         if(!s.capturing||s.requested_path.empty())return;
@@ -285,8 +285,8 @@ bool request_image(const std::filesystem::path& path,bool features)noexcept{
     safe([&]{auto& s=state();if(s.sequence_active||s.image_pending||s.image||s.image_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels")||std::filesystem::exists(path.wstring()+L".tiles"))return;s.image_path=path;s.image_features=features;s.image_pending=true;accepted=true;});return accepted;
 }
 
-bool request_image_sequence(const std::array<std::filesystem::path,3>& paths,IDXGISwapChain* swap)noexcept{
-    bool accepted=false;safe([&]{auto& s=state();if(!swap||s.sequence_active||s.image_pending||s.image||s.image_writing)return;
+bool request_image_sequence(const std::vector<std::filesystem::path>& paths,IDXGISwapChain* swap)noexcept{
+    bool accepted=false;safe([&]{auto& s=state();if(!swap||(paths.size()!=3&&paths.size()!=5)||s.sequence_active||s.image_pending||s.image||s.image_writing)return;
         std::set<std::filesystem::path> unique;
         for(const auto& path:paths)if(!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path.wstring()+L".pixels")||!unique.insert(path).second)return;
         const auto object=s.objects.find(reinterpret_cast<std::uintptr_t>(swap));if(object==s.objects.end()||object->second.kind!=Kind::Swapchain)return;

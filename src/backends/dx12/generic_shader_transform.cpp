@@ -1,6 +1,7 @@
 #include "generic_shader_transform.hpp"
 #include <algorithm>
 #include <charconv>
+#include <cctype>
 #include <map>
 #include <regex>
 #include <set>
@@ -36,6 +37,67 @@ std::string code(std::string line) {
     for(std::size_t i=0;i<line.size();++i){if(quote){if(escape)escape=false;else if(line[i]=='\\')escape=true;else if(line[i]=='"')quote=false;}
         else if(line[i]=='"')quote=true;else if(line[i]==';'){line.resize(i);break;}}
     return trim(line);
+}
+// Prove private/constant flat array accesses before admitting LLVM memory ops.
+// Unknown indices, pointer escapes and writable global storage remain declined.
+bool local_memory_proof(const std::vector<std::string>& lines,std::size_t begin,std::size_t end,const std::array<unsigned,3>& threads){
+    struct Array {unsigned count;std::string type;bool readonly;};
+    std::map<std::string,Array> arrays,pointers;std::map<std::string,std::uint64_t> upper;
+    const std::string symbol=R"((%[A-Za-z0-9_.$]+|@"(?:[^"\\]|\\.)*"|@[A-Za-z0-9_.$]+))";
+    const std::regex global("^"+symbol+R"( = .*constant \[([0-9]+) x (float|half|i32)\].*$)");
+    const std::regex local("^"+symbol+R"( = alloca \[([0-9]+) x (float|half|i32)\](?:, align [0-9]+)?$)");
+    const std::regex gep("^"+symbol+R"( = getelementptr(?: inbounds)? \[([0-9]+) x (float|half|i32)\], \[[0-9]+ x (?:float|half|i32)\]\* )"+symbol+R"(, i32 0, i32 ([%A-Za-z0-9_.$]+)(?:, !.*)?$)");
+    const std::regex binary(R"(^(%[A-Za-z0-9_.$]+) = (and|or|urem|add|mul|shl|lshr)(?: nuw| nsw)* i32 ([%A-Za-z0-9_.$]+), ([%A-Za-z0-9_.$]+)$)");
+    const std::regex thread(R"(^(%[A-Za-z0-9_.$]+) = call i32 @dx.op.threadIdInGroup.i32\(i32 95, i32 ([012])\).*$)");
+    auto bound=[&](const std::string& name)->std::uint64_t{if(!name.empty()&&std::isdigit(static_cast<unsigned char>(name[0])))return number(name);auto i=upper.find(name);return i==upper.end()?UINT64_MAX:i->second;};
+    std::smatch m;
+    for(std::size_t i=0;i<lines.size();++i){const auto c=code(lines[i]);if(i<begin&&std::regex_match(c,m,global))arrays.emplace(m[1].str(),Array{number(m[2].str()),m[3].str(),true});
+        if(i>begin&&i<end&&std::regex_match(c,m,local)){const auto n=number(m[2].str());if(!n||n>4096)return false;arrays.emplace(m[1].str(),Array{n,m[3].str(),false});}}
+    std::map<std::string,std::string> definitions,owner,terminators;std::map<std::string,std::set<std::string>> predecessors;
+    std::string block="0";const std::regex numbered(R"(^; <label>:([0-9]+).*$)"),edge(R"(label %([A-Za-z0-9_.$]+))");
+    for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);if(std::regex_match(lines[i],m,numbered)){block=m[1];continue;}if(c.ends_with(':')){block=c.substr(0,c.size()-1);continue;}if(c.empty())continue;
+        terminators[block]=c;const auto eq=c.find(" = ");if(eq!=c.npos){const auto id=c.substr(0,eq);definitions[id]=c;owner[id]=block;}
+        if(c.starts_with("br ")||c.starts_with("switch "))for(auto e=std::sregex_iterator(c.begin(),c.end(),edge);e!=std::sregex_iterator();++e)predecessors[(*e)[1]].insert(block);
+    }
+    const std::regex phi(R"(^(%[A-Za-z0-9_.$]+) = phi i32 \[ ([%A-Za-z0-9_.$]+), %([A-Za-z0-9_.$]+) \], \[ ([%A-Za-z0-9_.$]+), %([A-Za-z0-9_.$]+) \].*$)");
+    const std::regex increment(R"(^(%[A-Za-z0-9_.$]+) = add(?: nuw| nsw)* i32 (%[A-Za-z0-9_.$]+), 1$)");
+    const std::regex condition(R"(^(%[A-Za-z0-9_.$]+) = icmp (ult|slt|eq|ne) i32 (%[A-Za-z0-9_.$]+), ([0-9]+)$)");
+    const std::regex branch(R"(^br i1 (%[A-Za-z0-9_.$]+), label %([A-Za-z0-9_.$]+), label %([A-Za-z0-9_.$]+)(?:, !.*)?$)");
+    for(const auto& [id,definition]:definitions){if(!std::regex_match(definition,m,phi))continue;
+        auto initial=m[2].str(),initial_block=m[3].str(),back=m[4].str(),latch=m[5].str();if(initial!="0"){std::swap(initial,back);std::swap(initial_block,latch);}if(initial!="0"||!definitions.contains(back))continue;
+        const auto header=owner.at(id);if(predecessors[header]!=std::set<std::string>{initial_block,latch})continue;
+        if(!std::regex_match(definitions.at(back),m,increment)||m[2]!=id||owner.at(back)!=latch)continue;
+        if(!std::regex_match(terminators[latch],m,branch))continue;const auto test=m[1].str(),yes=m[2].str(),no=m[3].str();
+        if(!definitions.contains(test)||owner.at(test)!=latch||!std::regex_match(definitions.at(test),m,condition)||m[3]!=back)continue;
+        const auto comparison=m[2].str();const auto count=number(m[4].str());if(!count||count>4096)continue;
+        if((comparison=="eq"&&no==header&&yes!=header)||(comparison!="eq"&&yes==header&&no!=header))upper[id]=count-1;
+    }
+    for(unsigned iteration=0;iteration<32;++iteration){bool changed=false;
+        for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);std::uint64_t value=UINT64_MAX;std::string name;
+            if(std::regex_match(c,m,thread)){name=m[1];value=threads[number(m[2].str())]-1;}
+            else if(std::regex_match(c,m,binary)){name=m[1];const auto op=m[2].str();const auto a=bound(m[3]),b=bound(m[4]);
+                if(op=="and")value=std::min(a,b);
+                else if(op=="urem"&&b&&b<UINT32_MAX&&!m[4].str().starts_with('%'))value=b-1;
+                else if(op=="add"&&a<=UINT32_MAX&&b<=UINT32_MAX&&a+b<=UINT32_MAX)value=a+b;
+                else if(op=="mul"&&a<=UINT32_MAX&&b<=UINT32_MAX&&a*b<=UINT32_MAX)value=a*b;
+                else if(op=="shl"&&a<=UINT32_MAX&&b<32&&(a<<b)<=UINT32_MAX)value=a<<b;
+                else if(op=="lshr"&&a<=UINT32_MAX&&b<32&&!m[4].str().starts_with('%'))value=a>>b;
+                else if(op=="or"&&a<=UINT32_MAX&&b<=UINT32_MAX){value=1;while(value<=std::max(a,b)&&value<(1ull<<32))value<<=1;--value;}
+            }
+            if(value!=UINT64_MAX&&(!upper.contains(name)||upper[name]!=value)){upper[name]=value;changed=true;}
+        }if(!changed)break;
+    }
+    for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);
+        if(c.find(" = alloca ")!=c.npos){if(!std::regex_match(c,m,local))return false;continue;}
+        if(c.find(" = getelementptr ")!=c.npos){if(!std::regex_match(c,m,gep))return false;const auto a=arrays.find(m[4]);if(a==arrays.end()||a->second.count!=number(m[2].str())||a->second.type!=m[3].str()||bound(m[5])>=a->second.count)return false;pointers.emplace(m[1],a->second);continue;}
+        if(c.find(" = load ")!=c.npos||c.starts_with("store ")){
+            const bool store=c.starts_with("store ");const auto at=store?6:c.find(" = load ")+8;const auto args=fields(c.substr(at));if(args.size()<2)return false;
+            const auto space=args[1].find_last_of(' ');if(space==args[1].npos)return false;const auto pointer=pointers.find(args[1].substr(space+1));
+            if(pointer==pointers.end()||(store&&pointer->second.readonly)||args[1].substr(0,space)!=pointer->second.type+"*")return false;
+            if((store&&!args[0].starts_with(pointer->second.type+" "))||(!store&&args[0]!=pointer->second.type))return false;
+        }
+    }
+    return true;
 }
 }
 std::string normalize_converted_dxil(std::string_view input){
@@ -90,10 +152,13 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         std::map<std::string,unsigned> named;
         std::vector<std::string> lines;std::istringstream stream(text);std::string line;std::smatch m;
         const std::regex md(R"(^!([0-9]+) = !\{(.*)\}$)"), nm(R"(^!(dx\.[A-Za-z]+) = !\{!([0-9]+)\}$)");
+        std::string pending_switch;
         unsigned functions=0,next_metadata=0;std::size_t begin=0,end=0;
         const std::regex metadata_id(R"(^!([0-9]+) = )");
         while(std::getline(stream,line)){
             line=trim(line);
+            if(!pending_switch.empty()){pending_switch+=' '+code(line);if(line.find(']')==line.npos)continue;line=std::move(pending_switch);pending_switch.clear();}
+            else if(code(line).starts_with("switch ")&&line.find(']')==line.npos){pending_switch=code(line);continue;}
             std::smatch identity;if(std::regex_search(line,identity,metadata_id)){const auto id=number(identity[1].str());if(id>=1000000)return reject("metadata_capacity");next_metadata=std::max(next_metadata,id+1);}
             if(std::regex_match(line,m,md))metadata.emplace(number(m[1].str()),fields(m[2].str()));
             else if(std::regex_match(line,m,nm))named.emplace(m[1].str(),number(m[2].str()));
@@ -101,6 +166,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             if(line=="}")end=lines.size();
             lines.push_back(line);
         }
+        if(!pending_switch.empty())return reject("switch_shape");
         if(functions!=1||end<=begin||!std::regex_match(lines[begin],std::regex(R"(^define void @[A-Za-z_.$][A-Za-z0-9_.$]*\(\) \{$)")))return reject("entry_shape");
         const auto& model=metadata.at(named.at("dx.shaderModel"));
         if(model.size()!=3||model[0]!="!\"cs\""||integer(model[1])!=6||integer(model[2])>5)return reject("shader_model");
@@ -114,6 +180,8 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             else if(tag!=0)return reject("unsupported_entry_property");
         }
         if(!out.threads[0]||!out.threads[1]||out.threads[2]!=1||out.threads[0]>1024||out.threads[1]>1024||out.threads[0]*out.threads[1]>1024)return reject("thread_dimensions");
+        if(!local_memory_proof(lines,begin,end,out.threads))return reject("unproven_local_memory");
+        std::set<unsigned> unsupported_uavs;
         const auto& lists=metadata.at(named.at("dx.resources"));if(lists.size()!=4)return reject("resource_lists");
         for(unsigned cls=0;cls<4;++cls){if(lists[cls]=="null")continue;
             for(const auto& resource:metadata.at(metadata_ref(lists[cls]))){
@@ -123,7 +191,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 // A runtime submission must resolve a finite set of uniform
                 // indices before any unbounded table can be activated.
                 if(c.count==UINT32_MAX&&(!runtime_control||cls==2))return reject("unbounded_resource_requires_runtime_proof");
-                if(cls==1&&(c.kind!=2||(!runtime_control&&c.count!=1)||r.size()!=11||r[7]!="i1 false"||r[8]!="i1 false"||r[9]!="i1 false"))return reject("uav_contract");
+                if(cls==1&&(c.kind!=2||(!runtime_control&&c.count!=1)||r.size()!=11||r[7]!="i1 false"||r[8]!="i1 false"||r[9]!="i1 false"))unsupported_uavs.insert(c.range_id);
                 if(std::any_of(out.resources.begin(),out.resources.end(),[&](const auto& old){return old.resource_class==cls&&old.range_id==c.range_id;}))return reject("duplicate_range");
                 out.resources.push_back(c);
             }
@@ -139,10 +207,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
             "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32",
             "dx.op.legacyF16ToF32","dx.op.legacyF32ToF16","dx.op.getDimensions",
-            "dx.op.binaryWithTwoOuts.i32",
+            "dx.op.binaryWithTwoOuts.i32","dx.op.groupId.i32","dx.op.threadIdInGroup.i32",
+            "dx.op.isSpecialFloat.f32","dx.op.isSpecialFloat.f16","dx.op.dot2.f16","dx.op.dot3.f16","dx.op.dot4.f16","dx.op.unary.f16","dx.op.binary.f16","dx.op.tertiary.f16",
             "dx.op.bufferLoad.f32","dx.op.bufferLoad.i32","dx.op.rawBufferLoad.f32","dx.op.rawBufferLoad.i32",
             "dx.op.allocateRayQuery","dx.op.rayQuery_TraceRayInline","dx.op.rayQuery_Proceed.i1","dx.op.rayQuery_StateScalar.i32"};
-        const std::set<std::string> allowed_instructions={"call","ret","br","phi","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
+        const std::set<std::string> allowed_instructions={"call","ret","br","phi","switch","alloca","getelementptr","load","store","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
             "shl","lshr","ashr","and","or","xor","icmp","fcmp","select","fptoui","fptosi","uitofp","sitofp","fptrunc","fpext","zext","sext","trunc","bitcast","extractvalue","extractelement","insertelement","shufflevector"};
         const std::regex call(R"(^(?:(%[A-Za-z0-9_.$]+) = )?call [^@]+@([A-Za-z0-9_.$]+)\((.*)\)(?: #[0-9]+)?$)");
         for(std::size_t i=begin+1;i<end;++i){
@@ -180,9 +249,10 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             } else if(name=="dx.op.threadId.i32"){
                 if(args.size()!=2)return reject("thread_id");const auto dim=integer(args[1]);if(dim>1)return reject("thread_id");if(ids[dim].empty())ids[dim]=value;thread_ids[dim].insert(value);
             } else if(name=="dx.op.textureStore.f32"){
-                if(args.size()!=10||args[4]!="i32 undef"||args[9]!="i8 15")return reject("store_shape");
+                if(args.size()!=10||args[4]!="i32 undef"||(args[9]!="i8 15"&&args[9]!="i8 7"&&args[9]!="i8 3"&&args[9]!="i8 1"))return reject("store_shape");
                 const auto h=args[1].substr(args[1].find_last_of(' ')+1);
                 if(!handles.contains(h)||handles.at(h).cls!=1)return reject("store_handle");
+                if(unsupported_uavs.contains(handles.at(h).range))return reject("uav_contract");
                 stores.push_back({i,args});
             } else if(name.starts_with("dx.op.textureLoad")||name.starts_with("dx.op.sample")||name.starts_with("dx.op.bufferLoad")||name.starts_with("dx.op.rawBufferLoad")){
                 if(args.size()<2)return reject("read_shape");const auto h=args[1].substr(args[1].find_last_of(' ')+1);
@@ -192,6 +262,18 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 if(!handles.contains(h)||handles.at(h).cls>1)return reject("dimension_handle");
             }
         }
+        using Affine=std::array<std::int64_t,5>;std::map<std::string,Affine> coordinates;
+        const std::regex coord_call(R"(^(%[A-Za-z0-9_.$]+) = call i32 @dx.op.(groupId|threadIdInGroup|threadId).i32\(i32 [0-9]+, i32 ([01])\).*$)");
+        const std::regex coord_op(R"(^(%[A-Za-z0-9_.$]+) = (add|mul|shl)(?: nuw| nsw)* i32 ([%A-Za-z0-9_.$]+), ([%A-Za-z0-9_.$]+)$)");
+        for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);Affine value{};std::string name;bool known=false;
+            if(std::regex_match(c,m,coord_call)){name=m[1];const auto axis=number(m[3].str());const auto kind=m[2].str();if(kind=="groupId")value[axis]=1;else if(kind=="threadIdInGroup")value[axis+2]=1;else{value[axis]=out.threads[axis];value[axis+2]=1;}known=true;}
+            else if(std::regex_match(c,m,coord_op)){name=m[1];const auto a=m[3].str(),b=m[4].str(),op=m[2].str();
+                if(op=="add"&&coordinates.contains(a)&&coordinates.contains(b)){for(unsigned k=0;k<5;++k)value[k]=coordinates[a][k]+coordinates[b][k];known=true;}
+                else if(coordinates.contains(a)&&!b.starts_with('%')){value=coordinates[a];const auto n=number(b);if(op=="add"){value[4]+=n;known=true;}else if(op=="mul"||(op=="shl"&&n<16)){const auto factor=op=="shl"?1u<<n:n;if(factor<=1024){for(auto& v:value)v*=factor;known=true;}}}
+            }
+            if(!known||std::any_of(value.begin(),value.end(),[](auto v){return v<0||v>UINT32_MAX;}))continue;coordinates[name]=value;for(unsigned axis=0;axis<2;++axis){Affine expected{};expected[axis]=out.threads[axis];expected[axis+2]=1;if(value==expected){thread_ids[axis].insert(name);if(ids[axis].empty())ids[axis]=name;}}
+        }
+        std::erase_if(out.resources,[&](const auto& r){return std::none_of(handles.begin(),handles.end(),[&](const auto& h){return h.second.cls==r.resource_class&&h.second.range==r.range_id;});});
         if(ids[0].empty()||ids[1].empty()||stores.empty())return reject("no_pixel_outputs");
         for(const auto& s:stores)if(!s.args[2].starts_with("i32 ")||!s.args[3].starts_with("i32 ")||!thread_ids[0].contains(s.args[2].substr(4))||!thread_ids[1].contains(s.args[3].substr(4)))return reject("nonlocal_store");
         out.stores=static_cast<unsigned>(stores.size());
@@ -232,6 +314,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             else lines[i]=std::regex_replace(lines[i],local,"%arc_coarse_orig_$1");
         }
         std::ostringstream generated;
+        if(text.find("declare i32 @dx.op.threadId.i32(")==text.npos)generated<<"declare i32 @dx.op.threadId.i32(i32, i32)\n";
         const bool needs_bounds=runtime_control||x_rate>1||y_rate>1;
         if(needs_bounds&&!runtime_control){
             if(text.find("%dx.types.Dimensions = type")==text.npos)generated<<"%dx.types.Dimensions = type { i32, i32, i32, i32 }\n";
@@ -313,7 +396,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         // alone. All original instructions consequently use remapped pixels.
         for(unsigned d=0;d<2;++d)for(const auto& original_id:thread_ids[d]){
             const auto id=std::regex_replace(original_id,local,"%arc_coarse_orig_$1");
-            for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);if(!c.starts_with(id+" = call i32 @dx.op.threadId.i32("))continue;
+            for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);if(!c.starts_with(id+" = "))continue;
                 const auto pos=transformed.find(lines[i]);transformed.replace(pos,lines[i].size(),id+" = add i32 %arc_coarse_coord_"+(d?"y":"x")+", 0");}
         }
         unsigned serial{};std::size_t store_cursor{};

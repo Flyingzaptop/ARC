@@ -26,6 +26,10 @@ parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
 parser.add_argument("--compiler",type=Path)
+parser.add_argument("--shader-worker",type=Path)
+parser.add_argument("--critic",type=Path)
+parser.add_argument("--quality-python",type=Path)
+parser.add_argument("--quality-profile",choices=["balanced","aggressive"],default="balanced")
 parser.add_argument("--measure-costs",action="store_true")
 parser.add_argument("--cpu-state-cache",action="store_true")
 parser.add_argument("--worker-placement",choices=['normal','prefer','core','partition','adaptive'],default='normal')
@@ -73,7 +77,7 @@ for key in ("ARC_OPTIMIZER_CPU_TIMING","ARC_OPTIMIZER_GPU_CONTROL_TIMING"):
     env.pop(key,None)
     if args.measure_costs and args.dll: env[key]="1"
 if args.dll and args.mode.startswith("compute-"):
-    worker=Path(__file__).resolve().parents[1]/"build/Release/arc-shader-tool.exe"
+    worker=args.shader_worker.resolve() if args.shader_worker else Path(__file__).resolve().parents[1]/"build/Release/arc-shader-tool.exe"
     compiler=args.compiler.resolve() if args.compiler else sdk/"framework/cauldron/framework/libs/dxc/bin/x64/dxcompiler.dll"
     if not worker.is_file() or not compiler.is_file():
         raise RuntimeError("Compute experiment requires built ARC shader worker and pinned DXC")
@@ -86,8 +90,8 @@ if args.auto_target is not None:
         raise ValueError("Automatic target requires a compute-enabled DLL and FPS in (0,1000]")
     import sys
     config=output/"automatic-config.json"
-    config.write_text(json.dumps({"target_fps":args.auto_target,"diagnostics_overlay":args.overlay,"python":sys.executable,
-        "critic":str(Path(__file__).resolve().parent/"optimizer-live-quality.py"),
+    config.write_text(json.dumps({"quality_profile":args.quality_profile,"target_fps":args.auto_target,"diagnostics_overlay":args.overlay,"python":str(args.quality_python.resolve()) if args.quality_python else sys.executable,
+        "critic":str(args.critic.resolve() if args.critic else Path(__file__).resolve().parent/"optimizer-live-quality.py"),
         "output":str(output/"automatic"),"maximum_seconds":int(process_budget-5)},indent=2))
     env["ARC_AUTO_CONFIG"]=str(config)
 command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.frames+120}",f"path={output}","json","-screenshot"]
@@ -95,7 +99,7 @@ hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
-          "automatic_target_fps":args.auto_target,
+          "automatic_target_fps":args.auto_target,"quality_profile":args.quality_profile,
           "initialization_seconds":args.initialization_seconds,"measurement_seconds":args.measurement_seconds,"process_budget_seconds":process_budget,
           "overlay":args.overlay,"visible":args.visible,
           "oracle_interval":args.oracle_interval,"performance_run":not bool(args.oracle_interval or args.functional),

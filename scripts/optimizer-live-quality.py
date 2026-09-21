@@ -5,6 +5,13 @@ influence motion estimation. This is a live proxy, not a same-state replay proof
 Unreliable alignment rejects the trial instead of relaxing quality thresholds.
 """
 import argparse
+import mmap
+import os
+# OpenCV's thread limit does not control NumPy/OpenBLAS. Configure the owned
+# process before importing either library; never change the game's affinity.
+for _thread_setting in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+    os.environ[_thread_setting] = "1"
+import traceback
 import json
 import runpy
 import sys
@@ -14,7 +21,11 @@ import numpy as np
 repo = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo / "build/quality-worker"))
 import cv2
+from optimizer_quality_metrics import compare_striped, accepts, PROFILES
 cv2.setNumThreads(1)
+cv2.ocl.setUseOpenCL(False)
+_flow = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
+def optical_flow(a,b): return _flow.calc(a,b,None)
 metrics = runpy.run_path(str(repo / "scripts/optimizer-quality.py"))
 gaussian_coordinates = np.arange(-5, 6)
 gaussian_weights = np.exp(-(gaussian_coordinates**2)/(2*1.5**2))
@@ -62,7 +73,7 @@ def state_fraction(samples):
             "source": "original_game_float_constants"}
 
 
-def image(path):
+def image(path, shared=None):
     if path.suffix.lower() != ".json":
         return metrics["load"](path), {}
     metadata = json.loads(path.read_text())
@@ -77,7 +88,7 @@ def image(path):
     payload = path.parent / metadata["pixel_file"]
     if payload.parent.resolve() != path.parent.resolve():
         raise ValueError("Pixel payload must be local to the capture")
-    raw = np.frombuffer(payload.read_bytes(), np.uint8)
+    raw = np.frombuffer(shared if shared is not None else payload.read_bytes(), np.uint8)
     if raw.size != width * height * 4:
         raise ValueError("Image payload size")
     fmt = metadata["dxgi_format"]
@@ -85,14 +96,15 @@ def image(path):
         rgb = raw.reshape(height, width, 4)[:, :, :3]
         if fmt == 87:
             rgb = rgb[:, :, ::-1]
-        return rgb.astype(np.float64)/255, metadata
+        decoded=rgb.astype(np.float64);decoded/=255
+        return decoded, metadata
     if fmt == 24:
         packed = raw.view("<u4").reshape(height, width)
         return np.stack([packed & 1023, (packed >> 10) & 1023, (packed >> 20) & 1023], axis=2)/1023, metadata
     raise ValueError("Unsupported display format")
 
 
-def assess(before, candidate, after, fraction=.5):
+def assess(before, candidate, after, fraction=.5, profile="balanced", return_images=False):
     if before.shape != candidate.shape or before.shape != after.shape or not 0 < fraction < 1:
         raise ValueError("Matched images and an interior reference time required")
     if any(not np.isfinite(pixels).all() or pixels.min() < 0 or pixels.max() > 1
@@ -109,8 +121,8 @@ def assess(before, candidate, after, fraction=.5):
         return cv2.resize(value, size, interpolation=cv2.INTER_AREA)
     a, b = gray(before), gray(after)
     informative = float(a.std()) >= 2 and float(b.std()) >= 2
-    forward = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM).calc(a, b, None)
-    backward = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM).calc(b, a, None)
+    forward = optical_flow(a,b)
+    backward = optical_flow(b,a)
     forward = cv2.resize(forward, (width, height), interpolation=cv2.INTER_LINEAR)
     backward = cv2.resize(backward, (width, height), interpolation=cv2.INTER_LINEAR)
     forward[:, :, 0] *= width/size[0]; forward[:, :, 1] *= height/size[1]
@@ -140,22 +152,34 @@ def assess(before, candidate, after, fraction=.5):
     kernel = np.ones((3, 3), np.uint8)
     flat = ((cv2.dilate(la, kernel)-cv2.erode(la, kernel) <= 2/255) &
             (cv2.dilate(lb, kernel)-cv2.erode(lb, kernel) <= 2/255))
-    agreement = np.max(np.abs(warp_a**2.2-warp_b**2.2), axis=2) <= .001
+    agreement=np.empty((height,width),dtype=bool)
+    for row in range(0,height,128):
+        agreement[row:row+128]=np.max(cv2.absdiff(cv2.pow(warp_a[row:row+128],2.2),cv2.pow(warp_b[row:row+128],2.2)),axis=2)<=.001
     coverage = float((inside & (consistent | (flat & agreement))).mean())
-    reference_check = metrics["compare"](warp_a, warp_b, filter_fn=fast_gaussian)
-    predicted = warp_a*(1-fraction)+warp_b*fraction
-    quality = metrics["compare"](predicted, candidate, filter_fn=fast_gaussian)
+    del fa, back_at_end, bx, by, x, y
+    if not return_images: del ax, ay, backward
+    reference_check = compare_striped(warp_a, warp_b, filter_fn=fast_gaussian)
+    warp_a*=1-fraction;warp_b*=fraction;warp_a+=warp_b
+    predicted=warp_a
+    del warp_a, warp_b
+    quality = compare_striped(predicted, candidate, filter_fn=fast_gaussian)
     motion = float(np.quantile(np.linalg.norm(forward, axis=2), .99))
     confident = (informative and coverage >= .95 and motion <= 64 and reference_check["ssim_gaussian_luma"] >= .99 and
                  reference_check["mean_linear_rgb_error"] <= .002)
-    return {"schema": 1, "reference_kind": "motion_interpolated_originals", "same_state_replay": False,
+    result = {"schema": 2, "quality_profile": profile, "quality_limits": PROFILES[profile], "reference_kind": "motion_interpolated_originals", "same_state_replay": False,
             "flow_method": "opencv_dis_medium", "flow_width": size[0], "opencv_version": cv2.__version__,
             "matched_reference": confident, "alignment_coverage": coverage, "motion_p99_pixels": motion,
             "flow_consistency_coverage": flow_coverage,
             "flat_reference_agreement_fraction": float((inside & flat & agreement).mean()),
             "informative_reference": informative,
             "reference_check": reference_check, "quality": quality,
-            "accepted_quality": confident and quality["moderate_pass"]}
+            "accepted_quality": confident and accepts(quality, profile)}
+    if return_images:
+        residual=np.empty(candidate.shape,dtype=np.float32)
+        for row in range(0,height,128):
+            residual[row:row+128]=cv2.subtract(cv2.pow(candidate[row:row+128],2.2),cv2.pow(predicted[row:row+128],2.2))
+        return result, residual, {"backward":backward,"origin_x":ax,"origin_y":ay}
+    return result
 
 
 def main():
@@ -163,6 +187,7 @@ def main():
     parser.add_argument("before", type=Path); parser.add_argument("candidate", type=Path); parser.add_argument("after", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--state", type=Path)
+    parser.add_argument("--profile", choices=list(PROFILES), default="balanced")
     args = parser.parse_args()
     a, am = image(args.before); b, bm = image(args.candidate); c, cm = image(args.after)
     fraction = .5
@@ -177,12 +202,107 @@ def main():
         if estimated:
             timing = estimated
             fraction = estimated["fraction"]
-    result = assess(a, b, c, fraction)
+    result = assess(a, b, c, fraction, args.profile)
     result["reference_timing"] = timing
     with args.output.open("x") as output:
         json.dump(result, output, indent=2)
     print(json.dumps({k: result[k] for k in ("matched_reference", "accepted_quality", "alignment_coverage")}))
 
 
+def temporal(first, second, error_first, error_second):
+    h,w=first.shape[:2]
+    def gray(a): return np.clip((a @ np.array([.2126,.7152,.0722]))*255,0,255).astype(np.uint8)
+    a,b=gray(first),gray(second)
+    flow=optical_flow(b,a)
+    reverse=optical_flow(a,b)
+    x,y=np.meshgrid(np.arange(w,dtype=np.float32),np.arange(h,dtype=np.float32))
+    sx,sy=x+flow[:,:,0],y+flow[:,:,1]
+    back=cv2.remap(reverse,sx,sy,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+    inside=(sx>=0)&(sy>=0)&(sx<w-1)&(sy<h-1)
+    consistent=np.linalg.norm(flow+back,axis=2)<=1.5
+    warped_reference=cv2.remap(first,sx,sy,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+    kernel=np.ones((3,3),np.uint8)
+    warped_gray=cv2.remap(a,sx,sy,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+    flat=(cv2.dilate(warped_gray,kernel)-cv2.erode(warped_gray,kernel)<=2)&(cv2.dilate(b,kernel)-cv2.erode(b,kernel)<=2)
+    agreement=np.max(np.abs(warped_reference**2.2-second**2.2),axis=2)<=.001
+    valid=inside&(consistent|(flat&agreement))
+    del warped_reference,warped_gray,back,reverse
+    coverage=float(valid.mean())
+    warped=cv2.remap(error_first,sx,sy,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+    error=np.abs(error_second-warped).mean(axis=2)
+    rows,cols=np.arange(0,h,8),np.arange(0,w,8)
+    sums=np.add.reduceat(np.add.reduceat(error,rows,axis=0),cols,axis=1)
+    counts=np.minimum(8,h-rows)[:,None]*np.minimum(8,w-cols)[None,:]
+    return {"p99_tile_error":float(np.quantile(sums/counts,.99)),"mean_error":float(error.mean()),
+            "alignment_coverage":coverage,"matched_reference":coverage>=.95 and float(np.quantile(np.linalg.norm(flow,axis=2),.99))<=64,
+            "flow_source":"original_interpolated_references_only"}
+
+
+def assess_request(request):
+    if request.get("schema")!=1 or request.get("profile") not in PROFILES:
+        raise ValueError("Worker protocol/profile")
+    paths=[Path(p) for p in request["paths"]]
+    if len(paths) not in (3,5): raise ValueError("Three or five images required")
+    maps=[]
+    try:
+        shared=request.get("shared",[])
+        if shared and len(shared)!=len(paths): raise ValueError("Shared image count")
+        for entry in shared:
+            size=int(entry["bytes"])
+            if not 0<size<=256*1024*1024 or not entry["name"].startswith("Local\\ARC-quality-"):
+                raise ValueError("Shared image contract")
+            maps.append(mmap.mmap(-1,size,tagname=entry["name"],access=mmap.ACCESS_READ))
+        def load(i): return image(paths[i],maps[i] if maps else None)
+        if len(paths)!=5: raise ValueError("Temporal approval requires five frames")
+        states=request.get("frame_states",[]);results=[];previous_error=previous_backward=None;first_fraction=0.;temporal_result=None
+        for offset in (0,2):
+            a,am=load(offset);b,bm=load(offset+1);c,cm=load(offset+2)
+            times=[m["capture_qpc"] for m in (am,bm,cm)]
+            if not times[0]<times[1]<times[2]:raise ValueError("Capture ordering")
+            estimate=state_fraction(states[offset:offset+3]);fraction=estimate["fraction"] if estimate else (times[1]-times[0])/(times[2]-times[0])
+            result,residual,coordinates=assess(a,b,c,fraction,request["profile"],True)
+            del a,b,c
+            result["reference_timing"]=estimate or dict(source="present_qpc",fraction=fraction)
+            results.append(result)
+            if not result["matched_reference"] or not result["accepted_quality"]:
+                # A rejected first image cannot be rescued by temporal averaging.
+                return dict(result,samples=results,temporal=None,complete_sequence=False,reason="reference_unmatched" if not result["matched_reference"] else "quality_threshold_failed")
+            if previous_error is not None:
+                ax,ay=coordinates["origin_x"],coordinates["origin_y"]
+                flow=cv2.remap(previous_backward,ax,ay,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+                sx,sy=ax+(1-first_fraction)*flow[:,:,0],ay+(1-first_fraction)*flow[:,:,1]
+                warped=cv2.remap(previous_error,sx,sy,cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+                error=np.abs(residual-warped).mean(axis=2);h,w=error.shape;rows,cols=np.arange(0,h,8),np.arange(0,w,8)
+                sums=np.add.reduceat(np.add.reduceat(error,rows,axis=0),cols,axis=1);counts=np.minimum(8,h-rows)[:,None]*np.minimum(8,w-cols)[None,:]
+                inside=float(((sx>=0)&(sy>=0)&(sx<w-1)&(sy<h-1)).mean())
+                temporal_result=dict(p99_tile_error=float(np.quantile(sums/counts,.99)),mean_error=float(error.mean()),alignment_coverage=min(inside,result["alignment_coverage"],results[0]["alignment_coverage"]),matched_reference=inside>=.95,flow_source="original_triplet_flows_composed_through_shared_middle_original")
+            else:
+                first_fraction=fraction;previous_backward=coordinates["backward"]
+            previous_error=residual
+            del coordinates
+        combined=dict(schema=2,quality_profile=request["profile"],quality_limits=PROFILES[request["profile"]],samples=results,temporal=temporal_result,complete_sequence=True,reference_kind="five_frame_original_triplets",same_state_replay=False)
+        combined["quality"]={key:(min if key=="ssim_gaussian_luma" else max)(r["quality"][key] for r in results)
+            for key in ("ssim_gaussian_luma","mean_linear_rgb_error","p99_tile_linear_rgb_error","worst_tile_linear_rgb_error","peak_linear_rgb_error")}
+        combined["matched_reference"]=all(r["matched_reference"] for r in results) and temporal_result["matched_reference"]
+        combined["accepted_quality"]=combined["matched_reference"] and temporal_result["p99_tile_error"]<=PROFILES[request["profile"]]["temporal"]
+        combined["reason"]="accepted_quality" if combined["accepted_quality"] else "reference_unmatched" if not combined["matched_reference"] else "quality_threshold_failed"
+        return combined
+    finally:
+        for mapping in maps: mapping.close()
+
+
+def serve():
+    for line in sys.stdin:
+        if len(line)>65536: raise ValueError("Worker request capacity")
+        request=json.loads(line)
+        try:
+            result=assess_request(request)
+        except Exception as error:
+            result={"accepted_quality":False,"matched_reference":False,"quality":{},"reason":"quality_worker_error","detail":str(error)[:512],"error_location":traceback.format_exc(limit=2)[-2048:]}
+        result.update(request_id=request.get("request_id"),context=request.get("context"),worker_pid=os.getpid())
+        print(json.dumps(result,separators=(",",":")),flush=True)
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:]==["--serve"]: serve()
+    else: main()

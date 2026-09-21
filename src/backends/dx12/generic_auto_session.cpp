@@ -1,3 +1,6 @@
+#include "generic_trial_storage.hpp"
+#include "generic_quality_worker.hpp"
+#include "arc/optimizer_quality_profile.hpp"
 #include "generic_auto_session.hpp"
 #include "generic_optimizer.hpp"
 #include "generic_runtime.hpp"
@@ -35,12 +38,13 @@ struct State {
     std::array<double,128> periods{};unsigned count{},cursor{};
     Json status{{"phase","off"}};
     std::filesystem::path directory,python,critic;
-    bool maximize{true};
+    bool maximize{true};std::string quality_profile{"balanced"};
+    std::unique_ptr<QualityWorker> quality_worker;
     double target{};unsigned maximum_seconds{0};
     std::atomic<double> requested_target{};
     bool capture_active{};unsigned capture_stage{};arc::PolicyBundle capture_bundle;
-    std::array<optimizer::PolicyStamp,3> capture_stamps{};std::uint64_t candidate_epoch{};
-    std::array<optimizer::FrameStateSample,3> frame_states;
+    std::array<optimizer::PolicyStamp,5> capture_stamps{};std::array<std::uint64_t,2> candidate_epochs{};std::uint64_t capture_evidence_frame{};
+    std::array<optimizer::FrameStateSample,5> frame_states;
     Clock::time_point started{};std::uint64_t event_sequence{},journal_failures{};
     std::atomic<bool> diagnostics_enabled{};
     HWND window{};
@@ -76,7 +80,7 @@ void publish_spatial(){
 }
 std::wstring quote(const std::wstring& s){std::wstring out=L"\"";unsigned n=0;for(auto c:s){if(c==L'\\'){++n;continue;}if(c==L'"'){out.append(n*2+1,L'\\');out+=c;}else{out.append(n,L'\\');out+=c;}n=0;}out.append(n*2,L'\\');return out+L'"';}
 void publish(Json value){
-    auto& s=state();value["component_budgets_enforced"]=false;value["objective"]=s.maximize?"maximize_fps":"target_fps";
+    auto& s=state();value["quality_profile"]=s.quality_profile;value["quality_limits_version"]=1;value["component_budgets_enforced"]=false;value["objective"]=s.maximize?"maximize_fps":"target_fps";
     for(const auto& text:optimizer::drain_events())try{journal(Json::parse(text));}catch(...){}
     publish_spatial();
     journal(value);{std::lock_guard lock(s.mutex);s.status=value;}
@@ -105,31 +109,24 @@ double period(unsigned samples=32){return period_stats(samples).mean;}
 bool wait_file(const std::filesystem::path& file,unsigned milliseconds=3000,bool image=false){const auto until=Clock::now()+std::chrono::milliseconds(milliseconds);while(!state().cancel&&Clock::now()<until){if(image&&state().capture_invalid)return false;if(std::filesystem::is_regular_file(file))return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
 bool wait_restoration(bool finishing=false){const auto until=Clock::now()+std::chrono::seconds(3);while((finishing||!state().cancel)&&Clock::now()<until){if(optimizer::restoration_ready())return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
 Json read_json(const std::filesystem::path& path){if(std::filesystem::file_size(path)>2*1024*1024)throw std::runtime_error("Quality JSON capacity");std::ifstream file(path);return Json::parse(file);}
-Json quality(const std::filesystem::path& a,const std::filesystem::path& b,const std::filesystem::path& c,const std::filesystem::path& output){
-    auto& s=state();auto command=quote(s.python.wstring())+L" "+quote(s.critic.wstring())+L" "+quote(a.wstring())+L" "+quote(b.wstring())+L" "+quote(c.wstring())+L" "+quote(output.wstring())+L" --state "+quote((output.parent_path()/L"frame-state.json").wstring());
-    STARTUPINFOW startup{};startup.cb=sizeof(startup);startup.dwFlags=STARTF_USESHOWWINDOW;startup.wShowWindow=SW_HIDE;PROCESS_INFORMATION process{};
-    // A host exit must not leave the critic consuming a CPU core in the
-    // background. Assign the suspended process before allowing it to run.
-    HANDLE job=CreateJobObjectW(nullptr,nullptr);JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
-    limits.BasicLimitInformation.LimitFlags=JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-    if(!job||!SetInformationJobObject(job,JobObjectExtendedLimitInformation,&limits,sizeof(limits))){if(job)CloseHandle(job);throw std::runtime_error("Quality worker lifetime job");}
-    if(!CreateProcessW(s.python.c_str(),command.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW|CREATE_SUSPENDED|BELOW_NORMAL_PRIORITY_CLASS,nullptr,s.directory.c_str(),&startup,&process)){CloseHandle(job);throw std::runtime_error("Quality worker launch");}
-    cpu_cost::Registration child_cpu(cpu_cost::Kind::Critic,process.hProcess,process.hThread);
-    if(!AssignProcessToJobObject(job,process.hProcess)||ResumeThread(process.hThread)==DWORD(-1)){
-        TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);CloseHandle(process.hThread);CloseHandle(process.hProcess);CloseHandle(job);throw std::runtime_error("Quality worker lifetime assignment");}
-    CloseHandle(process.hThread);DWORD code=1,waited=WAIT_TIMEOUT;const auto deadline=Clock::now()+std::chrono::seconds(15);
-    while(!s.cancel&&Clock::now()<deadline&&(waited=WaitForSingleObject(process.hProcess,50))==WAIT_TIMEOUT){cpu_cost::memory_snapshot();}
-    if(waited==WAIT_OBJECT_0)GetExitCodeProcess(process.hProcess,&code);else{TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);}CloseHandle(process.hProcess);CloseHandle(job);
-    if(code||!std::filesystem::is_regular_file(output))return Json{{"accepted_quality",false},{"matched_reference",false},{"reason","quality_worker_failed_or_unsupported_capture"},{"worker_exit_code",code},{"quality",{{"ssim_gaussian_luma",nullptr},{"mean_linear_rgb_error",nullptr},{"p99_tile_linear_rgb_error",nullptr}}}};return read_json(output);
+Json quality(const std::vector<std::filesystem::path>& paths,const std::filesystem::path& output){
+    auto& s=state();Json request{{"profile",s.quality_profile},{"paths",Json::array()},{"context",{{"surface_revision",s.transaction_revision},{"captured_frame",s.capture_evidence_frame},{"candidate_epochs",s.candidate_epochs}}}};
+    for(const auto& p:paths){const auto u=p.u8string();request["paths"].push_back(std::string(reinterpret_cast<const char*>(u.data()),u.size()));}
+    request["frame_states"]=read_json(output.parent_path()/L"frame-state.json");
+    try{
+        if(!s.quality_worker)s.quality_worker=std::make_unique<QualityWorker>();
+        auto result=s.quality_worker->assess(s.python,s.critic,std::move(request),[&]{return s.cancel.load()||s.surface_revision.load()!=s.transaction_revision;});
+        std::ofstream file(output);file<<result.dump(2)<<'\n';return result;
+    }catch(const std::exception& e){return Json{{"accepted_quality",false},{"matched_reference",false},{"reason",e.what()},{"quality",Json::object()}};}
 }
 void select(const std::wstring& mode){auto& s=state();std::lock_guard lock(s.policy_mutex);
     if(s.cancel&&mode!=L"off")throw std::runtime_error("Session cancelled");
     if(!optimizer::configure(mode.c_str()))throw std::runtime_error("Optimizer policy switch refused");if(mode==L"off")optimizer::cpu_configure(false);}
-void select(const arc::PolicyBundle& bundle,bool apply=true){auto& s=state();const auto frame=frame_number();std::lock_guard lock(s.policy_mutex);
+void select(const arc::PolicyBundle& bundle,bool apply=true,bool trial=false){auto& s=state();const auto frame=frame_number();std::lock_guard lock(s.policy_mutex);
     if(!bundle.compute.empty()||bundle.cpu_state_cache)ensure_surface();
     if(s.cancel&&!bundle.compute.empty())throw std::runtime_error("Session cancelled");
-    if(bundle.id&&bundle.id==s.retained_action&&frame>=s.retained_until)throw TrialInterrupted("quality_evidence_expired");
-    const auto until=bundle.id==s.retained_action&&s.retained_action?s.retained_until:frame+240;
+    if(!trial&&bundle.id&&bundle.id==s.retained_action&&frame>=s.retained_until)throw TrialInterrupted("quality_evidence_expired");
+    const auto until=!trial&&bundle.id==s.retained_action&&s.retained_action?s.retained_until:frame+240;
     if(!optimizer::configure_bundle(bundle,apply,0,until))throw TrialInterrupted("pipeline_or_binding_no_longer_available");}
 Json calibrate_gpu(const arc::PolicyBundle& bundle,const std::filesystem::path& path){
     static std::atomic<std::uint64_t> sequence{UINT64(1)<<63};const auto epoch=sequence.fetch_add(1);
@@ -180,31 +177,34 @@ OptimizerTrialEvidence cpu_trial(const arc::PolicyBundle& bundle,const std::file
     {std::ofstream file(path);file<<Json{{"quality_proof","exact_native_state_equivalence"},{"image_comparison_performed",false},{"runs",runs},{"complete",evidence.complete}}.dump(2)<<'\n';}
     return evidence;
 }
-bool capture_trial(const std::array<std::filesystem::path,3>& paths,const arc::PolicyBundle& bundle,bool& observed_submission){
+bool capture_trial(const std::vector<std::filesystem::path>& paths,const arc::PolicyBundle& bundle,bool& observed_submission){
     struct EndSampling {~EndSampling(){optimizer::sample_frame_state(false);}} end_sampling;
     auto& s=state();select(bundle,false);if(!wait_frames(8))return false;
     optimizer::sample_frame_state(true);if(!wait_frames(2)){optimizer::sample_frame_state(false);return false;}
-    {std::lock_guard lock(s.mutex);ensure_surface();if(s.cancel)return false;s.capture_invalid=false;s.capture_bundle=bundle;s.capture_stage=0;s.capture_stamps={};s.frame_states={};s.candidate_epoch=0;
+    {std::lock_guard lock(s.mutex);ensure_surface();if(s.cancel)return false;s.capture_invalid=false;s.capture_bundle=bundle;s.capture_stage=0;s.capture_stamps={};s.frame_states={};s.candidate_epochs={};
         s.capture_active=generic::request_image_sequence(paths,reinterpret_cast<IDXGISwapChain*>(s.swapchain));
         if(!s.capture_active){optimizer::sample_frame_state(false);return false;}}
     bool complete=true;for(const auto& path:paths)complete=wait_file(path,4000,true)&&complete;ensure_surface();
     Json provenance,state_samples=Json::array();
-    {std::lock_guard lock(s.mutex);s.capture_active=false;const auto& a=s.capture_stamps[0];const auto& b=s.capture_stamps[1];const auto& c=s.capture_stamps[2];
-        observed_submission=s.candidate_epoch&&b.epoch==s.candidate_epoch&&b.last_active_epoch==s.candidate_epoch&&b.active_submissions>a.active_submissions&&c.active_submissions==b.active_submissions;
-        provenance={{"kind","shader_written_epoch_on_present_queue"},{"candidate_epoch",s.candidate_epoch},{"cpu_submission_observed",observed_submission},{"same_queue_gpu_execution_proven",false},{"active_submissions",{a.active_submissions,b.active_submissions,c.active_submissions}}};
+    {std::lock_guard lock(s.mutex);s.capture_active=false;
+        observed_submission=true;
+        for(unsigned i=0;i<2;++i){const auto& a=s.capture_stamps[i*2];const auto& b=s.capture_stamps[i*2+1];const auto& c=s.capture_stamps[i*2+2];
+            observed_submission=observed_submission&&s.candidate_epochs[i]&&b.epoch==s.candidate_epochs[i]&&b.last_active_epoch==s.candidate_epochs[i]&&b.active_submissions>a.active_submissions&&c.active_submissions==b.active_submissions;}
+        provenance={{"kind","shader_written_epoch_on_present_queue"},{"candidate_epochs",s.candidate_epochs},{"cpu_submission_observed",observed_submission},{"same_queue_gpu_execution_proven",false}};
         for(const auto& sample:s.frame_states)state_samples.push_back({{"pipeline",sample.pipeline},{"submission",sample.submission},{"keys",sample.keys},{"words",sample.words},{"valid",sample.valid}});}
     optimizer::sample_frame_state(false);
     bool gpu_proven=complete&&observed_submission,spatial_effect=true;std::set<std::uint64_t> executed;std::map<std::uint64_t,std::uint64_t> coarse_tiles;
-    if(gpu_proven)try{const auto captured=read_json(paths[1]);const auto& proof=captured.at("gpu_execution");
-        gpu_proven=proof.value("kind",std::string{})=="shader_written_epoch"&&proof.value("image_fence_completed",false)&&proof.value("capture_queue",0ull)!=0;
+    if(gpu_proven)try{for(unsigned image=0;image<2;++image){executed.clear();coarse_tiles.clear();const auto captured=read_json(paths[image*2+1]);const auto& proof=captured.at("gpu_execution");
+        gpu_proven=gpu_proven&&proof.value("kind",std::string{})=="shader_written_epoch"&&proof.value("image_fence_completed",false)&&proof.value("capture_queue",0ull)!=0;
         for(const auto& marker:proof.at("markers")){
             const auto epoch=marker.value("expected_epoch",0ull),pipeline=marker.value("expected_pipeline",0ull);
-            if(epoch!=provenance.at("candidate_epoch").get<std::uint64_t>())continue;
+            if(epoch!=s.candidate_epochs[image])continue;
             const bool matched=marker.value("fence_completed",false)&&marker.value("actual_epoch",0ull)==epoch&&marker.value("actual_pipeline",0ull)==pipeline&&marker.value("queue",0ull)==proof.at("capture_queue").get<std::uint64_t>();
             gpu_proven=gpu_proven&&matched;if(matched){executed.insert(pipeline);coarse_tiles[pipeline]+=marker.value("coarse_tiles",0ull);}
         }
         for(const auto& target:bundle.compute){gpu_proven=gpu_proven&&executed.contains(target.pipeline);if(target.protect_edges&&(target.x_rate>1||target.y_rate>1||target.comparison_taps||target.mip_steps))spatial_effect=spatial_effect&&coarse_tiles[target.pipeline]>0;}
-        provenance["capture"]=proof;
+        provenance["captures"].push_back(proof);
+        }
     }catch(...){gpu_proven=false;}
     observed_submission=gpu_proven&&spatial_effect;provenance["same_queue_gpu_execution_proven"]=gpu_proven;provenance["gpu_execution_confirmed"]=gpu_proven;provenance["effective_spatial_work"]=spatial_effect;
     {std::ofstream file(paths[0].parent_path()/L"submission-provenance.json");file<<provenance.dump(2)<<'\n';}
@@ -219,11 +219,13 @@ DWORD WINAPI run(void*){
     placement::configure(L"normal"); // one decision loop; no concurrent affinity experiment
     try{
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.maximize_fps=s.maximize;config.enforce_component_budgets=false;config.require_gpu_execution=true;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
+        const auto limits=arc::optimizer_quality_limits(s.quality_profile);config.min_ssim=limits.ssim;config.max_mean_error=limits.mean;config.max_tile_p99=limits.p99;config.max_worst_tile=limits.worst;config.max_temporal_p99=limits.temporal;config.require_local_temporal_quality=true;
         arc::OptimizerSession policy(config);
         struct Choice {arc::PolicyBundle bundle;double cost{};bool cpu{};unsigned mode{};std::uint64_t pipeline{};double exploration{1};bool revalidation{};};
         struct Tuning {float good{},bad{2},current{.25f};unsigned rounds{};bool failed{};};
         const auto cpu_not_before=Clock::now()+std::chrono::seconds(15);
         std::vector<Choice> choices;Choice verified;UINT64 last_probe_frames=256;arc::PolicyBundle incumbent;std::uint64_t next_choice=0;
+        std::filesystem::path best_images,last_rejected_images,worst_images;double worst_image_error=-1;
         std::map<std::uint64_t,std::uint64_t> cpu_choices;
         std::map<std::string,std::uint64_t> gpu_choices;
         std::map<std::pair<std::uint64_t,unsigned>,Tuning> tuning;
@@ -233,7 +235,7 @@ DWORD WINAPI run(void*){
             std::vector<SessionAction> actions;
             const auto frame=frame_number();
             for(const auto& choice:choices)actions.push_back({choice.bundle.id,choice.bundle.id,0,choice.exploration,(!choice.cpu||Clock::now()>=cpu_not_before)&&(!retry_after.contains(choice.bundle.id)||frame>=retry_after[choice.bundle.id]),choice.cost,false,choice.cpu&&choice.bundle.compute.empty(),choice.revalidation});
-            if(incumbent.id)actions.push_back({incumbent.id,incumbent.id,0,1,true,0,false,incumbent.compute.empty(),false});
+            if(incumbent.id&&std::none_of(choices.begin(),choices.end(),[&](const auto& c){return c.bundle.id==incumbent.id;}))actions.push_back({incumbent.id,incumbent.id,0,1,true,0,false,incumbent.compute.empty(),false});
             policy.candidates(std::move(actions));
         };
         auto rebuild_choices=[&]{
@@ -266,7 +268,7 @@ DWORD WINAPI run(void*){
                     }
                 }
             }
-            if(verified.bundle.id&&verified.bundle.id!=incumbent.id&&std::all_of(verified.bundle.compute.begin(),verified.bundle.compute.end(),[&](const auto& target){return std::any_of(catalog.begin(),catalog.end(),[&](const auto& work){return work.capabilities.pipeline==target.pipeline;});})){
+            if(verified.bundle.id&&std::all_of(verified.bundle.compute.begin(),verified.bundle.compute.end(),[&](const auto& target){return std::any_of(catalog.begin(),catalog.end(),[&](const auto& work){return work.capabilities.pipeline==target.pipeline;});})){
                 std::erase_if(choices,[&](const auto& choice){return choice.bundle.id==verified.bundle.id;});choices.insert(choices.begin(),verified);
             }
             refresh_candidates();
@@ -316,8 +318,9 @@ DWORD WINAPI run(void*){
             auto request=(changed_surface||changed_bindings||scene_drift>=8)?policy.scene_changed():policy.frame(current_period,true,elapsed_frames,!retained||now+last_probe_frames+64<s.retained_until);
             if(changed_surface||changed_bindings||scene_drift>=8){if(request.kind!=SessionRequestKind::Restore)optimizer::reset_binding_evidence();tuning.clear();retry_after.clear();rebuild_choices();}
             if(policy.snapshot().phase==SessionPhase::Faulted)throw std::runtime_error("Policy restoration not confirmed");
+            if(request.kind==SessionRequestKind::None&&retained&&now+last_probe_frames+64>=s.retained_until&&now<s.retained_until)request=policy.revalidate();
             if(changed_bindings)journal({{"phase","binding_evidence_invalidated"},{"binding_revision",last_bindings}});
-            if(changed_surface){journal({{"phase","surface_changed"},{"surface_revision",last_surface}});scene_reference=current_period;}
+            if(changed_surface){if(s.quality_worker&&s.quality_worker->unavailable())s.quality_worker.reset();journal({{"phase","surface_changed"},{"surface_revision",last_surface}});scene_reference=current_period;}
             if(scene_drift>=8){scene_reference=current_period;scene_drift=0;}
             if(request.kind==SessionRequestKind::None&&policy.snapshot().phase==SessionPhase::Limited&&!policy.snapshot().active_action&&Clock::now()-last_discovery>std::chrono::seconds(15))request={SessionRequestKind::Profile,0};
             if(request.kind==SessionRequestKind::None){const auto current=policy.snapshot();
@@ -337,9 +340,16 @@ DWORD WINAPI run(void*){
                 catalog=optimizer::candidate_catalog();rebuild_choices();
                 publish({{"phase","discovery_complete"},{"target_fps",s.target},{"measured_work_candidates",catalog.size()},{"policy_candidates",choices.size()}});
             }else if(request.kind==SessionRequestKind::Probe){
+                if(s.quality_worker&&s.quality_worker->unavailable()){
+                    select(L"off");const auto reset=policy.scene_changed();if(reset.kind==SessionRequestKind::Restore)policy.restored(wait_restoration());incumbent={};retained=0;s.retained_action=s.retained_until=0;
+                    publish({{"phase","quality_unavailable"},{"reason","quality_worker_restart_limit"}});wait_frames(60);continue;
+                }
                 const auto probe_started=frame_number();
                 try{
-                const auto dir=s.directory/(L"trial-"+std::to_wstring(++trial));std::filesystem::create_directory(dir);
+                const auto dir=s.directory/(L"trial-"+std::to_wstring(++trial));
+                UINT image_width{},image_height{};{std::lock_guard lock(s.mutex);image_width=s.width;image_height=s.height;}
+                if(!reserve_trial_storage(s.directory,std::uint64_t(image_width)*image_height*20,{best_images,last_rejected_images,worst_images}))throw TrialInterrupted("trial_image_quota");
+                std::filesystem::create_directory(dir);
                 const auto choice=std::find_if(choices.begin(),choices.end(),[&](const auto& c){return c.bundle.id==request.action;});
                 if(choice==choices.end())throw std::runtime_error("Unknown bundle request");
                 const auto candidate=choice->bundle;const auto generation=candidate.id;const auto candidate_mode=choice->mode;const auto candidate_pipeline=choice->pipeline?choice->pipeline:candidate.compute.empty()?0:candidate.compute.front().pipeline;const auto choice_cost=choice->cost;const auto choice_cpu=choice->cpu;const bool revalidation=choice->revalidation;
@@ -364,14 +374,16 @@ DWORD WINAPI run(void*){
                 if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;double baseline_ms=period();
                 // The final-image reference always uses the ORIGINAL policy,
                 // even when comparing a replacement against a retained setting.
-                const auto a=dir/L"before.json",b=dir/L"candidate.json",c=dir/L"after.json";
-                bool submitted=false;if(!capture_trial({a,b,c},candidate,submitted))throw TrialInterrupted("consecutive_reference_capture_unavailable");
+                const std::vector<std::filesystem::path> images{dir/L"before.json",dir/L"candidate.json",dir/L"after.json",dir/L"candidate-2.json",dir/L"after-2.json"};
+                bool submitted=false;if(!capture_trial(images,candidate,submitted))throw TrialInterrupted("consecutive_reference_capture_unavailable");
                 // Freeze the generations covered by the image transaction.
                 // Later timing windows must not silently learn replacement textures.
                 if(submitted&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("captured_binding_evidence_not_sealable");
                 // No observed active submission cannot establish an effect.
                 // Avoid spending a CPU-heavy image trial on unchanged work.
-                auto judgement=submitted?quality(a,b,c,dir/L"quality.json"):Json{{"accepted_quality",false},{"matched_reference",false},{"reason","no_verified_effective_policy_work"},
+                if(!wait_restoration())throw TrialInterrupted("image_policy_retirement_unconfirmed");
+                if(retained&&frame_number()<s.retained_until)select(incumbent);
+                auto judgement=submitted?quality(images,dir/L"quality.json"):Json{{"accepted_quality",false},{"matched_reference",false},{"reason","no_verified_effective_policy_work"},
                     {"quality",{{"ssim_gaussian_luma",nullptr},{"mean_linear_rgb_error",nullptr},{"p99_tile_linear_rgb_error",nullptr}}}};
                 if(s.cancel)break;
                 double candidate_ms=baseline_ms,baseline_before_ms=baseline_ms,baseline_after_ms=baseline_ms;bool timing_stable=false;arc::TimingWindow before_stats,candidate_stats,after_stats;
@@ -380,8 +392,8 @@ DWORD WINAPI run(void*){
                     // Image analysis can take seconds. Measure cadence only
                     // afterwards, with incumbent windows on BOTH sides of B.
                     // A scene transition must not masquerade as a speedup.
-                    if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;before_stats=period_stats();baseline_before_ms=before_stats.mean;
-                    select(candidate);if(!cpu_diagnostics.contains(candidate_pipeline)){if(!wait_frames(16))break;arc::InterceptCpuMeter::enable(true);const auto cost_before=cpu_sample();
+                    if(retained&&!revalidation)select(incumbent);else select(L"off");if(!wait_frames(40))break;before_stats=period_stats();baseline_before_ms=before_stats.mean;
+                    select(candidate,true,true);if(meter_was_enabled&&!cpu_diagnostics.contains(candidate_pipeline)){if(!wait_frames(16))break;arc::InterceptCpuMeter::enable(true);const auto cost_before=cpu_sample();
                     if(!wait_frames(32))break;const auto cost_after=cpu_sample();
                     cpu_overhead_ms=cpu_window_ms(cost_before,cost_after);cpu_frames=cost_after.frame-cost_before.frame;
                     arc::InterceptCpuMeter::enable(meter_was_enabled);cpu_diagnostics.insert(candidate_pipeline);}
@@ -390,13 +402,13 @@ DWORD WINAPI run(void*){
                     // window and cannot manufacture a candidate slowdown.
                     if(!wait_frames(40))break;candidate_stats=period_stats();candidate_ms=candidate_stats.mean;
                     select(L"off");if(!wait_restoration())throw std::runtime_error("Timing policy retirement not confirmed");
-                    if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;after_stats=period_stats();baseline_after_ms=after_stats.mean;
+                    if(retained&&!revalidation)select(incumbent);else select(L"off");if(!wait_frames(40))break;after_stats=period_stats();baseline_after_ms=after_stats.mean;
                     baseline_ms=(baseline_before_ms+baseline_after_ms)*.5;
                     timing_stable=std::isfinite(baseline_ms)&&baseline_ms>0&&std::abs(baseline_before_ms-baseline_after_ms)<=baseline_ms*.1;
                 }
                 select(L"off");if(!wait_restoration())throw std::runtime_error("GPU policy retirement not confirmed");
                 const bool restored_original=true;
-                if(retained)select(incumbent);else select(L"off");if(!wait_frames(8))break;
+                if(retained&&frame_number()<s.retained_until)select(incumbent);else select(L"off");if(!wait_frames(8))break;
                 const auto& q=judgement.at("quality");OptimizerTrialEvidence evidence;
                 evidence.action=request.action;evidence.generation=generation;evidence.complete=submitted&&timing_stable;evidence.restoration_confirmed=restored_original;evidence.matched_reference=submitted&&judgement.value("matched_reference",false);
                 evidence.baseline_frame_ms=baseline_ms;evidence.candidate_frame_ms=candidate_ms;evidence.baseline_noise_ms=arc::comparison_noise(before_stats,candidate_stats,after_stats);
@@ -406,7 +418,9 @@ DWORD WINAPI run(void*){
                 // children. GPU upload timing alone still cannot cover shader
                 // guards/neutralization. Net cadence decides; unknown costs stay unknown.
                 evidence.cpu_overhead_ms=cpu_overhead_ms;evidence.gpu_overhead_ms=std::numeric_limits<double>::quiet_NaN();
-                evidence.gpu_execution_confirmed=submitted;
+                evidence.gpu_execution_confirmed=submitted;evidence.evidence_age_frames=frame_number()-s.capture_evidence_frame;
+                evidence.worst_tile=metric("worst_tile_linear_rgb_error");
+                const auto temporal=judgement.value("temporal",Json());evidence.temporal_reference_matched=temporal.is_object()&&temporal.value("matched_reference",false);evidence.temporal_p99=temporal.is_object()?temporal.value("p99_tile_error",std::numeric_limits<double>::quiet_NaN()):std::numeric_limits<double>::quiet_NaN();
                 if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);}
                 ensure_surface();const auto decision=policy.evidence(evidence);
                 if(!revalidation&&candidate_mode>=1&&candidate_mode<=7&&candidate.find(candidate_pipeline)->protect_edges&&judgement.value("matched_reference",false)){
@@ -416,13 +430,16 @@ DWORD WINAPI run(void*){
                     if(std::abs(search.current-before)<.02f)search.rounds=8;
                     journal({{"phase","spatial_search_updated"},{"pipeline",candidate_pipeline},{"mode",candidate_mode},{"tested_threshold",before},{"next_threshold",search.current},{"quality_pass",judgement.value("accepted_quality",false)},{"round",search.rounds}});
                 }else if(!judgement.value("matched_reference",false))retry_after[candidate.id]=frame_number()+300;
-                if(decision.kind==SessionRequestKind::Apply){if(!candidate.compute.empty()&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("binding_evidence_not_sealable");s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;verified={candidate,choice_cost,choice_cpu,candidate_mode,candidate_pipeline,.05,true};retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
+                if(decision.kind==SessionRequestKind::Apply){if(!candidate.compute.empty()&&!optimizer::seal_binding_evidence(candidate.id))throw TrialInterrupted("binding_evidence_not_sealable");s.retained_action=decision.action;s.retained_until=s.capture_evidence_frame+600;select(candidate);incumbent=candidate;verified={candidate,choice_cost,choice_cpu,candidate_mode,candidate_pipeline,.05,true};retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
                 else if(decision.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};s.retained_action=s.retained_until=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("Changed pipeline retirement not confirmed");rebuild_choices();}
-                if(revalidation&&decision.kind!=SessionRequestKind::Apply)verified={};
+                if(revalidation&&decision.kind!=SessionRequestKind::Apply&&judgement.value("matched_reference",false)&&!judgement.value("accepted_quality",false))verified={};
                 last_probe_frames=std::clamp<UINT64>(frame_number()-probe_started,128,480);
                 const auto state=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"submission_observed",submitted},{"quality_pass",judgement.value("accepted_quality",false)},{"baseline_frame_ms",baseline_ms},{"candidate_frame_ms",candidate_ms},{"accepted",state.accepted},{"rejected",state.rejected},{"retained",retained},{"cost_evidence_available",false},{"original_policy_retired",restored_original}};
+                if(decision.kind==SessionRequestKind::Apply)best_images=dir;else last_rejected_images=dir;
+                if(q.contains("worst_tile_linear_rgb_error")&&q["worst_tile_linear_rgb_error"].is_number()){const auto error=q["worst_tile_linear_rgb_error"].get<double>();if(error>worst_image_error){worst_image_error=error;worst_images=dir;}}
                 report["revalidation"]=revalidation;report["pipeline_generation"]=generation;report["gpu_execution_confirmed"]=submitted;report["quality_reason"]=judgement.value("reason",std::string{});report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
                 report["cpu_cost_available"]=std::isfinite(cpu_overhead_ms);report["cpu_overhead_ms"]=std::isfinite(cpu_overhead_ms)?Json(cpu_overhead_ms):Json(nullptr);report["cpu_measured_intervals"]=cpu_frames;
+                report["temporal"]=judgement.value("temporal",Json());report["quality_worker_launches"]=judgement.value("worker_launches",0u);report["evidence_age_frames"]=evidence.evidence_age_frames;report["quality_profile"]=s.quality_profile;
                 report["gpu_calibration"]=gpu_calibration;report["quality"]=q;report["evidence_directory"]=dir.string();
                 report["measured_noise_ms"]=std::isfinite(evidence.baseline_noise_ms)?Json(evidence.baseline_noise_ms):Json(nullptr);report["noise_method"]="max_A_drift_and_two_standard_errors";
                 report["required_gain_ms"]=std::max({.1,baseline_ms*.02,evidence.baseline_noise_ms});
@@ -435,12 +452,12 @@ DWORD WINAPI run(void*){
         }
         select(L"off");const bool restored=wait_restoration(true);publish({{"phase",restored?"stopped":"faulted"},{"restored_request_sent",true},{"restoration_confirmed",restored}});
     }catch(const std::exception& error){optimizer::configure(L"off");const bool restored=wait_restoration(true);try{publish({{"phase",s.cancel&&restored?"stopped":"faulted"},{"reason",s.cancel?"cancelled_by_host":error.what()},{"restored_request_sent",true},{"restoration_confirmed",restored}});}catch(...) {}}
-    s.running=false;return 0;
+    s.quality_worker.reset();s.running=false;return 0;
 }
 }
 bool start(const wchar_t* config_path)noexcept{
     if(!config_path||!optimizer::enabled()||mirror::requested_rate()||gpu_profile::busy()||!generic::gpu_helpers_idle())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
-    try{const auto config=read_json(config_path);s.diagnostics_enabled=config.value("diagnostics_overlay",false);s.maximize=config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
+    try{const auto config=read_json(config_path);s.quality_profile=config.value("quality_profile",std::string("balanced"));arc::optimizer_quality_limits(s.quality_profile);s.diagnostics_enabled=config.value("diagnostics_overlay",false);s.maximize=config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
         s.python=std::filesystem::u8path(config.at("python").get<std::string>());s.critic=std::filesystem::u8path(config.at("critic").get<std::string>());s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
         if(!s.python.is_absolute()||!s.critic.is_absolute()||!s.directory.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
         std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.swapchain=nullptr;s.window=nullptr;s.width=s.height=0;s.fullscreen=false;s.swapchain_identity=0;s.surface_revision=0;s.transaction_revision=0;s.retained_action=s.retained_until=0;s.capture_invalid=false;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
@@ -475,16 +492,17 @@ void present(void* swap,HRESULT result,UINT flags)noexcept{
     }
     if(s.capture_active&&!s.cancel){const auto stage=generic::image_sequence_progress();
         if(stage!=s.capture_stage){
-            if(stage>=1&&stage<=3){s.capture_stamps[stage-1]=optimizer::policy_stamp();try{s.frame_states[stage-1]=optimizer::frame_state_sample();}catch(...){s.cancel=true;}}
+            if(stage>=1&&stage<=5){s.capture_stamps[stage-1]=optimizer::policy_stamp();try{s.frame_states[stage-1]=optimizer::frame_state_sample();}catch(...){s.cancel=true;}}
             // The next policy is selected at the Present boundary, before the
             // application's next frame. File IO runs independently on a worker.
             std::lock_guard policy_lock(s.policy_mutex);
-            if(!s.cancel&&!optimizer::configure_bundle(stage==1?s.capture_bundle:arc::PolicyBundle{},true,0,s.frames+240))s.cancel=true;
-            if(stage==1)s.candidate_epoch=optimizer::policy_stamp().epoch;
-            s.capture_stage=stage;if(stage>=3)s.capture_active=false;
+            if(!s.cancel&&!optimizer::configure_bundle((stage==1||stage==3)?s.capture_bundle:arc::PolicyBundle{},true,0,s.frames+240))s.cancel=true;
+            if(stage==1||stage==3)s.candidate_epochs[(stage-1)/2]=optimizer::policy_stamp().epoch;
+            if(stage==2)s.capture_evidence_frame=s.frames;
+            s.capture_stage=stage;if(stage>=5){s.capture_active=false;}
         }
     }
-    if(s.last_qpc){const auto elapsed=(double(qpc.QuadPart)-double(s.last_qpc))*1000/s.frequency;if(elapsed>0&&elapsed<1000){s.periods[s.cursor++%s.periods.size()]=elapsed;s.count=std::min<unsigned>(s.count+1,static_cast<unsigned>(s.periods.size()));}}
+    if(s.last_qpc){const auto elapsed=(double(qpc.QuadPart)-double(s.last_qpc))*1000/s.frequency;if(elapsed>0&&std::isfinite(elapsed)){s.periods[s.cursor++%s.periods.size()]=elapsed;s.count=std::min<unsigned>(s.count+1,static_cast<unsigned>(s.periods.size()));}}
     s.last_qpc=qpc.QuadPart;++s.frames;optimizer::present_frame(s.frames);s.changed.notify_all();
 }
 void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto status=s.status;status["present_samples"]=s.frames;status["objective"]=s.maximize?"maximize_fps":"target_fps";status["window_handle"]=reinterpret_cast<std::uintptr_t>(s.window);status["diagnostics_enabled"]=s.diagnostics_enabled.load();status["surface_revision"]=s.surface_revision.load();status["exclusive_fullscreen"]=s.fullscreen;

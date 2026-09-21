@@ -1,3 +1,4 @@
+#include <vector>
 #pragma once
 #include <d3d12.h>
 #include <dxgi1_4.h>
@@ -46,7 +47,7 @@ bool request_image(const std::filesystem::path&,bool features=false) noexcept;
 // Three consecutive real Presents of one known swapchain. Disk writes and
 // readback completion never delay the next capture. Ordinary requests are
 // excluded until all three jobs finish. Progress means submitted, not written.
-bool request_image_sequence(const std::array<std::filesystem::path,3>&,IDXGISwapChain*) noexcept;
+bool request_image_sequence(const std::vector<std::filesystem::path>&,IDXGISwapChain*) noexcept;
 unsigned image_sequence_progress() noexcept;
 void cancel_image_sequence() noexcept;
 bool retire_images_before_resize() noexcept;

@@ -121,7 +121,7 @@ int wmain(int argc, wchar_t** argv) try {
         auto manifest_path=output;manifest_path+=L".contract";
         if(std::filesystem::exists(manifest_path))throw std::runtime_error("Fresh contract output required");
         std::ofstream manifest(manifest_path);
-        manifest<<(proof?"ARC_SHADER_CONTRACT_6\n":"ARC_SHADER_CONTRACT_5\n")<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples;
+        manifest<<(proof?"ARC_SHADER_CONTRACT_7\n":"ARC_SHADER_CONTRACT_5\n")<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples;
         if(proof)manifest<<' '<<contract.execution_marker;manifest<<'\n';
         for(const auto& r:contract.resources)manifest<<r.resource_class<<' '<<r.range_id<<' '<<r.shader_register<<' '<<r.space<<' '<<r.count<<' '<<r.kind<<'\n';
         manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
