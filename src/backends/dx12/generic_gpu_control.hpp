@@ -19,6 +19,7 @@ public:
     static constexpr UINT spatial_record_bytes=32;
     explicit GpuControl(ID3D12Device*,bool measure=false,bool spatial=false); // worker only
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS address(unsigned slot) const noexcept;
+    [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS prepass_address(unsigned slot) const noexcept;
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS marker_address(unsigned slot) const noexcept;
     void marker_barrier(ID3D12GraphicsCommandList*);
     struct ExecutionReadback {

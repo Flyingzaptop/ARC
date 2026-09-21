@@ -1,6 +1,53 @@
 #include "generic_spatial_transform.hpp"
 #include <sstream>
 namespace arc::dx12::shader {
+SpatialPrelude spatial_lookup(const Transform& c,std::string block){
+    std::ostringstream s;
+    s<<"  %arc_cached_controls = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 5)\n"
+      <<"  %arc_cached_extra = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 6)\n";
+    const char* names[]{"capacity","frame","key_lo","key_hi"};for(unsigned i=0;i<4;++i)s<<"  %arc_cached_"<<names[i]<<" = extractvalue %dx.types.CBufRet.i32 %arc_cached_controls, "<<i<<"\n";
+    for(unsigned a=0;a<2;++a){const char axis=a?'y':'x';const auto tile=c.threads[a]*2;s
+      <<"  %arc_cached_raw_"<<axis<<" = call i32 @dx.op.threadId.i32(i32 93, i32 "<<a<<")\n"
+      <<"  %arc_cached_tile_"<<axis<<" = udiv i32 %arc_cached_raw_"<<axis<<", "<<tile<<"\n"
+      <<"  %arc_cached_extent_"<<axis<<" = add i32 %arc_coarse_"<<(a?"height":"width")<<", "<<tile-1<<"\n"
+      <<"  %arc_cached_tiles_"<<axis<<" = udiv i32 %arc_cached_extent_"<<axis<<", "<<tile<<"\n"
+      <<"  %arc_cached_inside_"<<axis<<" = icmp ult i32 %arc_cached_tile_"<<axis<<", %arc_cached_tiles_"<<axis<<"\n";}
+    s<<"  %arc_cached_row = mul i32 %arc_cached_tile_y, %arc_cached_tiles_x\n"
+      <<"  %arc_cached_index = add i32 %arc_cached_row, %arc_cached_tile_x\n"
+      <<"  %arc_cached_index_ok = icmp ult i32 %arc_cached_index, 8192\n"
+      <<"  %arc_cached_capacity_ok = icmp eq i32 %arc_cached_capacity, 8192\n"
+      <<"  %arc_cached_inside = and i1 %arc_cached_inside_x, %arc_cached_inside_y\n"
+      <<"  %arc_cached_bounds = and i1 %arc_cached_inside, %arc_cached_index_ok\n"
+      <<"  %arc_cached_available = and i1 %arc_cached_bounds, %arc_cached_capacity_ok\n"
+      <<"  br i1 %arc_cached_available, label %arc_cached_read, label %arc_cached_done\narc_cached_read:\n"
+      <<"  %arc_cached_handle = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 "<<c.execution_marker_range<<", i32 0, i1 false)\n"
+      <<"  %arc_cached_flags = extractvalue %dx.types.CBufRet.i32 %arc_cached_extra, 2\n"
+      <<"  %arc_cached_page = and i32 %arc_cached_flags, 1\n"
+      <<"  %arc_cached_page_bytes = mul i32 %arc_cached_page, 262144\n"
+      <<"  %arc_cached_base0 = mul i32 %arc_cached_index, 32\n"
+      <<"  %arc_cached_base1 = add i32 %arc_cached_base0, 32\n"
+      <<"  %arc_cached_base = add i32 %arc_cached_base1, %arc_cached_page_bytes\n"
+      <<"  %arc_cached_data_address = add i32 %arc_cached_base, 16\n"
+      <<"  %arc_cached_header = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %arc_cached_handle, i32 %arc_cached_base, i32 undef)\n"
+      <<"  %arc_cached_data = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %arc_cached_handle, i32 %arc_cached_data_address, i32 undef)\n"
+      <<"  %arc_cached_actual_lo = extractvalue %dx.types.ResRet.i32 %arc_cached_header, 0\n"
+      <<"  %arc_cached_actual_hi = extractvalue %dx.types.ResRet.i32 %arc_cached_header, 1\n"
+      <<"  %arc_cached_actual_frame = extractvalue %dx.types.ResRet.i32 %arc_cached_header, 2\n"
+      <<"  %arc_cached_confidence = extractvalue %dx.types.ResRet.i32 %arc_cached_data, 2\n"
+      <<"  %arc_cached_error_bits = extractvalue %dx.types.ResRet.i32 %arc_cached_data, 0\n"
+      <<"  %arc_cached_error = bitcast i32 %arc_cached_error_bits to float\n"
+      <<"  %arc_cached_same_lo = icmp eq i32 %arc_cached_actual_lo, %arc_cached_key_lo\n"
+      <<"  %arc_cached_same_hi = icmp eq i32 %arc_cached_actual_hi, %arc_cached_key_hi\n"
+      <<"  %arc_cached_same_frame = icmp eq i32 %arc_cached_actual_frame, %arc_cached_frame\n"
+      <<"  %arc_cached_confident = icmp eq i32 %arc_cached_confidence, 1065353216\n"
+      <<"  %arc_cached_keys = and i1 %arc_cached_same_lo, %arc_cached_same_hi\n"
+      <<"  %arc_cached_frame_confidence = and i1 %arc_cached_same_frame, %arc_cached_confident\n"
+      <<"  %arc_cached_valid = and i1 %arc_cached_keys, %arc_cached_frame_confidence\n"
+      <<"  br label %arc_cached_done\narc_cached_done:\n"
+      <<"  %arc_cached_result = phi float [ 1.000000e+03, %"<<block<<" ], [ %arc_cached_error, %arc_cached_read ]\n"
+      <<"  %arc_cached_result_valid = phi i1 [ false, %"<<block<<" ], [ %arc_cached_valid, %arc_cached_read ]\n";
+    return {s.str(),"%arc_cached_result","%arc_cached_result_valid","arc_cached_done"};
+}
 SpatialPrelude spatial_importance(const Transform& c,std::string error,std::string valid,std::string feature,std::string block){
     if(!c.execution_marker)return {{},std::move(error),std::move(valid),std::move(block)};
     std::ostringstream s;

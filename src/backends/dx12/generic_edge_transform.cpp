@@ -37,8 +37,27 @@ EdgeTransform protect_input_edges(std::string_view input,const Transform& contra
         <<"  %arc_edge_enable_bit = and i32 %arc_edge_mask, -2147483648\n"
         <<"  %arc_edge_enabled = icmp ne i32 %arc_edge_enable_bit, 0\n"
         <<"  %arc_edge_source_bits = and i32 %arc_edge_mask, "<<result.input_mask<<"\n"
-        <<"  %arc_edge_has_sources = icmp ne i32 %arc_edge_source_bits, 0\n"
-        <<"  br i1 %arc_edge_enabled, label %arc_edge_scan, label %arc_edge_done\narc_edge_scan:\n";
+        <<"  %arc_edge_has_sources = icmp ne i32 %arc_edge_source_bits, 0\n";
+    if(contract.execution_marker){
+        prelude<<"  %arc_prepass_controls = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 6)\n"
+            <<"  %arc_prepass_flags = extractvalue %dx.types.CBufRet.i32 %arc_prepass_controls, 2\n"
+            <<"  %arc_prepass_bit = and i32 %arc_prepass_flags, 16\n"
+            <<"  %arc_prepass_enabled = icmp ne i32 %arc_prepass_bit, 0\n"
+            <<"  br i1 %arc_prepass_enabled, label %arc_prepass_check, label %arc_edge_main\narc_prepass_check:\n";
+        for(unsigned a=0;a<2;++a){const char axis=a?'y':'x';prelude
+            <<"  %arc_prepass_raw_"<<axis<<" = call i32 @dx.op.threadId.i32(i32 93, i32 "<<a<<")\n"
+            <<"  %arc_prepass_local_"<<axis<<" = urem i32 %arc_prepass_raw_"<<axis<<", "<<contract.threads[a]*2<<"\n"
+            <<"  %arc_prepass_first_"<<axis<<" = icmp eq i32 %arc_prepass_local_"<<axis<<", 0\n";}
+        prelude<<"  %arc_prepass_writer = and i1 %arc_prepass_first_x, %arc_prepass_first_y\n"
+            <<"  %arc_prepass_scan = and i1 %arc_prepass_writer, %arc_edge_enabled\n"
+            <<"  br i1 %arc_prepass_scan, label %arc_edge_scan, label %arc_prepass_exit\narc_prepass_exit:\n  ret void\narc_edge_main:\n"
+            <<"  br i1 %arc_edge_enabled, label %arc_edge_cached, label %arc_edge_done\narc_edge_cached:\n";
+        const auto cached=spatial_lookup(contract,"arc_edge_cached");prelude<<cached.ir
+            <<"  %arc_cached_small = fcmp ole float "<<cached.error<<", %arc_edge_threshold\n"
+            <<"  %arc_cached_inputs = and i1 "<<cached.valid<<", %arc_edge_has_sources\n"
+            <<"  %arc_cached_allow = and i1 %arc_cached_inputs, %arc_cached_small\n"
+            <<"  br label %arc_edge_done\narc_edge_scan:\n";
+    }else prelude<<"  br i1 %arc_edge_enabled, label %arc_edge_scan, label %arc_edge_done\narc_edge_scan:\n";
     for(unsigned axis=0;axis<2;++axis){const auto name=axis?"y":"x",extent=axis?"height":"width";prelude
         <<"  %arc_edge_group_"<<name<<" = call i32 @dx.op.groupId.i32(i32 94, i32 "<<axis<<")\n"
         <<"  %arc_edge_even_"<<name<<" = and i32 %arc_edge_group_"<<name<<", -2\n"
@@ -90,7 +109,8 @@ EdgeTransform protect_input_edges(std::string_view input,const Transform& contra
     }
     const auto spatial=spatial_importance(contract,previous_error,previous_valid,previous_feature,previous_block);
     prelude<<spatial.ir;previous_error=spatial.error;previous_valid=spatial.valid;previous_block=spatial.block;
-    prelude<<"  %arc_edge_small = fcmp ole float "<<previous_error<<", %arc_edge_threshold\n"
+    if(contract.execution_marker)prelude<<"  ret void\narc_edge_done:\n  %arc_edge_allow = phi i1 [ true, %arc_edge_main ], [ %arc_cached_allow, %arc_cached_done ]\n";
+    else prelude<<"  %arc_edge_small = fcmp ole float "<<previous_error<<", %arc_edge_threshold\n"
         <<"  %arc_edge_ok_inputs = and i1 "<<previous_valid<<", %arc_edge_has_sources\n"
         <<"  %arc_edge_safe = and i1 %arc_edge_ok_inputs, %arc_edge_small\n"
         <<"  br label %arc_edge_done\narc_edge_done:\n"

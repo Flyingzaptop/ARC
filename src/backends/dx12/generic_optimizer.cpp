@@ -283,6 +283,8 @@ void evaluate_uniform_job(UniformJob job){
 }
 std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeline){
     auto& s=state();const auto source=s.cache/(std::to_string(pipeline->id)+".source.bin"),binary=s.cache/(std::to_string(pipeline->id)+".controlled.bin");
+    struct ScratchCleanup {std::filesystem::path source,binary;bool retain{};~ScratchCleanup(){if(retain)return;std::error_code ignored;std::filesystem::remove(source,ignored);for(const wchar_t* ending:{L"",L".contract",L".access.ll",L".worker.txt"}){auto path=binary;path+=ending;std::filesystem::remove(path,ignored);}}};
+    ScratchCleanup cleanup{source,binary,environment(L"ARC_CAPTURE_SHADER_CODE")==L"1"};
     std::set<UINT> spaces;for(const auto& p:pipeline->root->layout->parameters){if(p.type==D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE){for(const auto& r:p.ranges)spaces.insert(r.space);}else spaces.insert(p.space);}for(const auto& sampler:pipeline->root->layout->samplers)spaces.insert(sampler.RegisterSpace);
     UINT space=0;while(spaces.contains(space)&&space<65536)++space;if(space==65536)throw std::runtime_error("control register space capacity");
     if(s.compiler_identity.empty())s.compiler_identity=shader_cache::file_digest(s.worker)+shader_cache::file_digest(s.compiler);
@@ -694,12 +696,19 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}
     if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.record_targets.begin(),s.record_targets.end(),p->second->id)==s.record_targets.end())){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
+    const bool spatial_prepass=variant->contract.execution_marker&&variant->contract.edge_input_mask;
+    if(spatial_prepass&&(!c->unpredicated||c->query_depth)){++s.dispatch_declines[11];return;}
     if(!c->control){for(auto& control:s.controls)if(control.use_count()==1&&control->device()==p->second->device.Get()&&control->ready()){control->keep_alive.clear();control->begin_recording();c->control=control;break;}if(!c->control){++s.pool_misses;return;}}
     const bool calibration=s.calibration_epoch&&c->unpredicated&&!c->query_depth&&c->control->calibration_available();
     const UINT slot=static_cast<UINT>(c->uses.size());c->uses.push_back({variant,c->arguments,c->heaps,x,y,z,calibration});c->control->keep_alive.push_back(variant);
     mirror::InternalCall internal;if(calibration)c->control->calibration_mark(native,slot,0);
     native->SetComputeRootSignature(variant->root.Get());replay_arguments(native,c->arguments);native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));native->SetPipelineState(variant->pipeline.Get());
     if(variant->contract.execution_marker)native->SetComputeRootUnorderedAccessView(static_cast<UINT>(c->root->layout->parameters.size()+1),c->control->marker_address(slot));
+    if(spatial_prepass){
+        native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->prepass_address(slot));
+        native->Dispatch(x,y,z);c->control->marker_barrier(native);
+        native->SetComputeRootConstantBufferView(static_cast<UINT>(c->root->layout->parameters.size()),c->control->address(slot));
+    }
     {arc::InterceptCpuMeter::Native application_work;native->Dispatch(x,y,z);}
     if(variant->contract.execution_marker)c->control->marker_barrier(native);
     native->SetComputeRootSignature(c->root->native);replay_arguments(native,c->arguments);native->SetPipelineState(c->pipeline);changed=true;++s.modified_dispatches;

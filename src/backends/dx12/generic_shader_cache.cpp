@@ -26,7 +26,7 @@ std::string digest(std::span<const std::byte> bytes){
 }
 std::string file_digest(const std::filesystem::path& path){return digest(read(path));}
 bool restore(const std::filesystem::path& root,const std::string& key,const std::filesystem::path& binary)noexcept{
-    try{if(!valid_key(key))return false;const auto stem=root/key;std::ifstream file(suffix(stem,".json"));auto manifest=Json::parse(file);if(manifest.at("schema")!=1||manifest.at("key")!=key)return false;
+    try{if(!valid_key(key))return false;const auto stem=root/key;if(std::filesystem::file_size(suffix(stem,".json"))>4096)return false;std::ifstream file(suffix(stem,".json"));auto manifest=Json::parse(file);if(manifest.at("schema")!=1||manifest.at("key")!=key)return false;
         std::array<std::vector<std::byte>,3> contents;
         for(unsigned i=0;i<suffixes.size();++i){contents[i]=read(suffix(stem,suffixes[i]),8*1024*1024);if(digest(contents[i])!=manifest.at("hashes").at(i).get<std::string>())return false;}
         for(unsigned i=0;i<suffixes.size();++i)write(suffix(binary,suffixes[i]),contents[i]);

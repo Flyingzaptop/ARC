@@ -228,7 +228,7 @@ DWORD WINAPI run(void*){
         std::map<std::string,std::uint64_t> gpu_choices;
         std::map<std::pair<std::uint64_t,unsigned>,Tuning> tuning;
         std::map<std::uint64_t,std::uint64_t> retry_after;
-        std::vector<optimizer::WorkCandidate> catalog;
+        std::vector<optimizer::WorkCandidate> catalog;std::map<std::pair<std::uint64_t,bool>,std::filesystem::path> cost_diagnostics;std::set<std::uint64_t> cpu_diagnostics;
         auto refresh_candidates=[&]{
             std::vector<SessionAction> actions;
             const auto frame=frame_number();
@@ -352,7 +352,10 @@ DWORD WINAPI run(void*){
                     const auto current=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"kind","exact_cpu_state"},{"accepted",current.accepted},{"rejected",current.rejected},{"retained",retained},{"baseline_frame_ms",evidence.baseline_frame_ms},{"candidate_frame_ms",evidence.candidate_frame_ms},{"cpu_overhead_ms",std::isfinite(evidence.cpu_overhead_ms)?Json(evidence.cpu_overhead_ms):Json(nullptr)},{"restoration_confirmed",evidence.restoration_confirmed}};
                     {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));continue;
                 }
-                const auto gpu_calibration=calibrate_gpu(candidate,dir/L"gpu-calibration.json");
+                const auto cost_key=std::make_pair(candidate_pipeline,candidate.find(candidate_pipeline)->protect_edges);
+                Json gpu_calibration{{"complete_cost_evidence",false}};
+                if(!cost_diagnostics.contains(cost_key)){gpu_calibration=calibrate_gpu(candidate,dir/L"gpu-calibration.json");cost_diagnostics[cost_key]=dir/L"gpu-calibration.json";gpu_calibration["measured_this_trial"]=true;}
+                else{gpu_calibration["measured_this_trial"]=false;gpu_calibration["reason"]="component_diagnostic_already_sampled_net_timing_still_required";gpu_calibration["previous_evidence"]=cost_diagnostics[cost_key].string();}
                 if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;double baseline_ms=period();
                 // The final-image reference always uses the ORIGINAL policy,
                 // even when comparing a replacement against a retained setting.
@@ -373,10 +376,10 @@ DWORD WINAPI run(void*){
                     // afterwards, with incumbent windows on BOTH sides of B.
                     // A scene transition must not masquerade as a speedup.
                     if(retained)select(incumbent);else select(L"off");if(!wait_frames(40))break;before_stats=period_stats();baseline_before_ms=before_stats.mean;
-                    select(candidate);if(!wait_frames(16))break;arc::InterceptCpuMeter::enable(true);const auto cost_before=cpu_sample();
+                    select(candidate);if(!cpu_diagnostics.contains(candidate_pipeline)){if(!wait_frames(16))break;arc::InterceptCpuMeter::enable(true);const auto cost_before=cpu_sample();
                     if(!wait_frames(32))break;const auto cost_after=cpu_sample();
                     cpu_overhead_ms=cpu_window_ms(cost_before,cost_after);cpu_frames=cost_after.frame-cost_before.frame;
-                    arc::InterceptCpuMeter::enable(meter_was_enabled);
+                    arc::InterceptCpuMeter::enable(meter_was_enabled);cpu_diagnostics.insert(candidate_pipeline);}
                     // Cadence windows use the SAME instrumentation setting as
                     // both incumbents. Detailed cost sampling is a separate
                     // window and cannot manufacture a candidate slowdown.

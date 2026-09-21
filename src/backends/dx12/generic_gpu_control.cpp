@@ -7,7 +7,8 @@
 
 namespace arc::dx12::optimizer {
 namespace {
-constexpr UINT64 block_bytes=GpuControl::capacity*D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+constexpr UINT64 prepass_offset=GpuControl::capacity*D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+constexpr UINT64 block_bytes=prepass_offset*2;
 constexpr auto control_state=D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER|D3D12_RESOURCE_STATE_PREDICATION;
 constexpr UINT calibration_queries=GpuControl::capacity*4+2;
 constexpr UINT64 calibration_bytes=calibration_queries*sizeof(UINT64);
@@ -32,7 +33,7 @@ GpuControl::GpuControl(ID3D12Device* device,bool measure,bool spatial):device_(d
     hp.Type=D3D12_HEAP_TYPE_UPLOAD;check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&neutral_)));
     d.Width*=4;check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&upload_)));
     void* data{};D3D12_RANGE none{};check(neutral_->Map(0,&none,&data));std::memset(data,0,block_bytes);
-    for(unsigned i=0;i<capacity;++i){const ControlValue neutral;std::memcpy(static_cast<char*>(data)+i*256,&neutral,sizeof(neutral));}neutral_->Unmap(0,nullptr);
+    for(unsigned i=0;i<capacity;++i){ControlValue neutral;std::memcpy(static_cast<char*>(data)+i*256,&neutral,sizeof(neutral));neutral.spatial_flags=16;std::memcpy(static_cast<char*>(data)+prepass_offset+i*256,&neutral,sizeof(neutral));}neutral_->Unmap(0,nullptr);
     marker_stride_=32+(spatial?2ull*spatial_capacity*spatial_record_bytes:0);
     hp.Type=D3D12_HEAP_TYPE_DEFAULT;d.Width=marker_stride_*capacity;d.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(&marker_)));
@@ -98,6 +99,7 @@ GpuControl::GpuControl(ID3D12Device* device,bool measure,bool spatial):device_(d
     CloseHandle(event);
     for(auto* resource:{buffer_.Get(),marker_.Get(),calibration_scratch_.Get(),upload_.Get(),neutral_.Get(),readback_.Get(),marker_readback_.Get(),spatial_readback_.Get(),calibration_readback_.Get()})if(resource){D3D12_HEAP_PROPERTIES properties{};if(SUCCEEDED(resource->GetHeapProperties(&properties,nullptr))){const auto desc=resource->GetDesc();const auto bytes=device->GetResourceAllocationInfo(0,1,&desc).SizeInBytes;if(bytes!=UINT64_MAX)allocation_bytes_[properties.Type==D3D12_HEAP_TYPE_UPLOAD?1:properties.Type==D3D12_HEAP_TYPE_READBACK?2:0]+=bytes;}}
 }
+D3D12_GPU_VIRTUAL_ADDRESS GpuControl::prepass_address(unsigned slot)const noexcept{return slot<capacity?buffer_->GetGPUVirtualAddress()+prepass_offset+slot*256:0;}
 D3D12_GPU_VIRTUAL_ADDRESS GpuControl::address(unsigned slot)const noexcept{return slot<capacity?buffer_->GetGPUVirtualAddress()+slot*256:0;}
 D3D12_GPU_VIRTUAL_ADDRESS GpuControl::marker_address(unsigned slot)const noexcept{return slot<capacity?marker_->GetGPUVirtualAddress()+slot*marker_stride_:0;}
 void GpuControl::marker_barrier(ID3D12GraphicsCommandList* list){D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;b.UAV.pResource=marker_.Get();list->ResourceBarrier(1,&b);}
@@ -173,7 +175,7 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
             if(tiles&&tiles<=spatial_capacity){value.spatial_capacity=spatial_capacity;if(!value.spatial_frame)value.spatial_frame=UINT(sequence_+1);value.spatial_flags=(value.spatial_flags&~1u)|UINT((sequence_+1)&1);}
         }
         if(i==0)spatial_values_[pending_]=value;
-        std::memcpy(block+i*256,&value,sizeof(value));}
+        std::memcpy(block+i*256,&value,sizeof(value));value.proof_epoch=value.proof_pipeline=0;value.spatial_flags|=16;std::memcpy(block+prepass_offset+i*256,&value,sizeof(value));}
     upload_->Unmap(0,nullptr);
     return copies_[kind==D3D12_COMMAND_LIST_TYPE_COMPUTE?1:0][pending_].Get();
 }
