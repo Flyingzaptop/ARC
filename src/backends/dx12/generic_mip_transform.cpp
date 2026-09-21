@@ -30,7 +30,7 @@ MipTransform bias_explicit_mips(std::string_view input){
             output<<"  %arc_mip_controls = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 2)\n"
                   <<"  %arc_mip_steps = extractvalue %dx.types.CBufRet.i32 %arc_mip_controls, 0\n"
                   <<"  %arc_mip_nonzero = icmp ugt i32 %arc_mip_steps, 0\n"
-                  <<"  %arc_mip_bounded = icmp ule i32 %arc_mip_steps, 4\n"
+                  <<"  %arc_mip_bounded = icmp ule i32 %arc_mip_steps, 8\n"
                   <<"  %arc_mip_enabled = and i1 %arc_mip_nonzero, %arc_mip_bounded\n"
                   <<"  %arc_mip_safe_steps = select i1 %arc_mip_enabled, i32 %arc_mip_steps, i32 0\n"
                   <<"  %arc_mip_float = uitofp i32 %arc_mip_safe_steps to float\n"

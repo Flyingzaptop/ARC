@@ -67,3 +67,22 @@ package and archives. Report unresolved causes and unsupported transforms explic
 - Remaining substantial work: group-coherent path, wider adaptive rates/sample
   budgets, compact spatial prepass, same-input sensitivity probes, final matrix and
   portable release. No final performance acceptance yet.
+
+## Updated operating conditions / deadline
+
+User reset cooling and specified GPU TDP maximum30W. All subsequent performance
+series must be grouped by observed power regime, separately from the115-128W runs.
+At19:06 UTC on21Sep, idle NVML still reported enforced115W (draw11.92W,35C), so
+record both requested30W and actual under-load samples; do not change fan/power.
+User authorized continued autonomous optimization until04:30 Europe/Warsaw on
+22Sep2026 (02:30UTC). Continue useful optimization if the approved work finishes early.
+Reserve the final period for comparative runs, package verification and report.
+
+## Spatial and compute integration
+
+See PERFORMANCE_IMPLEMENTATION_NOTES.md for current verified scope. GPU sparse
+probes and learned-map oracle pass; group/shared and normalized sample CPU/GPU
+oracles pass in perf-samples-native-13. CONTRACT_12 keeps old variants incompatible.
+Functional learned-spatial-08 passed some image checks, but no accepted speed gain;
+its whole-session FPS is not a final comparison. Warmup of map hysteresis must be
+included in full session cost. Final matrix remains outstanding.

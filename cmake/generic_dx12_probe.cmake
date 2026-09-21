@@ -7,17 +7,19 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
     add_library(arc-generic-worker-placement STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_worker_placement.cpp)
     target_include_directories(arc-generic-worker-placement PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12 ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_compile_definitions(arc-generic-worker-placement PUBLIC NOMINMAX)
-    add_library(arc-generic-gpu-control STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_gpu_control.cpp)
-    target_include_directories(arc-generic-gpu-control PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12)
+    add_library(arc-generic-gpu-control STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_gpu_control.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_spatial_probe.cpp)
+    target_include_directories(arc-generic-gpu-control PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12 ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_compile_definitions(arc-generic-gpu-control PUBLIC NOMINMAX)
-    target_link_libraries(arc-generic-gpu-control PUBLIC d3d12)
+    target_link_libraries(arc-generic-gpu-control PUBLIC d3d12 d3dcompiler)
     add_library(arc-generic-shader-transform STATIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_shader_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_probe_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_pcf_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_zero_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_edge_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_spatial_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_mip_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_sample_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_uniform_access.cpp)
     target_include_directories(arc-generic-shader-transform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12)
     add_executable(arc-shader-tool ${CMAKE_CURRENT_SOURCE_DIR}/src/tools/shader_tool.cpp)
@@ -58,6 +60,9 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         target_link_libraries(arc-shader-cache-tests PRIVATE bcrypt)
         add_test(NAME arc-shader-cache-tests COMMAND arc-shader-cache-tests)
         add_executable(arc-gpu-execution-native-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpu_execution_native.cpp)
+        add_executable(arc-sparse-probe-native-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/sparse_probe_native.cpp)
+        target_compile_definitions(arc-sparse-probe-native-tests PRIVATE UNICODE _UNICODE NOMINMAX)
+        target_link_libraries(arc-sparse-probe-native-tests PRIVATE arc-generic-binding arc-generic-shader-transform arc-generic-gpu-control d3d12 dxgi d3dcompiler)
         target_compile_definitions(arc-gpu-execution-native-tests PRIVATE UNICODE _UNICODE NOMINMAX)
         target_link_libraries(arc-gpu-execution-native-tests PRIVATE arc-generic-binding arc-generic-shader-transform arc-generic-gpu-control d3d12 dxgi d3dcompiler)
         add_executable(arc-connection-native-tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/connection_native.cpp)

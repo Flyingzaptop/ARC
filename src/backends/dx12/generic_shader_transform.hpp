@@ -11,6 +11,7 @@ struct ResourceContract {
 };
 struct Transform {
     bool admitted{};
+    bool group_shared{};
     std::string reason;
     std::string ir;
     std::array<unsigned, 3> threads{};
@@ -20,6 +21,7 @@ struct Transform {
     unsigned zero_factor_regions{};
     unsigned edge_input_mask{};
     unsigned mip_samples{};
+    unsigned probe_outputs{},sample_loops{};
     bool execution_marker{};
     unsigned execution_marker_range{};
     // UINT32_MAX for static diagnostic variants; otherwise a new b0 binding in

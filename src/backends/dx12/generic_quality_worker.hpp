@@ -40,9 +40,11 @@ class QualityWorker {
 public:
     ~QualityWorker(){close();}
     bool unavailable()const noexcept{return launches_>=2&&!process_;}
-    Json assess(const std::filesystem::path& python,const std::filesystem::path& script,Json request,const std::function<bool()>& cancelled){
+    Json assess(const std::filesystem::path& python,const std::filesystem::path& script,Json request,const std::function<bool()>& cancelled,const std::function<void()>& idle={}){
+        struct Priority {bool waiting{true};Priority(){++background_quality_waiters();}void acquired(){--background_quality_waiters();waiting=false;}~Priority(){if(waiting)--background_quality_waiters();}} priority;
         std::unique_lock gate(background_compute_gate(),std::defer_lock);
         while(!gate.try_lock_for(std::chrono::milliseconds(50)))if(cancelled())throw std::runtime_error("quality_cancelled");
+        priority.acquired();
         if(!process_||WaitForSingleObject(process_,0)!=WAIT_TIMEOUT)launch(python,script);
         request["schema"]=1;request["request_id"]=++sequence_;request["shared"]=Json::array();
         std::vector<std::unique_ptr<Mapping>> mappings;std::uint64_t total{};
@@ -61,6 +63,7 @@ public:
         DWORD written{};if(!WriteFile(input_,line.data(),DWORD(line.size()),&written,nullptr)||written!=line.size()){close();throw std::runtime_error("quality_worker_write");}
         std::string response;const auto deadline=GetTickCount64()+15000;
         while(!cancelled()&&GetTickCount64()<deadline){
+            try{if(idle)idle();}catch(...){close();throw;}
             cpu_cost::memory_snapshot();DWORD bytes{};
             if(!PeekNamedPipe(output_,nullptr,0,nullptr,&bytes,nullptr)){close();throw std::runtime_error("quality_worker_exit");}
             if(bytes){char chunk[8192];DWORD read{};if(!ReadFile(output_,chunk,std::min<DWORD>(bytes,sizeof(chunk)),&read,nullptr)){close();throw std::runtime_error("quality_worker_read");}response.append(chunk,read);

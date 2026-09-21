@@ -6,9 +6,10 @@
 #include <span>
 #include <vector>
 #include <optional>
+#include "arc/spatial_sensitivity.hpp"
 
 namespace arc::dx12::optimizer {
-struct ControlValue {UINT x{1},y{1},width{},height{},comparison_taps{},zero_factor{},edge_sources{};float edge_threshold{};UINT mip_steps{};alignas(8) UINT64 calibration{},calibration_pipeline{},reserved{},proof_epoch{},proof_pipeline{};UINT spatial_capacity{},spatial_frame{};UINT64 spatial_key{};UINT spatial_tile_width{},spatial_tile_height{},spatial_flags{};float spatial_center{};};
+struct ControlValue {UINT x{1},y{1},width{},height{},comparison_taps{},zero_factor{},edge_sources{};float edge_threshold{};UINT mip_steps{},sample_percent{100};alignas(8) UINT64 calibration{},calibration_pipeline{},reserved{},proof_epoch{},proof_pipeline{};UINT spatial_capacity{},spatial_frame{};UINT64 spatial_key{};UINT spatial_tile_width{},spatial_tile_height{},spatial_flags{};float spatial_center{};UINT64 probe_epoch{};UINT probe_stride{16},probe_phase{};UINT64 model_key{};float model_limit{.02f};UINT model_reserved{};};
 // A recording ends by restoring this buffer to neutral on the GPU. Therefore a
 // missed update, exhausted upload ring or subsequent cached replay cannot keep
 // a coarse policy accidentally. Callers serialize methods with submissions.
@@ -20,6 +21,9 @@ public:
     explicit GpuControl(ID3D12Device*,bool measure=false,bool spatial=false); // worker only
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS address(unsigned slot) const noexcept;
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS prepass_address(unsigned slot) const noexcept;
+    [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS probe_address(unsigned slot,bool candidate) const noexcept;
+    void probe_predicate(ID3D12GraphicsCommandList*,unsigned slot);
+    void model(unsigned slot,const arc::SpatialModelTable&);
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS marker_address(unsigned slot) const noexcept;
     void marker_barrier(ID3D12GraphicsCommandList*);
     struct ExecutionReadback {
@@ -49,7 +53,7 @@ public:
     void calibration_mark(ID3D12GraphicsCommandList*,unsigned slot,unsigned point);
     void calibration_predicate(ID3D12GraphicsCommandList*,unsigned slot);
     void record_neutralize(ID3D12GraphicsCommandList*);
-    ID3D12CommandList* prepare(ID3D12CommandQueue*,std::span<const ControlValue>);
+    ID3D12CommandList* prepare(ID3D12CommandQueue*,std::span<const ControlValue>,std::span<const ControlValue> probe_values={});
     void submitted(ID3D12CommandQueue*);
     [[nodiscard]] bool ready() const noexcept;
     [[nodiscard]] ID3D12Device* device() const noexcept {return device_.Get();}
@@ -64,6 +68,8 @@ private:
     template<class T>using Ptr=Microsoft::WRL::ComPtr<T>;
     Ptr<ID3D12Device> device_;
     Ptr<ID3D12Resource> buffer_,upload_,neutral_;
+    Ptr<ID3D12Resource> model_upload_;
+    std::unique_ptr<std::array<arc::SpatialModelTable,capacity>> models_;
     Ptr<ID3D12Resource> marker_,marker_readback_;
     Ptr<ID3D12Resource> spatial_readback_;
     std::array<ControlValue,4> spatial_values_{};

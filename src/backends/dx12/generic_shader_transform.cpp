@@ -7,6 +7,8 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <functional>
+#include <cmath>
 
 namespace arc::dx12::shader {
 namespace {
@@ -38,20 +40,39 @@ std::string code(std::string line) {
         else if(line[i]=='"')quote=true;else if(line[i]==';'){line.resize(i);break;}}
     return trim(line);
 }
+bool group_barrier_proof(const std::vector<std::string>& lines,std::size_t begin,std::size_t end){
+    std::map<std::string,std::set<std::string>> edges;std::set<std::string> exits,barriers;std::string block="entry",entry=block;std::smatch m;
+    const std::regex numbered(R"(^; <label>:([0-9]+).*$)"),target(R"(label %([A-Za-z0-9_.$]+))");
+    bool first=true;
+    for(std::size_t i=begin+1;i<end;++i){auto c=code(lines[i]);if(std::regex_match(lines[i],m,numbered)){block=m[1];if(first)entry=block;first=false;continue;}
+        if(c.ends_with(':')){block=c.substr(0,c.size()-1);if(first)entry=block;first=false;continue;}if(c.empty())continue;first=false;edges[block];
+        if(c.starts_with("ret "))exits.insert(block);
+        if(c.find("@dx.op.barrier(")!=c.npos){if(c!="call void @dx.op.barrier(i32 80, i32 9)")return false;barriers.insert(block);}
+        if(c.starts_with("br ")||c.starts_with("switch "))for(auto it=std::sregex_iterator(c.begin(),c.end(),target);it!=std::sregex_iterator();++it)edges[block].insert((*it)[1]);
+    }
+    if(barriers.empty()||exits.empty())return false;
+    auto reachable=[&](std::string start,const std::string& blocked){std::set<std::string> seen;std::vector<std::string> work{start};while(!work.empty()){auto at=work.back();work.pop_back();if(at==blocked||!seen.insert(at).second)continue;for(const auto& next:edges[at])work.push_back(next);}return seen;};
+    for(const auto& barrier:barriers){const auto without=reachable(entry,barrier);for(const auto& exit:exits)if(without.contains(exit))return false;
+        for(const auto& next:edges[barrier])if(next==barrier||reachable(next,"").contains(barrier))return false;}
+    return true;
+}
 // Prove private/constant flat array accesses before admitting LLVM memory ops.
 // Unknown indices, pointer escapes and writable global storage remain declined.
 bool local_memory_proof(const std::vector<std::string>& lines,std::size_t begin,std::size_t end,const std::array<unsigned,3>& threads){
-    struct Array {unsigned count;std::string type;bool readonly;};
+    struct Array {unsigned count;std::string type;bool readonly;bool shared{};};
     std::map<std::string,Array> arrays,pointers;std::map<std::string,std::uint64_t> upper;
     const std::string symbol=R"((%[A-Za-z0-9_.$]+|@"(?:[^"\\]|\\.)*"|@[A-Za-z0-9_.$]+))";
     const std::regex global("^"+symbol+R"( = .*constant \[([0-9]+) x (float|half|i32)\].*$)");
+    const std::regex shared("^"+symbol+R"( = .*addrspace\(3\) global \[([0-9]+) x (float|half|i32)\].*$)");
     const std::regex local("^"+symbol+R"( = alloca \[([0-9]+) x (float|half|i32)\](?:, align [0-9]+)?$)");
-    const std::regex gep("^"+symbol+R"( = getelementptr(?: inbounds)? \[([0-9]+) x (float|half|i32)\], \[[0-9]+ x (?:float|half|i32)\]\* )"+symbol+R"(, i32 0, i32 ([%A-Za-z0-9_.$]+)(?:, !.*)?$)");
-    const std::regex binary(R"(^(%[A-Za-z0-9_.$]+) = (and|or|urem|add|mul|shl|lshr)(?: nuw| nsw)* i32 ([%A-Za-z0-9_.$]+), ([%A-Za-z0-9_.$]+)$)");
+    const std::regex gep("^"+symbol+R"( = getelementptr(?: inbounds)? \[([0-9]+) x (float|half|i32)\], \[[0-9]+ x (?:float|half|i32)\](?: addrspace\(3\))?\* )"+symbol+R"(, i32 0, i32 ([%A-Za-z0-9_.$]+)(?:, !.*)?$)");
+    const std::regex binary(R"(^(%[A-Za-z0-9_.$]+) = (and|or|xor|urem|udiv|add|mul|shl|lshr)(?: nuw| nsw)* i32 ([%A-Za-z0-9_.$]+), ([%A-Za-z0-9_.$]+)$)");
+    const std::regex flat(R"(^(%[A-Za-z0-9_.$]+) = call i32 @dx.op.flattenedThreadIdInGroup.i32\(i32 96\).*$)");
     const std::regex thread(R"(^(%[A-Za-z0-9_.$]+) = call i32 @dx.op.threadIdInGroup.i32\(i32 95, i32 ([012])\).*$)");
     auto bound=[&](const std::string& name)->std::uint64_t{if(!name.empty()&&std::isdigit(static_cast<unsigned char>(name[0])))return number(name);auto i=upper.find(name);return i==upper.end()?UINT64_MAX:i->second;};
     std::smatch m;
     for(std::size_t i=0;i<lines.size();++i){const auto c=code(lines[i]);if(i<begin&&std::regex_match(c,m,global))arrays.emplace(m[1].str(),Array{number(m[2].str()),m[3].str(),true});
+        if(i<begin&&std::regex_match(c,m,shared)){const auto n=number(m[2].str());if(!n||n>8192)return false;arrays.emplace(m[1].str(),Array{n,m[3].str(),false,true});}
         if(i>begin&&i<end&&std::regex_match(c,m,local)){const auto n=number(m[2].str());if(!n||n>4096)return false;arrays.emplace(m[1].str(),Array{n,m[3].str(),false});}}
     std::map<std::string,std::string> definitions,owner,terminators;std::map<std::string,std::set<std::string>> predecessors;
     std::string block="0";const std::regex numbered(R"(^; <label>:([0-9]+).*$)"),edge(R"(label %([A-Za-z0-9_.$]+))");
@@ -59,7 +80,7 @@ bool local_memory_proof(const std::vector<std::string>& lines,std::size_t begin,
         terminators[block]=c;const auto eq=c.find(" = ");if(eq!=c.npos){const auto id=c.substr(0,eq);definitions[id]=c;owner[id]=block;}
         if(c.starts_with("br ")||c.starts_with("switch "))for(auto e=std::sregex_iterator(c.begin(),c.end(),edge);e!=std::sregex_iterator();++e)predecessors[(*e)[1]].insert(block);
     }
-    const std::regex phi(R"(^(%[A-Za-z0-9_.$]+) = phi i32 \[ ([%A-Za-z0-9_.$]+), %([A-Za-z0-9_.$]+) \], \[ ([%A-Za-z0-9_.$]+), %([A-Za-z0-9_.$]+) \].*$)");
+    const std::regex phi(R"(^(%[A-Za-z0-9_.$]+) = phi i32 \[ ([-%A-Za-z0-9_.$]+), %([A-Za-z0-9_.$]+) \], \[ ([-%A-Za-z0-9_.$]+), %([A-Za-z0-9_.$]+) \].*$)");
     const std::regex increment(R"(^(%[A-Za-z0-9_.$]+) = add(?: nuw| nsw)* i32 (%[A-Za-z0-9_.$]+), 1$)");
     const std::regex condition(R"(^(%[A-Za-z0-9_.$]+) = icmp (ult|slt|eq|ne) i32 (%[A-Za-z0-9_.$]+), ([0-9]+)$)");
     const std::regex branch(R"(^br i1 (%[A-Za-z0-9_.$]+), label %([A-Za-z0-9_.$]+), label %([A-Za-z0-9_.$]+)(?:, !.*)?$)");
@@ -75,6 +96,7 @@ bool local_memory_proof(const std::vector<std::string>& lines,std::size_t begin,
     for(unsigned iteration=0;iteration<32;++iteration){bool changed=false;
         for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);std::uint64_t value=UINT64_MAX;std::string name;
             if(std::regex_match(c,m,thread)){name=m[1];value=threads[number(m[2].str())]-1;}
+            else if(std::regex_match(c,m,flat)){name=m[1];value=threads[0]*threads[1]*threads[2]-1;}
             else if(std::regex_match(c,m,binary)){name=m[1];const auto op=m[2].str();const auto a=bound(m[3]),b=bound(m[4]);
                 if(op=="and")value=std::min(a,b);
                 else if(op=="urem"&&b&&b<UINT32_MAX&&!m[4].str().starts_with('%'))value=b-1;
@@ -82,18 +104,57 @@ bool local_memory_proof(const std::vector<std::string>& lines,std::size_t begin,
                 else if(op=="mul"&&a<=UINT32_MAX&&b<=UINT32_MAX&&a*b<=UINT32_MAX)value=a*b;
                 else if(op=="shl"&&a<=UINT32_MAX&&b<32&&(a<<b)<=UINT32_MAX)value=a<<b;
                 else if(op=="lshr"&&a<=UINT32_MAX&&b<32&&!m[4].str().starts_with('%'))value=a>>b;
-                else if(op=="or"&&a<=UINT32_MAX&&b<=UINT32_MAX){value=1;while(value<=std::max(a,b)&&value<(1ull<<32))value<<=1;--value;}
+                else if(op=="udiv"&&a<=UINT32_MAX&&b&&b<=UINT32_MAX&&!m[4].str().starts_with('%'))value=a/b;
+                else if((op=="or"||op=="xor")&&a<=UINT32_MAX&&b<=UINT32_MAX){value=1;while(value<=std::max(a,b)&&value<(1ull<<32))value<<=1;--value;}
             }
             if(value!=UINT64_MAX&&(!upper.contains(name)||upper[name]!=value)){upper[name]=value;changed=true;}
         }if(!changed)break;
     }
+    // Small signed induction ranges and exact float coordinate arithmetic.
+    // Only finite bounds are consumed by GEP proofs; unknowns remain rejected.
+    using Interval=std::pair<double,double>;std::map<std::string,Interval> induction;
+    for(const auto& [id,definition]:definitions)if(std::regex_match(definition,m,phi)){
+        auto initial=m[2].str(),initial_block=m[3].str(),back=m[4].str(),latch=m[5].str();if(initial.starts_with('%')){std::swap(initial,back);std::swap(initial_block,latch);}
+        if(initial.empty()||initial.starts_with('%')||!definitions.contains(back))continue;const auto start=std::stoll(initial);if(start< -4096||start>4096)continue;const auto header=owner.at(id);if(predecessors[header]!=std::set<std::string>{initial_block,latch})continue;
+        if(!std::regex_match(definitions.at(back),m,increment)||m[2]!=id||owner.at(back)!=latch)continue;
+        if(!std::regex_match(terminators[latch],m,branch))continue;const auto test=m[1].str(),yes=m[2].str(),no=m[3].str();if(!definitions.contains(test)||!std::regex_match(definitions.at(test),m,condition)||m[3]!=back)continue;
+        const auto comparison=m[2].str();const auto count=number(m[4].str());if(count>4096||start>=count)continue;
+        if((comparison=="slt"&&yes==header&&no!=header)||(comparison=="eq"&&no==header&&yes!=header))induction[id]={double(start),double(count-1)};
+    }
+    const Interval unknown{-1.e100,1.e100};
+    const std::regex cast(R"(^(%[A-Za-z0-9_.$]+) = (sitofp|uitofp|fptosi|fptoui) (?:i32|float) (%[A-Za-z0-9_.$]+) to (?:float|i32)$)");
+    const std::regex floatadd(R"(^(%[A-Za-z0-9_.$]+) = fadd(?: fast)? float ([^,]+), (.+)$)");
+    std::function<Interval(const std::string&,unsigned)> interval;
+    interval=[&](const std::string& name,unsigned depth)->Interval{
+        if(depth>32)return unknown;if(induction.contains(name))return induction[name];if(!name.starts_with('%')){try{std::size_t used{};const auto value=std::stod(name,&used);if(used==name.size()&&std::isfinite(value)&&std::abs(value)<=1048576)return {value,value};}catch(...){}return unknown;}
+        if(upper.contains(name)&&upper[name]<=1048576)return {0,double(upper[name])};if(!definitions.contains(name))return unknown;std::smatch m;
+        if(std::regex_match(definitions.at(name),m,cast)){auto range=interval(m[3],depth+1);if(range.first< -1048576||range.second>1048576)return unknown;
+            if(m[2]=="fptosi"||m[2]=="fptoui"){if(m[2]=="fptoui"&&range.first<0)return unknown;return {std::trunc(range.first),std::trunc(range.second)};}return {double(float(range.first)),double(float(range.second))};}
+        if(std::regex_match(definitions.at(name),m,floatadd)){const auto a=interval(m[2],depth+1),b=interval(m[3],depth+1);if(a.first+b.first< -1048576||a.second+b.second>1048576)return unknown;return {double(float(a.first)+float(b.first)),double(float(a.second)+float(b.second))};}
+        return unknown;
+    };
+    std::set<std::string> blocks;for(const auto& [b,t]:terminators)blocks.insert(b);
+    std::map<std::string,std::set<std::string>> dom;for(const auto& b:blocks)dom[b]=predecessors[b].empty()?std::set<std::string>{b}:blocks;
+    for(unsigned round=0;round<blocks.size()+1;++round){bool changed=false;for(const auto& b:blocks)if(!predecessors[b].empty()){auto common=blocks;for(const auto& pred:predecessors[b]){std::set<std::string> next;std::set_intersection(common.begin(),common.end(),dom[pred].begin(),dom[pred].end(),std::inserter(next,next.end()));common=std::move(next);}common.insert(b);if(common!=dom[b]){dom[b]=std::move(common);changed=true;}}if(!changed)break;}
+    std::map<std::string,std::map<std::string,std::uint64_t>> constraints;
+    for(const auto& [b,term]:terminators)if(std::regex_match(term,m,branch)){const auto test=m[1].str(),yes=m[2].str();if(predecessors[yes]!=std::set<std::string>{b}||!definitions.contains(test))continue;
+        if(std::regex_match(definitions.at(test),m,condition)&&m[2]=="ult"){const auto count=number(m[4].str());if(count)for(const auto& target:blocks)if(dom[target].contains(yes))constraints[target][m[3].str()]=count-1;}}
+    std::function<std::uint64_t(const std::string&,const std::string&,unsigned)> path_bound;
+    path_bound=[&](const std::string& name,const std::string& at,unsigned depth)->std::uint64_t{auto result=bound(name);const auto numeric=interval(name,0);if(numeric.first>=0&&numeric.second<=UINT32_MAX)result=std::min(result,std::uint64_t(numeric.second));if(const auto found=constraints[at].find(name);found!=constraints[at].end())result=std::min(result,found->second);if(depth>64||!definitions.contains(name))return result;
+        std::smatch match;if(!std::regex_match(definitions.at(name),match,binary))return result;const auto op=match[2].str(),left=match[3].str(),right=match[4].str();const auto a=path_bound(left,at,depth+1),b=path_bound(right,at,depth+1);std::uint64_t value=UINT64_MAX;
+        if(op=="and")value=std::min(a,b);else if(op=="urem"&&b&&b<=UINT32_MAX&&!right.starts_with('%'))value=b-1;else if(op=="udiv"&&a<=UINT32_MAX&&b&&b<=UINT32_MAX&&!right.starts_with('%'))value=a/b;
+        else if(op=="add"&&a<=UINT32_MAX&&b<=UINT32_MAX&&a+b<=UINT32_MAX)value=a+b;else if(op=="mul"&&a<=UINT32_MAX&&b<=UINT32_MAX&&a*b<=UINT32_MAX)value=a*b;
+        else if(op=="shl"&&a<=UINT32_MAX&&b<32&&(a<<b)<=UINT32_MAX)value=a<<b;else if(op=="lshr"&&a<=UINT32_MAX&&b<32&&!right.starts_with('%'))value=a>>b;
+        else if((op=="or"||op=="xor")&&a<=UINT32_MAX&&b<=UINT32_MAX){value=1;while(value<=std::max(a,b)&&value<(1ull<<32))value<<=1;--value;}
+        return std::min(result,value);
+    };
     for(std::size_t i=begin+1;i<end;++i){const auto c=code(lines[i]);
         if(c.find(" = alloca ")!=c.npos){if(!std::regex_match(c,m,local))return false;continue;}
-        if(c.find(" = getelementptr ")!=c.npos){if(!std::regex_match(c,m,gep))return false;const auto a=arrays.find(m[4]);if(a==arrays.end()||a->second.count!=number(m[2].str())||a->second.type!=m[3].str()||bound(m[5])>=a->second.count)return false;pointers.emplace(m[1],a->second);continue;}
+        if(c.find(" = getelementptr ")!=c.npos){if(!std::regex_match(c,m,gep))return false;const auto a=arrays.find(m[4]);if(a==arrays.end()||a->second.count!=number(m[2].str())||a->second.type!=m[3].str()||path_bound(m[5],owner[m[1].str()],0)>=a->second.count)return false;pointers.emplace(m[1],a->second);continue;}
         if(c.find(" = load ")!=c.npos||c.starts_with("store ")){
             const bool store=c.starts_with("store ");const auto at=store?6:c.find(" = load ")+8;const auto args=fields(c.substr(at));if(args.size()<2)return false;
             const auto space=args[1].find_last_of(' ');if(space==args[1].npos)return false;const auto pointer=pointers.find(args[1].substr(space+1));
-            if(pointer==pointers.end()||(store&&pointer->second.readonly)||args[1].substr(0,space)!=pointer->second.type+"*")return false;
+            if(pointer==pointers.end()||(store&&pointer->second.readonly)||args[1].substr(0,space)!=pointer->second.type+(pointer->second.shared?" addrspace(3)*":"*"))return false;
             if((store&&!args[0].starts_with(pointer->second.type+" "))||(!store&&args[0]!=pointer->second.type))return false;
         }
     }
@@ -145,7 +206,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
     if(execution_marker&&!runtime_control)return reject("execution_marker_requires_runtime_control");
     try {
         if(input.size()>8*1024*1024||input.empty())return reject("ir_size");
-        if((x_rate!=1&&x_rate!=2)||(y_rate!=1&&y_rate!=2))return reject("rate");
+        if((x_rate!=1&&x_rate!=2&&x_rate!=4)||(y_rate!=1&&y_rate!=2&&y_rate!=4))return reject("rate");
         std::string text(input);while(!text.empty()&&text.back()=='\0')text.pop_back();
         if(text.find("arc_coarse_")!=text.npos)return reject("already_transformed");
         std::map<unsigned,std::vector<std::string>> metadata;
@@ -180,6 +241,8 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             else if(tag!=0)return reject("unsupported_entry_property");
         }
         if(!out.threads[0]||!out.threads[1]||out.threads[2]!=1||out.threads[0]>1024||out.threads[1]>1024||out.threads[0]*out.threads[1]>1024)return reject("thread_dimensions");
+        out.group_shared=text.find("addrspace(3)")!=text.npos||text.find("@dx.op.barrier(")!=text.npos;
+        if(out.group_shared&&(!runtime_control||!group_barrier_proof(lines,begin,end)))return reject("group_barrier_convergence_unproven");
         if(!local_memory_proof(lines,begin,end,out.threads))return reject("unproven_local_memory");
         std::set<unsigned> unsupported_uavs;
         const auto& lists=metadata.at(named.at("dx.resources"));if(lists.size()!=4)return reject("resource_lists");
@@ -207,10 +270,10 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
             "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32",
             "dx.op.legacyF16ToF32","dx.op.legacyF32ToF16","dx.op.getDimensions",
-            "dx.op.binaryWithTwoOuts.i32","dx.op.groupId.i32","dx.op.threadIdInGroup.i32",
+            "dx.op.flattenedThreadIdInGroup.i32","dx.op.binaryWithTwoOuts.i32","dx.op.groupId.i32","dx.op.threadIdInGroup.i32",
             "dx.op.isSpecialFloat.f32","dx.op.isSpecialFloat.f16","dx.op.dot2.f16","dx.op.dot3.f16","dx.op.dot4.f16","dx.op.unary.f16","dx.op.binary.f16","dx.op.tertiary.f16",
             "dx.op.bufferLoad.f32","dx.op.bufferLoad.i32","dx.op.rawBufferLoad.f32","dx.op.rawBufferLoad.i32",
-            "dx.op.allocateRayQuery","dx.op.rayQuery_TraceRayInline","dx.op.rayQuery_Proceed.i1","dx.op.rayQuery_StateScalar.i32"};
+            "dx.op.barrier","dx.op.allocateRayQuery","dx.op.rayQuery_TraceRayInline","dx.op.rayQuery_Proceed.i1","dx.op.rayQuery_StateScalar.i32"};
         const std::set<std::string> allowed_instructions={"call","ret","br","phi","switch","alloca","getelementptr","load","store","add","sub","mul","udiv","sdiv","urem","srem","fadd","fsub","fmul","fdiv","frem",
             "shl","lshr","ashr","and","or","xor","icmp","fcmp","select","fptoui","fptosi","uitofp","sitofp","fptrunc","fpext","zext","sext","trunc","bitcast","extractvalue","extractelement","insertelement","shufflevector"};
         const std::regex call(R"(^(?:(%[A-Za-z0-9_.$]+) = )?call [^@]+@([A-Za-z0-9_.$]+)\((.*)\)(?: #[0-9]+)?$)");
@@ -304,7 +367,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             }
             for(auto& l:lines)if(l.starts_with("!"+std::to_string(root_id)+" = "))l=format(root_id,resource_lists);
             appended_metadata+="\n"+format(list_id,cbuffers)+"\n!"+std::to_string(control_id)+" = !{i32 "+std::to_string(control_range)+
-                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 "+(execution_marker?"112":"48")+", null}\n";
+                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 "+(execution_marker?"144":"48")+", null}\n";
         }
         // Numeric SSA ids and anonymous block ids must be named before adding
         // instructions. Renumbering only definitions would corrupt PHI edges.
@@ -321,7 +384,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             if(text.find("declare %dx.types.Dimensions @dx.op.getDimensions(")==text.npos)generated<<"declare %dx.types.Dimensions @dx.op.getDimensions(i32, %dx.types.Handle, i32)\n";
         }
         if(runtime_control){
-            generated<<"%arc_coarse_control_buffer = type { ["<<(execution_marker?28:12)<<" x i32] }\n";
+            generated<<"%arc_coarse_control_buffer = type { ["<<(execution_marker?36:12)<<" x i32] }\n";
             if(execution_marker){generated<<"%arc_execution_buffer = type { i32 }\n";
                 if(text.find("declare void @dx.op.bufferStore.i32(")==text.npos)generated<<"declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8)\n";}
             if(text.find("%dx.types.CBufRet.i32 = type")==text.npos)generated<<"%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }\n";
@@ -355,8 +418,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                         <<"  %arc_coarse_width = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 2\n"
                         <<"  %arc_coarse_height = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 3\n";
                     for(unsigned d=0;d<2;++d){const char a=d?'y':'x';generated<<"  %arc_coarse_requested_"<<a<<" = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, "<<d<<"\n"
-                        <<"  %arc_coarse_enabled_"<<a<<" = icmp eq i32 %arc_coarse_requested_"<<a<<", 2\n"
-                        <<"  %arc_coarse_rate_"<<a<<" = select i1 %arc_coarse_enabled_"<<a<<", i32 2, i32 1\n";}
+                        <<"  %arc_coarse_twice_"<<a<<" = icmp eq i32 %arc_coarse_requested_"<<a<<", 2\n"
+                        <<"  %arc_coarse_four_"<<a<<" = icmp eq i32 %arc_coarse_requested_"<<a<<", 4\n"
+                        <<"  %arc_coarse_enabled_"<<a<<" = or i1 %arc_coarse_twice_"<<a<<", %arc_coarse_four_"<<a<<"\n"
+                        <<"  %arc_coarse_requested_safe_"<<a<<" = select i1 %arc_coarse_four_"<<a<<", i32 4, i32 2\n"
+                        <<"  %arc_coarse_rate_"<<a<<" = select i1 %arc_coarse_enabled_"<<a<<", i32 %arc_coarse_requested_safe_"<<a<<", i32 1\n";}
                 }else if(needs_bounds){
                     const auto& first=stores.front().args[1];const auto handle=handles.at(first.substr(first.find_last_of(' ')+1));
                     const auto resource=std::find_if(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==1&&r.range_id==handle.range;});
@@ -392,6 +458,19 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             }
         }
         auto transformed=generated.str();
+        if(out.group_shared){
+            for(unsigned axis=0;axis<2;++axis){const std::string a=axis?"y":"x",extent=axis?"height":"width";
+                const auto original="  %arc_coarse_rate_"+a+" = select i1 %arc_coarse_enabled_"+a+", i32 %arc_coarse_requested_safe_"+a+", i32 1";
+                std::ostringstream guard;guard<<"  %arc_group_requested_"<<a<<" = select i1 %arc_coarse_enabled_"<<a<<", i32 %arc_coarse_requested_safe_"<<a<<", i32 1\n"
+                    <<"  %arc_group_region_"<<a<<" = mul i32 %arc_group_requested_"<<a<<", "<<out.threads[axis]<<"\n"
+                    <<"  %arc_group_remainder_"<<a<<" = urem i32 %arc_coarse_"<<extent<<", %arc_group_region_"<<a<<"\n"
+                    <<"  %arc_group_complete_"<<a<<" = icmp eq i32 %arc_group_remainder_"<<a<<", 0\n"
+                    <<"  %arc_coarse_rate_"<<a<<" = select i1 %arc_group_complete_"<<a<<", i32 %arc_group_requested_"<<a<<", i32 1";
+                const auto at=transformed.find(original);if(at==transformed.npos)return reject("group_control_shape");transformed.replace(at,original.size(),guard.str());
+            }
+            const std::string old="%arc_coarse_active = and i1 %arc_coarse_group_active, %arc_coarse_bounded";const auto at=transformed.find(old);if(at==transformed.npos)return reject("group_guard_shape");transformed.replace(at,old.size(),"%arc_coarse_active = and i1 %arc_coarse_group_active, true");
+        }
+
         // Replace original thread-id definitions, leaving the prelude calls
         // alone. All original instructions consequently use remapped pixels.
         for(unsigned d=0;d<2;++d)for(const auto& original_id:thread_ids[d]){
@@ -406,7 +485,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             for(;block_cursor<s.line;++block_cursor){const auto c=code(lines[block_cursor]);if(c.ends_with(':'))current_block=c.substr(0,c.size()-1);}
             const auto original=lines[s.line];const auto pos=transformed.find(original,store_cursor);if(pos==transformed.npos)return reject("store_rewrite");
             std::ostringstream expanded;expanded<<original<<'\n';
-            for(unsigned y=0;y<(runtime_control?2:y_rate);++y)for(unsigned x=0;x<(runtime_control?2:x_rate);++x){if(!x&&!y)continue;
+            for(unsigned y=0;y<(runtime_control?4:y_rate);++y)for(unsigned x=0;x<(runtime_control?4:x_rate);++x){if(!x&&!y)continue;
                 auto a=s.args;for(auto& field:a)field=std::regex_replace(field,local,"%arc_coarse_orig_$1");
                 const auto suffix=std::to_string(serial++);
                 if(runtime_control){

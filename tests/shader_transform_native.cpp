@@ -1,3 +1,4 @@
+#include "generic_sample_transform.hpp"
 #include <windows.h>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
@@ -87,6 +88,11 @@ cbuffer OriginalState:register(b5,space6){float4 values[2];} RWTexture2D<float4>
     const auto controlled=arc::dx12::shader::coarse_compute(ir,1,1,true);
     check(controlled.admitted&&controlled.control_space!=UINT32_MAX,"Dynamic control binding");
     auto controlled_code=compiler.assemble(controlled.ir);
+
+    const auto sampled_source=compiler.compile(R"(
+Texture2D<float4> source:register(t0);RWTexture2D<float4> target:register(u0);
+[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){float4 total=0;[loop]for(uint i=0;i<16;++i)total+=source.Load(int3(p.xy+uint2(i,0),0));target[p.xy]=total/16;})");
+    const auto sampled_base=arc::dx12::shader::coarse_compute(compiler.disassemble(sampled_source.Get()),1,1,true);check(sampled_base.admitted,"Sample mean base admitted");const auto sampled=arc::dx12::shader::reduce_sample_means(sampled_base.ir);{std::ofstream f(directory/"sample-mean.ll");f<<sampled_base.ir;}check(sampled.loops==1,"Independent normalized sample loop recognized");compiler.assemble(sampled.ir);
     unsigned rejected=0;
     for(const auto& bad:std::array<std::string,3>{
         "RWTexture2D<float4> image:register(u0); [numthreads(8,8,1)] void MainCS(uint3 id:SV_DispatchThreadID){image[id.xy]=image[id.xy]+1;}",
@@ -94,7 +100,7 @@ cbuffer OriginalState:register(b5,space6){float4 values[2];} RWTexture2D<float4>
         "RWTexture2D<float4> image:register(u0); [numthreads(8,8,1)] void MainCS(uint3 id:SV_DispatchThreadID){image[id.yx]=float4(id.xy,0,1);}"
     }){auto b=compiler.compile(bad);check(!arc::dx12::shader::coarse_compute(compiler.disassemble(b.Get()),2,2).admitted,"Unsafe shader must be rejected");++rejected;}
     check(!arc::dx12::shader::coarse_compute("malformed",2,2).admitted,"Malformed IR rejected");
-    check(!arc::dx12::shader::coarse_compute(ir,4,2).admitted,"Unsupported rate rejected");
+    check(!arc::dx12::shader::coarse_compute(ir,8,2).admitted,"Unsupported rate rejected");
     const auto loop=compiler.compile(R"(
 cbuffer Settings:register(b9,space4){int count;int3 padding;int4 entries[16];}
 Texture2D<float4> images[15]:register(t7,space2);
@@ -196,7 +202,7 @@ RWTexture2D<float4> target:register(u5,space3);
         check(arc_snapshot(nullptr)==0,"Read native pipeline identity");std::ifstream file(arc_path);std::string json{std::istreambuf_iterator<char>(file),{}};std::smatch match;
         check(std::regex_search(json,match,std::regex("\"id\":([0-9]+),\"profile_id\":[0-9]+,\"ready\":true")),"Ready pipeline identity");native_pipeline=std::stoull(match[1]);
     }
-    const unsigned x_rates[]{1,1,2,1,2,1,2,1,UINT32_MAX,1,2,1,2,1,1,2,1,1,1},y_rates[]{1,1,2,1,1,2,2,1,0,1,1,2,2,1,1,2,1,1,1};
+    const unsigned x_rates[]{1,1,2,1,2,1,4,1,UINT32_MAX,1,2,1,2,1,1,2,1,1,1},y_rates[]{1,1,2,1,1,2,4,1,0,1,1,2,2,1,1,2,1,1,1};
     for(unsigned mode=0;mode<(calibration_test?19u:arc_mode?14u:9u);++mode){
         desired={x_rates[mode],y_rates[mode],width,height};
         if(mode>=9&&mode<14){const wchar_t* modes[]{L"neutral",L"2x1",L"1x2",L"2x2",L"off"};check(arc_mode(const_cast<wchar_t*>(modes[mode-9]))==0,"Generic policy switch");}
@@ -218,7 +224,7 @@ RWTexture2D<float4> target:register(u5,space3);
         for(unsigned target=0;target<2;++target){D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[target]->Map(0,&range,&ptr));std::vector<Pixel> pixels(width*height);for(UINT y=0;y<height;++y)std::memcpy(pixels.data()+y*width,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch,width*sizeof(Pixel));readbacks[target]->Unmap(0,&empty);
             if(mode==0)baseline[target]=pixels;
             if(mode==1||mode==3||mode==7||mode==8||mode==9||mode==13||mode==14||mode==16)check(std::memcmp(pixels.data(),baseline[target].data(),pixels.size()*sizeof(Pixel))==0,"Neutral transform, calibration and cached rollback must be bit-exact");
-            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=x_rates[mode]==2?x&~1u:x,sy=y_rates[mode]==2?y&~1u:y;auto p=array_pixel(sx,sy,sy/8);p.r+=array_pixel(sx,sy,(sx/8)%5).r;const Pixel expected=p.a?(target?Pixel{p.b,p.r,p.g,.5f}:Pixel{p.r*2,p.g+.125f,p.b*.5f,1}):(target?Pixel{}:clear);check(std::memcmp(&pixels[y*width+x],&expected,sizeof(Pixel))==0,"Every output pixel including edges and conditional stores must match");}
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=(x_rates[mode]==2||x_rates[mode]==4)?x&~(x_rates[mode]-1):x,sy=(y_rates[mode]==2||y_rates[mode]==4)?y&~(y_rates[mode]-1):y;auto p=array_pixel(sx,sy,sy/8);p.r+=array_pixel(sx,sy,(sx/8)%5).r;const Pixel expected=p.a?(target?Pixel{p.b,p.r,p.g,.5f}:Pixel{p.r*2,p.g+.125f,p.b*.5f,1}):(target?Pixel{}:clear);if(std::memcmp(&pixels[y*width+x],&expected,sizeof(Pixel))!=0){const auto actual=pixels[y*width+x];std::cerr<<"mode="<<mode<<" target="<<target<<" xy="<<x<<','<<y<<" source="<<sx<<','<<sy<<" actual="<<actual.r<<','<<actual.g<<','<<actual.b<<','<<actual.a<<" expected="<<expected.r<<','<<expected.g<<','<<expected.b<<','<<expected.a<<'\n';check(false,"Every output pixel including edges and conditional stores must match");}}
         }
     }
     // Independent comparison-filter fixture: no engine labels, 25 point depth
@@ -469,6 +475,45 @@ ByteAddressBuffer packed:register(t8,space9);RWTexture2D<float4> target:register
             for(unsigned target=0;target<2;++target){D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};hr(readbacks[target]->Map(0,&range,&ptr));
                 for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){const UINT sx=mode==2?x&~1u:x,sy=mode==2?y&~1u:y;auto p=array_pixel(sx,sy,sy/8);p.r+=array_pixel(sx,sy,(sx/8)%5).r;const Pixel expected=p.a?(target?Pixel{p.b,p.r,p.g,.5f}:Pixel{p.r*2,p.g+.125f,p.b*.5f,1}):(target?Pixel{}:clear);Pixel actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"DXBC baseline, validated conversion, coarsening and cached rollback must match every pixel");}readbacks[target]->Unmap(0,&empty);
             }
+        }
+    }
+
+
+    // Independent CPU oracle for 100/75/50/25 percent normalized samples.
+    if(arc_mode)check(arc_mode(const_cast<wchar_t*>(L"off"))==0,"Disable injected trial before sample oracle");
+    {auto binary=compiler.assemble(sampled.ir);D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=2;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;ComPtr<ID3D12DescriptorHeap> descriptors;hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&descriptors)));auto handle=descriptors->GetCPUDescriptorHandleForHeapStart();D3D12_SHADER_RESOURCE_VIEW_DESC view{};view.Format=DXGI_FORMAT_R32G32B32A32_FLOAT;view.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;view.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;view.Texture2D.MipLevels=1;device->CreateShaderResourceView(textures[0].Get(),&view,handle);handle.ptr+=increment;device->CreateUnorderedAccessView(textures[1].Get(),nullptr,nullptr,handle);
+        D3D12_DESCRIPTOR_RANGE ranges[]{{D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0,0,0},{D3D12_DESCRIPTOR_RANGE_TYPE_UAV,1,0,0,1}};D3D12_ROOT_PARAMETER params[2]{};params[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;params[0].DescriptorTable={2,ranges};params[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_CBV;params[1].Descriptor={0,sampled_base.control_space};D3D12_ROOT_SIGNATURE_DESC desc{2,params,0,nullptr,D3D12_ROOT_SIGNATURE_FLAG_NONE};ComPtr<ID3DBlob> blob;hr(D3D12SerializeRootSignature(&desc,D3D_ROOT_SIGNATURE_VERSION_1,&blob,nullptr));ComPtr<ID3D12RootSignature> root;hr(device->CreateRootSignature(0,blob->GetBufferPointer(),blob->GetBufferSize(),IID_PPV_ARGS(&root)));ComPtr<ID3D12PipelineState> pipelines[2];for(unsigned i=0;i<2;++i){auto code=i?binary.Get():sampled_source.Get();D3D12_COMPUTE_PIPELINE_STATE_DESC ps{};ps.pRootSignature=root.Get();ps.CS={code->GetBufferPointer(),code->GetBufferSize()};hr(device->CreateComputePipelineState(&ps,IID_PPV_ARGS(&pipelines[i])));}
+        std::vector<Pixel> reference;
+        for(UINT percent:std::array<UINT,7>{0,100,75,50,25,100,99}){desired={1,1,width,height};desired.sample_percent=percent;begin();transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);ID3D12DescriptorHeap* tables[]{descriptors.Get()};list->SetDescriptorHeaps(1,tables);list->SetComputeRootSignature(root.Get());list->SetComputeRootDescriptorTable(0,descriptors->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pipelines[percent?1:0].Get());list->Dispatch((width+7)/8,(height+7)/8,1);transition(textures[1].Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION d{},source{};d.pResource=readbacks[0].Get();d.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;d.PlacedFootprint=footprint;source.pResource=textures[1].Get();source.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&d,0,0,0,&source,nullptr);transition(textures[1].Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COPY_DEST);execute();
+            const UINT n=percent==75?12:percent==50?8:percent==25?4:16;D3D12_RANGE span{0,SIZE_T(bytes)};hr(readbacks[0]->Map(0,&span,&ptr));std::vector<Pixel> actual(width*height);
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){Pixel expected{};for(UINT i=0;i<n;++i)if(x+i<width){const auto& p=input[y*width+x+i];expected.r+=p.r/n;expected.g+=p.g/n;expected.b+=p.b/n;expected.a+=p.a/n;}auto& pixel=actual[y*width+x];std::memcpy(&pixel,static_cast<char*>(ptr)+y*footprint.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::abs(pixel.r-expected.r)<1.e-6&&std::abs(pixel.g-expected.g)<1.e-6&&std::abs(pixel.b-expected.b)<1.e-6&&std::abs(pixel.a-expected.a)<1.e-6,"Reduced mean normalization matches every-pixel CPU oracle");}readbacks[0]->Unmap(0,&empty);
+            if(!percent)reference=actual;else if(n==16)check(std::memcmp(reference.data(),actual.data(),actual.size()*sizeof(Pixel))==0,"Sample neutral/invalid control/rollback bit exact");
+        }
+    }
+    // Shared-memory path preserves all 64 participants and falls back uniformly
+    // on incomplete coarse regions. Test both full and partial extents.
+    if(arc_mode)check(arc_mode(const_cast<wchar_t*>(L"off"))==0,"Stop unrelated injected policy");
+    const auto shared_original=compiler.compile(R"(
+RWTexture2D<float4> target:register(u0);
+groupshared float cache[64];
+[numthreads(8,8,1)] void MainCS(uint3 p:SV_DispatchThreadID,uint3 local:SV_GroupThreadID){
+ uint i=local.y*8+local.x;cache[i]=float(p.x);GroupMemoryBarrierWithGroupSync();
+ target[p.xy]=float4(cache[(i+1)%64],p.y,0,1);
+})");
+    const auto shared_ir=compiler.disassemble(shared_original.Get());const auto shared=arc::dx12::shader::coarse_compute(shared_ir,1,1,true);
+    if(!shared.admitted)std::cerr<<"Shared refusal: "<<shared.reason<<'\n';check(shared.admitted&&shared.group_shared,"Convergent bounded groupshared admission");auto shared_code=compiler.assemble(shared.ir);
+    for(const auto& bad:std::array<std::string,2>{
+        "RWTexture2D<float4> target:register(u0);groupshared float a[64];[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID,uint3 l:SV_GroupThreadID){a[l.x]=p.x;if(l.x<4)GroupMemoryBarrierWithGroupSync();target[p.xy]=a[l.x];}",
+        "RWTexture2D<float4> target:register(u0);groupshared float a[64];[numthreads(8,8,1)]void MainCS(uint3 p:SV_DispatchThreadID){a[p.x]=p.x;GroupMemoryBarrierWithGroupSync();target[p.xy]=a[p.x];}"
+    }){auto code=compiler.compile(bad);check(!arc::dx12::shader::coarse_compute(compiler.disassemble(code.Get()),1,1,true).admitted,"Divergent barrier/unbounded shared address rejected");}
+    for(const auto extent:std::array<std::pair<UINT,UINT>,2>{{{32,32},{31,29}}}){
+        const auto [w,h]=extent;D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=w;desc.Height=h;desc.DepthOrArraySize=desc.MipLevels=desc.SampleDesc.Count=1;desc.Format=DXGI_FORMAT_R32G32B32A32_FLOAT;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        D3D12_HEAP_PROPERTIES gpu{};gpu.Type=D3D12_HEAP_TYPE_DEFAULT;ComPtr<ID3D12Resource> output;hr(device->CreateCommittedResource(&gpu,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(&output)));
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp{};UINT64 size{};device->GetCopyableFootprints(&desc,0,1,0,&fp,nullptr,nullptr,&size);D3D12_RESOURCE_DESC buffer{};buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=size;buffer.Height=buffer.DepthOrArraySize=buffer.MipLevels=buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;gpu.Type=D3D12_HEAP_TYPE_READBACK;ComPtr<ID3D12Resource> read;hr(device->CreateCommittedResource(&gpu,D3D12_HEAP_FLAG_NONE,&buffer,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&read)));
+        D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=1;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;ComPtr<ID3D12DescriptorHeap> descriptors;hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&descriptors)));device->CreateUnorderedAccessView(output.Get(),nullptr,nullptr,descriptors->GetCPUDescriptorHandleForHeapStart());
+        D3D12_DESCRIPTOR_RANGE range{D3D12_DESCRIPTOR_RANGE_TYPE_UAV,1,0,0,0};D3D12_ROOT_PARAMETER params[2]{};params[0].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;params[0].DescriptorTable={1,&range};params[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_CBV;params[1].Descriptor={0,shared.control_space};D3D12_ROOT_SIGNATURE_DESC root_desc{2,params,0,nullptr,D3D12_ROOT_SIGNATURE_FLAG_NONE};ComPtr<ID3DBlob> blob;hr(D3D12SerializeRootSignature(&root_desc,D3D_ROOT_SIGNATURE_VERSION_1,&blob,nullptr));ComPtr<ID3D12RootSignature> root;hr(device->CreateRootSignature(0,blob->GetBufferPointer(),blob->GetBufferSize(),IID_PPV_ARGS(&root)));D3D12_COMPUTE_PIPELINE_STATE_DESC ps{};ps.pRootSignature=root.Get();ps.CS={shared_code->GetBufferPointer(),shared_code->GetBufferSize()};ComPtr<ID3D12PipelineState> pipeline;hr(device->CreateComputePipelineState(&ps,IID_PPV_ARGS(&pipeline)));
+        for(UINT rate:std::array<UINT,4>{1,2,4,1}){desired={rate,rate,w,h};begin();ID3D12DescriptorHeap* tables[]{descriptors.Get()};list->SetDescriptorHeaps(1,tables);list->SetComputeRootSignature(root.Get());list->SetComputeRootDescriptorTable(0,descriptors->GetGPUDescriptorHandleForHeapStart());list->SetComputeRootConstantBufferView(1,policy.address(0));list->SetPipelineState(pipeline.Get());list->Dispatch((w+7)/8,(h+7)/8,1);transition(output.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION dest{},source{};dest.pResource=read.Get();dest.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dest.PlacedFootprint=fp;source.pResource=output.Get();source.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&dest,0,0,0,&source,nullptr);transition(output.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);execute();
+            const UINT rx=w%(8*rate)?1:rate,ry=h%(8*rate)?1:rate;D3D12_RANGE span{0,SIZE_T(size)};hr(read->Map(0,&span,&ptr));for(UINT y=0;y<h;++y)for(UINT x=0;x<w;++x){const UINT sx=x/rx*rx,sy=y/ry*ry,localx=(sx%(8*rx))/rx,localy=(sy%(8*ry))/ry,next=(localy*8+localx+1)%64;Pixel expected{float(sx/(8*rx)*(8*rx)+(next%8)*rx),float(sy),0,1},actual;std::memcpy(&actual,static_cast<char*>(ptr)+y*fp.Footprint.RowPitch+x*sizeof(Pixel),sizeof(Pixel));check(std::memcmp(&actual,&expected,sizeof(Pixel))==0,"Shared neutral/coarse/partial-boundary/rollback CPU oracle");}read->Unmap(0,&empty);
         }
     }
     unsigned validation_errors=0;for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size{};hr(diagnostics->GetMessage(i,nullptr,&size));std::vector<char> memory(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(memory.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';++validation_errors;}}

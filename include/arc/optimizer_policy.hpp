@@ -12,6 +12,7 @@ struct ComputePolicy {
     std::uint32_t x_rate{1}, y_rate{1}, comparison_taps{}, zero_factor{}, mip_steps{};
     bool protect_edges{};
     float edge_threshold{.08f};
+    std::uint32_t sample_percent{100};
     bool operator==(const ComputePolicy&) const = default;
 };
 struct PolicyBundle {
@@ -23,9 +24,9 @@ struct PolicyBundle {
         if(compute.size()>capacity || (!id && (!compute.empty()||cpu_state_cache))) return false;
         for(std::size_t i=0;i<compute.size();++i) {
             const auto& p=compute[i];
-            if(!p.pipeline || (p.x_rate!=1&&p.x_rate!=2) || (p.y_rate!=1&&p.y_rate!=2) ||
+            if(!p.pipeline || (p.x_rate!=1&&p.x_rate!=2&&p.x_rate!=4) || (p.y_rate!=1&&p.y_rate!=2&&p.y_rate!=4) ||
                (p.comparison_taps!=0&&p.comparison_taps!=9) || p.zero_factor>1 ||
-               (p.mip_steps!=0&&p.mip_steps!=1&&p.mip_steps!=2&&p.mip_steps!=4) ||
+               (p.mip_steps>8) || (p.sample_percent!=100&&p.sample_percent!=75&&p.sample_percent!=50&&p.sample_percent!=25) || (p.protect_edges&&p.sample_percent!=100) ||
                !std::isfinite(p.edge_threshold)||p.edge_threshold<0||p.edge_threshold>2) return false;
             for(std::size_t j=0;j<i;++j) if(compute[j].pipeline==p.pipeline) return false;
         }

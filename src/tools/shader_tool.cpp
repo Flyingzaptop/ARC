@@ -1,3 +1,4 @@
+#include "generic_sample_transform.hpp"
 #include <windows.h>
 #include <dxcapi.h>
 #include <wrl/client.h>
@@ -13,6 +14,8 @@
 #include "generic_ir_hints.hpp"
 #include "generic_edge_transform.hpp"
 #include "generic_mip_transform.hpp"
+#include "generic_spatial_prepass.hpp"
+#include "generic_probe_transform.hpp"
 
 using Microsoft::WRL::ComPtr;
 namespace {
@@ -91,7 +94,7 @@ int wmain(int argc, wchar_t** argv) try {
         source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(normalized.data(),static_cast<UINT32>(normalized.size()),CP_UTF8,&source),"Create normalized converter IR");
     }
     arc::dx12::shader::Transform contract;
-    std::string original_ir;
+    std::string original_ir,probe_ir;
     if (transform) {
         if(controlled)original_ir.assign(static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize());
         auto transformed = arc::dx12::shader::coarse_compute(
@@ -99,10 +102,12 @@ int wmain(int argc, wchar_t** argv) try {
             mode == L"coarse2x2" || mode == L"coarse2x1" ? 2 : 1,
             mode == L"coarse2x2" || mode == L"coarse1x2" ? 2 : 1, controlled, requested_space, proof);
         if (!transformed.admitted) throw std::runtime_error("Shader declined: " + transformed.reason);
-        if(controlled){auto zero=arc::dx12::shader::short_circuit_zero_factors(transformed.ir);transformed.ir=std::move(zero.ir);transformed.zero_factor_regions=zero.regions;auto filtered=arc::dx12::shader::sparse_comparison_filter(transformed.ir);transformed.ir=std::move(filtered.ir);transformed.comparison_filter_groups=filtered.groups;}
-        if(controlled){auto edges=arc::dx12::shader::protect_input_edges(transformed.ir,transformed);transformed.ir=std::move(edges.ir);transformed.edge_input_mask=edges.input_mask;}
+        if(controlled&&!transformed.group_shared){auto zero=arc::dx12::shader::short_circuit_zero_factors(transformed.ir);transformed.ir=std::move(zero.ir);transformed.zero_factor_regions=zero.regions;auto filtered=arc::dx12::shader::sparse_comparison_filter(transformed.ir);transformed.ir=std::move(filtered.ir);transformed.comparison_filter_groups=filtered.groups;}
+        if(controlled&&!transformed.group_shared){auto edges=arc::dx12::shader::protect_input_edges(transformed.ir,transformed);transformed.ir=std::move(edges.ir);transformed.edge_input_mask=edges.input_mask;}
         if(controlled){auto mips=arc::dx12::shader::bias_explicit_mips(transformed.ir);transformed.ir=std::move(mips.ir);transformed.mip_samples=mips.samples;}
+        if(controlled&&!transformed.group_shared){auto samples=arc::dx12::shader::reduce_sample_means(transformed.ir);transformed.ir=std::move(samples.ir);transformed.sample_loops=samples.loops;}
         transformed.ir=arc::dx12::shader::preserve_arc_branches(std::move(transformed.ir));
+        if(proof&&!transformed.group_shared){auto probe=arc::dx12::shader::sparse_probe(transformed);if(probe.admitted){probe_ir=std::move(probe.ir);transformed.probe_outputs=probe.outputs;}}
         control_space=transformed.control_space;
         contract=transformed;contract.ir.clear();
         source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(transformed.ir.data(), static_cast<UINT32>(transformed.ir.size()), CP_UTF8, &source), "Create transformed blob");
@@ -115,14 +120,27 @@ int wmain(int argc, wchar_t** argv) try {
         ComPtr<IDxcOperationResult> validated; require(validator->Validate(generated.Get(), DxcValidatorFlags_InPlaceEdit, &validated), "Validate DXIL");
         generated = result(validated.Get());
     }
+    if(!probe_ir.empty()){
+        if(_wgetenv(L"ARC_CAPTURE_SHADER_CODE")){auto path=output;path+=L".probe.ll";std::ofstream debug(path);debug<<probe_ir;}
+        ComPtr<IDxcBlobEncoding> input;require(library->CreateBlobWithEncodingOnHeapCopy(probe_ir.data(),static_cast<UINT32>(probe_ir.size()),CP_UTF8,&input),"Probe source");
+        ComPtr<IDxcAssembler> assembler;require(create(CLSID_DxcAssembler,IID_PPV_ARGS(&assembler)),"Probe assembler");ComPtr<IDxcOperationResult> assembled;require(assembler->AssembleToContainer(input.Get(),&assembled),"Assemble probe");auto binary=result(assembled.Get());
+        ComPtr<IDxcValidator> validator;require(create_validator(CLSID_DxcValidator,IID_PPV_ARGS(&validator)),"Probe validator");ComPtr<IDxcOperationResult> validated;require(validator->Validate(binary.Get(),DxcValidatorFlags_InPlaceEdit,&validated),"Validate probe");binary=result(validated.Get());
+        auto path=output;path+=L".probe.bin";if(std::filesystem::exists(path))throw std::runtime_error("Fresh probe output required");std::ofstream file(path,std::ios::binary);file.write(static_cast<const char*>(binary->GetBufferPointer()),binary->GetBufferSize());file.close();if(!file)throw std::runtime_error("Write probe variant");
+    }
+    if(proof&&contract.edge_input_mask){
+        const auto hlsl=arc::dx12::shader::compact_spatial_source(contract);ComPtr<IDxcBlobEncoding> input;require(library->CreateBlobWithEncodingOnHeapCopy(hlsl.data(),static_cast<UINT32>(hlsl.size()),CP_UTF8,&input),"Spatial source");
+        ComPtr<IDxcCompiler> compiler_api;require(create(CLSID_DxcCompiler,IID_PPV_ARGS(&compiler_api)),"Spatial compiler");ComPtr<IDxcOperationResult> compiled;
+        require(compiler_api->Compile(input.Get(),L"arc-spatial",L"MainCS",L"cs_6_0",nullptr,0,nullptr,0,nullptr,&compiled),"Compile spatial prepass");const auto binary=result(compiled.Get());
+        auto path=output;path+=L".spatial.bin";if(std::filesystem::exists(path))throw std::runtime_error("Fresh spatial output required");std::ofstream file(path,std::ios::binary);file.write(static_cast<const char*>(binary->GetBufferPointer()),binary->GetBufferSize());file.close();if(!file)throw std::runtime_error("Write spatial prepass");
+    }
     std::ofstream target(output, std::ios::binary); target.write(static_cast<const char*>(generated->GetBufferPointer()), generated->GetBufferSize()); target.close();
     if (!target) throw std::runtime_error("Write shader output");
     if(transform){
         auto manifest_path=output;manifest_path+=L".contract";
         if(std::filesystem::exists(manifest_path))throw std::runtime_error("Fresh contract output required");
         std::ofstream manifest(manifest_path);
-        manifest<<(proof?"ARC_SHADER_CONTRACT_7\n":"ARC_SHADER_CONTRACT_5\n")<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples;
-        if(proof)manifest<<' '<<contract.execution_marker;manifest<<'\n';
+        manifest<<(proof?"ARC_SHADER_CONTRACT_12\n":"ARC_SHADER_CONTRACT_5\n")<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples;
+        if(proof)manifest<<' '<<contract.execution_marker<<' '<<contract.probe_outputs<<' '<<contract.group_shared<<' '<<contract.sample_loops;manifest<<'\n';
         for(const auto& r:contract.resources)manifest<<r.resource_class<<' '<<r.range_id<<' '<<r.shader_register<<' '<<r.space<<' '<<r.count<<' '<<r.kind<<'\n';
         manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
         if(controlled){auto access_path=output;access_path+=L".access.ll";if(std::filesystem::exists(access_path))throw std::runtime_error("Fresh access program required");std::ofstream access(access_path,std::ios::binary);access.write(original_ir.data(),original_ir.size());access.close();if(!access)throw std::runtime_error("Write access program");}

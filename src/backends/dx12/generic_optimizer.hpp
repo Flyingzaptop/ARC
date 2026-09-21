@@ -37,7 +37,13 @@ struct ConnectionCoverage {std::size_t roots{},pipelines{};std::uint64_t unknown
 ConnectionCoverage connection_coverage() noexcept;
 struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{},selected_pipeline{};};
 PolicyStamp policy_stamp() noexcept;
-struct CandidateCapabilities {std::uint64_t pipeline{};bool coarse{},comparison{},zero{},edges{},mips{};};
+void spatial_learning(bool enabled,float error_limit) noexcept;
+void pause_spatial_probes(bool) noexcept;
+bool begin_spatial_training(const arc::PolicyBundle&,std::uint64_t pipeline) noexcept;
+void end_spatial_training() noexcept;
+struct SpatialProgress {unsigned models{},sampled{},eligible{},probes{};float best_error{1000};};
+SpatialProgress spatial_progress() noexcept;
+struct CandidateCapabilities {std::uint64_t pipeline{};bool coarse{},comparison{},zero{},edges{},mips{},samples{};};
 CandidateCapabilities candidate_capabilities() noexcept;
 struct WorkCandidate {CandidateCapabilities capabilities;double gpu_ms_per_window{};std::uint64_t profile_session{};};
 std::vector<WorkCandidate> candidate_catalog() noexcept;

@@ -12,6 +12,7 @@ namespace {
 using Json=nlohmann::json;
 std::filesystem::path suffix(std::filesystem::path path,std::string_view ending){path+=std::filesystem::path(ending);return path;}
 const std::array<const char*,3> suffixes{"", ".contract", ".access.ll"};
+const std::array<const char*,2> optional_suffixes{".spatial.bin",".probe.bin"};
 bool valid_key(const std::string& key){return key.size()==64&&std::all_of(key.begin(),key.end(),[](char c){return(c>='0'&&c<='9')||(c>='a'&&c<='f');});}
 std::vector<std::byte> read(const std::filesystem::path& path,std::uintmax_t cap=128*1024*1024){
     const auto size=std::filesystem::file_size(path);if(!size||size>cap)throw std::runtime_error("Shader cache file size");
@@ -26,17 +27,22 @@ std::string digest(std::span<const std::byte> bytes){
 }
 std::string file_digest(const std::filesystem::path& path){return digest(read(path));}
 bool restore(const std::filesystem::path& root,const std::string& key,const std::filesystem::path& binary)noexcept{
-    try{if(!valid_key(key))return false;const auto stem=root/key;if(std::filesystem::file_size(suffix(stem,".json"))>4096)return false;std::ifstream file(suffix(stem,".json"));auto manifest=Json::parse(file);if(manifest.at("schema")!=1||manifest.at("key")!=key)return false;
+    try{if(!valid_key(key))return false;const auto stem=root/key;if(std::filesystem::file_size(suffix(stem,".json"))>4096)return false;std::ifstream file(suffix(stem,".json"));auto manifest=Json::parse(file);if((manifest.at("schema")!=1&&manifest.at("schema")!=2)||manifest.at("key")!=key)return false;
         std::array<std::vector<std::byte>,3> contents;
         for(unsigned i=0;i<suffixes.size();++i){contents[i]=read(suffix(stem,suffixes[i]),8*1024*1024);if(digest(contents[i])!=manifest.at("hashes").at(i).get<std::string>())return false;}
+        std::vector<std::pair<std::string,std::vector<std::byte>>> extra;
+        for(const auto ending:optional_suffixes)if(manifest.contains("optional")&&manifest["optional"].contains(ending)){auto bytes=read(suffix(stem,ending),8*1024*1024);if(digest(bytes)!=manifest["optional"][ending].get<std::string>())return false;extra.emplace_back(ending,std::move(bytes));}
         for(unsigned i=0;i<suffixes.size();++i)write(suffix(binary,suffixes[i]),contents[i]);
+        for(const auto ending:optional_suffixes){std::error_code ignored;std::filesystem::remove(suffix(binary,ending),ignored);}
+        for(const auto& [ending,bytes]:extra)write(suffix(binary,ending),bytes);
         std::error_code ignored;std::filesystem::last_write_time(suffix(stem,".json"),std::filesystem::file_time_type::clock::now(),ignored);return true;
     }catch(...){return false;}
 }
 bool store(const std::filesystem::path& root,const std::string& key,const std::filesystem::path& binary)noexcept{
-    try{if(!valid_key(key))return false;std::filesystem::create_directories(root);Json manifest{{"schema",1},{"key",key},{"hashes",Json::array()}};
+    try{if(!valid_key(key))return false;std::filesystem::create_directories(root);Json manifest{{"schema",2},{"key",key},{"hashes",Json::array()},{"optional",Json::object()}};
         const auto stem=root/key;const auto tag=".tmp-"+std::to_string(GetCurrentProcessId())+"-"+std::to_string(GetTickCount64());
         for(auto ending:suffixes){const auto bytes=read(suffix(binary,ending),8*1024*1024);manifest["hashes"].push_back(digest(bytes));const std::filesystem::path final=suffix(stem,ending),temp=suffix(final,tag);write(temp,bytes);if(!MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING))return false;}
+        for(auto ending:optional_suffixes)if(std::filesystem::is_regular_file(suffix(binary,ending))){const auto bytes=read(suffix(binary,ending),8*1024*1024);manifest["optional"][ending]=digest(bytes);const auto final=suffix(stem,ending),temp=suffix(final,tag);write(temp,bytes);if(!MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING))return false;}
         const std::filesystem::path final=suffix(stem,".json"),temp=suffix(final,tag);{std::ofstream file(temp);file<<manifest.dump();file.close();if(!file)return false;}
         return MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING)!=FALSE;
     }catch(...){return false;}
@@ -59,7 +65,7 @@ void trim(const std::filesystem::path& root,std::uintmax_t maximum)noexcept{
     try{if(!std::filesystem::is_directory(root))return;std::uintmax_t total=0;std::vector<std::filesystem::directory_entry> manifests;
         for(const auto& entry:std::filesystem::directory_iterator(root)){if(!entry.is_regular_file())continue;total+=entry.file_size();if(entry.path().extension()==L".json"&&valid_key(entry.path().stem().string()))manifests.push_back(entry);}
         std::sort(manifests.begin(),manifests.end(),[](const auto& a,const auto& b){return a.last_write_time()<b.last_write_time();});
-        for(const auto& entry:manifests){if(total<=maximum)break;const auto key=entry.path().stem().string();for(const char* suffix:{".json","", ".contract", ".access.ll"}){const auto path=root/(key+suffix);if(std::filesystem::is_regular_file(path)){const auto bytes=std::filesystem::file_size(path);if(std::filesystem::remove(path))total=total>bytes?total-bytes:0;}}}
+        for(const auto& entry:manifests){if(total<=maximum)break;const auto key=entry.path().stem().string();for(const char* suffix:{".json","", ".contract", ".access.ll", ".spatial.bin", ".probe.bin"}){const auto path=root/(key+suffix);if(std::filesystem::is_regular_file(path)){const auto bytes=std::filesystem::file_size(path);if(std::filesystem::remove(path))total=total>bytes?total-bytes:0;}}}
     }catch(...){}
 }
 }
