@@ -62,4 +62,20 @@ if 'ARC_WICKED_FOCUS_SCENE' not in bridge_text:
     loop=loop.replace('<< kScenes[i].name <<', '<< (focus_scene_==0?"hello_world":focus_scene_==18?"instances_65k":kScenes[i].name) <<')
     bridge_text=bridge_text[:start]+loop+bridge_text[end:]
     bridge.write_text(bridge_text,encoding="utf-8")
+bridge_text=bridge.read_text(encoding="utf-8")
+bridge_text=bridge_text.replace('warmup_seconds_ = EnvInt(L"ARC_WICKED_WARMUP_SECONDS", 5, 2, 20);',
+                                'warmup_seconds_ = EnvInt(L"ARC_WICKED_WARMUP_SECONDS", 5, 2, 120);')
+if 'wall_frame_ms' not in bridge_text:
+    start=bridge_text.index('    void ExperimentUpdate(')
+    end=bridge_text.index('    void CaptureSceneSemantic(',start)
+    loop=bridge_text[start:end]
+    anchor="<< Percentile(experiment_cpu_[i].frames, 0.95) << '}';"
+    replacement=r'''<< Percentile(experiment_cpu_[i].frames, 0.95) << ",\"wall_frame_ms\":[";
+                for(std::size_t frame=0;frame<experiment_cpu_[i].frames.size();++frame){if(frame)out<<',';out<<experiment_cpu_[i].frames[frame];}
+                out<<"],\"gpu_frame_ms\":[";
+                for(std::size_t frame=0;frame<baseline_scenes_[i].frames.size();++frame){if(frame)out<<',';out<<baseline_scenes_[i].frames[frame];}
+                out<<"]}";'''
+    if loop.count(anchor)!=1: raise RuntimeError('Wicked raw timing output anchor')
+    bridge_text=bridge_text[:start]+loop.replace(anchor,replacement)+bridge_text[end:]
+bridge.write_text(bridge_text,encoding="utf-8")
 print("Generic benchmark harness installed; host quality actions must be off")

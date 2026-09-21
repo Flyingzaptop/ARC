@@ -17,11 +17,14 @@ parser.add_argument("--mode",choices=["vrs","observe","profile","compute-off","c
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--initialization-seconds",type=float,default=0)
 parser.add_argument("--measurement-seconds",type=float,default=0)
+parser.add_argument("--oracle-poses",action="store_true",help="Independent 32-pose quality oracle at absolute frames 1200..1799; not a performance run")
 parser.add_argument("--oracle-interval",type=int,default=0,help="Separate quality-oracle run; invalidates performance comparison")
 parser.add_argument("--route",choices=["primary","holdout"],default="primary")
+parser.add_argument("--gpu-sample-interval",type=float,default=1.,help="Zero disables periodic external sensor calls for attribution tests")
 parser.add_argument("--cache",type=Path)
 parser.add_argument("--overlay",action="store_true")
 parser.add_argument("--functional",action="store_true",help="Interactive correctness run, excluded from FPS comparisons")
+parser.add_argument("--borderless",action="store_true",help="Use the SDK borderless-fullscreen option at native display resolution")
 parser.add_argument("--visible",action="store_true",help="Show the owned renderer and diagnostics without activating them")
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
@@ -43,7 +46,10 @@ if args.initialization_seconds and not args.measurement_seconds:
 if args.oracle_interval and args.oracle_interval<300: parser.error('Oracle interval must be at least 300 frames')
 if args.overlay and (not args.dll or args.auto_target is None):
     parser.error('Overlay test requires the automatic DLL session')
-process_budget=(120 if args.initialization_seconds>=100 else args.initialization_seconds)+args.measurement_seconds+30 if args.measurement_seconds else 60
+if args.oracle_poses:
+    if args.measurement_seconds:parser.error("Pose oracle uses a fixed absolute frame sequence")
+    args.frames=1680
+process_budget=(120 if args.initialization_seconds>=100 else args.initialization_seconds)+args.measurement_seconds+30 if args.measurement_seconds else (210 if args.oracle_poses else 60)
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
 exe=sdk/"bin/FFX_BRIXELIZER_GI_DX12.exe"
@@ -59,6 +65,7 @@ env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_ROUTE"]=args.route
 env["ARC_BENCH_FRAMES"]=str(args.frames)
 env["ARC_BENCH_ORACLE_INTERVAL"]=str(args.oracle_interval)
+env["ARC_BENCH_ORACLE_POSES"]="1" if args.oracle_poses else "0"
 for key in ('ARC_BENCH_MEASUREMENT_SECONDS','ARC_BENCH_INITIALIZATION_SECONDS'):
     env.pop(key,None)
 if args.measurement_seconds:
@@ -97,20 +104,21 @@ if args.auto_target is not None:
         "output":str(output/"automatic"),"maximum_seconds":int(process_budget-5)},indent=2))
     env["ARC_AUTO_CONFIG"]=str(config)
 command=[str(exe),"-resolution","1920","1080","-benchmark",f"duration={args.frames+120}",f"path={output}","json","-screenshot"]
+if args.borderless:command += ["-fullscreen"]
 hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "automatic_target_fps":args.auto_target,"quality_profile":args.quality_profile,
           "initialization_seconds":args.initialization_seconds,"measurement_seconds":args.measurement_seconds,"process_budget_seconds":process_budget,
-          "overlay":args.overlay,"visible":args.visible,
-          "oracle_interval":args.oracle_interval,"performance_run":not bool(args.oracle_interval or args.functional),
+          "overlay":args.overlay,"visible":args.visible,"borderless":args.borderless,"gpu_sample_interval_seconds":args.gpu_sample_interval,
+          "oracle_interval":args.oracle_interval,"oracle_poses":args.oracle_poses,"performance_run":not bool(args.oracle_poses or args.oracle_interval or args.functional),
           "cost_diagnostics":bool(args.measure_costs and args.dll),
           "cpu_state_cache":args.cpu_state_cache,
           "worker_placement":args.worker_placement,
           "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
           "worker_sha256":hashfile(worker) if args.dll and args.mode.startswith("compute-") else None,
-          "route":args.route,"requested_gpu_power_limit_w":30,"simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
+          "route":args.route,"requested_gpu_power_limit_w":30,"animation_clock":"periodic_native_clip_segment_600_frames","taa_jitter":"native_callback_restored","simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 if shutil.which('nvidia-smi'):
     hardware=subprocess.run(['nvidia-smi','--query-gpu=name,uuid,pci.device_id,driver_version,enforced.power.limit','--format=csv'],capture_output=True,text=True,timeout=5,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -130,12 +138,12 @@ with (output/"stdout.txt").open("w") as stdout,(output/"stderr.txt").open("w") a
             rows_path=output/"frames.jsonl"
             if args.overlay and overlay is None and (output/'arc.json').exists():
                 overlay=subprocess.Popen([str(args.dll.resolve().parent/'arc-launcher.exe'),'--monitor',str(output/'arc.json')],startupinfo=monitor_startup,creationflags=subprocess.CREATE_NO_WINDOW)
-            if (args.measurement_seconds or args.frames>=600) and shutil.which("nvidia-smi") and time.monotonic()>=next_gpu:
+            if args.gpu_sample_interval>0 and (args.measurement_seconds or args.frames>=600) and shutil.which("nvidia-smi") and time.monotonic()>=next_gpu:
                 sample=subprocess.run(["nvidia-smi","--query-gpu=timestamp,utilization.gpu,utilization.memory,clocks.current.graphics,memory.used,temperature.gpu,power.draw,clocks.current.memory,clocks_event_reasons.active,enforced.power.limit","--format=csv,nounits"],capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW)
                 gpu_rows.append({"elapsed_s":time.monotonic()-started,"measured_phase":rows_path.exists() and rows_path.stat().st_size>0,"csv":sample.stdout,"exit_code":sample.returncode})
                 with (output/'gpu-samples.jsonl').open('a') as telemetry:
                     telemetry.write(json.dumps(gpu_rows[-1])+'\n')
-                next_gpu=time.monotonic()+1
+                next_gpu=time.monotonic()+args.gpu_sample_interval
             if cpu is None and args.process_sampler and args.frames>=600 and rows_path.exists() and rows_path.stat().st_size:
                 cpu=subprocess.Popen([str(args.process_sampler.resolve()),str(process.pid),"5",str(output/"cpu.json")],stdout=subprocess.DEVNULL,stderr=stderr,creationflags=subprocess.CREATE_NO_WINDOW)
             time.sleep(0.05)

@@ -21,8 +21,12 @@ from pathlib import Path
 import numpy as np
 
 repo = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(repo / "build/quality-worker"))
-import cv2
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+try:
+    import cv2
+except ModuleNotFoundError:
+    sys.path.insert(0,str(repo/"build/quality-worker"))
+    import cv2
 from optimizer_quality_metrics import compare_striped, accepts, PROFILES
 cv2.setNumThreads(1)
 cv2.ocl.setUseOpenCL(False)

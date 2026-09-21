@@ -56,12 +56,13 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
     ('        EndFrame();\n    }', '''        EndFrame();
         if(bench.enabled&&bench.ready){
             const auto frame_end=arc_bench::Clock::now();
-            if(bench.timed?bench.measuring:bench.tick>=bench.warmup){
+            const bool measured=bench.timed?bench.measuring:bench.tick>=bench.warmup;
+            {
                 arc::timeline::Scope telemetry_trace("frame_telemetry");
-                json row;row["cpu_profiler_frame"]=bench.tick?bench.tick-1:0;row["frame"]=bench.measured_frames++;row["pose"]=bench.tick%600;row["scene_frame"]=bench.tick;
-                row["measurement_elapsed_ms"]=bench.timed?arc_bench::ms(frame_end-bench.measurement_start):0;
+                json row;row["cpu_profiler_frame"]=bench.tick?json(bench.tick-1):json(nullptr);row["phase"]=measured?"measurement":"initialization";row["ready_elapsed_ms"]=arc_bench::ms(frame_end-bench.ready_start);row["frame"]=measured?bench.measured_frames++:bench.tick;row["pose"]=bench.tick%600;row["scene_frame"]=bench.tick;
+                row["measurement_elapsed_ms"]=(bench.timed&&bench.measuring)?arc_bench::ms(frame_end-bench.measurement_start):0;
                 DWORD foreground_pid{};GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);row["foreground"]=foreground_pid==GetCurrentProcessId();
-                row["frame_ms"]=arc_bench::ms(frame_end-bench.previous_end);row["loop_ms"]=arc_bench::ms(arc_bench::Clock::now()-bench.frame_start);
+                row["frame_ms"]=arc_bench::ms(frame_end-(bench.tick?bench.previous_end:bench.frame_start));row["loop_ms"]=arc_bench::ms(arc_bench::Clock::now()-bench.frame_start);
                 row["present_ms"]=bench.present_ms;row["submit_ms"]=bench.submit_ms;
                 row["swapchain_wait_ms"]=bench.wait_ms;row["allocator_wait_ms"]=bench.allocator_ms;
                 for(const auto& timing:m_pProfiler->GetCPUTimings())row["cpu_ms"][WStringToString(timing.Label)]=double(timing.GetDuration().count())/1000000.;
@@ -74,15 +75,17 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
                     row["gpu_begin_ns"]=m_pProfiler->GetGPUTimings().front().StartTime.count();
                     row["gpu_end_ns"]=m_pProfiler->GetGPUTimings().back().EndTime.count();
                 }
-                bench.writer->push([row=std::move(row)](std::ostream& output){arc::timeline::Scope write_trace("frame_json_serialize_write");output<<row.dump()<<'\\n';});
+                auto* destination=measured?&bench.rows:&bench.initialization_rows;
+                bench.writer->push([row=std::move(row),destination](std::ostream&){arc::timeline::Scope write_trace("frame_json_serialize_write");auto& output=*destination;output<<row.dump()<<'\\n';if(!output)throw std::runtime_error("Benchmark telemetry write failed");});
             }
             bench.previous_end=frame_end;
-            if(bench.oracle_interval&&bench.tick&&bench.tick%bench.oracle_interval==0&&bench.tick/bench.oracle_interval<=32){
+            if(arc_bench::oracle_due()){
                 m_pSwapChain->DumpSwapChainToFile(bench.output+L"/oracle-"+std::to_wstring(bench.tick)+L".png");
+                if(bench.snapshot){bench.snapshot(nullptr);CopyFileW((bench.output+L"/arc.json").c_str(),(bench.output+L"/oracle-"+std::to_wstring(bench.tick)+L".arc.json").c_str(),TRUE);}
                 std::ofstream oracle(bench.output+L"/oracle.jsonl",std::ios::app);oracle<<json({{"scene_frame",bench.tick},{"pose",bench.tick%600},{"elapsed_ms",arc_bench::ms(frame_end-bench.ready_start)}}).dump()<<'\\n';
             }
             ++bench.tick;
-            const bool done=bench.timed?(bench.measuring&&arc_bench::ms(frame_end-bench.measurement_start)>=bench.measurement_seconds*1000):(bench.tick>=bench.warmup+bench.frames||arc_bench::ms(frame_end-bench.ready_start)>55000);
+            const bool done=bench.timed?(bench.measuring&&arc_bench::ms(frame_end-bench.measurement_start)>=bench.measurement_seconds*1000):(bench.tick>=bench.warmup+bench.frames||arc_bench::ms(frame_end-bench.ready_start)>(bench.oracle_poses?180000:55000));
             if(done){bench.finished=true;
                 m_StopTime=std::chrono::steady_clock::now();PostQuitMessage(0);
             }
@@ -108,6 +111,7 @@ patch("framework/cauldron/framework/src/core/components/cameracomponent.cpp", [
     ('#include "core/components/cameracomponent.h"', '#include "core/components/cameracomponent.h"\n#include "arc_benchmark.h"'),
     ('        if (m_SkipUpdate)', '        if (m_SkipUpdate&&!arc_bench::state().enabled)'),
     ('            // if (animated)', '''            if(arc_bench::state().enabled){
+                if(CameraComponent::s_pSetJitterCallback)s_pSetJitterCallback(m_jitterValues);
                 const unsigned pose=arc_bench::state().tick%600;
                 const float phase=float(pose)*6.28318530718f/600.f;
                 if(arc_bench::state().holdout){
@@ -124,6 +128,23 @@ patch("framework/cauldron/framework/src/core/components/cameracomponent.cpp", [
                 LookAt(Vec4(eye,1.f),Vec4(target,1.f));UpdateMatrices();return;
             }
             // if (animated)'''),
+])
+patch("framework/cauldron/framework/src/core/components/animationcomponent.cpp", [
+    ('#include "core/components/animationcomponent.h"', '#include "core/components/animationcomponent.h"\n#include "arc_benchmark.h"'),
+    ('        time += deltaTime;', '''        if(arc_bench::state().enabled){const double phase=double(arc_bench::state().tick%600)*6.283185307179586/600.;time=30.+2.5*sin(phase+(arc_bench::state().holdout?1.4:.7));}
+        else time += deltaTime;'''),
+])
+patch("framework/cauldron/framework/inc/core/components/lightcomponent.h", [
+    ('        LightComponentData* m_pData;', '        LightComponentData* m_pData;\n        bool m_ArcIntensityCaptured = false;\n        float m_ArcBaseIntensity = 0.f;'),
+])
+patch("framework/cauldron/framework/src/core/components/lightcomponent.cpp", [
+    ('#include "core/components/lightcomponent.h"', '#include "core/components/lightcomponent.h"\n#include "arc_benchmark.h"'),
+    ('            // Do light updates (todo - animate lights if needed)', '''            if(arc_bench::state().enabled&&arc_bench::state().holdout){
+                if(!m_ArcIntensityCaptured){m_ArcBaseIntensity=m_pData->Intensity;m_ArcIntensityCaptured=true;}
+                const float phase=float(arc_bench::state().tick%600)*6.28318530718f/600.f;
+                m_pData->Intensity=m_ArcBaseIntensity*(1.f+.35f*sin(phase*2.f));
+            }
+            // Do light updates (todo - animate lights if needed)'''),
 ])
 patch("framework/cauldron/framework/src/render/dx12/swapchain_dx12.cpp", [
     ('        pCmdList->GetImpl()->DX12CmdList()->CopyTextureRegion(&copyDest, 0, 0, 0, &copySrc, nullptr);',

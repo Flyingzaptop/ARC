@@ -8,18 +8,20 @@
 #include <string>
 #include <stdexcept>
 #include <cstdlib>
+#include <array>
+#include <algorithm>
 namespace arc_bench {
 using Clock=std::chrono::steady_clock;
 using Api=DWORD(WINAPI*)(void*);
 struct State {
     bool enabled{},ready{};
     unsigned tick{},warmup{120},frames{600};
-    unsigned oracle_interval{};
+    unsigned oracle_interval{};bool oracle_poses{};
     bool timed{},measuring{},finished{},phase_locked{},phase_comparable{true},holdout{};unsigned measurement_first_tick{};double actual_initialization_seconds{};unsigned measured_frames{};
     double initialization_seconds{},measurement_seconds{};
     Clock::time_point measurement_start;
     std::wstring output;
-    std::ofstream rows;
+    std::ofstream rows,initialization_rows;
     std::unique_ptr<AsyncWriter> writer;
     Clock::time_point frame_start,previous_start,previous_end,ready_start;
     double period_ms{},present_ms{},submit_ms{},wait_ms{},allocator_ms{};
@@ -33,11 +35,13 @@ inline void initialize(){
     arc::timeline::enable(env(L"ARC_BENCH_TRACE")==L"1");
     const auto frames=env(L"ARC_BENCH_FRAMES");if(!frames.empty())s.frames=std::stoul(frames);
     const auto oracle=env(L"ARC_BENCH_ORACLE_INTERVAL");if(!oracle.empty())s.oracle_interval=std::stoul(oracle);
+    s.oracle_poses=env(L"ARC_BENCH_ORACLE_POSES")==L"1";
     if(s.oracle_interval&&s.oracle_interval<300)throw std::runtime_error("Oracle capture interval must be at least 300 frames");
     const auto seconds=env(L"ARC_BENCH_MEASUREMENT_SECONDS");if(!seconds.empty()){s.measurement_seconds=std::stod(seconds);s.initialization_seconds=std::stod(env(L"ARC_BENCH_INITIALIZATION_SECONDS"));s.timed=true;}
     if(s.timed&&(s.measurement_seconds<1||s.measurement_seconds>60||s.initialization_seconds<0||s.initialization_seconds>120))throw std::runtime_error("Bounded benchmark durations required");
     if(s.frames<1||(!s.timed&&s.frames>3600))throw std::runtime_error("Benchmark frame count 1..3600 required in frame-count mode");
     s.rows.open(s.output+L"/frames.jsonl");if(!s.rows)throw std::runtime_error("Cannot open benchmark output");
+    s.initialization_rows.open(s.output+L"/initialization-frames.jsonl");if(!s.initialization_rows)throw std::runtime_error("Cannot open initialization telemetry");
     s.writer.reset(new AsyncWriter(s.rows));s.holdout=env(L"ARC_BENCH_ROUTE")==L"holdout";s.phase_locked=s.timed&&s.initialization_seconds>=100;
     const auto dll=env(L"ARC_BENCH_DLL");if(dll.empty())return;
     const auto module=LoadLibraryW(dll.c_str());if(!module)throw std::runtime_error("Cannot load ARC benchmark DLL");
@@ -68,7 +72,8 @@ inline void before_frame(){auto& s=state();if(s.timed&&s.ready&&!s.measuring&&s.
 if(s.profile&&!s.profile_requested&&s.ready&&s.tick==s.warmup){
     auto argument=L"16|"+s.output+L"/gpu-profile.json";if(s.profile(&argument[0]))throw std::runtime_error("GPU profile request refused");s.profile_requested=true;
 }}
-inline void finish(){auto& s=state();{std::ofstream phase(s.output+L"/measurement-phase.json");phase<<"{\"comparable\":"<<(s.phase_comparable?"true":"false")<<",\"initialization_seconds\":"<<s.actual_initialization_seconds<<",\"first_tick\":"<<s.measurement_first_tick<<",\"route\":\""<<(s.holdout?"holdout":"primary")<<"\"}\n";}if(s.writer&&!s.writer->finish())throw std::runtime_error("Benchmark telemetry lost or failed");arc::timeline::flush(s.output+L"/cpu-timeline.json");s.rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){
+inline bool oracle_due(){const auto& s=state();if(s.oracle_poses){constexpr std::array<unsigned,32> poses{0,1,2,3,4,40,80,120,160,179,180,181,220,239,240,241,280,320,358,359,360,361,362,380,399,400,401,440,480,520,560,599};return s.tick>=1200&&s.tick<1800&&std::binary_search(poses.begin(),poses.end(),s.tick%600);}return s.oracle_interval&&s.tick&&s.tick%s.oracle_interval==0&&s.tick/s.oracle_interval<=32;}
+inline void finish(){auto& s=state();{std::ofstream phase(s.output+L"/measurement-phase.json");phase<<"{\"comparable\":"<<(s.phase_comparable?"true":"false")<<",\"initialization_seconds\":"<<s.actual_initialization_seconds<<",\"first_tick\":"<<s.measurement_first_tick<<",\"route\":\""<<(s.holdout?"holdout":"primary")<<"\"}\n";}if(s.writer&&!s.writer->finish())throw std::runtime_error("Benchmark telemetry lost or failed");arc::timeline::flush(s.output+L"/cpu-timeline.json");s.rows.close();s.initialization_rows.close();if(s.stop_optimizer)s.stop_optimizer(nullptr);if(s.profile_requested){
     s.stop_profile(nullptr);const auto path=s.output+L"/gpu-profile.json";const auto until=GetTickCount64()+5000;
     while(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES&&GetTickCount64()<until)Sleep(10);
     if(GetFileAttributesW(path.c_str())==INVALID_FILE_ATTRIBUTES)throw std::runtime_error("GPU profile publication timed out");
