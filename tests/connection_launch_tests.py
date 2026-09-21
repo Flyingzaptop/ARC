@@ -17,7 +17,7 @@ scope.mkdir()
 fixture = scope / 'arc-connection-native-tests.exe'
 shutil.copy2(Path(sys.argv[4]) if len(sys.argv) > 4 else binary / fixture.name, fixture)
 results = {}
-for mode in ('late', 'direct', 'child', 'child-suspended'):
+for mode in ('late', 'direct', 'child', 'child-suspended', 'resize'):
     case = evidence / mode
     case.mkdir()
     config = dict(target_fps=1, maximize_fps=False, maximum_seconds=10, output=str(case / 'automatic'),
@@ -41,7 +41,7 @@ for mode in ('late', 'direct', 'child', 'child-suspended'):
     else:
         command = [str(binary / 'arc-dx12-probe-launch.exe'), '--launch-auto', str(fixture),
                    str(binary / 'arc-dx12-probe.dll'), str(case / 'arc.json'), str(config_path),
-                   '--parent-suspended' if mode == 'child-suspended' else '--parent' if mode == 'child' else '--render', str(case)]
+                   '--parent-suspended' if mode == 'child-suspended' else '--parent' if mode == 'child' else '--resize' if mode == 'resize' else '--render', str(case)]
     run = subprocess.run(command, env=env, capture_output=True, timeout=50,
                          creationflags=subprocess.CREATE_NO_WINDOW)
     (case / 'launch-test.log').write_bytes(run.stdout + run.stderr)
@@ -64,6 +64,10 @@ for mode in ('late', 'direct', 'child', 'child-suspended'):
     assert data['pid'] == renderer['pid'] and data['present_calls'] >= 100
     assert data['present_failures'] == data['hook_failures'] == 0
     assert data['optimizer']['faults'] == 0, data['optimizer']
+    if mode == 'resize':
+        assert data['automatic_session']['surface_revision'] >= 2
+        assert data['automatic_session']['present_samples'] >= 100
+        assert data['automatic_session']['phase'] != 'faulted'
     coverage = data['optimizer_coverage']
     if mode == 'late':
         assert coverage['observed_root_signatures'] == coverage['observed_compute_pipelines'] == 0

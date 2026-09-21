@@ -52,7 +52,7 @@ public:
     explicit OptimizerSession(OptimizerSessionConfig={});
     void target(double fps);
     void candidates(std::vector<SessionAction>);
-    SessionRequest frame(double frame_ms,bool scene_stable=true);
+    SessionRequest frame(double frame_ms,bool scene_stable=true,std::uint64_t elapsed_frames=1);
     SessionRequest evidence(const OptimizerTrialEvidence&);
     void applied(std::uint64_t action,bool success);
     void restored(bool success);

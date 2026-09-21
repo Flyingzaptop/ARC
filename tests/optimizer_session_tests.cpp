@@ -109,4 +109,6 @@ int main(){
     assert(execution.evidence(fast).kind==arc::SessionRequestKind::None);
     execution.scene_changed();execution.frame(4);execution.frame(4);fast.gpu_execution_confirmed=true;
     assert(execution.evidence(fast).kind==arc::SessionRequestKind::Apply);
+    execution.applied(99,true);
+    assert(execution.frame(3,true,maxconfig.max_evidence_samples).kind==arc::SessionRequestKind::Restore);
 }

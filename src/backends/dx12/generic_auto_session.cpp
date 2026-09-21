@@ -28,6 +28,7 @@ using Json=nlohmann::json;
 using Clock=std::chrono::steady_clock;
 struct State {
     std::atomic<bool> running{},cancel{};
+    std::atomic<bool> observing{};
     std::mutex mutex,policy_mutex;std::condition_variable changed;
     void* swapchain{};UINT64 last_qpc{},frames{};double frequency{};
     std::array<double,128> periods{};unsigned count{},cursor{};
@@ -40,8 +41,19 @@ struct State {
     std::array<optimizer::PolicyStamp,3> capture_stamps{};std::uint64_t candidate_epoch{};
     std::array<optimizer::FrameStateSample,3> frame_states;
     Clock::time_point started{};std::uint64_t event_sequence{},journal_failures{};
+    std::atomic<bool> diagnostics_enabled{};
+    HWND window{};
+    UINT width{},height{};bool fullscreen{};std::uint64_t swapchain_identity{};
+    std::atomic<std::uint64_t> surface_revision{};std::uint64_t transaction_revision{};
+    std::atomic<bool> capture_invalid{};
+    std::uint64_t retained_action{},retained_until{};
 };
 State& state(){static auto* s=new State;return *s;}
+struct TrialInterrupted:std::runtime_error {using std::runtime_error::runtime_error;};
+struct SurfaceChanged:TrialInterrupted {SurfaceChanged():TrialInterrupted("presentation_surface_changed") {}};
+void ensure_surface(){if(state().surface_revision.load()!=state().transaction_revision)throw SurfaceChanged();}
+void invalidate_surface_locked(){auto& s=state();++s.surface_revision;s.capture_invalid=true;s.capture_active=false;s.last_qpc=0;s.count=s.cursor=0;s.width=s.height=0;
+    if(s.running){std::lock_guard policy_lock(s.policy_mutex);optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);generic::cancel_image_sequence();}s.changed.notify_all();}
 void journal(Json value){
     auto& s=state();{std::lock_guard lock(s.mutex);value["present_samples"]=s.frames;}
     value["schema"]=1;value["sequence"]=++s.event_sequence;value["elapsed_ms"]=std::chrono::duration<double,std::milli>(Clock::now()-s.started).count();
@@ -55,10 +67,17 @@ void journal(Json value){
         std::ofstream file(path,std::ios::app);file<<value.dump()<<'\n';file.close();if(!file)++s.journal_failures;
     }catch(...){++s.journal_failures;}
 }
+void publish_spatial(){
+    const auto text=optimizer::spatial_snapshot();if(text.empty())return;
+    try{auto value=Json::parse(text);value["written_tick_ms"]=GetTickCount64();const auto temporary=state().directory/L"importance.json.tmp",path=state().directory/L"importance.json";
+        std::ofstream file(temporary);file<<value.dump();file.close();if(file)MoveFileExW(temporary.c_str(),path.c_str(),MOVEFILE_REPLACE_EXISTING);
+    }catch(...){}
+}
 std::wstring quote(const std::wstring& s){std::wstring out=L"\"";unsigned n=0;for(auto c:s){if(c==L'\\'){++n;continue;}if(c==L'"'){out.append(n*2+1,L'\\');out+=c;}else{out.append(n,L'\\');out+=c;}n=0;}out.append(n*2,L'\\');return out+L'"';}
 void publish(Json value){
     auto& s=state();value["component_budgets_enforced"]=false;value["objective"]=s.maximize?"maximize_fps":"target_fps";
     for(const auto& text:optimizer::drain_events())try{journal(Json::parse(text));}catch(...){}
+    publish_spatial();
     journal(value);{std::lock_guard lock(s.mutex);s.status=value;}
     const auto temp=s.directory/L"status.json.tmp",final=s.directory/L"status.json";
     std::ofstream file(temp);file<<value.dump(2)<<'\n';file.close();
@@ -81,7 +100,7 @@ double cpu_window_ms(const CpuWindowSample& before,const CpuWindowSample& after)
 bool wait_frames(unsigned count){auto& s=state();std::unique_lock lock(s.mutex);const auto target=s.frames+count;
     const bool woke=s.changed.wait_for(lock,std::chrono::seconds(4),[&]{return s.cancel||s.frames>=target;});return woke&&!s.cancel;}
 double period(unsigned samples=32){std::lock_guard lock(state().mutex);const auto& s=state();const auto n=std::min(samples,s.count);if(!n)return 0;double sum=0;for(unsigned i=0;i<n;++i)sum+=s.periods[(s.cursor+s.periods.size()-1-i)%s.periods.size()];return sum/n;}
-bool wait_file(const std::filesystem::path& file,unsigned milliseconds=3000){const auto until=Clock::now()+std::chrono::milliseconds(milliseconds);while(!state().cancel&&Clock::now()<until){if(std::filesystem::is_regular_file(file))return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
+bool wait_file(const std::filesystem::path& file,unsigned milliseconds=3000,bool image=false){const auto until=Clock::now()+std::chrono::milliseconds(milliseconds);while(!state().cancel&&Clock::now()<until){if(image&&state().capture_invalid)return false;if(std::filesystem::is_regular_file(file))return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
 bool wait_restoration(bool finishing=false){const auto until=Clock::now()+std::chrono::seconds(3);while((finishing||!state().cancel)&&Clock::now()<until){if(optimizer::restoration_ready())return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
 Json read_json(const std::filesystem::path& path){if(std::filesystem::file_size(path)>2*1024*1024)throw std::runtime_error("Quality JSON capacity");std::ifstream file(path);return Json::parse(file);}
 Json quality(const std::filesystem::path& a,const std::filesystem::path& b,const std::filesystem::path& c,const std::filesystem::path& output){
@@ -97,20 +116,23 @@ Json quality(const std::filesystem::path& a,const std::filesystem::path& b,const
     if(!AssignProcessToJobObject(job,process.hProcess)||ResumeThread(process.hThread)==DWORD(-1)){
         TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);CloseHandle(process.hThread);CloseHandle(process.hProcess);CloseHandle(job);throw std::runtime_error("Quality worker lifetime assignment");}
     CloseHandle(process.hThread);DWORD code=1,waited=WAIT_TIMEOUT;const auto deadline=Clock::now()+std::chrono::seconds(15);
-    while(!s.cancel&&Clock::now()<deadline&&(waited=WaitForSingleObject(process.hProcess,50))==WAIT_TIMEOUT){}
+    while(!s.cancel&&Clock::now()<deadline&&(waited=WaitForSingleObject(process.hProcess,50))==WAIT_TIMEOUT){cpu_cost::memory_snapshot();}
     if(waited==WAIT_OBJECT_0)GetExitCodeProcess(process.hProcess,&code);else{TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);}CloseHandle(process.hProcess);CloseHandle(job);
-    if(code||!std::filesystem::is_regular_file(output))throw std::runtime_error("Quality worker failed");return read_json(output);
+    if(code||!std::filesystem::is_regular_file(output))return Json{{"accepted_quality",false},{"matched_reference",false},{"reason","quality_worker_failed_or_unsupported_capture"},{"worker_exit_code",code},{"quality",{{"ssim_gaussian_luma",nullptr},{"mean_linear_rgb_error",nullptr},{"p99_tile_linear_rgb_error",nullptr}}}};return read_json(output);
 }
 void select(const std::wstring& mode){auto& s=state();std::lock_guard lock(s.policy_mutex);
     if(s.cancel&&mode!=L"off")throw std::runtime_error("Session cancelled");
     if(!optimizer::configure(mode.c_str()))throw std::runtime_error("Optimizer policy switch refused");if(mode==L"off")optimizer::cpu_configure(false);}
-void select(const arc::PolicyBundle& bundle,bool apply=true){auto& s=state();std::lock_guard lock(s.policy_mutex);
+void select(const arc::PolicyBundle& bundle,bool apply=true){auto& s=state();const auto frame=frame_number();std::lock_guard lock(s.policy_mutex);
+    if(!bundle.compute.empty()||bundle.cpu_state_cache)ensure_surface();
     if(s.cancel&&!bundle.compute.empty())throw std::runtime_error("Session cancelled");
-    if(!optimizer::configure_bundle(bundle,apply))throw std::runtime_error("Optimizer bundle refused");}
+    if(bundle.id&&bundle.id==s.retained_action&&frame>=s.retained_until)throw TrialInterrupted("quality_evidence_expired");
+    const auto until=bundle.id==s.retained_action&&s.retained_action?s.retained_until:frame+240;
+    if(!optimizer::configure_bundle(bundle,apply,0,until))throw TrialInterrupted("pipeline_or_binding_no_longer_available");}
 Json calibrate_gpu(const arc::PolicyBundle& bundle,const std::filesystem::path& path){
     static std::atomic<std::uint64_t> sequence{UINT64(1)<<63};const auto epoch=sequence.fetch_add(1);
     Json result{{"epoch",epoch},{"complete_cost_evidence",false},{"samples",Json::array()}};
-    {std::lock_guard lock(state().policy_mutex);if(state().cancel||!optimizer::begin_calibration(bundle,epoch))return result;}
+    {std::lock_guard lock(state().policy_mutex);ensure_surface();if(state().cancel||!optimizer::begin_calibration(bundle,epoch))return result;}
     const auto first=frame_number();const bool progressed=wait_frames(6);const auto last=frame_number();
     select(L"off");const bool retired=wait_restoration();optimizer::collect();
     const auto expected=optimizer::calibration_sample_count(epoch);const auto samples=optimizer::calibration_costs(epoch);
@@ -160,29 +182,29 @@ bool capture_trial(const std::array<std::filesystem::path,3>& paths,const arc::P
     struct EndSampling {~EndSampling(){optimizer::sample_frame_state(false);}} end_sampling;
     auto& s=state();select(bundle,false);if(!wait_frames(8))return false;
     optimizer::sample_frame_state(true);if(!wait_frames(2)){optimizer::sample_frame_state(false);return false;}
-    {std::lock_guard lock(s.mutex);if(s.cancel)return false;s.capture_bundle=bundle;s.capture_stage=0;s.capture_stamps={};s.frame_states={};s.candidate_epoch=0;
+    {std::lock_guard lock(s.mutex);ensure_surface();if(s.cancel)return false;s.capture_invalid=false;s.capture_bundle=bundle;s.capture_stage=0;s.capture_stamps={};s.frame_states={};s.candidate_epoch=0;
         s.capture_active=generic::request_image_sequence(paths,reinterpret_cast<IDXGISwapChain*>(s.swapchain));
         if(!s.capture_active){optimizer::sample_frame_state(false);return false;}}
-    bool complete=true;for(const auto& path:paths)complete=wait_file(path,4000)&&complete;
+    bool complete=true;for(const auto& path:paths)complete=wait_file(path,4000,true)&&complete;ensure_surface();
     Json provenance,state_samples=Json::array();
     {std::lock_guard lock(s.mutex);s.capture_active=false;const auto& a=s.capture_stamps[0];const auto& b=s.capture_stamps[1];const auto& c=s.capture_stamps[2];
         observed_submission=s.candidate_epoch&&b.epoch==s.candidate_epoch&&b.last_active_epoch==s.candidate_epoch&&b.active_submissions>a.active_submissions&&c.active_submissions==b.active_submissions;
-        provenance={{"kind","shader_written_epoch_on_present_queue"},{"candidate_epoch",s.candidate_epoch},{"cpu_submission_observed",observed_submission},{"same_frame_gpu_dependency_proven",false},{"active_submissions",{a.active_submissions,b.active_submissions,c.active_submissions}}};
+        provenance={{"kind","shader_written_epoch_on_present_queue"},{"candidate_epoch",s.candidate_epoch},{"cpu_submission_observed",observed_submission},{"same_queue_gpu_execution_proven",false},{"active_submissions",{a.active_submissions,b.active_submissions,c.active_submissions}}};
         for(const auto& sample:s.frame_states)state_samples.push_back({{"pipeline",sample.pipeline},{"submission",sample.submission},{"keys",sample.keys},{"words",sample.words},{"valid",sample.valid}});}
     optimizer::sample_frame_state(false);
-    bool gpu_proven=complete&&observed_submission;std::set<std::uint64_t> executed;
+    bool gpu_proven=complete&&observed_submission,spatial_effect=true;std::set<std::uint64_t> executed;std::map<std::uint64_t,std::uint64_t> coarse_tiles;
     if(gpu_proven)try{const auto captured=read_json(paths[1]);const auto& proof=captured.at("gpu_execution");
         gpu_proven=proof.value("kind",std::string{})=="shader_written_epoch"&&proof.value("image_fence_completed",false)&&proof.value("capture_queue",0ull)!=0;
         for(const auto& marker:proof.at("markers")){
             const auto epoch=marker.value("expected_epoch",0ull),pipeline=marker.value("expected_pipeline",0ull);
             if(epoch!=provenance.at("candidate_epoch").get<std::uint64_t>())continue;
             const bool matched=marker.value("fence_completed",false)&&marker.value("actual_epoch",0ull)==epoch&&marker.value("actual_pipeline",0ull)==pipeline&&marker.value("queue",0ull)==proof.at("capture_queue").get<std::uint64_t>();
-            gpu_proven=gpu_proven&&matched;if(matched)executed.insert(pipeline);
+            gpu_proven=gpu_proven&&matched;if(matched){executed.insert(pipeline);coarse_tiles[pipeline]+=marker.value("coarse_tiles",0ull);}
         }
-        for(const auto& target:bundle.compute)gpu_proven=gpu_proven&&executed.contains(target.pipeline);
+        for(const auto& target:bundle.compute){gpu_proven=gpu_proven&&executed.contains(target.pipeline);if(target.protect_edges&&(target.x_rate>1||target.y_rate>1))spatial_effect=spatial_effect&&coarse_tiles[target.pipeline]>0;}
         provenance["capture"]=proof;
     }catch(...){gpu_proven=false;}
-    observed_submission=gpu_proven;provenance["same_frame_gpu_dependency_proven"]=gpu_proven;provenance["gpu_execution_confirmed"]=gpu_proven;
+    observed_submission=gpu_proven&&spatial_effect;provenance["same_queue_gpu_execution_proven"]=gpu_proven;provenance["gpu_execution_confirmed"]=gpu_proven;provenance["effective_spatial_work"]=spatial_effect;
     {std::ofstream file(paths[0].parent_path()/L"submission-provenance.json");file<<provenance.dump(2)<<'\n';}
     {std::ofstream file(paths[0].parent_path()/L"frame-state.json");file<<state_samples.dump(2)<<'\n';}
     select(L"off");return complete;
@@ -196,14 +218,18 @@ DWORD WINAPI run(void*){
     try{
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.maximize_fps=s.maximize;config.enforce_component_budgets=false;config.require_gpu_execution=true;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         arc::OptimizerSession policy(config);
-        struct Choice {arc::PolicyBundle bundle;double cost{};bool cpu{};};
+        struct Choice {arc::PolicyBundle bundle;double cost{};bool cpu{};unsigned mode{};std::uint64_t pipeline{};double exploration{1};};
+        struct Tuning {float good{},bad{2},current{.25f};unsigned rounds{};bool failed{};};
         std::vector<Choice> choices;arc::PolicyBundle incumbent;std::uint64_t next_choice=0;
         std::map<std::uint64_t,std::uint64_t> cpu_choices;
         std::map<std::string,std::uint64_t> gpu_choices;
+        std::map<std::pair<std::uint64_t,unsigned>,Tuning> tuning;
+        std::map<std::uint64_t,std::uint64_t> retry_after;
         std::vector<optimizer::WorkCandidate> catalog;
         auto refresh_candidates=[&]{
             std::vector<SessionAction> actions;
-            for(const auto& choice:choices)actions.push_back({choice.bundle.id,choice.bundle.id,0,1,true,choice.cost,false,choice.cpu&&choice.bundle.compute.empty(),false});
+            const auto frame=frame_number();
+            for(const auto& choice:choices)actions.push_back({choice.bundle.id,choice.bundle.id,0,choice.exploration,!retry_after.contains(choice.bundle.id)||frame>=retry_after[choice.bundle.id],choice.cost,false,choice.cpu&&choice.bundle.compute.empty(),false});
             if(incumbent.id)actions.push_back({incumbent.id,incumbent.id,0,1,true,0,false,incumbent.compute.empty(),false});
             policy.candidates(std::move(actions));
         };
@@ -212,13 +238,14 @@ DWORD WINAPI run(void*){
             if(!incumbent.cpu_state_cache){auto& id=cpu_choices[incumbent.id];if(!id)id=++next_choice;auto cpu=incumbent;cpu.id=id;cpu.cpu_state_cache=true;choices.push_back({std::move(cpu),0,true});}
             for(const auto& work:catalog){const auto& c=work.capabilities;
                 for(unsigned mode=0;mode<11;++mode){
-                    const bool ready[]{c.zero,c.comparison,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse,c.coarse,c.mips,c.mips,c.mips};
+                    const bool ready[]{c.zero,c.comparison,c.coarse&&c.edges,c.coarse&&c.edges,c.coarse&&c.edges,c.mips,c.mips,c.mips,c.coarse,c.coarse,c.coarse};
                     if(!ready[mode])continue;
-                    arc::ComputePolicy setting;setting.pipeline=c.pipeline;
+                    arc::ComputePolicy setting;if(const auto* current=incumbent.find(c.pipeline))setting=*current;setting.pipeline=c.pipeline;
                     if(mode==0)setting.zero_factor=1;
                     else if(mode==1)setting.comparison_taps=9;
-                    else if(mode<=7){setting.x_rate=(mode==2||mode==6)?1:2;setting.y_rate=2;setting.protect_edges=mode<=5;setting.edge_threshold=mode<=3?.5f:mode==4?.75f:.9f;}
-                    else setting.mip_steps=mode==8?1:mode==9?2:4;
+                    else if(mode<=4){auto& search=tuning[{c.pipeline,mode}];if(search.rounds>=8)continue;setting.x_rate=mode==2?1:2;setting.y_rate=mode==3?1:2;setting.protect_edges=true;setting.edge_threshold=search.current;}
+                    else if(mode<=7)setting.mip_steps=mode==5?1:mode==6?2:4;
+                    else{setting.x_rate=mode==8?1:2;setting.y_rate=mode==9?1:2;setting.protect_edges=false;}
                     if(const auto* current=incumbent.find(c.pipeline);current&&*current==setting)continue;
                     auto bundle=incumbent;
                     if(bundle.replace(setting)){
@@ -226,26 +253,31 @@ DWORD WINAPI run(void*){
                         std::ostringstream key;key<<bundle.cpu_state_cache<<std::hexfloat;
                         for(const auto& p:ordered)key<<':'<<p.pipeline<<','<<p.x_rate<<','<<p.y_rate<<','<<p.comparison_taps<<','<<p.zero_factor<<','<<p.mip_steps<<','<<p.protect_edges<<','<<p.edge_threshold;
                         auto found=gpu_choices.find(key.str());if(found==gpu_choices.end()){if(gpu_choices.size()>=4096)continue;found=gpu_choices.emplace(key.str(),++next_choice).first;}
-                        bundle.id=found->second;choices.push_back({std::move(bundle),work.gpu_ms_per_window});
+                        bundle.id=found->second;const auto exploration=(mode>=8?3.0:1.0)+(mode>=2&&mode<=4?tuning[{c.pipeline,mode}].rounds*.25:0);
+                        choices.push_back({std::move(bundle),work.gpu_ms_per_window,false,mode,c.pipeline,exploration});
                     }
                 }
             }
             refresh_candidates();
         };
         rebuild_choices();
-        UINT64 last=0,trial=0,profile=0,catalog_check=0;std::uint64_t retained=0;
-        std::string idle_phase;auto last_discovery=Clock::now(),last_telemetry=Clock::now();double scene_reference=0;unsigned scene_drift=0;
+        UINT64 last=0,trial=0,profile=0,catalog_check=0;std::uint64_t retained=0,last_surface=s.surface_revision;
+        std::string idle_phase;auto last_discovery=Clock::now(),last_telemetry=Clock::now(),last_diagnostics=Clock::now();double scene_reference=0;unsigned scene_drift=0;
         publish({{"phase","warmup"},{"target_fps",s.target},{"quality_reference","live_motion_qualified"}});
         while(!s.cancel){
             if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);publish({{"phase","target_updated"},{"target_fps",s.target}});}
             if(s.maximum_seconds&&std::chrono::duration<double>(Clock::now()-started).count()>s.maximum_seconds)break;
-            if(!wait_frames(1)){if(s.cancel)break;idle_phase.clear();select(L"off");publish({{"phase","inactive"},{"reason","no_present_progress"}});continue;}
-            const auto now=frame_number();if(now==last)continue;last=now;
+            if(!wait_frames(1)){if(s.cancel)break;idle_phase.clear();select(L"off");const auto reset=policy.scene_changed();if(reset.kind==SessionRequestKind::Restore)policy.restored(wait_restoration());incumbent={};retained=0;s.retained_action=s.retained_until=0;scene_reference=0;tuning.clear();retry_after.clear();rebuild_choices();publish({{"phase","inactive"},{"reason","no_present_progress"}});continue;}
+            const auto now=frame_number();if(now==last)continue;const auto elapsed_frames=now-last;last=now;
+            s.transaction_revision=s.surface_revision.load();const bool changed_surface=s.transaction_revision!=last_surface;last_surface=s.transaction_revision;
+            if(s.diagnostics_enabled&&Clock::now()-last_diagnostics>=std::chrono::milliseconds(500)){last_diagnostics=Clock::now();optimizer::request_spatial_diagnostics();publish_spatial();}
             if(Clock::now()-last_telemetry>=std::chrono::seconds(2)){
                 for(const auto& text:optimizer::drain_events())try{journal(Json::parse(text));}catch(...){}
                 last_telemetry=Clock::now();PROCESS_MEMORY_COUNTERS_EX memory{};memory.cb=sizeof(memory);
                 const bool available=GetProcessMemoryInfo(GetCurrentProcess(),reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory),sizeof(memory))!=FALSE;
-                journal({{"phase","telemetry"},{"frame_ms",period()},{"game_process_memory_available",available},{"game_process_private_bytes",available?Json(memory.PrivateUsage):Json(nullptr)},{"game_process_working_set_bytes",available?Json(memory.WorkingSetSize):Json(nullptr)},{"memory_scope","whole_game_process_not_arc_allocation"}});
+                const auto allocations=optimizer::control_allocation_bytes();
+                const auto children=cpu_cost::memory_snapshot();
+                journal({{"phase","telemetry"},{"frame_ms",period()},{"game_process_memory_available",available},{"game_process_private_bytes",available?Json(memory.PrivateUsage):Json(nullptr)},{"game_process_working_set_bytes",available?Json(memory.WorkingSetSize):Json(nullptr)},{"memory_scope","whole_game_process_not_arc_allocation"},{"arc_control_default_heap_bytes",allocations[0]},{"arc_control_upload_heap_bytes",allocations[1]},{"arc_control_readback_heap_bytes",allocations[2]},{"arc_allocation_coverage","control_and_spatial_buffers_only"},{"arc_children_private_bytes",children.private_bytes},{"arc_children_sampled_peak_private_bytes",children.sampled_peak_private_bytes},{"arc_children_peak_working_set_bytes",children.peak_working_set_bytes},{"arc_children_memory_failures",children.failures},{"arc_children_memory_samples",children.samples},{"arc_children_kind_order",{"worker","compiler","critic"}}});
             }
             // Receiving Presents is not evidence that shader creation was
             // observed. A late attach cannot reconstruct opaque root/PSO
@@ -265,30 +297,39 @@ DWORD WINAPI run(void*){
             if(profile&&now-catalog_check>=120){
                 catalog_check=now;auto next=optimizer::candidate_catalog();
                 const bool same=next.size()==catalog.size()&&std::equal(next.begin(),next.end(),catalog.begin(),[](const auto& a,const auto& b){return a.capabilities.pipeline==b.capabilities.pipeline&&a.profile_session==b.profile_session;});
-                if(!same){catalog=std::move(next);rebuild_choices();}
+                if(!same){catalog=std::move(next);rebuild_choices();}else refresh_candidates();
             }
             const auto current_period=period();
             if(!scene_reference)scene_reference=current_period;
             scene_drift=(current_period>scene_reference*1.75||current_period<scene_reference*.55)?scene_drift+1:0;
-            auto request=scene_drift>=8?policy.scene_changed():policy.frame(current_period);
+            auto request=(changed_surface||scene_drift>=8)?policy.scene_changed():policy.frame(current_period,true,elapsed_frames);
+            if(changed_surface||scene_drift>=8){tuning.clear();retry_after.clear();rebuild_choices();}
+            if(policy.snapshot().phase==SessionPhase::Faulted)throw std::runtime_error("Policy restoration not confirmed");
+            if(changed_surface){journal({{"phase","surface_changed"},{"surface_revision",last_surface}});scene_reference=current_period;}
             if(scene_drift>=8){scene_reference=current_period;scene_drift=0;}
             if(request.kind==SessionRequestKind::None&&policy.snapshot().phase==SessionPhase::Limited&&!policy.snapshot().active_action&&Clock::now()-last_discovery>std::chrono::seconds(15))request={SessionRequestKind::Profile,0};
             if(request.kind==SessionRequestKind::None){const auto current=policy.snapshot();
                 if(current.phase==SessionPhase::Active||current.phase==SessionPhase::Limited){
-                    const std::string phase=current.phase==SessionPhase::Limited?"limited":!s.maximize&&current.filtered_frame_ms<=current.target_frame_ms?"target_met":"holding";
+                    const std::string phase=current.phase==SessionPhase::Limited&&!current.active_action?"limited":!s.maximize&&current.filtered_frame_ms<=current.target_frame_ms?"target_met":"holding";
                     if(phase!=idle_phase){idle_phase=phase;publish({{"phase",phase},{"target_fps",s.target},{"filtered_frame_ms",current.filtered_frame_ms},{"active_action",current.active_action},{"accepted",current.accepted},{"rejected",current.rejected}});}
                 }
             }else idle_phase.clear();
             if(request.kind==SessionRequestKind::Profile){
                 last_discovery=Clock::now();select(L"off");const auto path=s.directory/(L"profile-"+std::to_wstring(++profile)+L".json");
-                if(!gpu_profile::request(path.wstring(),16)||!wait_file(path,12000))throw std::runtime_error("GPU discovery unavailable");
+                if(!gpu_profile::request(path.wstring(),16)||!wait_file(path,12000)){
+                    gpu_profile::stop();const auto reset=policy.scene_changed();if(reset.kind==SessionRequestKind::Restore)policy.restored(wait_restoration());
+                    incumbent={};retained=0;s.retained_action=s.retained_until=0;catalog.clear();rebuild_choices();
+                    publish({{"phase","discovery_deferred"},{"reason","gpu_profile_incomplete"},{"frames_progressed",frame_number()-now},{"retry_after_frames",120}});
+                    wait_frames(120);continue;
+                }
                 catalog=optimizer::candidate_catalog();rebuild_choices();
                 publish({{"phase","discovery_complete"},{"target_fps",s.target},{"measured_work_candidates",catalog.size()},{"policy_candidates",choices.size()}});
             }else if(request.kind==SessionRequestKind::Probe){
+                try{
                 const auto dir=s.directory/(L"trial-"+std::to_wstring(++trial));std::filesystem::create_directory(dir);
                 const auto choice=std::find_if(choices.begin(),choices.end(),[&](const auto& c){return c.bundle.id==request.action;});
                 if(choice==choices.end())throw std::runtime_error("Unknown bundle request");
-                const auto candidate=choice->bundle;const auto generation=candidate.id;
+                const auto candidate=choice->bundle;const auto generation=candidate.id;const auto candidate_mode=choice->mode;const auto candidate_pipeline=choice->pipeline;
                 if(!candidate.compute.empty()){
                     void* swap{};{std::lock_guard lock(s.mutex);swap=s.swapchain;}
                     Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;queue.Attach(generic::acquire_presentation_queue(reinterpret_cast<IDXGISwapChain*>(swap)));
@@ -297,8 +338,8 @@ DWORD WINAPI run(void*){
                 if(choice->cpu&&candidate.compute.empty()){
                     auto evidence=cpu_trial(candidate,dir/L"cpu-trial.json");if(s.cancel)break;
                     if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);}
-                    const auto decision=policy.evidence(evidence);
-                    if(decision.kind==SessionRequestKind::Apply){select(candidate);incumbent=candidate;retained=decision.action;policy.applied(retained,true);rebuild_choices();}
+                    ensure_surface();const auto decision=policy.evidence(evidence);
+                    if(decision.kind==SessionRequestKind::Apply){s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
                     const auto current=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"kind","exact_cpu_state"},{"accepted",current.accepted},{"rejected",current.rejected},{"retained",retained},{"baseline_frame_ms",evidence.baseline_frame_ms},{"candidate_frame_ms",evidence.candidate_frame_ms},{"cpu_overhead_ms",std::isfinite(evidence.cpu_overhead_ms)?Json(evidence.cpu_overhead_ms):Json(nullptr)},{"restoration_confirmed",evidence.restoration_confirmed}};
                     {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));continue;
                 }
@@ -307,11 +348,11 @@ DWORD WINAPI run(void*){
                 // The final-image reference always uses the ORIGINAL policy,
                 // even when comparing a replacement against a retained setting.
                 const auto a=dir/L"before.json",b=dir/L"candidate.json",c=dir/L"after.json";
-                bool submitted=false;if(!capture_trial({a,b,c},candidate,submitted))throw std::runtime_error("Consecutive reference capture unavailable");
+                bool submitted=false;if(!capture_trial({a,b,c},candidate,submitted))throw TrialInterrupted("consecutive_reference_capture_unavailable");
                 // No observed active submission cannot establish an effect.
                 // Avoid spending a CPU-heavy image trial on unchanged work.
-                auto judgement=submitted?quality(a,b,c,dir/L"quality.json"):Json{{"accepted_quality",false},{"matched_reference",false},{"reason","no_policy_submission"},
-                    {"quality",{{"ssim_gaussian_luma",0.0},{"mean_linear_rgb_error",1.0},{"p99_tile_linear_rgb_error",1.0}}}};
+                auto judgement=submitted?quality(a,b,c,dir/L"quality.json"):Json{{"accepted_quality",false},{"matched_reference",false},{"reason","no_verified_effective_policy_work"},
+                    {"quality",{{"ssim_gaussian_luma",nullptr},{"mean_linear_rgb_error",nullptr},{"p99_tile_linear_rgb_error",nullptr}}}};
                 if(s.cancel)break;
                 double candidate_ms=baseline_ms,baseline_before_ms=baseline_ms,baseline_after_ms=baseline_ms;bool timing_stable=false;
                 double cpu_overhead_ms=std::numeric_limits<double>::infinity();UINT64 cpu_frames=0;
@@ -339,24 +380,35 @@ DWORD WINAPI run(void*){
                 const auto& q=judgement.at("quality");OptimizerTrialEvidence evidence;
                 evidence.action=request.action;evidence.generation=generation;evidence.complete=submitted&&timing_stable;evidence.restoration_confirmed=restored_original;evidence.matched_reference=submitted&&judgement.value("matched_reference",false);
                 evidence.baseline_frame_ms=baseline_ms;evidence.candidate_frame_ms=candidate_ms;evidence.baseline_noise_ms=std::max(baseline_ms*.03,std::abs(baseline_before_ms-baseline_after_ms));
-                evidence.ssim=q.at("ssim_gaussian_luma");evidence.mean_error=q.at("mean_linear_rgb_error");evidence.tile_p99=q.at("p99_tile_linear_rgb_error");
+                const auto metric=[&](const char* name){return q.contains(name)&&q.at(name).is_number()?q.at(name).get<double>():std::numeric_limits<double>::quiet_NaN();};
+                evidence.ssim=metric("ssim_gaussian_luma");evidence.mean_error=metric("mean_linear_rgb_error");evidence.tile_p99=metric("p99_tile_linear_rgb_error");
                 // CPU covers hooks, lifetime callbacks, owned threads and live
                 // children. GPU upload timing alone still cannot cover shader
-                // guards/neutralization, so the combined cost gate stays shut.
+                // guards/neutralization. Net cadence decides; unknown costs stay unknown.
                 evidence.cpu_overhead_ms=cpu_overhead_ms;evidence.gpu_overhead_ms=std::numeric_limits<double>::quiet_NaN();
                 evidence.gpu_execution_confirmed=submitted;
                 if(const auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;policy.target(requested);}
-                const auto decision=policy.evidence(evidence);
-                if(decision.kind==SessionRequestKind::Apply){select(candidate);incumbent=candidate;retained=decision.action;policy.applied(retained,true);rebuild_choices();}
-                else if(decision.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("Changed pipeline retirement not confirmed");}
+                ensure_surface();const auto decision=policy.evidence(evidence);
+                if(candidate_mode>=2&&candidate_mode<=4&&judgement.value("matched_reference",false)){
+                    auto& search=tuning[{candidate_pipeline,candidate_mode}];++search.rounds;const auto before=search.current;
+                    if(judgement.value("accepted_quality",false)){search.good=std::max(search.good,before);search.current=search.failed?(search.good+search.bad)*.5f:std::min(1.5f,before*2);}
+                    else{search.failed=true;search.bad=std::min(search.bad,before);search.current=(search.good+search.bad)*.5f;}
+                    if(std::abs(search.current-before)<.02f)search.rounds=8;
+                    journal({{"phase","spatial_search_updated"},{"pipeline",candidate_pipeline},{"mode",candidate_mode},{"tested_threshold",before},{"next_threshold",search.current},{"quality_pass",judgement.value("accepted_quality",false)},{"round",search.rounds}});
+                }else if(!judgement.value("matched_reference",false))retry_after[candidate.id]=frame_number()+300;
+                if(decision.kind==SessionRequestKind::Apply){s.retained_action=decision.action;s.retained_until=frame_number()+600;select(candidate);incumbent=candidate;retained=decision.action;policy.applied(retained,true);last=frame_number();rebuild_choices();}
+                else if(decision.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};s.retained_action=s.retained_until=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("Changed pipeline retirement not confirmed");rebuild_choices();}
                 const auto state=policy.snapshot();Json report{{"phase","trial_finished"},{"trial",trial},{"action",request.action},{"submission_observed",submitted},{"quality_pass",judgement.value("accepted_quality",false)},{"baseline_frame_ms",baseline_ms},{"candidate_frame_ms",candidate_ms},{"accepted",state.accepted},{"rejected",state.rejected},{"retained",retained},{"cost_evidence_available",false},{"original_policy_retired",restored_original}};
-                report["pipeline_generation"]=generation;report["gpu_execution_confirmed"]=submitted;report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
+                report["pipeline_generation"]=generation;report["gpu_execution_confirmed"]=submitted;report["quality_reason"]=judgement.value("reason",std::string{});report["baseline_before_ms"]=baseline_before_ms;report["baseline_after_ms"]=baseline_after_ms;report["timing_reference_stable"]=timing_stable;
                 report["cpu_cost_available"]=std::isfinite(cpu_overhead_ms);report["cpu_overhead_ms"]=std::isfinite(cpu_overhead_ms)?Json(cpu_overhead_ms):Json(nullptr);report["cpu_measured_intervals"]=cpu_frames;
-                report["gpu_calibration"]=gpu_calibration;
+                report["gpu_calibration"]=gpu_calibration;report["quality"]=q;report["evidence_directory"]=dir.string();
+                report["required_gain_ms"]=std::max({.1,baseline_ms*.02,evidence.baseline_noise_ms});
+                report["decision_reason"]=decision.kind==SessionRequestKind::Apply?"accepted_net_gain_and_quality":!submitted?"gpu_execution_or_spatial_effect_unproven":!evidence.matched_reference?"reference_unmatched":!judgement.value("accepted_quality",false)?"quality_threshold_failed":!timing_stable?"timing_reference_unstable":baseline_ms-candidate_ms<=report["required_gain_ms"].get<double>()?"gain_below_noise_or_threshold":"policy_evidence_rejected";
                 report["bundle_targets"]=Json::array();for(const auto& p:candidate.compute)report["bundle_targets"].push_back({{"pipeline",p.pipeline},{"rate",{p.x_rate,p.y_rate}},{"pcf_taps",p.comparison_taps},{"zero_factor",p.zero_factor},{"mip_steps",p.mip_steps},{"protect_edges",p.protect_edges},{"edge_threshold",p.edge_threshold}});
                 report["cpu_state_cache"]=candidate.cpu_state_cache;
-                {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));
-            }else if(request.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("GPU policy retirement not confirmed");}
+                {std::ofstream file(dir/L"decision.json");file<<report.dump(2)<<'\n';}publish(std::move(report));rebuild_choices();
+                }catch(const TrialInterrupted& error){select(L"off");optimizer::sample_frame_state(false);generic::cancel_image_sequence();const auto reset=policy.scene_changed();if(reset.kind==SessionRequestKind::Restore)policy.restored(wait_restoration());incumbent={};retained=0;s.retained_action=s.retained_until=0;rebuild_choices();publish({{"phase","warmup"},{"reason",error.what()},{"surface_revision",s.surface_revision.load()}});}
+            }else if(request.kind==SessionRequestKind::Restore){select(L"off");retained=0;incumbent={};s.retained_action=s.retained_until=0;const bool restored=wait_restoration();policy.restored(restored);if(!restored)throw std::runtime_error("GPU policy retirement not confirmed");rebuild_choices();}
         }
         select(L"off");const bool restored=wait_restoration(true);publish({{"phase",restored?"stopped":"faulted"},{"restored_request_sent",true},{"restoration_confirmed",restored}});
     }catch(const std::exception& error){optimizer::configure(L"off");const bool restored=wait_restoration(true);try{publish({{"phase",s.cancel&&restored?"stopped":"faulted"},{"reason",s.cancel?"cancelled_by_host":error.what()},{"restored_request_sent",true},{"restoration_confirmed",restored}});}catch(...) {}}
@@ -365,16 +417,18 @@ DWORD WINAPI run(void*){
 }
 bool start(const wchar_t* config_path)noexcept{
     if(!config_path||!optimizer::enabled()||mirror::requested_rate()||gpu_profile::busy()||!generic::gpu_helpers_idle())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
-    try{const auto config=read_json(config_path);s.maximize=config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
+    try{const auto config=read_json(config_path);s.diagnostics_enabled=config.value("diagnostics_overlay",false);s.maximize=config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
         s.python=std::filesystem::u8path(config.at("python").get<std::string>());s.critic=std::filesystem::u8path(config.at("critic").get<std::string>());s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
         if(!s.python.is_absolute()||!s.critic.is_absolute()||!s.directory.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
-        std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.swapchain=nullptr;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
-        HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
+        std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.swapchain=nullptr;s.window=nullptr;s.width=s.height=0;s.fullscreen=false;s.swapchain_identity=0;s.surface_revision=0;s.transaction_revision=0;s.retained_action=s.retained_until=0;s.capture_invalid=false;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
+        s.observing=true;HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
     }catch(...){s.running=false;return false;}
 }
 void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
 bool target(double fps)noexcept{auto& s=state();if(!std::isfinite(fps)||fps<=0||fps>1000||!s.running||s.cancel)return false;s.requested_target=fps;return true;}
 bool active()noexcept{return state().running.load();}
+void diagnostics(bool enabled)noexcept{state().diagnostics_enabled=enabled;}
+void surface_changed(void* swap)noexcept{auto& s=state();if(!s.observing)return;std::lock_guard lock(s.mutex);if(s.swapchain==swap)invalidate_surface_locked();}
 bool configure_runtime(const wchar_t* path)noexcept{
     if(!path||active())return false;
     try{const auto config=read_json(path);
@@ -387,23 +441,29 @@ bool configure_runtime(const wchar_t* path)noexcept{
     }catch(...){return false;}
 }
 void present(void* swap,HRESULT result,UINT flags)noexcept{
-    auto& s=state();if(!s.running||result!=S_OK||(flags&DXGI_PRESENT_TEST))return;LARGE_INTEGER qpc{};QueryPerformanceCounter(&qpc);
-    std::lock_guard lock(s.mutex);if(s.swapchain&&s.swapchain!=swap)return;s.swapchain=swap;
+    auto& s=state();if(!s.observing||result!=S_OK||(flags&DXGI_PRESENT_TEST))return;LARGE_INTEGER qpc{};QueryPerformanceCounter(&qpc);
+    const auto identity=generic::presentation_identity(reinterpret_cast<IDXGISwapChain*>(swap));
+    std::lock_guard lock(s.mutex);
+    if(s.swapchain!=swap||s.swapchain_identity!=identity||!s.width){DXGI_SWAP_CHAIN_DESC desc{};if(FAILED(reinterpret_cast<IDXGISwapChain*>(swap)->GetDesc(&desc)))return;
+        if(s.swapchain&&s.swapchain!=swap&&desc.OutputWindow!=s.window&&s.last_qpc&&double(qpc.QuadPart-s.last_qpc)<s.frequency*.5)return;
+        if(s.swapchain&&(s.swapchain!=swap||s.swapchain_identity!=identity))invalidate_surface_locked();
+        s.swapchain=swap;s.swapchain_identity=identity;s.window=desc.OutputWindow;s.width=desc.BufferDesc.Width;s.height=desc.BufferDesc.Height;s.fullscreen=!desc.Windowed;
+    }
     if(s.capture_active&&!s.cancel){const auto stage=generic::image_sequence_progress();
         if(stage!=s.capture_stage){
             if(stage>=1&&stage<=3){s.capture_stamps[stage-1]=optimizer::policy_stamp();try{s.frame_states[stage-1]=optimizer::frame_state_sample();}catch(...){s.cancel=true;}}
             // The next policy is selected at the Present boundary, before the
             // application's next frame. File IO runs independently on a worker.
             std::lock_guard policy_lock(s.policy_mutex);
-            if(!s.cancel&&!optimizer::configure_bundle(stage==1?s.capture_bundle:arc::PolicyBundle{}))s.cancel=true;
+            if(!s.cancel&&!optimizer::configure_bundle(stage==1?s.capture_bundle:arc::PolicyBundle{},true,0,s.frames+240))s.cancel=true;
             if(stage==1)s.candidate_epoch=optimizer::policy_stamp().epoch;
             s.capture_stage=stage;if(stage>=3)s.capture_active=false;
         }
     }
     if(s.last_qpc){const auto elapsed=(double(qpc.QuadPart)-double(s.last_qpc))*1000/s.frequency;if(elapsed>0&&elapsed<1000){s.periods[s.cursor++%s.periods.size()]=elapsed;s.count=std::min<unsigned>(s.count+1,static_cast<unsigned>(s.periods.size()));}}
-    s.last_qpc=qpc.QuadPart;++s.frames;s.changed.notify_all();
+    s.last_qpc=qpc.QuadPart;++s.frames;optimizer::present_frame(s.frames);s.changed.notify_all();
 }
-void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto status=s.status;status["present_samples"]=s.frames;status["objective"]=s.maximize?"maximize_fps":"target_fps";
+void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();auto status=s.status;status["present_samples"]=s.frames;status["objective"]=s.maximize?"maximize_fps":"target_fps";status["window_handle"]=reinterpret_cast<std::uintptr_t>(s.window);status["diagnostics_enabled"]=s.diagnostics_enabled.load();status["surface_revision"]=s.surface_revision.load();status["exclusive_fullscreen"]=s.fullscreen;
     const auto count=std::min(32u,s.count);if(count){double total=0;for(unsigned i=0;i<count;++i)total+=s.periods[(s.cursor+s.periods.size()-1-i)%s.periods.size()];if(total>0){status["current_fps"]=1000*count/total;status["current_frame_ms"]=total/count;}}
     out<<status.dump();}
 }

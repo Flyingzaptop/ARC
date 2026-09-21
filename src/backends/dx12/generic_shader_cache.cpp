@@ -41,6 +41,20 @@ bool store(const std::filesystem::path& root,const std::string& key,const std::f
         return MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING)!=FALSE;
     }catch(...){return false;}
 }
+std::string restore_decline(const std::filesystem::path& root,const std::string& key)noexcept{
+    try{if(!valid_key(key))return {};const auto path=root/(key+".json");if(std::filesystem::file_size(path)>4096)return {};
+        std::ifstream file(path);const auto value=Json::parse(file);const auto reason=value.at("declined").get<std::string>();
+        if(value.at("schema")!=1||value.at("key")!=key||reason.empty()||reason.size()>512||value.at("reason_sha256")!=digest({reinterpret_cast<const std::byte*>(reason.data()),reason.size()}))return {};
+        return reason;
+    }catch(...){return {};}
+}
+bool store_decline(const std::filesystem::path& root,const std::string& key,const std::string& reason)noexcept{
+    try{if(!valid_key(key)||reason.empty()||reason.size()>512)return false;std::filesystem::create_directories(root);
+        const auto final=root/(key+".json"),temp=root/(key+".tmp-"+std::to_string(GetCurrentProcessId()));
+        const Json value{{"schema",1},{"key",key},{"declined",reason},{"reason_sha256",digest({reinterpret_cast<const std::byte*>(reason.data()),reason.size()})}};
+        std::ofstream file(temp);file<<value.dump();file.close();return file&&MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING);
+    }catch(...){return false;}
+}
 void trim(const std::filesystem::path& root,std::uintmax_t maximum)noexcept{
     try{if(!std::filesystem::is_directory(root))return;std::uintmax_t total=0;std::vector<std::filesystem::directory_entry> manifests;
         for(const auto& entry:std::filesystem::directory_iterator(root)){if(!entry.is_regular_file())continue;total+=entry.file_size();if(entry.path().extension()==L".json"&&valid_key(entry.path().stem().string()))manifests.push_back(entry);}

@@ -18,8 +18,11 @@ public:
     bool ready() const noexcept;
     bool write(); // worker only, after ready(); false reports GPU/IO failure
     void color_space(UINT value,bool known) noexcept {color_space_=value;color_space_known_=known;}
+    void execution(std::vector<optimizer::GpuControl::ExecutionReadback> value){execution_=std::move(value);}
     void release_queue_for_cache() noexcept {list_.Reset();allocator_.Reset();queue_.Reset();execution_.clear();}
     [[nodiscard]] bool submitted() const noexcept {return submitted_;}
+    Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence()const noexcept{return SUCCEEDED(signal_result_)?fence_:nullptr;}
+    bool unfenced_submission()const noexcept{return submitted_&&FAILED(signal_result_)&&device_&&SUCCEEDED(device_->GetDeviceRemovedReason());}
 private:
     template<class T> using Ptr=Microsoft::WRL::ComPtr<T>;
     Ptr<ID3D12Device> device_;

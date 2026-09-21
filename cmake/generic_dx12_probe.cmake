@@ -16,6 +16,7 @@ if(WIN32 AND ARC_GENERIC_DX12_PROBE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_pcf_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_zero_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_edge_transform.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_spatial_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_mip_transform.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12/generic_uniform_access.cpp)
     target_include_directories(arc-generic-shader-transform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/backends/dx12)

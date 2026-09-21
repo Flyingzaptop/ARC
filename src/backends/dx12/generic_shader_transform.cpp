@@ -80,6 +80,7 @@ std::string normalize_converted_dxil(std::string_view input){
 Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,bool runtime_control,unsigned requested_control_space,bool execution_marker) {
     Transform out;
     auto reject=[&](std::string reason){out.reason=std::move(reason);out.ir.clear();return out;};
+    if(execution_marker&&!runtime_control)return reject("execution_marker_requires_runtime_control");
     try {
         if(input.size()>8*1024*1024||input.empty())return reject("ir_size");
         if((x_rate!=1&&x_rate!=2)||(y_rate!=1&&y_rate!=2))return reject("rate");
@@ -217,11 +218,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 for(std::size_t n=0;n<flags.size();n+=2)if(integer(flags[n])==0){if(!flags[n+1].starts_with("i64 "))return reject("shader_flags");flags[n+1]="i64 "+std::to_string(std::stoull(flags[n+1].substr(4))|16ull);found=true;}
                 if(!found){flags.push_back("i32 0");flags.push_back("i64 16");}
                 const auto property_id=metadata_ref(entries[4]);for(auto& l:lines)if(l.starts_with("!"+std::to_string(property_id)+" = "))l=format(property_id,flags);
-                out.execution_marker=true;
+                out.execution_marker=true;out.execution_marker_range=marker_range;
             }
             for(auto& l:lines)if(l.starts_with("!"+std::to_string(root_id)+" = "))l=format(root_id,resource_lists);
             appended_metadata+="\n"+format(list_id,cbuffers)+"\n!"+std::to_string(control_id)+" = !{i32 "+std::to_string(control_range)+
-                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 "+(execution_marker?"80":"48")+", null}\n";
+                ", %arc_coarse_control_buffer* undef, !\"\", i32 "+std::to_string(space)+", i32 0, i32 1, i32 "+(execution_marker?"112":"48")+", null}\n";
         }
         // Numeric SSA ids and anonymous block ids must be named before adding
         // instructions. Renumbering only definitions would corrupt PHI edges.
@@ -237,7 +238,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             if(text.find("declare %dx.types.Dimensions @dx.op.getDimensions(")==text.npos)generated<<"declare %dx.types.Dimensions @dx.op.getDimensions(i32, %dx.types.Handle, i32)\n";
         }
         if(runtime_control){
-            generated<<"%arc_coarse_control_buffer = type { ["<<(execution_marker?20:12)<<" x i32] }\n";
+            generated<<"%arc_coarse_control_buffer = type { ["<<(execution_marker?28:12)<<" x i32] }\n";
             if(execution_marker){generated<<"%arc_execution_buffer = type { i32 }\n";
                 if(text.find("declare void @dx.op.bufferStore.i32(")==text.npos)generated<<"declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8)\n";}
             if(text.find("%dx.types.CBufRet.i32 = type")==text.npos)generated<<"%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }\n";

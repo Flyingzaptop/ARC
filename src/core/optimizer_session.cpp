@@ -39,9 +39,10 @@ void OptimizerSession::candidates(std::vector<SessionAction> actions){
     if((pending_&&!current(pending_->id,pending_->generation))||
        (state_.active_action&&!current(state_.active_action,active_generation_)))candidate_epoch_changed_=true;
 }
-SessionRequest OptimizerSession::frame(double frame_ms,bool stable){
+SessionRequest OptimizerSession::frame(double frame_ms,bool stable,std::uint64_t elapsed_frames){
     if(state_.phase==SessionPhase::Faulted)return {};
-    if(candidate_epoch_changed_||(state_.active_action&&++evidence_age_>=config_.max_evidence_samples))return scene_changed();
+    if(candidate_epoch_changed_||(state_.active_action&&elapsed_frames>=config_.max_evidence_samples-evidence_age_))return scene_changed();
+    if(state_.active_action)evidence_age_+=static_cast<std::uint32_t>(elapsed_frames);
     if(!positive(frame_ms)||frame_ms>10000)return scene_changed();
     state_.filtered_frame_ms=samples_?state_.filtered_frame_ms*.8+frame_ms*.2:frame_ms;++samples_;
     if(!stable)return scene_changed();

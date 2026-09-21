@@ -17,7 +17,10 @@ parser.add_argument("--mode",choices=["vrs","observe","profile","compute-off","c
 parser.add_argument("--frames",type=int,default=600)
 parser.add_argument("--initialization-seconds",type=float,default=0)
 parser.add_argument("--measurement-seconds",type=float,default=0)
+parser.add_argument("--oracle-interval",type=int,default=0,help="Separate quality-oracle run; invalidates performance comparison")
 parser.add_argument("--cache",type=Path)
+parser.add_argument("--overlay",action="store_true")
+parser.add_argument("--visible",action="store_true",help="Show the owned renderer and diagnostics without activating them")
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
@@ -31,6 +34,9 @@ if not 0<=args.initialization_seconds<=120 or not 0<=args.measurement_seconds<=6
     parser.error('Initialization must be 0..120s and measurement 0..60s')
 if args.initialization_seconds and not args.measurement_seconds:
     parser.error('Timed initialization requires a timed measurement')
+if args.oracle_interval and args.oracle_interval<300: parser.error('Oracle interval must be at least 300 frames')
+if args.overlay and (not args.dll or args.auto_target is None):
+    parser.error('Overlay test requires the automatic DLL session')
 process_budget=args.initialization_seconds+args.measurement_seconds+30 if args.measurement_seconds else 60
 sdk=args.sdk.resolve();output=args.output.resolve()
 output.mkdir(parents=True,exist_ok=False)
@@ -45,17 +51,20 @@ if args.cpu_state_cache and not args.dll: raise ValueError('CPU state cache requ
 if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env["ARC_BENCH_OUTPUT"]=str(output)
 env["ARC_BENCH_FRAMES"]=str(args.frames)
+env["ARC_BENCH_ORACLE_INTERVAL"]=str(args.oracle_interval)
 for key in ('ARC_BENCH_MEASUREMENT_SECONDS','ARC_BENCH_INITIALIZATION_SECONDS'):
     env.pop(key,None)
 if args.measurement_seconds:
     env['ARC_BENCH_MEASUREMENT_SECONDS']=str(args.measurement_seconds)
     env['ARC_BENCH_INITIALIZATION_SECONDS']=str(args.initialization_seconds)
 env.pop("ARC_BENCH_DLL",None)
+env["ARC_OPTIMIZER_LAZY_COMPILE"]="1" if args.mode=="compute-off" else "0"
 env["ARC_BENCH_MODE"]=args.mode
 if args.edge_threshold is not None:
     if not args.mode.startswith("compute-adaptive-") or not 0 <= args.edge_threshold <= 2:
         raise ValueError("Edge threshold 0..2 requires an adaptive compute mode")
-    env["ARC_BENCH_MODE"]=args.mode.replace("-hot", f"@{args.edge_threshold}-hot")
+    env["ARC_OPTIMIZER_LAZY_COMPILE"]="1" if args.mode=="compute-off" else "0"
+env["ARC_BENCH_MODE"]=args.mode.replace("-hot", f"@{args.edge_threshold}-hot")
 if args.dll: env["ARC_BENCH_DLL"]=str(args.dll.resolve())
 for key in ("ARC_OPTIMIZER_WORKER","ARC_OPTIMIZER_COMPILER","ARC_OPTIMIZER_CACHE"):
     env.pop(key,None)
@@ -76,7 +85,7 @@ if args.auto_target is not None:
         raise ValueError("Automatic target requires a compute-enabled DLL and FPS in (0,1000]")
     import sys
     config=output/"automatic-config.json"
-    config.write_text(json.dumps({"target_fps":args.auto_target,"python":sys.executable,
+    config.write_text(json.dumps({"target_fps":args.auto_target,"diagnostics_overlay":args.overlay,"python":sys.executable,
         "critic":str(Path(__file__).resolve().parent/"optimizer-live-quality.py"),
         "output":str(output/"automatic"),"maximum_seconds":int(process_budget-5)},indent=2))
     env["ARC_AUTO_CONFIG"]=str(config)
@@ -87,6 +96,8 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
           "automatic_target_fps":args.auto_target,
           "initialization_seconds":args.initialization_seconds,"measurement_seconds":args.measurement_seconds,"process_budget_seconds":process_budget,
+          "overlay":args.overlay,"visible":args.visible,
+          "oracle_interval":args.oracle_interval,"performance_run":not bool(args.oracle_interval),
           "cost_diagnostics":bool(args.measure_costs and args.dll),
           "cpu_state_cache":args.cpu_state_cache,
           "worker_placement":args.worker_placement,
@@ -96,17 +107,20 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
 manifest['thermal_gate']=wait_for_cool_gpu(args.max_start_temperature)
 (output/"manifest.json").write_text(json.dumps(manifest,indent=2))
-startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
+startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=1 if args.visible else 0
+monitor_startup=subprocess.STARTUPINFO();monitor_startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;monitor_startup.wShowWindow=4 if args.visible else 0
 started=time.monotonic()
-cpu=None;gpu_rows=[];next_gpu=0
+cpu=None;overlay=None;gpu_rows=[];next_gpu=0
 with (output/"stdout.txt").open("w") as stdout,(output/"stderr.txt").open("w") as stderr:
     process=subprocess.Popen(command,cwd=exe.parent,env=env,stdout=stdout,stderr=stderr,startupinfo=startup)
     try:
         while process.poll() is None:
             if time.monotonic()-started>process_budget: raise subprocess.TimeoutExpired(command,process_budget)
             rows_path=output/"frames.jsonl"
+            if args.overlay and overlay is None and (output/'arc.json').exists():
+                overlay=subprocess.Popen([str(args.dll.resolve().parent/'arc-launcher.exe'),'--monitor',str(output/'arc.json')],startupinfo=monitor_startup,creationflags=subprocess.CREATE_NO_WINDOW)
             if (args.measurement_seconds or args.frames>=600) and shutil.which("nvidia-smi") and time.monotonic()>=next_gpu:
-                sample=subprocess.run(["nvidia-smi","--query-gpu=timestamp,utilization.gpu,utilization.memory,clocks.current.graphics,memory.used,temperature.gpu,power.draw","--format=csv,nounits"],capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW)
+                sample=subprocess.run(["nvidia-smi","--query-gpu=timestamp,utilization.gpu,utilization.memory,clocks.current.graphics,memory.used,temperature.gpu,power.draw,clocks.current.memory,clocks_event_reasons.active","--format=csv,nounits"],capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW)
                 gpu_rows.append({"elapsed_s":time.monotonic()-started,"measured_phase":rows_path.exists() and rows_path.stat().st_size>0,"csv":sample.stdout,"exit_code":sample.returncode})
                 with (output/'gpu-samples.jsonl').open('a') as telemetry:
                     telemetry.write(json.dumps(gpu_rows[-1])+'\n')
@@ -118,6 +132,8 @@ with (output/"stdout.txt").open("w") as stdout,(output/"stderr.txt").open("w") a
     except subprocess.TimeoutExpired:
         process.kill();process.wait();raise RuntimeError(f"Owned benchmark exceeded {process_budget} seconds")
     finally:
+        if overlay is not None:
+            overlay.terminate();overlay.wait(timeout=5)
         (output/"gpu-samples.json").write_text(json.dumps(gpu_rows,indent=2))
         manifest.update(exit_code=process.poll(),process_seconds=time.monotonic()-started)
         (output/"manifest.json").write_text(json.dumps(manifest,indent=2))

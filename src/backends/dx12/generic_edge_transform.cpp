@@ -1,4 +1,5 @@
 #include "generic_edge_transform.hpp"
+#include "generic_spatial_transform.hpp"
 #include <sstream>
 #include <regex>
 #include <algorithm>
@@ -19,6 +20,11 @@ EdgeTransform protect_input_edges(std::string_view input,const Transform& contra
     }
     if(sources.empty())return result;
     std::ostringstream declarations;
+    if(contract.execution_marker){
+        if(input.find("%dx.types.ResRet.i32 = type")==input.npos)declarations<<"%dx.types.ResRet.i32 = type { i32, i32, i32, i32, i32 }\n";
+        if(input.find("declare %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(")==input.npos)declarations<<"declare %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32, %dx.types.Handle, i32, i32)\n";
+        if(input.find("declare i32 @dx.op.atomicBinOp.i32(")==input.npos)declarations<<"declare i32 @dx.op.atomicBinOp.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32)\n";
+    }
     if(input.find("declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(")==input.npos)declarations<<"declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i32)\n";
     if(input.find("declare float @dx.op.binary.f32(")==input.npos)declarations<<"declare float @dx.op.binary.f32(i32, float, float)\n";
     if(input.find("declare float @dx.op.unary.f32(")==input.npos)declarations<<"declare float @dx.op.unary.f32(i32, float)\n";
@@ -46,7 +52,7 @@ EdgeTransform protect_input_edges(std::string_view input,const Transform& contra
             <<"  %arc_edge_"<<name<<j<<" = select i1 %arc_edge_in_"<<name<<j<<", i32 %arc_edge_raw_"<<name<<j<<", i32 %arc_edge_last_"<<name<<"\n";
         }
     }
-    std::string previous_block="arc_edge_scan",previous_error="0.000000e+00",previous_valid="true";
+    std::string previous_block="arc_edge_scan",previous_error="0.000000e+00",previous_valid="true",previous_feature="0.000000e+00";
     for(const auto& r:sources){const auto id=std::to_string(r.range_id),body="arc_edge_source"+id,join="arc_edge_join"+id;
         prelude<<"  %arc_edge_bit"<<id<<" = and i32 %arc_edge_mask, "<<(1u<<r.range_id)<<"\n"
             <<"  %arc_edge_read"<<id<<" = icmp ne i32 %arc_edge_bit"<<id<<", 0\n"
@@ -75,11 +81,15 @@ EdgeTransform protect_input_edges(std::string_view input,const Transform& contra
             <<"  %arc_edge_ratio"<<key<<" = fdiv float %arc_edge_range"<<key<<", %arc_edge_scale"<<key<<"\n"
             <<"  %arc_edge_error"<<key<<" = call float @dx.op.binary.f32(i32 35, float "<<error<<", float %arc_edge_ratio"<<key<<")\n";error="%arc_edge_error"+key;
         }
+        prelude<<"  %arc_edge_feature"<<id<<" = fadd float "<<previous_feature<<", %arc_edge_value"<<id<<"_4_0\n";
         prelude<<"  br label %"<<join<<"\n"<<join<<":\n"
             <<"  %arc_edge_accum"<<id<<" = phi float [ "<<previous_error<<", %"<<previous_block<<" ], [ "<<error<<", %"<<body<<" ]\n"
+            <<"  %arc_edge_feature_sum"<<id<<" = phi float [ "<<previous_feature<<", %"<<previous_block<<" ], [ %arc_edge_feature"<<id<<", %"<<body<<" ]\n"
             <<"  %arc_edge_ok"<<id<<" = phi i1 [ "<<previous_valid<<", %"<<previous_block<<" ], [ "<<valid<<", %"<<body<<" ]\n";
-        previous_error="%arc_edge_accum"+id;previous_valid="%arc_edge_ok"+id;previous_block=join;
+        previous_error="%arc_edge_accum"+id;previous_valid="%arc_edge_ok"+id;previous_block=join;previous_feature="%arc_edge_feature_sum"+id;
     }
+    const auto spatial=spatial_importance(contract,previous_error,previous_valid,previous_feature,previous_block);
+    prelude<<spatial.ir;previous_error=spatial.error;previous_valid=spatial.valid;previous_block=spatial.block;
     prelude<<"  %arc_edge_small = fcmp ole float "<<previous_error<<", %arc_edge_threshold\n"
         <<"  %arc_edge_ok_inputs = and i1 "<<previous_valid<<", %arc_edge_has_sources\n"
         <<"  %arc_edge_safe = and i1 %arc_edge_ok_inputs, %arc_edge_small\n"

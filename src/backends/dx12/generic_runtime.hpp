@@ -35,6 +35,7 @@ void snapshot(std::ostream&);
 void unsupported() noexcept;
 void observe_swapchain(IDXGISwapChain*,IUnknown*) noexcept;
 ID3D12CommandQueue* acquire_presentation_queue(IDXGISwapChain*) noexcept; // caller releases
+std::uint64_t presentation_identity(IDXGISwapChain*) noexcept;
 void observe_color_space(IDXGISwapChain*,DXGI_COLOR_SPACE_TYPE) noexcept;
 void invalidate_color_spaces() noexcept;
 std::uint64_t before_present(IDXGISwapChain*) noexcept;
@@ -46,6 +47,8 @@ bool request_image(const std::filesystem::path&,bool features=false) noexcept;
 // excluded until all three jobs finish. Progress means submitted, not written.
 bool request_image_sequence(const std::array<std::filesystem::path,3>&,IDXGISwapChain*) noexcept;
 unsigned image_sequence_progress() noexcept;
+void cancel_image_sequence() noexcept;
+bool retire_images_before_resize() noexcept;
 void flush_image() noexcept;
 bool gpu_helpers_idle() noexcept;
 bool request_timing(const std::filesystem::path&,UINT seconds=60) noexcept;

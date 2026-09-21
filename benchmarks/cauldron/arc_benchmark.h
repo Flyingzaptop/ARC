@@ -12,6 +12,7 @@ using Api=DWORD(WINAPI*)(void*);
 struct State {
     bool enabled{},ready{};
     unsigned tick{},warmup{120},frames{600};
+    unsigned oracle_interval{};
     bool timed{},measuring{},finished{};unsigned measured_frames{};
     double initialization_seconds{},measurement_seconds{};
     Clock::time_point measurement_start;
@@ -27,6 +28,8 @@ inline std::wstring env(const wchar_t* name){wchar_t value[32768]{};GetEnvironme
 inline void initialize(){
     auto& s=state();s.output=env(L"ARC_BENCH_OUTPUT");s.enabled=!s.output.empty();if(!s.enabled)return;
     const auto frames=env(L"ARC_BENCH_FRAMES");if(!frames.empty())s.frames=std::stoul(frames);
+    const auto oracle=env(L"ARC_BENCH_ORACLE_INTERVAL");if(!oracle.empty())s.oracle_interval=std::stoul(oracle);
+    if(s.oracle_interval&&s.oracle_interval<300)throw std::runtime_error("Oracle capture interval must be at least 300 frames");
     const auto seconds=env(L"ARC_BENCH_MEASUREMENT_SECONDS");if(!seconds.empty()){s.measurement_seconds=std::stod(seconds);s.initialization_seconds=std::stod(env(L"ARC_BENCH_INITIALIZATION_SECONDS"));s.timed=true;}
     if(s.timed&&(s.measurement_seconds<1||s.measurement_seconds>60||s.initialization_seconds<0||s.initialization_seconds>120))throw std::runtime_error("Bounded benchmark durations required");
     if(s.frames<1||(!s.timed&&s.frames>3600))throw std::runtime_error("Benchmark frame count 1..3600 required in frame-count mode");

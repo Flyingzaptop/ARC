@@ -1,0 +1,98 @@
+#include "generic_spatial_transform.hpp"
+#include <sstream>
+namespace arc::dx12::shader {
+SpatialPrelude spatial_importance(const Transform& c,std::string error,std::string valid,std::string feature,std::string block){
+    if(!c.execution_marker)return {{},std::move(error),std::move(valid),std::move(block)};
+    std::ostringstream s;
+    s<<"  %arc_map_control = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 5)\n";
+    const char* names[]{"capacity","frame","key_lo","key_hi"};
+    for(unsigned i=0;i<4;++i)s<<"  %arc_map_"<<names[i]<<" = extractvalue %dx.types.CBufRet.i32 %arc_map_control, "<<i<<"\n";
+    s<<"  %arc_map_capacity_ok = icmp eq i32 %arc_map_capacity, 8192\n"
+      <<"  %arc_map_frame_ok = icmp ne i32 %arc_map_frame, 0\n"
+      <<"  %arc_map_key = or i32 %arc_map_key_lo, %arc_map_key_hi\n"
+      <<"  %arc_map_key_ok = icmp ne i32 %arc_map_key, 0\n"
+      <<"  %arc_map_ready0 = and i1 %arc_map_capacity_ok, %arc_map_frame_ok\n"
+      <<"  %arc_map_ready = and i1 %arc_map_ready0, %arc_map_key_ok\n";
+    for(unsigned a=0;a<2;++a){const char axis=a?'y':'x';const auto tile=c.threads[a]*2;s
+      <<"  %arc_map_tile_"<<axis<<" = udiv i32 %arc_edge_group_"<<axis<<", 2\n"
+      <<"  %arc_map_extent_"<<axis<<" = add i32 %arc_coarse_"<<(a?"height":"width")<<", "<<tile-1<<"\n"
+      <<"  %arc_map_tiles_"<<axis<<" = udiv i32 %arc_map_extent_"<<axis<<", "<<tile<<"\n"
+      <<"  %arc_map_inside_"<<axis<<" = icmp ult i32 %arc_map_tile_"<<axis<<", %arc_map_tiles_"<<axis<<"\n";}
+    s<<"  %arc_map_row = mul i32 %arc_map_tile_y, %arc_map_tiles_x\n"
+      <<"  %arc_map_index = add i32 %arc_map_row, %arc_map_tile_x\n"
+      <<"  %arc_map_index_ok = icmp ult i32 %arc_map_index, 8192\n"
+      <<"  %arc_map_inside = and i1 %arc_map_inside_x, %arc_map_inside_y\n"
+      <<"  %arc_map_bounds = and i1 %arc_map_inside, %arc_map_index_ok\n"
+      <<"  %arc_map_available = and i1 %arc_map_ready, %arc_map_bounds\n"
+      <<"  br i1 %arc_map_available, label %arc_map_read, label %arc_map_done\narc_map_read:\n"
+      <<"  %arc_map_buffer = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 "<<c.execution_marker_range<<", i32 0, i1 false)\n"
+      <<"  %arc_map_extra = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 6)\n"
+      <<"  %arc_map_flags = extractvalue %dx.types.CBufRet.i32 %arc_map_extra, 2\n"
+      <<"  %arc_map_page = and i32 %arc_map_flags, 1\n"
+      <<"  %arc_map_previous_page = xor i32 %arc_map_page, 1\n"
+      <<"  %arc_map_base0 = mul i32 %arc_map_index, 32\n"
+      <<"  %arc_map_base = add i32 %arc_map_base0, 32\n"
+      <<"  %arc_map_previous_page_bytes = mul i32 %arc_map_previous_page, 262144\n"
+      <<"  %arc_map_previous = add i32 %arc_map_base, %arc_map_previous_page_bytes\n"
+      <<"  %arc_map_previous_feature = add i32 %arc_map_previous, 16\n"
+      <<"  %arc_map_old = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %arc_map_buffer, i32 %arc_map_previous, i32 undef)\n"
+      <<"  %arc_map_old_feature = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %arc_map_buffer, i32 %arc_map_previous_feature, i32 undef)\n"
+      <<"  %arc_map_old_key_lo = extractvalue %dx.types.ResRet.i32 %arc_map_old, 0\n"
+      <<"  %arc_map_old_key_hi = extractvalue %dx.types.ResRet.i32 %arc_map_old, 1\n"
+      <<"  %arc_map_old_frame = extractvalue %dx.types.ResRet.i32 %arc_map_old, 2\n"
+      <<"  %arc_map_old_feature_bits = extractvalue %dx.types.ResRet.i32 %arc_map_old_feature, 1\n"
+      <<"  %arc_map_old_value = bitcast i32 %arc_map_old_feature_bits to float\n"
+      <<"  %arc_map_same_lo = icmp eq i32 %arc_map_old_key_lo, %arc_map_key_lo\n"
+      <<"  %arc_map_same_hi = icmp eq i32 %arc_map_old_key_hi, %arc_map_key_hi\n"
+      <<"  %arc_map_age = sub i32 %arc_map_frame, %arc_map_old_frame\n"
+      <<"  %arc_map_age_min = icmp uge i32 %arc_map_age, 1\n"
+      <<"  %arc_map_age_max = icmp ule i32 %arc_map_age, 4\n"
+      <<"  %arc_map_fresh = and i1 %arc_map_age_min, %arc_map_age_max\n"
+      <<"  %arc_map_same_key = and i1 %arc_map_same_lo, %arc_map_same_hi\n"
+      <<"  %arc_map_history = and i1 %arc_map_same_key, %arc_map_fresh\n"
+      <<"  %arc_map_delta = fsub float "<<feature<<", %arc_map_old_value\n"
+      <<"  %arc_map_delta_abs = call float @dx.op.unary.f32(i32 6, float %arc_map_delta)\n"
+      <<"  %arc_map_old_abs = call float @dx.op.unary.f32(i32 6, float %arc_map_old_value)\n"
+      <<"  %arc_map_new_abs = call float @dx.op.unary.f32(i32 6, float "<<feature<<")\n"
+      <<"  %arc_map_scale0 = call float @dx.op.binary.f32(i32 35, float %arc_map_old_abs, float %arc_map_new_abs)\n"
+      <<"  %arc_map_scale = call float @dx.op.binary.f32(i32 35, float %arc_map_scale0, float 0x3F847AE140000000)\n"
+      <<"  %arc_map_motion = fdiv float %arc_map_delta_abs, %arc_map_scale\n"
+      <<"  %arc_map_finite = fcmp ord float %arc_map_motion, %arc_map_motion\n"
+      <<"  %arc_map_confident0 = and i1 %arc_map_history, %arc_map_finite\n"
+      <<"  %arc_map_confident = and i1 %arc_map_confident0, "<<valid<<"\n"
+      <<"  %arc_map_error0 = call float @dx.op.binary.f32(i32 35, float "<<error<<", float %arc_map_motion)\n"
+      <<"  %arc_map_error = select i1 %arc_map_confident, float %arc_map_error0, float 1.000000e+03\n"
+      <<"  %arc_map_small = fcmp ole float %arc_map_error, %arc_edge_threshold\n"
+      <<"  %arc_map_allow = and i1 %arc_map_confident, %arc_map_small\n"
+      <<"  %arc_map_rate_x = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 0\n"
+      <<"  %arc_map_rate_y = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 1\n"
+      <<"  %arc_map_twice_x = icmp eq i32 %arc_map_rate_x, 2\n"
+      <<"  %arc_map_twice_y = icmp eq i32 %arc_map_rate_y, 2\n"
+      <<"  %arc_map_mode_x = select i1 %arc_map_twice_x, i32 2, i32 0\n"
+      <<"  %arc_map_mode_y = select i1 %arc_map_twice_y, i32 1, i32 0\n"
+      <<"  %arc_map_requested_mode = or i32 %arc_map_mode_x, %arc_map_mode_y\n"
+      <<"  %arc_map_mode = select i1 %arc_map_allow, i32 %arc_map_requested_mode, i32 0\n";
+    for(unsigned a=0;a<2;++a){const char axis=a?'y':'x';s
+      <<"  %arc_map_raw_"<<axis<<" = call i32 @dx.op.threadId.i32(i32 93, i32 "<<a<<")\n"
+      <<"  %arc_map_local_"<<axis<<" = urem i32 %arc_map_raw_"<<axis<<", "<<c.threads[a]*2<<"\n"
+      <<"  %arc_map_first_"<<axis<<" = icmp eq i32 %arc_map_local_"<<axis<<", 0\n";}
+    s<<"  %arc_map_writer = and i1 %arc_map_first_x, %arc_map_first_y\n"
+      <<"  br i1 %arc_map_writer, label %arc_map_store, label %arc_map_join\narc_map_store:\n"
+      <<"  %arc_map_page_bytes = mul i32 %arc_map_page, 262144\n"
+      <<"  %arc_map_current = add i32 %arc_map_base, %arc_map_page_bytes\n"
+      <<"  %arc_map_current_feature = add i32 %arc_map_current, 16\n"
+      <<"  %arc_map_error_bits = bitcast float %arc_map_error to i32\n"
+      <<"  %arc_map_feature_bits = bitcast float "<<feature<<" to i32\n"
+      <<"  %arc_map_confidence = select i1 %arc_map_confident, i32 1065353216, i32 0\n"
+      <<"  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %arc_map_buffer, i32 %arc_map_current, i32 undef, i32 %arc_map_key_lo, i32 %arc_map_key_hi, i32 %arc_map_frame, i32 %arc_map_mode, i8 15)\n"
+      <<"  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %arc_map_buffer, i32 %arc_map_current_feature, i32 undef, i32 %arc_map_error_bits, i32 %arc_map_feature_bits, i32 %arc_map_confidence, i32 0, i8 15)\n"
+      <<"  %arc_map_is_coarse = icmp ne i32 %arc_map_mode, 0\n"
+      <<"  %arc_map_coarse_count = zext i1 %arc_map_is_coarse to i32\n"
+      <<"  %arc_map_count0 = call i32 @dx.op.atomicBinOp.i32(i32 78, %dx.types.Handle %arc_map_buffer, i32 0, i32 16, i32 undef, i32 undef, i32 %arc_map_coarse_count)\n"
+      <<"  %arc_map_count1 = call i32 @dx.op.atomicBinOp.i32(i32 78, %dx.types.Handle %arc_map_buffer, i32 0, i32 20, i32 undef, i32 undef, i32 1)\n"
+      <<"  br label %arc_map_join\narc_map_join:\n  br label %arc_map_done\narc_map_done:\n"
+      <<"  %arc_map_result_error = phi float [ 1.000000e+03, %"<<block<<" ], [ %arc_map_error, %arc_map_join ]\n"
+      <<"  %arc_map_result_valid = phi i1 [ false, %"<<block<<" ], [ %arc_map_confident, %arc_map_join ]\n";
+    return {s.str(),"%arc_map_result_error","%arc_map_result_valid","arc_map_done"};
+}
+}

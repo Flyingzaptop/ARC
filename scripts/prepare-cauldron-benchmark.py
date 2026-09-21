@@ -55,6 +55,7 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
             if(bench.timed?bench.measuring:bench.tick>=bench.warmup){
                 json row;row["frame"]=bench.measured_frames++;row["pose"]=bench.tick%600;row["scene_frame"]=bench.tick;
                 row["measurement_elapsed_ms"]=bench.timed?arc_bench::ms(frame_end-bench.measurement_start):0;
+                DWORD foreground_pid{};GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);row["foreground"]=foreground_pid==GetCurrentProcessId();
                 row["frame_ms"]=arc_bench::ms(frame_end-bench.previous_end);row["loop_ms"]=arc_bench::ms(arc_bench::Clock::now()-bench.frame_start);
                 row["present_ms"]=bench.present_ms;row["submit_ms"]=bench.submit_ms;
                 row["swapchain_wait_ms"]=bench.wait_ms;row["allocator_wait_ms"]=bench.allocator_ms;
@@ -71,6 +72,10 @@ patch("framework/cauldron/framework/src/core/framework.cpp", [
                 bench.rows<<row.dump()<<'\\n';
             }
             bench.previous_end=frame_end;
+            if(bench.oracle_interval&&bench.tick&&bench.tick%bench.oracle_interval==0&&bench.tick/bench.oracle_interval<=32){
+                m_pSwapChain->DumpSwapChainToFile(bench.output+L"/oracle-"+std::to_wstring(bench.tick)+L".png");
+                std::ofstream oracle(bench.output+L"/oracle.jsonl",std::ios::app);oracle<<json({{"scene_frame",bench.tick},{"pose",bench.tick%600},{"elapsed_ms",arc_bench::ms(frame_end-bench.ready_start)}}).dump()<<'\\n';
+            }
             ++bench.tick;
             const bool done=bench.timed?(bench.measuring&&arc_bench::ms(frame_end-bench.measurement_start)>=bench.measurement_seconds*1000):(bench.tick>=bench.warmup+bench.frames||arc_bench::ms(frame_end-bench.ready_start)>55000);
             if(done){bench.finished=true;

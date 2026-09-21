@@ -11,7 +11,7 @@ if(WIN32)
     target_link_libraries(arc-game-monitor PRIVATE dxgi)
     target_compile_features(arc-game-monitor PRIVATE cxx_std_23)
 
-    add_executable(arc-launcher WIN32 ${CMAKE_CURRENT_SOURCE_DIR}/src/launcher/arc_launcher_main.cpp)
+    add_executable(arc-launcher WIN32 ${CMAKE_CURRENT_SOURCE_DIR}/src/launcher/arc_launcher_main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/launcher/arc_overlay.cpp)
     target_compile_definitions(arc-launcher PRIVATE UNICODE _UNICODE NOMINMAX)
     target_link_libraries(arc-launcher PRIVATE arc::core comctl32 comdlg32 shell32 advapi32 gdi32)
     target_include_directories(arc-launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/json)

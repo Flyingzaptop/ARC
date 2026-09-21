@@ -3,6 +3,7 @@
 #include "generic_runtime.hpp"
 #include "generic_readback.hpp"
 #include "generic_command_mirror.hpp"
+#include "generic_optimizer.hpp"
 #include "arc/gpu_attribution.hpp"
 #include "arc/descriptor_ledger.hpp"
 #include "arc/frame_timing_window.hpp"
@@ -221,10 +222,16 @@ void begin_capture()noexcept{safe([&]{auto& s=state();if(s.capturing)return;s.gr
 void end_capture(const std::filesystem::path& path)noexcept{safe([&]{auto& s=state();s.capturing=false;std::ofstream file(path);file<<"{\"schema\":1,\"engine_labels\":false,\"shader_access_complete\":false,\"present_resource\":"<<s.present_resource<<",\"present_queue\":"<<s.present_queue<<",\"present_queue_known\":"<<(s.present_queue?"true":"false")<<",\"capture_state_complete\":"<<(s.complete?"true":"false")<<",\"graph\":";s.graph.write_json(file);file<<'}';});}
 void observe_swapchain(IDXGISwapChain* swap,IUnknown* native)noexcept{safe([&]{if(!swap||!native)return;Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;if(FAILED(native->QueryInterface(IID_PPV_ARGS(&queue))))return;const auto id=swapchain_id(swap),qid=identify(queue.Get(),Kind::Queue);if(id&&qid){state().swapchain_queues[id]=qid;state().image_queues[id]=queue;}});}
 ID3D12CommandQueue* acquire_presentation_queue(IDXGISwapChain* swap)noexcept{ID3D12CommandQueue* result=nullptr;safe([&]{const auto object=state().objects.find(reinterpret_cast<std::uintptr_t>(swap));if(object==state().objects.end()||object->second.kind!=Kind::Swapchain)return;const auto found=state().image_queues.find(object->second.id);if(found!=state().image_queues.end()){result=found->second.Get();result->AddRef();}});return result;}
+std::uint64_t presentation_identity(IDXGISwapChain* swap)noexcept{std::uint64_t id=0;safe([&]{const auto found=state().objects.find(reinterpret_cast<std::uintptr_t>(swap));if(found!=state().objects.end()&&found->second.kind==Kind::Swapchain)id=found->second.id;});return id;}
 void observe_color_space(IDXGISwapChain* swap,DXGI_COLOR_SPACE_TYPE space)noexcept{safe([&]{if(swap)state().color_spaces[swapchain_id(swap)]=static_cast<UINT>(space);});}
 void invalidate_color_spaces()noexcept{safe([&]{state().color_spaces.clear();});}
 std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
     if(!state().capturing&&!state().image_pending)return 0;std::uint64_t resource=0;
+    // Acquire optimizer evidence without holding the runtime registry mutex:
+    // releasing a tracked native queue may call back into that registry.
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> proof_queue;
+    safe([&]{auto& s=state();if(!s.image_pending||s.image||s.image_features)return;const auto found=s.image_queues.find(swapchain_id(swap));if(found!=s.image_queues.end())proof_queue=found->second;});
+    auto proof=proof_queue?optimizer::capture_execution(proof_queue.Get()):std::vector<optimizer::GpuControl::ExecutionReadback>{};
     safe([&]{auto& s=state();if(!s.image_pending||s.image)return;const auto id=swapchain_id(swap);
         if(s.sequence_active&&id!=s.sequence_swapchain)return;
         const auto queue=s.image_queues.find(id);
@@ -235,6 +242,7 @@ std::uint64_t before_present(IDXGISwapChain* swap)noexcept{
             if(!s.sequence_spares.empty()){s.image=std::move(s.sequence_spares.back());s.sequence_spares.pop_back();}
             else s.image=std::make_unique<ImageReadback>();
         }else s.image=s.image_spare?std::move(s.image_spare):std::make_unique<ImageReadback>();
+        s.image->execution(std::move(proof));
         s.image_swapchain=id;
         const auto color=s.color_spaces.find(id);s.image->color_space(color==s.color_spaces.end()?0:color->second,color!=s.color_spaces.end());
         if(!s.image->enqueue(swap,queue->second.Get(),s.image_path,mirror::modified_draws(),mirror::requested_rate(),s.image_features)){++s.images_failed;s.image_pending=false;if(!s.image->submitted())s.image.reset();}
@@ -286,6 +294,19 @@ bool request_image_sequence(const std::array<std::filesystem::path,3>& paths,IDX
     });return accepted;
 }
 unsigned image_sequence_progress()noexcept{return state().sequence_submitted.load();}
+void cancel_image_sequence()noexcept{safe([&]{auto& s=state();s.image_pending=false;s.sequence_active=false;});}
+bool retire_images_before_resize()noexcept{
+    try{std::vector<Microsoft::WRL::ComPtr<ID3D12Fence>> fences;bool unfenced=false;
+        safe([&]{auto& s=state();s.image_pending=false;s.sequence_active=false;if(s.image){unfenced=s.image->unfenced_submission();if(auto fence=s.image->completion_fence())fences.push_back(fence);}for(const auto& image:s.sequence_images){unfenced=unfenced||image->unfenced_submission();if(auto fence=image->completion_fence())fences.push_back(fence);}});
+        if(unfenced)return false;
+        const auto until=GetTickCount64()+2000;
+        for(const auto& fence:fences){if(fence->GetCompletedValue()>=1)continue;HANDLE event=CreateEventW(nullptr,FALSE,FALSE,nullptr);if(!event)return false;
+            if(FAILED(fence->SetEventOnCompletion(1,event))){CloseHandle(event);return false;}const auto now=GetTickCount64();const auto result=WaitForSingleObject(event,now<until?DWORD(until-now):0);
+            if(result!=WAIT_OBJECT_0)return false; // keep a pending event alive until process exit
+            CloseHandle(event);
+        }return true;
+    }catch(...){return false;}
+}
 
 bool request_timing(const std::filesystem::path& path,UINT seconds)noexcept{bool accepted=false;safe([&]{auto& s=state();if(!seconds||seconds>60||s.timing||s.timing_writing||!path.is_absolute()||!std::filesystem::is_directory(path.parent_path())||std::filesystem::exists(path))return;s.timing=std::make_unique<FrameTimingWindow>(UINT64(seconds)*1'000'000'000);s.timing_path=path;s.timing_rate=mirror::requested_rate();s.timing_deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds+5);accepted=true;});return accepted;}
 void observation_mode_changed()noexcept{safe([&]{auto& s=state();if(s.timing)s.timing->expire();if(s.capturing||s.armed)invalidate();});}

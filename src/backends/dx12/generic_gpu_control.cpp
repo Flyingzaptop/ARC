@@ -11,7 +11,8 @@ constexpr UINT64 block_bytes=GpuControl::capacity*D3D12_CONSTANT_BUFFER_DATA_PLA
 constexpr auto control_state=D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER|D3D12_RESOURCE_STATE_PREDICATION;
 constexpr UINT calibration_queries=GpuControl::capacity*4+2;
 constexpr UINT64 calibration_bytes=calibration_queries*sizeof(UINT64);
-constexpr UINT64 marker_bytes=GpuControl::capacity*16;
+constexpr UINT64 marker_bytes=GpuControl::capacity*32;
+constexpr UINT64 spatial_page_bytes=GpuControl::spatial_capacity*GpuControl::spatial_record_bytes;
 void check(HRESULT result){if(FAILED(result))throw std::runtime_error("GPU control HRESULT "+std::to_string(result));}
 void barrier(ID3D12GraphicsCommandList* list,ID3D12Resource* buffer,D3D12_RESOURCE_STATES before,D3D12_RESOURCE_STATES after){
     D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition={buffer,D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,before,after};list->ResourceBarrier(1,&b);
@@ -22,7 +23,8 @@ void copy_policy(ID3D12GraphicsCommandList* list,ID3D12Resource* buffer,ID3D12Re
     barrier(list,buffer,D3D12_RESOURCE_STATE_COPY_DEST,control_state);
 }
 }
-GpuControl::GpuControl(ID3D12Device* device,bool measure):device_(device){
+GpuControl::GpuControl(ID3D12Device* device,bool measure,bool spatial):device_(device){
+    static_assert(offsetof(ControlValue,proof_epoch)==64&&offsetof(ControlValue,spatial_capacity)==80&&sizeof(ControlValue)==112);
     if(!device||device->GetNodeCount()!=1)throw std::runtime_error("GPU control requires one node");
     D3D12_RESOURCE_DESC d{};d.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;d.Width=block_bytes;d.Height=d.DepthOrArraySize=d.MipLevels=d.SampleDesc.Count=1;d.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;
@@ -31,10 +33,12 @@ GpuControl::GpuControl(ID3D12Device* device,bool measure):device_(device){
     d.Width*=4;check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&upload_)));
     void* data{};D3D12_RANGE none{};check(neutral_->Map(0,&none,&data));std::memset(data,0,block_bytes);
     for(unsigned i=0;i<capacity;++i){const ControlValue neutral;std::memcpy(static_cast<char*>(data)+i*256,&neutral,sizeof(neutral));}neutral_->Unmap(0,nullptr);
-    hp.Type=D3D12_HEAP_TYPE_DEFAULT;d.Width=marker_bytes;d.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    marker_stride_=32+(spatial?2ull*spatial_capacity*spatial_record_bytes:0);
+    hp.Type=D3D12_HEAP_TYPE_DEFAULT;d.Width=marker_stride_*capacity;d.Flags=D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,nullptr,IID_PPV_ARGS(&marker_)));
     hp.Type=D3D12_HEAP_TYPE_READBACK;d.Width=marker_bytes*4;d.Flags=D3D12_RESOURCE_FLAG_NONE;
     check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&marker_readback_)));
+    if(spatial){d.Width=spatial_page_bytes*2*4;check(device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&spatial_readback_)));}
     for(auto& lease:marker_leases_)lease=std::make_shared<unsigned>(0);
     if(measure){
         calibrations_.reserve(512);
@@ -56,14 +60,15 @@ GpuControl::GpuControl(ID3D12Device* device,bool measure):device_(device){
             // controlled submission. A skipped/predicated shader cannot inherit
             // a marker from an earlier execution or uninitialized VRAM.
             barrier(list,marker_.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_DEST);
-            list->CopyBufferRegion(marker_.Get(),0,neutral_.Get(),0,marker_bytes);
+            for(unsigned slot=0;slot<capacity;++slot)list->CopyBufferRegion(marker_.Get(),slot*marker_stride_,neutral_.Get(),0,32);
             barrier(list,marker_.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             if(timestamps_){list->EndQuery(timestamps_.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2+1);list->ResolveQueryData(timestamps_.Get(),D3D12_QUERY_TYPE_TIMESTAMP,i*2,2,readback_.Get(),i*2*sizeof(UINT64));}
             check(list->Close());
             check(device->CreateCommandList(0,kind,allocators_[type].Get(),nullptr,IID_PPV_ARGS(&marker_copies_[type][i])));
             auto* marker_copy=marker_copies_[type][i].Get();
             barrier(marker_copy,marker_.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE);
-            marker_copy->CopyBufferRegion(marker_readback_.Get(),i*marker_bytes,marker_.Get(),0,marker_bytes);
+            for(unsigned slot=0;slot<capacity;++slot)marker_copy->CopyBufferRegion(marker_readback_.Get(),i*marker_bytes+slot*32,marker_.Get(),slot*marker_stride_,32);
+            if(spatial)marker_copy->CopyBufferRegion(spatial_readback_.Get(),i*spatial_page_bytes*2,marker_.Get(),32,spatial_page_bytes*2);
             barrier(marker_copy,marker_.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);check(marker_copy->Close());
             if(calibration_queries_){check(device->CreateCommandList(0,kind,allocators_[type].Get(),nullptr,IID_PPV_ARGS(&calibration_copies_[type][i])));
                 auto* copy=calibration_copies_[type][i].Get();copy->CopyBufferRegion(calibration_readback_.Get(),i*calibration_bytes,calibration_scratch_.Get(),0,calibration_bytes);check(copy->Close());}
@@ -74,28 +79,44 @@ GpuControl::GpuControl(ID3D12Device* device,bool measure):device_(device){
     Ptr<ID3D12CommandAllocator> init_allocator;Ptr<ID3D12GraphicsCommandList> init;
     check(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&init_allocator)));
     check(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,init_allocator.Get(),nullptr,IID_PPV_ARGS(&init)));
+    Ptr<ID3D12Resource> init_zeros;
+    if(spatial){D3D12_HEAP_PROPERTIES upload{};upload.Type=D3D12_HEAP_TYPE_UPLOAD;auto zero_desc=marker_->GetDesc();zero_desc.Flags=D3D12_RESOURCE_FLAG_NONE;
+        check(device->CreateCommittedResource(&upload,D3D12_HEAP_FLAG_NONE,&zero_desc,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,IID_PPV_ARGS(&init_zeros)));
+        void* zeros{};check(init_zeros->Map(0,&none,&zeros));std::memset(zeros,0,SIZE_T(zero_desc.Width));init_zeros->Unmap(0,nullptr);
+        barrier(init.Get(),marker_.Get(),D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_DEST);init->CopyResource(marker_.Get(),init_zeros.Get());barrier(init.Get(),marker_.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    }
     copy_policy(init.Get(),buffer_.Get(),neutral_.Get(),0);check(init->Close());ID3D12CommandList* lists[]{init.Get()};queue->ExecuteCommandLists(1,lists);
+    auto quarantine=[&]{buffer_.Detach();neutral_.Detach();marker_.Detach();init_zeros.Detach();init_allocator.Detach();init.Detach();queue.Detach();fence_.Detach();};
     // Initialization is on the worker, never an intercepted application call.
     // On a signal failure, keep submitted storage alive until device removal.
     const HRESULT signaled=queue->Signal(fence_.Get(),++sequence_);
-    if(FAILED(signaled)){buffer_.Detach();neutral_.Detach();init_allocator.Detach();init.Detach();queue.Detach();fence_.Detach();throw std::runtime_error("GPU control initialization signal failed");}
+    if(FAILED(signaled)){quarantine();throw std::runtime_error("GPU control initialization signal failed");}
     HANDLE event=CreateEventW(nullptr,FALSE,FALSE,nullptr);
-    if(!event){buffer_.Detach();neutral_.Detach();init_allocator.Detach();init.Detach();queue.Detach();fence_.Detach();throw std::runtime_error("GPU control initialization event failed");}
+    if(!event){quarantine();throw std::runtime_error("GPU control initialization event failed");}
     const auto registered=fence_->SetEventOnCompletion(sequence_,event);const auto waited=SUCCEEDED(registered)?WaitForSingleObject(event,5000):WAIT_FAILED;
-    if(waited!=WAIT_OBJECT_0){if(FAILED(registered))CloseHandle(event);buffer_.Detach();neutral_.Detach();init_allocator.Detach();init.Detach();queue.Detach();fence_.Detach();throw std::runtime_error("GPU control initialization did not complete");}
+    if(waited!=WAIT_OBJECT_0){if(FAILED(registered))CloseHandle(event);quarantine();throw std::runtime_error("GPU control initialization did not complete");}
     CloseHandle(event);
+    for(auto* resource:{buffer_.Get(),marker_.Get(),calibration_scratch_.Get(),upload_.Get(),neutral_.Get(),readback_.Get(),marker_readback_.Get(),spatial_readback_.Get(),calibration_readback_.Get()})if(resource){D3D12_HEAP_PROPERTIES properties{};if(SUCCEEDED(resource->GetHeapProperties(&properties,nullptr))){const auto desc=resource->GetDesc();const auto bytes=device->GetResourceAllocationInfo(0,1,&desc).SizeInBytes;if(bytes!=UINT64_MAX)allocation_bytes_[properties.Type==D3D12_HEAP_TYPE_UPLOAD?1:properties.Type==D3D12_HEAP_TYPE_READBACK?2:0]+=bytes;}}
 }
 D3D12_GPU_VIRTUAL_ADDRESS GpuControl::address(unsigned slot)const noexcept{return slot<capacity?buffer_->GetGPUVirtualAddress()+slot*256:0;}
-D3D12_GPU_VIRTUAL_ADDRESS GpuControl::marker_address(unsigned slot)const noexcept{return slot<capacity?marker_->GetGPUVirtualAddress()+slot*16:0;}
+D3D12_GPU_VIRTUAL_ADDRESS GpuControl::marker_address(unsigned slot)const noexcept{return slot<capacity?marker_->GetGPUVirtualAddress()+slot*marker_stride_:0;}
 void GpuControl::marker_barrier(ID3D12GraphicsCommandList* list){D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;b.UAV.pResource=marker_.Get();list->ResourceBarrier(1,&b);}
-bool GpuControl::ExecutionReadback::read(std::array<std::array<UINT64,2>,capacity>& actual)const noexcept{
+bool GpuControl::ExecutionReadback::read(std::array<std::array<UINT64,2>,capacity>& actual,std::array<std::array<UINT,2>,capacity>* spatial)const noexcept{
     if(!resource||!fence||!completion)return false;const auto completed=fence->GetCompletedValue();if(completed==UINT64_MAX||completed<completion)return false;
     void* data{};D3D12_RANGE range{SIZE_T(offset),SIZE_T(offset+marker_bytes)};if(FAILED(resource->Map(0,&range,&data)))return false;
-    std::memcpy(actual.data(),static_cast<const char*>(data)+offset,marker_bytes);D3D12_RANGE empty{};resource->Unmap(0,&empty);return true;
+    for(unsigned i=0;i<capacity;++i){const auto* row=static_cast<const char*>(data)+offset+i*32;std::memcpy(actual[i].data(),row,16);if(spatial)std::memcpy((*spatial)[i].data(),row+16,8);}D3D12_RANGE empty{};resource->Unmap(0,&empty);return true;
 }
 std::optional<GpuControl::ExecutionReadback> GpuControl::execution_readback(ID3D12CommandQueue* queue)const{
     if(fault_||last_marker_slot_<0||last_queue_.Get()!=queue)return {};const auto slot=unsigned(last_marker_slot_);
     return ExecutionReadback{marker_leases_[slot],marker_readback_,fence_,retired_[slot],slot*marker_bytes,reinterpret_cast<UINT64>(queue),marker_expected_[slot]};
+}
+bool GpuControl::SpatialReadback::read(std::vector<SpatialTile>& tiles)const noexcept{
+    static_assert(sizeof(SpatialTile)==spatial_record_bytes);
+    if(!resource||!fence||!completion||!tile_width||!tile_height)return false;const auto done=fence->GetCompletedValue();if(done==UINT64_MAX||done<completion)return false;
+    const UINT64 count=UINT64((width+tile_width-1)/tile_width)*((height+tile_height-1)/tile_height);if(!count||count>spatial_capacity)return false;
+    try{tiles.resize(SIZE_T(count));void* data{};D3D12_RANGE range{SIZE_T(offset),SIZE_T(offset+count*spatial_record_bytes)};if(FAILED(resource->Map(0,&range,&data)))return false;
+        std::memcpy(tiles.data(),static_cast<const char*>(data)+offset,SIZE_T(count*spatial_record_bytes));D3D12_RANGE empty{};resource->Unmap(0,&empty);return true;
+    }catch(...){return false;}
 }
 void GpuControl::calibration_mark(ID3D12GraphicsCommandList* list,unsigned slot,unsigned point){
     if(!calibration_queries_||slot>=capacity||point>3)throw std::runtime_error("Calibration query capacity");
@@ -128,7 +149,7 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
     const auto completed=fence_->GetCompletedValue();
     if(last_queue_&&last_queue_.Get()!=queue&&completed<sequence_)check(queue->Wait(fence_.Get(),sequence_));
     if(values.size()>capacity)throw std::runtime_error("GPU control capacity");
-    bool coarse=false;for(const auto& value:values)coarse|=value.calibration!=0||value.x==2||value.y==2||value.comparison_taps==9||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=4);
+    bool coarse=false;for(const auto& value:values)coarse|=value.calibration!=0||value.x==2||value.y==2||value.comparison_taps==9||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=4)||(value.edge_sources&&value.spatial_key);
     if(!coarse)return nullptr;
     // Prefer completed slots already consumed by the background collector.
     // Fall back to overwriting an unread slot rather than delaying the game.
@@ -146,21 +167,30 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
     }
     void* data{};D3D12_RANGE none{};check(upload_->Map(0,&none,&data));
     auto* block=static_cast<char*>(data)+pending_*block_bytes;std::memset(block,0,block_bytes);
-    for(unsigned i=0;i<capacity;++i){const ControlValue value=i<values.size()?values[i]:ControlValue{};std::memcpy(block+i*256,&value,sizeof(value));}
+    for(unsigned i=0;i<capacity;++i){ControlValue value=i<values.size()?values[i]:ControlValue{};
+        if(marker_stride_>32&&value.edge_sources&&value.spatial_tile_width&&value.spatial_tile_height&&sequence_<UINT_MAX-1){
+            const UINT64 tiles=UINT64((value.width+value.spatial_tile_width-1)/value.spatial_tile_width)*((value.height+value.spatial_tile_height-1)/value.spatial_tile_height);
+            if(tiles&&tiles<=spatial_capacity){value.spatial_capacity=spatial_capacity;if(!value.spatial_frame)value.spatial_frame=UINT(sequence_+1);value.spatial_flags=(value.spatial_flags&~1u)|UINT((sequence_+1)&1);}
+        }
+        if(i==0)spatial_values_[pending_]=value;
+        std::memcpy(block+i*256,&value,sizeof(value));}
     upload_->Unmap(0,nullptr);
     return copies_[kind==D3D12_COMMAND_LIST_TYPE_COMPUTE?1:0][pending_].Get();
 }
 void GpuControl::submitted(ID3D12CommandQueue* queue){
     last_queue_=queue;
     last_marker_slot_=-1;
-    if(pending_>=0&&std::any_of(marker_expected_[pending_].begin(),marker_expected_[pending_].end(),[](const auto& value){return value[0]!=0;})){
-        ID3D12CommandList* list=marker_copies_[queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_COMPUTE?1:0][pending_].Get();queue->ExecuteCommandLists(1,&list);last_marker_slot_=pending_;
+    const bool proof=pending_>=0&&std::any_of(marker_expected_[pending_].begin(),marker_expected_[pending_].end(),[](const auto& value){return value[0]!=0;});
+    const bool map=pending_>=0&&spatial_readback_&&spatial_values_[pending_].spatial_capacity&&(proof||(spatial_values_[pending_].spatial_flags&8));
+    if(proof||map){
+        ID3D12CommandList* list=marker_copies_[queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_COMPUTE?1:0][pending_].Get();queue->ExecuteCommandLists(1,&list);if(proof)last_marker_slot_=pending_;
     }
     if(pending_>=0&&std::any_of(calibration_epochs_[pending_].begin(),calibration_epochs_[pending_].end(),[](auto value){return value!=0;})){
         ID3D12CommandList* list=calibration_copies_[queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_COMPUTE?1:0][pending_].Get();queue->ExecuteCommandLists(1,&list);
     }
     const auto value=++sequence_;
     if(FAILED(queue->Signal(fence_.Get(),value))){fault_=true;throw std::runtime_error("GPU control retirement signal failed");}
+    if(map){const auto& control=spatial_values_[pending_];latest_spatial_=SpatialReadback{marker_leases_[pending_],spatial_readback_,fence_,value,UINT64(pending_)*spatial_page_bytes*2+(control.spatial_flags&1)*spatial_page_bytes,control.reserved,control.spatial_key,reinterpret_cast<UINT64>(queue),control.width,control.height,control.spatial_tile_width,control.spatial_tile_height,control.spatial_frame,control.edge_threshold};}
     if(pending_>=0){retired_[pending_]=value;if(timestamps_){frequencies_[pending_]=pending_frequency_;unread_[pending_]=true;}}pending_=-1;
 }
 void GpuControl::collect_timing()noexcept{

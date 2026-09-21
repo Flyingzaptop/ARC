@@ -22,7 +22,11 @@ void coverage_snapshot(std::ostream&);
 std::vector<GpuControl::ExecutionReadback> capture_execution(ID3D12CommandQueue*) noexcept;
 #endif
 void require_presentation_queue(ID3D12CommandQueue*) noexcept;
+void present_frame(std::uint64_t frame) noexcept;
 std::vector<std::string> drain_events() noexcept;
+void request_spatial_diagnostics() noexcept;
+std::string spatial_snapshot() noexcept;
+std::array<std::uint64_t,3> control_allocation_bytes() noexcept;
 struct ConnectionCoverage {std::size_t roots{},pipelines{};std::uint64_t unknown_root_dispatches{};};
 ConnectionCoverage connection_coverage() noexcept;
 struct PolicyStamp {std::uint64_t epoch{},active_submissions{},last_active_epoch{},selected_pipeline{};};
@@ -33,7 +37,7 @@ struct WorkCandidate {CandidateCapabilities capabilities;double gpu_ms_per_windo
 std::vector<WorkCandidate> candidate_catalog() noexcept;
 // Validates the entire bundle before publishing any setting. An empty bundle
 // is neutral; original-policy configuration remains available through "off".
-bool configure_bundle(const arc::PolicyBundle&,bool apply=true,std::uint64_t calibration_epoch=0) noexcept;
+bool configure_bundle(const arc::PolicyBundle&,bool apply=true,std::uint64_t calibration_epoch=0,std::uint64_t valid_until_frame=0) noexcept;
 bool begin_calibration(const arc::PolicyBundle&,std::uint64_t epoch) noexcept;
 bool configure_bundle_file(const wchar_t*) noexcept;
 void calibration_snapshot(std::ostream&);

@@ -16,6 +16,12 @@ int main(){
     assert(cache::store(root/L"cache",key,source)&&cache::restore(root/L"cache",key,destination));
     assert(!cache::store(root/L"cache","../escape",source));assert(!cache::restore(root/L"cache",std::string(64,'f'),missing));
     cache::trim(root/L"cache",0);assert(!cache::restore(root/L"cache",key,missing));
+    assert(cache::store_decline(root/L"cache",key,"Shader declined: unsupported_group_memory"));
+    assert(cache::restore_decline(root/L"cache",key)=="Shader declined: unsupported_group_memory");
+    assert(cache::restore_decline(root/L"cache",std::string(64,'e')).empty());
+    {std::ofstream corrupt(root/L"cache"/(key+".json"));corrupt<<"{bad json";}
+    assert(cache::restore_decline(root/L"cache",key).empty());
+    cache::trim(root/L"cache",0);
     // Delete only individually known files in this fresh, owned directory.
     for(const char* ending:{"", ".contract", ".access.ll"})for(auto base:{source,destination}){base+=ending;std::filesystem::remove(base);}
     std::filesystem::remove(root/L"cache");std::filesystem::remove(root);

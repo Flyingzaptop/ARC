@@ -85,6 +85,7 @@ int wmain(int argc,wchar_t** argv)try{
     const bool starting=operation==L"--attach-starting";
     const bool launch_auto=operation==L"--launch-auto",attach_auto=operation==L"--attach-auto"||starting;
     const bool start_auto=operation==L"--start-auto",stop_auto=operation==L"--stop-auto",target_fps=operation==L"--target-fps";
+    const bool diagnostics=operation==L"--diagnostics";
     const bool policy=operation==L"--policy";
     const bool vrs_on=argc>1&&std::wstring(argv[1])==L"--vrs-2x2";
     const bool vrs_off=argc>1&&std::wstring(argv[1])==L"--vrs-off";
@@ -96,12 +97,12 @@ int wmain(int argc,wchar_t** argv)try{
     const bool features=argc>1&&std::wstring(argv[1])==L"--features";
     const bool image=argc>1&&std::wstring(argv[1])==L"--image";
     const bool timing=argc>1&&std::wstring(argv[1])==L"--measure";
-    const bool capture=experiment||profile||features||image||timing||start_auto||target_fps||policy||operation==L"--capture";
+    const bool capture=experiment||profile||features||image||timing||start_auto||target_fps||diagnostics||policy||operation==L"--capture";
     const bool attach=capture||attach_auto||operation==L"--attach";
     if(argc<((launch_auto||attach_auto)?6:experiment?4:attach?5:4)){std::wcerr<<L"Usage: <exe> <DLL> <new metrics.json> [args]\n--launch-auto <exe> <DLL> <new metrics.json> <config.json> [args]\n--attach-auto <PID> <DLL> <new metrics.json> <config.json>\n--start-auto <PID> <DLL> <config.json>\n--stop-auto <PID> <DLL>\n--target-fps <PID> <DLL> <FPS>\n";return 2;}
     const auto dll=std::filesystem::absolute(argv[attach||launch_auto?3:2]);
-    const auto output=experiment||target_fps?std::filesystem::path{}:std::filesystem::absolute(argv[attach||launch_auto?4:3]);
-    require(std::filesystem::is_regular_file(dll)&&(experiment||target_fps||((start_auto||policy)?std::filesystem::is_regular_file(output):!std::filesystem::exists(output))),"input DLL/configuration or new output path");
+    const auto output=experiment||target_fps||diagnostics?std::filesystem::path{}:std::filesystem::absolute(argv[attach||launch_auto?4:3]);
+    require(std::filesystem::is_regular_file(dll)&&(experiment||target_fps||diagnostics||((start_auto||policy)?std::filesystem::is_regular_file(output):!std::filesystem::exists(output))),"input DLL/configuration or new output path");
     STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION info{};
     if(attach){
         wchar_t* end=nullptr;const auto pid=wcstoul(argv[2],&end,10);require(end&&!*end&&pid&&pid!=GetCurrentProcessId(),"explicit target PID");info.dwProcessId=pid;
@@ -122,9 +123,9 @@ int wmain(int argc,wchar_t** argv)try{
     require(base!=0||launch_auto||starting,"target loader module unavailable");
     if(capture){
         const auto remote_base=remote_module(info.dwProcessId,dll.filename().wstring(),&dll);require(remote_base!=0,"Target must already have the observer attached");
-        if(start_auto||stop_auto||target_fps||policy){
-            const auto name=start_auto?"ArcStartOptimizer":stop_auto?"ArcStopOptimizer":target_fps?"ArcSetTargetFps":"ArcExperimentalPolicy";
-            const auto argument=stop_auto?L"":target_fps?std::wstring(argv[4]):output.wstring();
+        if(start_auto||stop_auto||target_fps||diagnostics||policy){
+            const auto name=start_auto?"ArcStartOptimizer":stop_auto?"ArcStopOptimizer":target_fps?"ArcSetTargetFps":diagnostics?"ArcSetDiagnostics":"ArcExperimentalPolicy";
+            const auto argument=stop_auto?L"":(target_fps||diagnostics)?std::wstring(argv[4]):output.wstring();
             const auto code=call_export(process.h,remote_base,dll,name,argument);if(code)throw std::runtime_error("ARC control request refused, runtime status "+std::to_string(code));return 0;
         }
         HMODULE local=LoadLibraryExW(dll.c_str(),nullptr,DONT_RESOLVE_DLL_REFERENCES);require(local!=nullptr,"read capture export");
