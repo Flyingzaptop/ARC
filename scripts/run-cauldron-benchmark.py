@@ -29,6 +29,7 @@ parser.add_argument("--visible",action="store_true",help="Show the owned rendere
 parser.add_argument("--process-sampler",type=Path)
 parser.add_argument("--edge-threshold",type=float)
 parser.add_argument("--auto-target",type=float)
+parser.add_argument("--control-mode",choices=["validated","target_feedback"],default="validated")
 parser.add_argument("--compiler",type=Path)
 parser.add_argument("--shader-worker",type=Path)
 parser.add_argument("--critic",type=Path)
@@ -99,7 +100,7 @@ if args.auto_target is not None:
         raise ValueError("Automatic target requires a compute-enabled DLL and FPS in (0,1000]")
     import sys
     config=output/"automatic-config.json"
-    config.write_text(json.dumps({"quality_profile":args.quality_profile,"target_fps":args.auto_target,"diagnostics_overlay":args.overlay,"python":str(args.quality_python.resolve()) if args.quality_python else sys.executable,
+    config.write_text(json.dumps({"control_mode":args.control_mode,"quality_profile":args.quality_profile,"target_fps":args.auto_target,"diagnostics_overlay":args.overlay,"python":str(args.quality_python.resolve()) if args.quality_python else sys.executable,
         "critic":str(args.critic.resolve() if args.critic else Path(__file__).resolve().parent/"optimizer-live-quality.py"),
         "output":str(output/"automatic"),"maximum_seconds":int(process_budget-5)},indent=2))
     env["ARC_AUTO_CONFIG"]=str(config)
@@ -109,7 +110,7 @@ hashfile=lambda p:hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
 manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) if args.dll else None,
           "mode":args.mode if args.dll else "baseline","command":command,"measured_frames":args.frames,"warmup_frames":120,
           "edge_threshold":args.edge_threshold,"effective_mode":env["ARC_BENCH_MODE"],
-          "automatic_target_fps":args.auto_target,"quality_profile":args.quality_profile,
+          "automatic_target_fps":args.auto_target,"control_mode":args.control_mode,"quality_profile":args.quality_profile,
           "initialization_seconds":args.initialization_seconds,"measurement_seconds":args.measurement_seconds,"process_budget_seconds":process_budget,
           "overlay":args.overlay,"visible":args.visible,"borderless":args.borderless,"gpu_sample_interval_seconds":args.gpu_sample_interval,
           "oracle_interval":args.oracle_interval,"oracle_poses":args.oracle_poses,"performance_run":not bool(args.oracle_poses or args.oracle_interval or args.functional),

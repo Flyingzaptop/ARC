@@ -10,6 +10,7 @@
 #include "arc/intercept_cpu_meter.hpp"
 #include "arc/optimizer_session.hpp"
 #include "arc/timing_evidence.hpp"
+#include "arc/target_feedback.hpp"
 #include "json.hpp"
 #include <atomic>
 #include <array>
@@ -24,6 +25,8 @@
 #include <map>
 #include <set>
 #include <psapi.h>
+#include <dxgi1_4.h>
+#include <wrl/client.h>
 #include <sstream>
 
 namespace arc::dx12::autotune {
@@ -34,11 +37,12 @@ struct State {
     std::atomic<bool> running{},cancel{};
     std::atomic<bool> observing{};
     std::mutex mutex,policy_mutex;std::condition_variable changed;
+    Microsoft::WRL::ComPtr<ID3D12Device> telemetry_device;
     void* swapchain{};UINT64 last_qpc{},frames{};double frequency{};
     std::array<double,128> periods{};unsigned count{},cursor{};
     Json status{{"phase","off"}};
     std::filesystem::path directory,python,critic;
-    bool maximize{true};std::string quality_profile{"balanced"};
+    bool feedback_only{};bool maximize{true};std::string quality_profile{"balanced"};
     std::unique_ptr<QualityWorker> quality_worker;
     double target{};unsigned maximum_seconds{0};
     std::atomic<double> requested_target{};
@@ -80,7 +84,7 @@ void publish_spatial(){
 }
 std::wstring quote(const std::wstring& s){std::wstring out=L"\"";unsigned n=0;for(auto c:s){if(c==L'\\'){++n;continue;}if(c==L'"'){out.append(n*2+1,L'\\');out+=c;}else{out.append(n,L'\\');out+=c;}n=0;}out.append(n*2,L'\\');return out+L'"';}
 void publish(Json value){
-    auto& s=state();value["quality_profile"]=s.quality_profile;const auto activity=optimizer::activity_counters();value["observed_present_frames"]=activity[0];value["accepted_policy_submission_frames"]=activity[1];value["accepted_policy_submission_time_fraction"]=activity[2]?Json(double(activity[3])/activity[2]):Json(nullptr);value["activity_scope"]="valid_accepted_controls_submitted_not_per_pixel_gpu_effect";value["quality_limits_version"]=1;value["component_budgets_enforced"]=false;value["objective"]=s.maximize?"maximize_fps":"target_fps";
+    auto& s=state();value["control_mode"]=s.feedback_only?"target_feedback":"validated";value["image_quality_checked"]=!s.feedback_only;value["quality_profile"]=s.quality_profile;const auto activity=optimizer::activity_counters();value["observed_present_frames"]=activity[0];value["accepted_policy_submission_frames"]=activity[1];value["accepted_policy_submission_time_fraction"]=activity[2]?Json(double(activity[3])/activity[2]):Json(nullptr);value["activity_scope"]=s.feedback_only?"configured_controls_submitted_quality_not_checked":"valid_accepted_controls_submitted_not_per_pixel_gpu_effect";value["quality_limits_version"]=1;value["component_budgets_enforced"]=false;value["objective"]=s.maximize?"maximize_fps":"target_fps";
     for(const auto& text:optimizer::drain_events())try{journal(Json::parse(text));}catch(...){}
     publish_spatial();
     journal(value);{std::lock_guard lock(s.mutex);s.status=value;}
@@ -215,6 +219,7 @@ bool capture_trial(const std::vector<std::filesystem::path>& paths,const arc::Po
     {std::ofstream file(paths[0].parent_path()/L"frame-state.json");file<<state_samples.dump(2)<<'\n';}
     select(L"off");return complete;
 }
+#include "generic_target_feedback.inl"
 DWORD WINAPI run(void*){
     cpu_cost::Registration worker_cpu;
     const bool meter_was_enabled=arc::InterceptCpuMeter::enabled();
@@ -222,6 +227,7 @@ DWORD WINAPI run(void*){
     auto& s=state();SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);const auto started=Clock::now();
     placement::configure(L"normal"); // one decision loop; no concurrent affinity experiment
     try{
+        if(s.feedback_only){run_target_feedback();const bool restored=wait_restoration(true);publish({{"phase",restored?"stopped":"faulted"},{"restoration_confirmed",restored}});s.running=false;return 0;}
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.maximize_fps=s.maximize;config.enforce_component_budgets=false;config.require_gpu_execution=true;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         const auto limits=arc::optimizer_quality_limits(s.quality_profile);config.min_ssim=limits.ssim;config.max_mean_error=limits.mean;config.max_tile_p99=limits.p99;config.max_worst_tile=limits.worst;config.max_temporal_p99=limits.temporal;config.require_local_temporal_quality=true;
         optimizer::spatial_learning(true,s.quality_profile=="aggressive"?.08f:.02f);
@@ -516,10 +522,10 @@ DWORD WINAPI run(void*){
 }
 bool start(const wchar_t* config_path)noexcept{
     if(!config_path||!optimizer::enabled()||mirror::requested_rate()||gpu_profile::busy()||!generic::gpu_helpers_idle())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
-    try{const auto config=read_json(config_path);s.quality_profile=config.value("quality_profile",std::string("balanced"));arc::optimizer_quality_limits(s.quality_profile);s.diagnostics_enabled=config.value("diagnostics_overlay",false);s.maximize=config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
-        s.python=std::filesystem::u8path(config.at("python").get<std::string>());s.critic=std::filesystem::u8path(config.at("critic").get<std::string>());s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
-        if(!s.python.is_absolute()||!s.critic.is_absolute()||!s.directory.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
-        std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.swapchain=nullptr;s.window=nullptr;s.width=s.height=0;s.fullscreen=false;s.swapchain_identity=0;s.surface_revision=0;s.transaction_revision=0;s.retained_action=s.retained_until=0;s.capture_invalid=false;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
+    try{const auto config=read_json(config_path);s.quality_profile=config.value("quality_profile",std::string("balanced"));arc::optimizer_quality_limits(s.quality_profile);s.diagnostics_enabled=config.value("diagnostics_overlay",false);const auto control_mode=config.value("control_mode",std::string("validated"));if(control_mode!="validated"&&control_mode!="target_feedback")throw std::runtime_error("Unknown control mode");s.feedback_only=control_mode=="target_feedback";s.maximize=s.feedback_only?false:config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
+        s.python=std::filesystem::u8path(config.value("python",std::string{}));s.critic=std::filesystem::u8path(config.value("critic",std::string{}));s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
+        if((!s.feedback_only&&(!s.python.is_absolute()||!s.critic.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)))||!s.directory.is_absolute()||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
+        std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.telemetry_device.Reset();s.swapchain=nullptr;s.window=nullptr;s.width=s.height=0;s.fullscreen=false;s.swapchain_identity=0;s.surface_revision=0;s.transaction_revision=0;s.retained_action=s.retained_until=0;s.capture_invalid=false;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
         const auto importance_profile=config.value("importance_profile",std::string("balanced"));if(importance_profile!="balanced"&&importance_profile!="center")throw std::runtime_error("Unknown importance profile");optimizer::center_priority(importance_profile=="center");
         optimizer::configure(L"off");optimizer::reset_binding_evidence();optimizer::reset_activity_counters();s.observing=true;HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
     }catch(...){s.running=false;return false;}
@@ -547,7 +553,7 @@ void present(void* swap,HRESULT result,UINT flags)noexcept{
     if(s.swapchain!=swap||s.swapchain_identity!=identity||!s.width){DXGI_SWAP_CHAIN_DESC desc{};if(FAILED(reinterpret_cast<IDXGISwapChain*>(swap)->GetDesc(&desc)))return;
         if(s.swapchain&&s.swapchain!=swap&&desc.OutputWindow!=s.window&&s.last_qpc&&double(qpc.QuadPart-s.last_qpc)<s.frequency*.5)return;
         if(s.swapchain&&(s.swapchain!=swap||s.swapchain_identity!=identity))invalidate_surface_locked();
-        const bool refresh_surface=s.swapchain!=swap||s.swapchain_identity!=identity||s.width!=desc.BufferDesc.Width||s.height!=desc.BufferDesc.Height||s.surface_format!=desc.BufferDesc.Format;s.swapchain=swap;s.swapchain_identity=identity;s.window=desc.OutputWindow;s.width=desc.BufferDesc.Width;s.height=desc.BufferDesc.Height;s.surface_format=desc.BufferDesc.Format;s.fullscreen=!desc.Windowed;if(refresh_surface)optimizer::presentation_surface(static_cast<IDXGISwapChain*>(swap));
+        const bool refresh_surface=s.swapchain!=swap||s.swapchain_identity!=identity||s.width!=desc.BufferDesc.Width||s.height!=desc.BufferDesc.Height||s.surface_format!=desc.BufferDesc.Format;s.swapchain=swap;s.swapchain_identity=identity;s.window=desc.OutputWindow;s.width=desc.BufferDesc.Width;s.height=desc.BufferDesc.Height;s.surface_format=desc.BufferDesc.Format;s.fullscreen=!desc.Windowed;if(refresh_surface){optimizer::presentation_surface(static_cast<IDXGISwapChain*>(swap));if(s.feedback_only)static_cast<IDXGISwapChain*>(swap)->GetDevice(IID_PPV_ARGS(s.telemetry_device.ReleaseAndGetAddressOf()));}
     }
     if(s.capture_active&&!s.cancel){const auto stage=generic::image_sequence_progress();
         if(stage!=s.capture_stage){

@@ -55,7 +55,7 @@ double target(){const auto value=text(target_edit);std::size_t used{};const auto
 std::filesystem::path configuration(bool launch){
     const auto root=directory();const auto runtime=root/L"runtime";
     const std::pair<const char*,std::filesystem::path> files[]{{"worker",root/L"arc-shader-tool.exe"},{"compiler",runtime/L"dxc/dxcompiler.dll"},{"python",runtime/L"python/python.exe"},{"critic",root/L"scripts/optimizer-live-quality.py"}};
-    Json config{{"quality_profile",SendMessageW(quality_combo,CB_GETCURSEL,0,0)==0?"balanced":"aggressive"},{"target_fps",target()},{"maximize_fps",true},{"diagnostics_overlay",arc::overlay::enabled()},{"maximum_seconds",0}};
+    Json config{{"quality_profile",SendMessageW(quality_combo,CB_GETCURSEL,0,0)==0?"balanced":"aggressive"},{"target_fps",target()},{"maximize_fps",false},{"control_mode","target_feedback"},{"diagnostics_overlay",arc::overlay::enabled()},{"maximum_seconds",0}};
     for(const auto& [key,path]:files){if(!std::filesystem::is_regular_file(path))throw std::runtime_error("Incomplete ARC package: "+utf8(path));config[key]=utf8(path);}
     if(!std::filesystem::is_regular_file(root/L"arc-dx12-probe.dll")||!std::filesystem::is_regular_file(root/L"arc-dx12-probe-launch.exe"))throw std::runtime_error("ARC runtime files are missing");
     SYSTEMTIME now{};GetLocalTime(&now);wchar_t stamp[96]{};swprintf_s(stamp,L"%04u%02u%02u-%02u%02u%02u-%llu",now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,GetTickCount64());
@@ -145,7 +145,12 @@ void poll(){
         const auto coverage=data.value("optimizer_coverage",Json::object());
         if(phase!="stopped"&&phase!="faulted"&&phase!="render_metadata_missing"&&data.value("present_calls",0ull)==0)label=L"ARC загружен. Ожидание первого кадра DX12…";
         if(!control_error.empty())label+=L" "+control_error;status(label);
-        const auto details=L"PID "+std::to_wstring(target_pid)+L" · Root signatures: "+std::to_wstring(coverage.value("observed_root_signatures",0u))+L" · Compute PSO: "+std::to_wstring(coverage.value("observed_compute_pipelines",0u));
+        auto details=L"PID "+std::to_wstring(target_pid)+L" · Root signatures: "+std::to_wstring(coverage.value("observed_root_signatures",0u))+L" · Compute PSO: "+std::to_wstring(coverage.value("observed_compute_pipelines",0u));
+        if(automatic.value("control_mode",std::string{})=="target_feedback"){
+            const auto memory=[&](const char* key){return automatic.contains(key)&&automatic[key].is_number()?std::to_wstring(automatic[key].get<unsigned long long>()/(1024*1024))+L" MiB":std::wstring(L"?");};
+            details=L"RAM "+memory("process_working_set_bytes")+L" · VRAM "+memory("vram_local_usage_bytes")+L" · CPUft/GPUft: нет полного замера";
+            if(phase=="holding"||phase=="target_met"||phase=="limited")status(phase=="limited"?L"Цель пока недостижима доступными изменениями. Наблюдение продолжается.":L"Удержание целевого FPS. Автоматическая проверка изображения выключена.");
+        }
         SetWindowTextW(detail_label,details.c_str());
     }catch(...){/* a replaced or incomplete diagnostic snapshot is retried */}
 }
@@ -160,10 +165,10 @@ LRESULT CALLBACK window(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam){
         control(hwnd,L"BUTTON",L"Карта важности",0,560,245,160,32,Overlay);
         path_label=control(hwnd,L"STATIC",L"Приложение не выбрано",SS_PATHELLIPSIS,20,287,700,25);
         control(hwnd,L"STATIC",L"Аргументы запуска",0,20,325,155,25);arguments=control(hwnd,L"EDIT",L"",ES_AUTOHSCROLL,180,322,540,28,Arguments);
-        control(hwnd,L"STATIC",L"Режим ARC",0,20,367,120,25);target_edit=control(hwnd,L"EDIT",L"60",ES_NUMBER,145,363,75,30,Target);control(hwnd,L"BUTTON",L"Изменить цель",0,235,363,155,32,ApplyTarget);
-        ShowWindow(target_edit,SW_HIDE);ShowWindow(GetDlgItem(hwnd,ApplyTarget),SW_HIDE);quality_combo=control(hwnd,L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_VSCROLL,145,363,555,160,QualityProfile);
-        SendMessageW(quality_combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"Balanced — максимальный FPS, близкое качество"));
-        SendMessageW(quality_combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"Aggressive — максимальный FPS, заметное упрощение"));SendMessageW(quality_combo,CB_SETCURSEL,1,0);
+        control(hwnd,L"STATIC",L"Целевой FPS",0,20,367,120,25);target_edit=control(hwnd,L"EDIT",L"60",ES_NUMBER,145,363,75,30,Target);control(hwnd,L"BUTTON",L"Изменить цель",0,235,363,155,32,ApplyTarget);
+        quality_combo=control(hwnd,L"COMBOBOX",L"",CBS_DROPDOWNLIST|WS_VSCROLL,405,363,315,160,QualityProfile);
+        SendMessageW(quality_combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"Умеренное упрощение — без критика"));
+        SendMessageW(quality_combo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(L"Сильное упрощение — без критика"));SendMessageW(quality_combo,CB_SETCURSEL,1,0);
         control(hwnd,L"BUTTON",L"Запустить с ARC",BS_DEFPUSHBUTTON,20,410,210,38,Launch);
         control(hwnd,L"STATIC",L"PID",0,250,419,35,25);pid_edit=control(hwnd,L"EDIT",L"",ES_NUMBER,290,414,95,30,Pid);control(hwnd,L"BUTTON",L"Подключить",0,400,410,140,38,Attach);
         control(hwnd,L"BUTTON",L"Отключить ARC",0,555,410,165,38,Stop);
