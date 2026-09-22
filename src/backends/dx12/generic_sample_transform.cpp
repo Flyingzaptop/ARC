@@ -29,6 +29,7 @@ static SampleTransform reduce_means(std::string_view source,bool rays){
         const std::regex add(R"(^(%[A-Za-z0-9_.$]+) = fadd(?: fast)? float ([^,]+), (.+)$)");
         const std::regex mul(R"(^(%[A-Za-z0-9_.$]+) = fmul(?: fast)? float ([^,]+), (.+)$)");
         const std::regex ref(R"(%[A-Za-z0-9_.$]+)"),edge(R"(label %([A-Za-z0-9_.$]+))");
+        const auto references_value=[&](const std::string& code,const std::string& value){for(auto i=std::sregex_iterator(code.begin(),code.end(),ref);i!=std::sregex_iterator();++i)if(i->str()==value)return true;return false;};
         for(std::size_t at=0;at<codes.size();++at)if(codes[at].starts_with("br ")||codes[at].starts_with("switch "))for(auto e=std::sregex_iterator(codes[at].begin(),codes[at].end(),edge);e!=std::sregex_iterator();++e)predecessors[(*e)[1]].insert(owner[at]);
         for(const auto& [counter,index]:definition){
             const auto header=owner[index];if(!std::regex_match(codes[index],m,phi)||m[2]!="i32")continue;
@@ -65,10 +66,10 @@ static SampleTransform reduce_means(std::string_view source,bool rays){
                     if(c.find("@dx.op.")!=c.npos){const auto start=c.find("@dx.op.")+7,end=c.find('(',start);const auto op=c.substr(start,end-start);
                         if(!op.starts_with("unary.")&&!op.starts_with("binary.")&&!op.starts_with("dot")&&!op.starts_with("tertiary.")&&op!="allocateRayQuery"&&op!="rayQuery_TraceRayInline"&&op!="rayQuery_Proceed.i1"&&op!="rayQuery_StateScalar.i32")proof=false;}
                     if(c.starts_with("store ")||c.find("atomic")!=c.npos||c.find(" = phi ")!=c.npos&&owner[at]!=header)proof=false;
-                    if(c.find(handle)!=c.npos&&c.find("allocateRayQuery")==c.npos&&c.find("rayQuery_")==c.npos)proof=false;
+                    if(references_value(c,handle)&&c.find("allocateRayQuery")==c.npos&&c.find("rayQuery_")==c.npos)proof=false;
                 }
                 // No ray state or side result can escape this independently reset region.
-                for(std::size_t at=0;at<codes.size();++at)if(!region.contains(owner[at])&&codes[at].find(handle)!=std::string::npos)proof=false;
+                for(std::size_t at=0;at<codes.size();++at)if(!region.contains(owner[at])&&references_value(codes[at],handle))proof=false;
                 if(!proof||status_count!=1)continue;
             }
             std::set<std::string> accumulators,sums;std::map<std::string,std::size_t> accumulator_add;bool valid=true,has_samples=rays;
@@ -77,10 +78,17 @@ static SampleTransform reduce_means(std::string_view source,bool rays){
                 if(c.find(" = phi ")!=c.npos&&at!=index){if(!std::regex_match(c,m,phi)||m[2]!="float"){valid=false;break;}const auto id=m[1].str();auto init=m[3].str(),a=m[4].str(),sum=m[5].str(),b=m[6].str();if(a==latch){std::swap(init,sum);std::swap(a,b);}if(a!=pre||b!=latch||init.starts_with('%')||constant(init)!=0||!definition.contains(sum)){valid=false;break;}
                     const auto added=definition[sum];if(owner[added]!=latch||!std::regex_match(codes[added],m,add)||(m[2]!=id&&m[3]!=id)){valid=false;break;}accumulators.insert(id);sums.insert(sum);accumulator_add[id]=added;}}
             if(!valid||!has_samples||sums.empty()||sums.size()>4)continue;
+            // The compiler may keep shared ray-origin arithmetic in the first
+            // loop and use it in another loop. At least one iteration remains;
+            // pure values independent of every loop-carried value are unchanged.
+            std::set<std::string> invariants;
+            const std::regex pure(R"(^(?:fadd|fsub|fmul|fdiv|fneg|add|sub|mul|uitofp|sitofp|bitcast|trunc|zext|sext|icmp|fcmp|and|or|xor|lshr|ashr|shl|select)\b)");
+            for(bool progress=true;progress;){progress=false;for(auto at:region_lines){const auto& c=codes[at];const auto eq=c.find(" = ");if(eq==c.npos)continue;const auto id=c.substr(0,eq),uses=c.substr(eq+3);if(invariants.contains(id)||!std::regex_search(uses,pure))continue;bool independent=true;for(auto i=std::sregex_iterator(uses.begin(),uses.end(),ref);i!=std::sregex_iterator();++i){const auto v=i->str();if(definition.contains(v)&&region.contains(owner[definition[v]])&&!invariants.contains(v)){independent=false;break;}}if(independent){invariants.insert(id);progress=true;}}}
             std::map<std::size_t,std::string> normalizations;std::set<std::string> normalized;
             for(std::size_t at=0;at<lines.size()&&valid;++at){const auto c=codes[at];const auto eq=c.find(" = ");const auto uses=eq==c.npos?c:c.substr(eq+3);
                 for(auto it=std::sregex_iterator(uses.begin(),uses.end(),ref);it!=std::sregex_iterator();++it){const auto id=it->str();if(accumulators.contains(id)&&at!=accumulator_add[id]){valid=false;break;}
                     if(!definition.contains(id)||!region.contains(owner[definition[id]])||region.contains(owner[at]))continue;
+                    if(invariants.contains(id))continue;
                     if(!sums.contains(id)||!std::regex_match(c,m,mul)){valid=false;break;}const auto other=m[2]==id?m[3].str():m[2].str();if(other.starts_with('%')||constant(other)!=float(1.f/count)){valid=false;break;}normalizations[at]=m[1];normalized.insert(id);}}
             if(!valid||normalized!=sums)continue;
             const auto tag=std::to_string(result.loops);const auto prefix=std::string(rays?"%arc_rays_":"%arc_samples_")+tag;
@@ -102,7 +110,7 @@ static SampleTransform reduce_means(std::string_view source,bool rays){
             auto& comparison=lines[comparison_at];const auto last=comparison.find_last_of(',');comparison=comparison.substr(0,last+1)+" "+prefix+"_count";
             for(const auto& [at,id]:normalizations){auto original=lines[at];const auto start=original.find(id);original.replace(start,id.size(),prefix+"_original"+std::to_string(at));const auto value=prefix+"_original"+std::to_string(at),adjusted=prefix+"_adjusted"+std::to_string(at);
                 lines[at]=original+"\n  "+adjusted+" = fmul float "+value+", "+prefix+"_factor\n  "+id+" = select i1 "+prefix+"_neutral, float "+value+", float "+adjusted;}
-            ++result.loops;break; // one independently proved mutation per shader
+            ++result.loops; // Each disjoint, independently proved loop gets its own control values.
         }
         if(result.loops){std::ostringstream text;for(const auto& l:lines)text<<l<<'\n';result.ir=text.str();}
     }catch(...){return {std::string(source),0};}
