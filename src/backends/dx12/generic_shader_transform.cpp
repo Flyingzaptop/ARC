@@ -230,7 +230,8 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
         if(!pending_switch.empty())return reject("switch_shape");
         if(functions!=1||end<=begin||!std::regex_match(lines[begin],std::regex(R"(^define void @[A-Za-z_.$][A-Za-z0-9_.$]*\(\) \{$)")))return reject("entry_shape");
         const auto& model=metadata.at(named.at("dx.shaderModel"));
-        if(model.size()!=3||model[0]!="!\"cs\""||integer(model[1])!=6||integer(model[2])>5)return reject("shader_model");
+        if(model.size()!=3||model[0]!="!\"cs\""||integer(model[1])!=6||integer(model[2])>6)return reject("shader_model");
+        const bool binding_handles=integer(model[2])==6;
         const auto& entries=metadata.at(named.at("dx.entryPoints"));
         if(entries.size()!=5)return reject("entry_metadata");
         const auto& properties=metadata.at(metadata_ref(entries[4]));
@@ -259,13 +260,13 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 out.resources.push_back(c);
             }
         }
-        struct Handle {unsigned cls{},range{};};std::map<std::string,Handle> handles;
+        struct Handle {unsigned cls{},range{},properties0{},properties1{};bool annotated{};};std::map<std::string,Handle> handles;
         std::set<std::string> ray_queries;
         std::array<std::string,3> ids;std::array<std::set<std::string>,3> thread_ids;
         std::string entry_label="arc_coarse_orig_0";bool named_entry=false;
         for(std::size_t i=begin+1;i<end;++i){const auto first=code(lines[i]);if(first.empty())continue;if(first.ends_with(':')){entry_label=first.substr(0,first.size()-1);named_entry=true;}break;}
         struct Store {std::size_t line{};std::vector<std::string> args;};std::vector<Store> stores;
-        const std::set<std::string> allowed_calls={"dx.op.createHandle","dx.op.threadId.i32","dx.op.textureLoad.f32","dx.op.textureLoad.i32",
+        const std::set<std::string> allowed_calls={"dx.op.createHandle","dx.op.createHandleFromBinding","dx.op.annotateHandle","dx.op.threadId.i32","dx.op.textureLoad.f32","dx.op.textureLoad.i32",
             "dx.op.textureStore.f32","dx.op.cbufferLoadLegacy.f32","dx.op.cbufferLoadLegacy.i32","dx.op.sampleLevel.f32","dx.op.sampleCmpLevelZero.f32",
             "dx.op.unary.f32","dx.op.binary.f32","dx.op.tertiary.f32","dx.op.unary.i32","dx.op.binary.i32","dx.op.tertiary.i32",
             "dx.op.dot2.f32","dx.op.dot3.f32","dx.op.dot4.f32","dx.op.bitcastI32toF32","dx.op.bitcastF32toI32",
@@ -286,6 +287,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             const std::string name=m[2].str(),value=m[1].str();const auto args=fields(m[3].str());
             if(!allowed_calls.contains(name))return reject("call:"+name);
             if(name=="dx.op.createHandle"){
+                if(binding_handles)return reject("legacy_handle_in_sm66");
                 if(args.size()!=5||args[1].size()<4||!args[1].starts_with("i8 "))return reject("handle_shape");
                 const auto cls=number(std::string_view(args[1]).substr(3)),range=integer(args[2]);
                 if(cls>3||std::none_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==cls&&r.range_id==range;}))return reject("handle_range");
@@ -296,6 +298,35 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 if((runtime_control||x_rate>1||y_rate>1)&&args[3].starts_with("i32 %")&&args[4]=="i1 false"){
                     const auto flag=c.rfind("i1 false");if(flag==c.npos)return reject("handle_uniformity");lines[i].replace(flag,8,"i1 true");
                 }
+            } else if(name=="dx.op.createHandleFromBinding"){
+                if(!binding_handles||value.empty()||args.size()!=4||args[0]!="i32 217"||args[3]!="i1 false"||
+                    !args[1].starts_with("%dx.types.ResBind ")||!args[2].starts_with("i32 "))return reject("binding_handle_shape");
+                const auto binding=args[1]=="%dx.types.ResBind zeroinitializer"?
+                    std::vector<std::string>{"i32 0","i32 0","i32 0","i8 0"}:
+                    (args[1].starts_with("%dx.types.ResBind {")&&args[1].ends_with('}')?
+                        fields(args[1].substr(sizeof("%dx.types.ResBind {")-1,args[1].size()-sizeof("%dx.types.ResBind {")-1)):
+                        std::vector<std::string>{});
+                if(binding.size()!=4||!binding[3].starts_with("i8 "))return reject("binding_handle_shape");
+                const unsigned lower=integer(binding[0]),upper=integer(binding[1]),space=integer(binding[2]),cls=number(std::string_view(binding[3]).substr(3));
+                if(cls>3||upper<lower||args[2].find('%')!=std::string::npos)return reject("binding_handle_dynamic_index");
+                const unsigned index=integer(args[2]);if(index<lower||index>upper)return reject("binding_handle_index");
+                const auto resource=std::find_if(out.resources.begin(),out.resources.end(),[&](const auto& r){
+                    return r.resource_class==cls&&r.shader_register==lower&&r.space==space&&r.count!=UINT32_MAX&&
+                        std::uint64_t(lower)+r.count-1==upper;});
+                if(resource==out.resources.end()||!handles.emplace(value,Handle{cls,resource->range_id}).second)return reject("binding_handle_range");
+            } else if(name=="dx.op.annotateHandle"){
+                if(!binding_handles||value.empty()||args.size()!=3||args[0]!="i32 216"||
+                    !args[1].starts_with("%dx.types.Handle %")||!args[2].starts_with("%dx.types.ResourceProperties {")||!args[2].ends_with('}'))return reject("annotate_handle_shape");
+                const auto source=args[1].substr(sizeof("%dx.types.Handle ")-1);
+                const auto properties=fields(args[2].substr(sizeof("%dx.types.ResourceProperties {")-1,args[2].size()-sizeof("%dx.types.ResourceProperties {")-1));
+                if(properties.size()!=2||!handles.contains(source)||handles.at(source).annotated)return reject("annotate_handle_source");
+                auto handle=handles.at(source);handle.properties0=integer(properties[0]);handle.properties1=integer(properties[1]);handle.annotated=true;
+                const auto resource=std::find_if(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==handle.cls&&r.range_id==handle.range;});
+                if(resource==out.resources.end())return reject("annotate_handle_properties");
+                if(handle.cls==2){if(handle.properties0!=13||handle.properties1!=resource->kind)return reject("annotate_handle_properties");}
+                else if(handle.cls==3){if(handle.properties0!=14)return reject("annotate_handle_properties");}
+                else if((handle.properties0&0xff)!=resource->kind||((handle.properties0>>12)&1)!=(handle.cls==1))return reject("annotate_handle_properties");
+                if(!handles.emplace(value,handle).second)return reject("annotate_handle_duplicate");
             } else if(name=="dx.op.allocateRayQuery"){
                 if(args.size()!=2||args[0]!="i32 178"||value.empty()||ray_queries.size()>=16)return reject("ray_query_allocation");
                 ray_queries.insert(value);
@@ -304,7 +335,7 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                 if(name=="dx.op.rayQuery_TraceRayInline"){
                     if(args.size()!=13||args[0]!="i32 179")return reject("ray_trace_shape");
                     const auto h=args[2].substr(args[2].find_last_of(' ')+1);
-                    if(!handles.contains(h)||handles.at(h).cls!=0)return reject("ray_trace_handle");
+                    if(!handles.contains(h)||handles.at(h).cls!=0||(binding_handles&&!handles.at(h).annotated))return reject("ray_trace_handle");
                     const auto range=handles.at(h).range;
                     if(std::none_of(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==0&&r.range_id==range&&r.kind==16;}))return reject("ray_trace_resource");
                 }else if((name=="dx.op.rayQuery_Proceed.i1"&&(args.size()!=2||args[0]!="i32 180"))||
@@ -314,15 +345,20 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             } else if(name=="dx.op.textureStore.f32"){
                 if(args.size()!=10||args[4]!="i32 undef"||(args[9]!="i8 15"&&args[9]!="i8 7"&&args[9]!="i8 3"&&args[9]!="i8 1"))return reject("store_shape");
                 const auto h=args[1].substr(args[1].find_last_of(' ')+1);
-                if(!handles.contains(h)||handles.at(h).cls!=1)return reject("store_handle");
+                if(!handles.contains(h)||handles.at(h).cls!=1||(binding_handles&&!handles.at(h).annotated))return reject("store_handle");
                 if(unsupported_uavs.contains(handles.at(h).range))return reject("uav_contract");
                 stores.push_back({i,args});
             } else if(name.starts_with("dx.op.textureLoad")||name.starts_with("dx.op.sample")||name.starts_with("dx.op.bufferLoad")||name.starts_with("dx.op.rawBufferLoad")){
                 if(args.size()<2)return reject("read_shape");const auto h=args[1].substr(args[1].find_last_of(' ')+1);
-                if(!handles.contains(h)||handles.at(h).cls!=0)return reject("uav_or_unknown_read");
+                if(!handles.contains(h)||handles.at(h).cls!=0||(binding_handles&&!handles.at(h).annotated))return reject("uav_or_unknown_read");
+                if(name.starts_with("dx.op.sample")){if(args.size()<3)return reject("sample_shape");const auto sampler=args[2].substr(args[2].find_last_of(' ')+1);
+                    if(!handles.contains(sampler)||handles.at(sampler).cls!=3||(binding_handles&&!handles.at(sampler).annotated))return reject("sample_sampler");}
+            } else if(name.starts_with("dx.op.cbufferLoadLegacy")){
+                if(args.size()<2)return reject("cbuffer_shape");const auto h=args[1].substr(args[1].find_last_of(' ')+1);
+                if(!handles.contains(h)||handles.at(h).cls!=2||(binding_handles&&!handles.at(h).annotated))return reject("cbuffer_handle");
             } else if(name=="dx.op.getDimensions"){
                 if(args.size()!=3)return reject("dimension_shape");const auto h=args[1].substr(args[1].find_last_of(' ')+1);
-                if(!handles.contains(h)||handles.at(h).cls>1)return reject("dimension_handle");
+                if(!handles.contains(h)||handles.at(h).cls>1||(binding_handles&&!handles.at(h).annotated))return reject("dimension_handle");
             }
         }
         using Affine=std::array<std::int64_t,5>;std::map<std::string,Affine> coordinates;
@@ -377,6 +413,11 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             else lines[i]=std::regex_replace(lines[i],local,"%arc_coarse_orig_$1");
         }
         std::ostringstream generated;
+        auto emit_handle=[&](std::string_view name,unsigned cls,unsigned reg,unsigned resource_space,unsigned range,unsigned upper,unsigned property0,unsigned property1){
+            if(!binding_handles){generated<<"  %"<<name<<" = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 "<<cls<<", i32 "<<range<<", i32 "<<reg<<", i1 false)\n";return;}
+            generated<<"  %"<<name<<"_binding = call %dx.types.Handle @dx.op.createHandleFromBinding(i32 217, %dx.types.ResBind { i32 "<<reg<<", i32 "<<upper<<", i32 "<<resource_space<<", i8 "<<cls<<" }, i32 "<<reg<<", i1 false)\n"
+                <<"  %"<<name<<" = call %dx.types.Handle @dx.op.annotateHandle(i32 216, %dx.types.Handle %"<<name<<"_binding, %dx.types.ResourceProperties { i32 "<<property0<<", i32 "<<property1<<" })\n";
+        };
         if(text.find("declare i32 @dx.op.threadId.i32(")==text.npos)generated<<"declare i32 @dx.op.threadId.i32(i32, i32)\n";
         const bool needs_bounds=runtime_control||x_rate>1||y_rate>1;
         if(needs_bounds&&!runtime_control){
@@ -395,9 +436,9 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
             generated<<lines[i]<<'\n';
             if(i==begin){
                 if(execution_marker){
-                    generated<<"arc_proof_entry:\n"
-                        <<"  %arc_proof_control = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<control_range<<", i32 0, i1 false)\n"
-                        <<"  %arc_proof_data = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_proof_control, i32 4)\n";
+                    generated<<"arc_proof_entry:\n";
+                    emit_handle("arc_proof_control",2,0,out.control_space,control_range,0,13,144);
+                    generated<<"  %arc_proof_data = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_proof_control, i32 4)\n";
                     for(unsigned j=0;j<4;++j)generated<<"  %arc_proof_value"<<j<<" = extractvalue %dx.types.CBufRet.i32 %arc_proof_data, "<<j<<"\n";
                     generated<<"  %arc_proof_epoch = or i32 %arc_proof_value0, %arc_proof_value1\n"
                         <<"  %arc_proof_enabled = icmp ne i32 %arc_proof_epoch, 0\n"
@@ -406,15 +447,15 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                         <<"  %arc_proof_xy = or i32 %arc_proof_x, %arc_proof_y\n"
                         <<"  %arc_proof_first = icmp eq i32 %arc_proof_xy, 0\n"
                         <<"  %arc_proof_write = and i1 %arc_proof_enabled, %arc_proof_first\n"
-                        <<"  br i1 %arc_proof_write, label %arc_proof_store, label %arc_coarse_entry\narc_proof_store:\n"
-                        <<"  %arc_proof_buffer = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 "<<marker_range<<", i32 0, i1 false)\n"
-                        <<"  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %arc_proof_buffer, i32 0, i32 undef, i32 %arc_proof_value0, i32 %arc_proof_value1, i32 %arc_proof_value2, i32 %arc_proof_value3, i8 15)\n"
+                        <<"  br i1 %arc_proof_write, label %arc_proof_store, label %arc_coarse_entry\narc_proof_store:\n";
+                    emit_handle("arc_proof_buffer",1,0,out.control_space,marker_range,0,4107,0);
+                    generated<<"  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %arc_proof_buffer, i32 0, i32 undef, i32 %arc_proof_value0, i32 %arc_proof_value1, i32 %arc_proof_value2, i32 %arc_proof_value3, i8 15)\n"
                         <<"  br label %arc_coarse_entry\n";
                 }
                 generated<<"arc_coarse_entry:\n";
                 if(runtime_control){
-                    generated<<"  %arc_coarse_control = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<control_range<<", i32 0, i1 false)\n"
-                        <<"  %arc_coarse_values = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 0)\n"
+                    emit_handle("arc_coarse_control",2,0,out.control_space,control_range,0,13,execution_marker?144:48);
+                    generated<<"  %arc_coarse_values = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 0)\n"
                         <<"  %arc_coarse_width = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 2\n"
                         <<"  %arc_coarse_height = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, 3\n";
                     for(unsigned d=0;d<2;++d){const char a=d?'y':'x';generated<<"  %arc_coarse_requested_"<<a<<" = extractvalue %dx.types.CBufRet.i32 %arc_coarse_values, "<<d<<"\n"
@@ -427,8 +468,9 @@ Transform coarse_compute(std::string_view input,unsigned x_rate,unsigned y_rate,
                     const auto& first=stores.front().args[1];const auto handle=handles.at(first.substr(first.find_last_of(' ')+1));
                     const auto resource=std::find_if(out.resources.begin(),out.resources.end(),[&](const auto& r){return r.resource_class==1&&r.range_id==handle.range;});
                     if(resource==out.resources.end())return reject("output_extent_handle");
-                    generated<<"  %arc_coarse_extent_handle = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 "<<handle.range<<", i32 "<<resource->shader_register<<", i1 false)\n"
-                        <<"  %arc_coarse_dimensions = call %dx.types.Dimensions @dx.op.getDimensions(i32 72, %dx.types.Handle %arc_coarse_extent_handle, i32 undef)\n"
+                    emit_handle("arc_coarse_extent_handle",1,resource->shader_register,resource->space,handle.range,
+                        resource->shader_register+resource->count-1,handle.properties0,handle.properties1);
+                    generated<<"  %arc_coarse_dimensions = call %dx.types.Dimensions @dx.op.getDimensions(i32 72, %dx.types.Handle %arc_coarse_extent_handle, i32 undef)\n"
                         <<"  %arc_coarse_width = extractvalue %dx.types.Dimensions %arc_coarse_dimensions, 0\n"
                         <<"  %arc_coarse_height = extractvalue %dx.types.Dimensions %arc_coarse_dimensions, 1\n";
                 }
