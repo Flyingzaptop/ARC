@@ -123,6 +123,7 @@ int wmain(int argc, wchar_t** argv) try {
         source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(transformed.ir.data(), static_cast<UINT32>(transformed.ir.size()), CP_UTF8, &source), "Create transformed blob");
     }
     if (mode != L"dump") {
+        if(_wgetenv(L"ARC_CAPTURE_SHADER_CODE")){auto path=output;path+=L".transformed.ll";std::ofstream debug(path);debug.write(static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize());}
         ComPtr<IDxcAssembler> assembler; require(create(CLSID_DxcAssembler, IID_PPV_ARGS(&assembler)), "Create assembler");
         ComPtr<IDxcOperationResult> assembled; require(assembler->AssembleToContainer(source.Get(), &assembled), "Assemble DXIL");
         generated = result(assembled.Get());

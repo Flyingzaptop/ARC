@@ -53,7 +53,7 @@ struct Shader {
     bool reflected{},bindings_truncated{},unbounded{};std::vector<Binding> bindings;
     std::shared_ptr<const CapturedCode> captured;
 };
-struct Pipeline {std::uint64_t id{};bool compute{},depth_only{};UINT render_targets{};Shader shader;std::string vertex_hash;};
+struct Pipeline {std::uint64_t id{};bool compute{},depth_only{};UINT render_targets{};Shader shader,vertex_shader;bool extra_geometry_stages{};std::string vertex_hash;};
 struct Span {
     unsigned kind{}; // 0: color raster, 1: depth-only raster, 2: compute, 3: opaque, 4: unknown raster
     std::shared_ptr<Pipeline> pipeline;
@@ -163,12 +163,22 @@ void add_work(ID3D12GraphicsCommandList* native,unsigned kind,UINT x,UINT y,UINT
     span.mixed_pipeline|=span.pipeline!=r.current;
     if(kind==2)span.mixed_dispatch|=span.dispatch[0]!=x||span.dispatch[1]!=y||span.dispatch[2]!=z;
 }
+void shadow_reuse_json(std::ostream& out,const Pipeline& p){
+    if(!p.depth_only)return;
+    // Depth-only is a candidate class, not proof that the pass is a shadow.
+    // Resource identities/reflection do not establish unchanged contents.
+    out<<",\"depth_reuse_audit\":{\"semantic_shadow_proven\":false,\"reuse_enabled\":false,\"vertex_reflection_available\":"<<(p.vertex_shader.reflected?"true":"false")
+       <<",\"additional_geometry_stages\":"<<(p.extra_geometry_stages?"true":"false")
+       <<",\"blockers\":[\"resource_content_versions_untracked\",\"whole_pass_clear_and_draw_replay_unavailable\",\"output_preservation_and_queue_dependencies_unproven\"],\"vertex_declared_bindings\":[";
+    bool first=true;for(const auto& b:p.vertex_shader.bindings){if(!first)out<<',';first=false;out<<"{\"type\":"<<b.type<<",\"slot\":"<<b.slot<<",\"space\":"<<b.space<<",\"count\":"<<b.count<<'}';}
+    out<<"]}";
+}
 void shader_json(std::ostream& out,const Pipeline& p){
     const auto& m=p.shader;out<<"{\"id\":"<<p.id<<",\"kind\":\""<<(p.compute?"compute":"graphics")<<"\",\"depth_only\":"<<(p.depth_only?"true":"false")
         <<",\"render_target_count\":"<<p.render_targets<<",\"sha256\":"<<std::quoted(m.hash)<<",\"vertex_sha256\":"<<std::quoted(p.vertex_hash)<<",\"bytecode_bytes\":"<<m.bytes<<",\"reflection_available\":"<<(m.reflected?"true":"false")
         <<",\"threads\":["<<m.threads[0]<<','<<m.threads[1]<<','<<m.threads[2]<<"],\"instructions\":"<<m.instructions<<",\"barrier_instructions\":"<<m.barriers<<",\"atomic_instructions\":"<<m.atomics
         <<",\"requires_flags\":"<<m.requires_flags<<",\"unbounded_bindings\":"<<(m.unbounded?"true":"false")<<",\"bindings_truncated\":"<<(m.bindings_truncated?"true":"false")<<",\"declared_bindings\":[";
-    bool first=true;for(const auto& b:m.bindings){if(!first)out<<',';first=false;out<<"{\"type\":"<<b.type<<",\"slot\":"<<b.slot<<",\"space\":"<<b.space<<",\"count\":"<<b.count<<",\"dimension\":"<<b.dimension<<'}';}out<<"]}";
+    bool first=true;for(const auto& b:m.bindings){if(!first)out<<',';first=false;out<<"{\"type\":"<<b.type<<",\"slot\":"<<b.slot<<",\"space\":"<<b.space<<",\"count\":"<<b.count<<",\"dimension\":"<<b.dimension<<'}';}out<<"]";shadow_reuse_json(out,p);out<<"}";
 }
 void write_report(Session& session,unsigned pending){
     auto temp=session.path;temp+=L".tmp";std::ofstream out(temp,std::ios::trunc);out<<std::setprecision(14);
@@ -201,7 +211,7 @@ void write_report(Session& session,unsigned pending){
 
 void graphics_created(ID3D12PipelineState* pso,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)noexcept{
     if(mirror::internal()||!pso||!desc)return;
-    safe([&]{auto& s=state();if(s.pipelines.contains(pso)||s.pipelines.size()>=16384)return;mirror::InternalCall internal;auto p=std::make_shared<Pipeline>();p->shader=inspect(desc->PS);p->vertex_hash=digest(desc->VS);p->render_targets=desc->NumRenderTargets;p->depth_only=desc->NumRenderTargets==0&&(desc->DepthStencilState.DepthEnable||desc->DepthStencilState.StencilEnable);
+    safe([&]{auto& s=state();if(s.pipelines.contains(pso)||s.pipelines.size()>=16384)return;mirror::InternalCall internal;auto p=std::make_shared<Pipeline>();p->shader=inspect(desc->PS);p->vertex_hash=digest(desc->VS);p->render_targets=desc->NumRenderTargets;p->depth_only=desc->NumRenderTargets==0&&(desc->DepthStencilState.DepthEnable||desc->DepthStencilState.StencilEnable);if(p->depth_only){p->vertex_shader=inspect(desc->VS);p->extra_geometry_stages=desc->HS.BytecodeLength||desc->DS.BytecodeLength||desc->GS.BytecodeLength;}
         if(!track(pso,true))return;p->id=++s.next_pipeline;s.pipelines[pso]=std::move(p);});
 }
 void compute_created(ID3D12PipelineState* pso,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)noexcept{

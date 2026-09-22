@@ -115,11 +115,14 @@ EdgeTransform protect_input_edges(std::string_view input,const Transform& contra
         <<"  %arc_edge_safe = and i1 %arc_edge_ok_inputs, %arc_edge_small\n"
         <<"  br label %arc_edge_done\narc_edge_done:\n"
         <<"  %arc_edge_allow = phi i1 [ true, %arc_coarse_entry ], [ %arc_edge_safe, %"<<previous_block<<" ]\n";
-    std::istringstream source(result.ir);std::ostringstream out;out<<declarations.str();std::string line;bool inserted=false;
+    std::istringstream source(result.ir);std::ostringstream out;out<<declarations.str();std::string line,pcf_dependents;bool inserted=false;
     const bool spatial_pcf=input.find("%arc_pcf_enabled =")!=input.npos;
     while(std::getline(source,line)){
+        // PCF counts and normalization depend on the final spatial permission.
+        // Keep them after its definition, in the same dominating block.
+        if(spatial_pcf&&(line.find("%arc_pcf_count =")!=line.npos||line.find("%arc_pcf_count_float =")!=line.npos||line.find("%arc_pcf_reciprocal =")!=line.npos)){pcf_dependents+=line+'\n';continue;}
         if(spatial_pcf&&line.find("%arc_pcf_enabled =")!=line.npos)line.replace(line.find("%arc_pcf_enabled"),16,"%arc_pcf_requested");
-        if(line.find("%arc_coarse_requested_x =")!=line.npos&&!inserted){out<<prelude.str();if(spatial_pcf)out<<"  %arc_pcf_enabled = and i1 %arc_pcf_requested, %arc_edge_allow\n";inserted=true;}
+        if(line.find("%arc_coarse_requested_x =")!=line.npos&&!inserted){out<<prelude.str();if(spatial_pcf)out<<"  %arc_pcf_enabled = and i1 %arc_pcf_requested, %arc_edge_allow\n"<<pcf_dependents;inserted=true;}
         const bool x=line.find("%arc_coarse_enabled_x =")!=line.npos,y=line.find("%arc_coarse_enabled_y =")!=line.npos;
         if(x||y){const std::string axis=x?"x":"y",old="%arc_coarse_enabled_"+axis,new_name="%arc_edge_requested_"+axis;
             line.replace(line.find(old),old.size(),new_name);out<<line<<"\n  "<<old<<" = and i1 "<<new_name<<", %arc_edge_allow\n";
