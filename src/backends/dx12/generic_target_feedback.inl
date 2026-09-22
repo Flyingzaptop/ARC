@@ -22,7 +22,7 @@ bool feedback_vrs_capable(){
 }
 void run_target_feedback(){
     auto& s=state();optimizer::spatial_learning(false,0);optimizer::pause_spatial_probes(true);optimizer::sample_frame_state(false);
-    struct StopVrs {~StopVrs(){mirror::configure(0);}} stop_vrs;
+    struct StopVrs {~StopVrs(){pixel::configure(0);mirror::configure(0);}} stop_vrs;
     arc::BottleneckRouter router;arc::Bottleneck route=arc::Bottleneck::Unknown;gpu_profile::LoadEvidence load;bool cpu_cache=false,gpu_updates_allowed=false;
     arc::FrameTimePid controller;arc::FrameTimePidSample sample;arc::ComputeAllocation allocation;arc::PolicyBundle current;
     std::uint64_t context_profile_floor=gpu_profile::load_evidence().sequence;std::uint64_t sequence=0,profile=0,revision=s.surface_revision.load(),bindings=optimizer::binding_evidence_revision();
@@ -30,7 +30,7 @@ void run_target_feedback(){
     const auto start=Clock::now();auto last_profile=start-std::chrono::seconds(30),last_control=start,last_report=start-std::chrono::seconds(2),last_catalog=start-std::chrono::seconds(2),profile_started=start;
     std::filesystem::path profile_path;bool vrs_available=false,vrs_enabled=false;
     Clock::time_point cpu_check_since{},cpu_retry_after{};std::uint64_t cpu_skipped_before{};std::string cpu_outcome="not_requested";
-    auto disable=[&]{select(L"off");mirror::configure(0);optimizer::approve_policy(0,0);current={};vrs_enabled=false;controller.reset();};
+    auto disable=[&]{select(L"off");pixel::configure(0);mirror::configure(0);optimizer::approve_policy(0,0);current={};vrs_enabled=false;controller.reset();};
     auto report=[&](const char* phase,const char* reason){auto row=feedback_memory();row["phase"]=phase;row["reason"]=reason;row["controller"]="frame_time_pid_v1";row["target_fps"]=s.target;row["target_frame_ms"]=1000./s.target;row["frame_ms"]=period();row["active_action"]=current.id;
         row["pid"]={{"error_ms",sample.error_ms},{"filtered_frame_ms",sample.filtered_ms},{"p",sample.proportional},{"i",sample.integral},{"d",sample.derivative},{"intensity",sample.output},{"saturated",sample.saturated}};
         row["allocation"]={{"model","measured_pass_cost_with_heuristic_marginal_priors"},{"requested_saving_ms",allocation.requested_saving_ms},{"estimated_saving_ms",allocation.estimated_saved_ms},{"estimated_capacity_ms",allocation.estimated_capacity_ms},{"steps",allocation.steps}};
@@ -40,7 +40,7 @@ void run_target_feedback(){
         row["gpu_policy_held"]=!gpu_updates_allowed;
         row["unsupported_cpu_actuators"]={"game_scene_traversal","game_lod_selection","game_worker_parallelization"};
         row["targets"]=Json::array();for(const auto& p:current.compute)row["targets"].push_back({{"pipeline",p.pipeline},{"rate",{p.x_rate,p.y_rate}},{"mip_steps",p.mip_steps},{"sample_percent",p.sample_percent},{"comparison_taps",p.comparison_taps},{"zero_factor",p.zero_factor}});
-        row["vrs_requested"]=vrs_enabled;row["vrs_modified_draw_submissions_total"]=mirror::modified_draws();row["vrs_hardware_available"]=vrs_available;
+        row["pixel_mip_half_steps"]=pixel::requested_steps();row["pixel_variants_ready"]=pixel::ready();row["vrs_requested"]=vrs_enabled;row["vrs_modified_draw_submissions_total"]=mirror::modified_draws();row["vrs_hardware_available"]=vrs_available;
         row["unsupported_actuators"]={"mesh_simplification","shadow_resource_resizing","arbitrary_rt_rewrite","temporal_reprojection","texture_residency_control"};
         double cost=0;for(const auto& c:catalog)cost+=c.gpu_ms_per_window;row["profiled_supported_compute_ms"]=catalog.empty()?Json(nullptr):Json(cost);row["profile_age_seconds"]=std::chrono::duration<double>(Clock::now()-last_profile).count();publish(std::move(row));last_report=Clock::now();
     };
@@ -75,7 +75,7 @@ void run_target_feedback(){
         const auto dt=std::chrono::duration<double>(now-last_control).count();last_control=now;
         load=gpu_profile::load_evidence();if(load.sequence<=context_profile_floor){load.cpu_valid=load.gpu_valid=false;load.frame_ms=0;}const auto prior_route=route;
         route=router.observe({load.sequence,load.frame_ms,load.cpu_running_ms,load.gpu_queue_busy_ms,load.completed_tick_ms?double(GetTickCount64()-load.completed_tick_ms)/1000:999.,load.cpu_valid,load.gpu_valid,1000./s.target});
-        const auto permission=arc::gpu_permission(route,period(),1000./s.target,sample.output,!catalog.empty()||vrs_available);const bool drive_gpu=permission.update;const bool was_driving_gpu=gpu_updates_allowed;gpu_updates_allowed=drive_gpu;
+        const auto permission=arc::gpu_permission(route,period(),1000./s.target,sample.output,!catalog.empty()||vrs_available||pixel::available());const bool drive_gpu=permission.update;const bool was_driving_gpu=gpu_updates_allowed;gpu_updates_allowed=drive_gpu;
         if((route==arc::Bottleneck::CpuThread||route==arc::Bottleneck::Mixed)&&!cpu_cache&&now>=cpu_retry_after){cpu_cache=true;cpu_check_since=now;cpu_skipped_before=optimizer::cpu_cache_counters().skipped;cpu_outcome="observing_redundant_call_elimination";}
         if(cpu_cache&&cpu_check_since!=Clock::time_point{}&&now-cpu_check_since>=std::chrono::seconds(2)){
             if(optimizer::cpu_cache_counters().skipped==cpu_skipped_before){cpu_cache=false;cpu_retry_after=now+std::chrono::seconds(30);cpu_outcome="no_redundant_calls_disabled";}
@@ -99,6 +99,7 @@ void run_target_feedback(){
             if(!desired_vrs){mirror::configure(0);vrs_enabled=false;changed=true;}
             else if(hooks::begin_raster_observation()){vrs_enabled=mirror::configure(D3D12_SHADING_RATE_2X2);hooks::end_raster_observation();changed=vrs_enabled;}
         }
+        if(drive_gpu){const auto steps=unsigned(std::clamp(sample.output,0.,1.)*(s.quality_profile=="aggressive"?8.:4.));if(steps!=pixel::requested_steps()){std::lock_guard lock(s.policy_mutex);if(!s.cancel&&hooks::begin_raster_observation()){pixel::configure(steps);hooks::end_raster_observation();}}}
         if(vrs_enabled)mirror::keep_alive();
         if(now-last_report>=std::chrono::milliseconds(500)){
             const bool met=sample.filtered_ms<=1.03*1000./s.target;

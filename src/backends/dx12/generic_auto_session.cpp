@@ -6,6 +6,7 @@
 #include "generic_runtime.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_command_mirror.hpp"
+#include "generic_pixel_optimizer.hpp"
 #include "generic_cpu_workers.hpp"
 #include "arc/intercept_cpu_meter.hpp"
 #include "arc/optimizer_session.hpp"
@@ -116,7 +117,7 @@ bool wait_frames(unsigned count){auto& s=state();std::unique_lock lock(s.mutex);
 arc::TimingWindow period_stats(unsigned samples=32){std::lock_guard lock(state().mutex);const auto& s=state();const auto n=std::min(samples,s.count);std::array<double,128> values{};for(unsigned i=0;i<n;++i)values[i]=s.periods[(s.cursor+s.periods.size()-1-i)%s.periods.size()];return arc::timing_window({values.data(),n});}
 double period(unsigned samples=32){return period_stats(samples).mean;}
 bool wait_file(const std::filesystem::path& file,unsigned milliseconds=3000,bool image=false){const auto until=Clock::now()+std::chrono::milliseconds(milliseconds);while(!state().cancel&&Clock::now()<until){if(image&&state().capture_invalid)return false;if(std::filesystem::is_regular_file(file))return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
-bool wait_restoration(bool finishing=false){const auto until=Clock::now()+std::chrono::seconds(3);while((finishing||!state().cancel)&&Clock::now()<until){if(optimizer::restoration_ready()&&mirror::restoration_ready())return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
+bool wait_restoration(bool finishing=false){const auto until=Clock::now()+std::chrono::seconds(3);while((finishing||!state().cancel)&&Clock::now()<until){if(optimizer::restoration_ready()&&mirror::restoration_ready()&&pixel::restoration_ready())return true;std::this_thread::sleep_for(std::chrono::milliseconds(5));}return false;}
 Json read_json(const std::filesystem::path& path){if(std::filesystem::file_size(path)>2*1024*1024)throw std::runtime_error("Quality JSON capacity");std::ifstream file(path);return Json::parse(file);}
 Json quality(const std::vector<std::filesystem::path>& paths,const std::filesystem::path& output,const std::function<void()>& idle={}){
     auto& s=state();Json request{{"profile",s.quality_profile},{"paths",Json::array()},{"context",{{"surface_revision",s.transaction_revision},{"captured_frame",s.capture_evidence_frame},{"candidate_epochs",s.candidate_epochs}}}};
@@ -533,7 +534,7 @@ bool start(const wchar_t* config_path)noexcept{
         optimizer::configure(L"off");optimizer::reset_binding_evidence();optimizer::reset_activity_counters();s.observing=true;HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
     }catch(...){s.running=false;return false;}
 }
-void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();mirror::configure(0);optimizer::approve_policy(0,0);optimizer::pause_spatial_probes(true);optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
+void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();pixel::configure(0);mirror::configure(0);optimizer::approve_policy(0,0);optimizer::pause_spatial_probes(true);optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
 bool target(double fps)noexcept{auto& s=state();if(!std::isfinite(fps)||fps<=0||fps>1000||!s.running||s.cancel)return false;s.requested_target=fps;return true;}
 bool active()noexcept{return state().running.load();}
 void diagnostics(bool enabled)noexcept{state().diagnostics_enabled=enabled;}
