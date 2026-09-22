@@ -99,7 +99,7 @@ void run_target_feedback(){
             if(!desired_vrs){mirror::configure(0);vrs_enabled=false;changed=true;}
             else if(hooks::begin_raster_observation()){vrs_enabled=mirror::configure(D3D12_SHADING_RATE_2X2);hooks::end_raster_observation();changed=vrs_enabled;}
         }
-        if(drive_gpu){const auto steps=unsigned(std::clamp(sample.output,0.,1.)*(s.quality_profile=="aggressive"?8.:4.));const unsigned taps=sample.output>=.5?9:0,percent=sample.output>=.75?25:sample.output>=.5?50:sample.output>=.25?75:100;if(pixel::requested_budget()!=std::array<unsigned,3>{steps,taps,percent}){std::lock_guard lock(s.policy_mutex);if(!s.cancel&&hooks::begin_raster_observation()){pixel::configure(steps,taps,percent);hooks::end_raster_observation();}}}
+        if(drive_gpu){const auto steps=unsigned(std::clamp(sample.output,0.,1.)*(s.quality_profile=="aggressive"?8.:4.));const auto intensity=std::clamp(sample.output,0.,1.);const unsigned tap_count=25-unsigned(std::lround(intensity*24)),taps=tap_count==25?0:tap_count,percent=100-unsigned(std::lround(intensity*99));if(pixel::requested_budget()!=std::array<unsigned,3>{steps,taps,percent}){std::lock_guard lock(s.policy_mutex);if(!s.cancel&&hooks::begin_raster_observation()){pixel::configure(steps,taps,percent);hooks::end_raster_observation();}}}
         if(vrs_enabled)mirror::keep_alive();
         if(now-last_report>=std::chrono::milliseconds(500)){
             const bool met=sample.filtered_ms<=1.03*1000./s.target;

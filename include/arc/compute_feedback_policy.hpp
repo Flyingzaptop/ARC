@@ -15,7 +15,7 @@ struct ComputeAllocation {
 // component prevents treating a 4x4 shader as automatically 16 times faster.
 inline double compute_cost_prior(const ComputePolicy& p) noexcept {
     return (.15+.85/(p.x_rate*p.y_rate))*(.2+.8*p.sample_percent/100.)*
-        std::pow(.97,p.mip_steps)*(p.comparison_taps?.8:1.)*(p.zero_factor?.95:1.);
+        std::pow(.97,p.mip_steps)*(p.comparison_taps?(.15+.85*p.comparison_taps/25.):1.)*(p.zero_factor?.95:1.);
 }
 inline bool advance_compute_knob(ComputePolicy& p,const ComputeFeedbackTarget& t,unsigned knob,bool aggressive){
     if(knob==0&&t.density){
@@ -24,9 +24,9 @@ inline bool advance_compute_knob(ComputePolicy& p,const ComputeFeedbackTarget& t
         if(aggressive&&p.x_rate==2&&p.y_rate==2){p.y_rate=4;return true;}
         if(aggressive&&p.x_rate==2&&p.y_rate==4){p.x_rate=4;return true;}
     }
-    if(knob==1&&t.samples&&p.sample_percent>25){p.sample_percent-=25;return true;}
+    if(knob==1&&t.samples&&p.sample_percent>1){--p.sample_percent;return true;}
     if(knob==2&&t.mips&&p.mip_steps<(aggressive?8u:4u)){++p.mip_steps;return true;}
-    if(knob==3&&t.comparison&&!p.comparison_taps){p.comparison_taps=9;return true;}
+    if(knob==3&&t.comparison&&p.comparison_taps!=1){p.comparison_taps=p.comparison_taps?p.comparison_taps-1:24;return true;}
     if(knob==4&&t.zero&&!p.zero_factor){p.zero_factor=1;return true;}
     return false;
 }
@@ -43,7 +43,7 @@ inline ComputeAllocation allocate_compute_budget(std::span<const ComputeFeedback
     out.requested_saving_ms=intensity*out.estimated_capacity_ms;
     // Greedy marginal benefit: recompute after every mutation. An already cheap
     // pass cannot consume every step just because it was initially expensive.
-    for(unsigned iteration=0;iteration<PolicyBundle::capacity*20&&out.estimated_saved_ms+1e-9<out.requested_saving_ms;++iteration){
+    for(unsigned iteration=0;iteration<PolicyBundle::capacity*140&&out.estimated_saved_ms+1e-9<out.requested_saving_ms;++iteration){
         double gain=0;std::size_t best=targets.size();ComputePolicy selected;
         for(std::size_t i=0;i<targets.size();++i)for(unsigned knob=0;knob<5;++knob){auto next=recipes[i];if(!advance_compute_knob(next,targets[i],knob,aggressive))continue;
             const auto marginal=targets[i].cost_ms*(compute_cost_prior(recipes[i])-compute_cost_prior(next));

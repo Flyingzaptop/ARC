@@ -156,7 +156,7 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
     const auto completed=fence_->GetCompletedValue();
     if(last_queue_&&last_queue_.Get()!=queue&&completed<sequence_)check(queue->Wait(fence_.Get(),sequence_));
     if(values.size()>capacity)throw std::runtime_error("GPU control capacity");
-    bool coarse=false;for(const auto& value:values)coarse|=(value.sample_percent==25||value.sample_percent==50||value.sample_percent==75)||value.probe_epoch!=0||value.calibration!=0||(value.x==2||value.x==4)||(value.y==2||value.y==4)||value.comparison_taps==9||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=8)||(value.edge_sources&&value.spatial_key);
+    bool coarse=false;for(const auto& value:values)coarse|=(value.sample_percent>=1&&value.sample_percent<100)||value.probe_epoch!=0||value.calibration!=0||(value.x==2||value.x==4)||(value.y==2||value.y==4)||(value.comparison_taps>=1&&value.comparison_taps<25)||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=8)||(value.edge_sources&&value.spatial_key);
     if(!coarse)return nullptr;
     // Prefer completed slots already consumed by the background collector.
     // Fall back to overwriting an unread slot rather than delaying the game.

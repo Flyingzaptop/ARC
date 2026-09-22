@@ -36,7 +36,7 @@ static SampleTransform reduce_means(std::string_view source,bool rays){
             if(!std::regex_match(codes[definition[back]],m,inc)||m[2]!=counter||owner[definition[back]]!=latch)continue;
             std::size_t branch_at=lines.size(),comparison_at=lines.size();unsigned count=0;
             for(auto at:blocks[latch])if(std::regex_match(codes[at],m,branch)){const auto test=m[1].str(),yes=m[2].str(),no=m[3].str();if(!definition.contains(test))continue;const auto check=definition[test];
-                if(!std::regex_match(codes[check],m,cmp)||m[3]!=back)continue;const auto op=m[2].str();count=std::stoul(m[4]);if(count<4||count>256)continue;
+                if(!std::regex_match(codes[check],m,cmp)||m[3]!=back)continue;const auto op=m[2].str();count=std::stoul(m[4]);if(count<2||count>256)continue;
                 if((op=="eq"&&no==header&&yes!=header)||(op!="eq"&&yes==header&&no!=header)){branch_at=at;comparison_at=check;break;}}
             if(branch_at==lines.size())continue;
             std::set<std::string> region{header};std::vector<std::size_t> region_lines=blocks[header];
@@ -87,10 +87,13 @@ static SampleTransform reduce_means(std::string_view source,bool rays){
             std::ostringstream controls;controls<<"  "<<prefix<<"_cb = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<range<<", i32 0, i1 false)\n"
                 <<"  "<<prefix<<"_data = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle "<<prefix<<"_cb, i32 2)\n"
                 <<"  "<<prefix<<"_percent = extractvalue %dx.types.CBufRet.i32 "<<prefix<<"_data, 1\n";
-            for(unsigned p:{25u,50u,75u})controls<<"  "<<prefix<<"_is"<<p<<" = icmp eq i32 "<<prefix<<"_percent, "<<p<<"\n";
-            controls<<"  "<<prefix<<"_count25 = select i1 "<<prefix<<"_is25, i32 "<<(count+3)/4<<", i32 "<<count<<"\n"
-                <<"  "<<prefix<<"_count50 = select i1 "<<prefix<<"_is50, i32 "<<(count+1)/2<<", i32 "<<prefix<<"_count25\n"
-                <<"  "<<prefix<<"_count = select i1 "<<prefix<<"_is75, i32 "<<(count*3+3)/4<<", i32 "<<prefix<<"_count50\n"
+            controls<<"  "<<prefix<<"_positive = icmp uge i32 "<<prefix<<"_percent, 1\n"
+                <<"  "<<prefix<<"_bounded = icmp ule i32 "<<prefix<<"_percent, 100\n"
+                <<"  "<<prefix<<"_valid = and i1 "<<prefix<<"_positive, "<<prefix<<"_bounded\n"
+                <<"  "<<prefix<<"_safe = select i1 "<<prefix<<"_valid, i32 "<<prefix<<"_percent, i32 100\n"
+                <<"  "<<prefix<<"_product = mul i32 "<<prefix<<"_safe, "<<count<<"\n"
+                <<"  "<<prefix<<"_rounded = add i32 "<<prefix<<"_product, 99\n"
+                <<"  "<<prefix<<"_count = udiv i32 "<<prefix<<"_rounded, 100\n"
                 <<"  "<<prefix<<"_float = uitofp i32 "<<prefix<<"_count to float\n"
                 <<"  "<<prefix<<"_factor = fdiv float "<<std::scientific<<float(count)<<", "<<prefix<<"_float\n"
                 <<"  "<<prefix<<"_neutral = icmp eq i32 "<<prefix<<"_count, "<<count<<"\n";

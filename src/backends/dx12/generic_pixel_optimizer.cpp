@@ -99,7 +99,7 @@ void after_submit(Submission& ticket,ID3D12CommandQueue* queue)noexcept{try{mirr
 unsigned requested_steps()noexcept{return state().steps.load();}
 std::array<unsigned,3> requested_budget()noexcept{auto& s=state();return {s.steps.load(),s.filter_taps.load(),s.sample_percent.load()};}
 bool active()noexcept{auto& s=state();return s.steps||s.filter_taps||s.sample_percent!=100;}
-bool configure(unsigned steps,unsigned taps,unsigned percent)noexcept{if(steps>8||(taps!=0&&taps!=9)||(percent!=100&&percent!=75&&percent!=50&&percent!=25))return false;bool accepted=false;safe([&]{auto& s=state();if((steps||taps||percent!=100)&&!initialize())return;s.steps=steps;s.filter_taps=taps;s.sample_percent=percent;accepted=true;});return accepted;}
+bool configure(unsigned steps,unsigned taps,unsigned percent)noexcept{if(steps>8||(taps>25)||(percent<1||percent>100))return false;bool accepted=false;safe([&]{auto& s=state();if((steps||taps||percent!=100)&&!initialize())return;s.steps=steps;s.filter_taps=taps;s.sample_percent=percent;accepted=true;});return accepted;}
 bool available()noexcept{bool result=false;safe([&]{result=!state().pipelines.empty()&&!state().faults;});return result;}
 bool ready()noexcept{bool result=false;safe([&]{result=state().prepared>0&&!state().faults;});return result;}
 bool restoration_ready()noexcept{bool result=false;safe([&]{result=!active()&&std::all_of(state().controls.begin(),state().controls.end(),[](const auto& c){return c->ready();});});return result;}

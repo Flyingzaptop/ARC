@@ -70,12 +70,15 @@ ComparisonFilterTransform sparse_comparison_filter(std::string_view input){
         const auto name="%arc_pcf_weight"+std::to_string(result.groups);
         auto normalized=lines[group.line];const auto where=normalized.rfind(group.scale);if(where==normalized.npos)return ComparisonFilterTransform{std::string(input)};
         normalized.replace(where,group.scale.size(),name);
-        replacements[group.line]="  "+name+" = select i1 %arc_pcf_enabled, float "+literal(1.f/9.f)+", float "+group.scale+"\n"+normalized;
+        replacements[group.line]="  "+name+" = select i1 %arc_pcf_enabled, float "+std::string("%arc_pcf_reciprocal")+", float "+group.scale+"\n"+normalized;
         for(const auto& scalar:group.samples){const auto& s=samples.at(scalar);int dx{},dy{};std::from_chars(s.args[7].data()+4,s.args[7].data()+s.args[7].size(),dx);std::from_chars(s.args[8].data()+4,s.args[8].data()+s.args[8].size(),dy);
-            if(dx%2==0&&dy%2==0)continue;
+            std::vector<std::pair<int,int>> order{{0,0},{-2,0},{2,0},{0,-2},{0,2},{-2,-2},{2,-2},{-2,2},{2,2}};
+            std::vector<std::pair<int,int>> rest;for(int y=-2;y<=2;++y)for(int x=-2;x<=2;++x)if(std::find(order.begin(),order.end(),std::pair{x,y})==order.end())rest.emplace_back(x,y);
+            std::stable_sort(rest.begin(),rest.end(),[](auto a,auto b){return a.first*a.first+a.second*a.second<b.first*b.first+b.second*b.second;});order.insert(order.end(),rest.begin(),rest.end());
+            const auto rank=std::find(order.begin(),order.end(),std::pair{dx,dy})-order.begin();if(rank==0)continue;
             const auto suffix=std::to_string(serial++),full="arc_pcf_full"+suffix,skip="arc_pcf_skip"+suffix,merge="arc_pcf_merge"+suffix;
             auto call=code[s.line];call.replace(0,s.result.size(),"%arc_pcf_ret"+suffix);
-            replacements[s.line]="  br i1 %arc_pcf_enabled, label %"+skip+", label %"+full+"\n"+full+":\n  "+call+
+            replacements[s.line]="  %arc_pcf_drop"+suffix+" = icmp ule i32 %arc_pcf_count, "+std::to_string(rank)+"\n  br i1 %arc_pcf_drop"+suffix+", label %"+skip+", label %"+full+"\n"+full+":\n  "+call+
                 "\n  %arc_pcf_value"+suffix+" = extractvalue %dx.types.ResRet.f32 %arc_pcf_ret"+suffix+", 0\n  br label %"+merge+
                 "\n"+skip+":\n  br label %"+merge+"\n"+merge+":\n  "+s.scalar+" = phi float [ %arc_pcf_value"+suffix+", %"+full+" ], [ 0.000000e+00, %"+skip+" ]";
             removed.insert(s.extract_line);++result.samples_removed;
@@ -91,7 +94,12 @@ ComparisonFilterTransform sparse_comparison_filter(std::string_view input){
         }else generated<<lines[i]<<'\n';
         if(code[i].starts_with(control+" ="))generated<<"  %arc_pcf_controls = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle "<<control<<", i32 1)\n"
             <<"  %arc_pcf_taps = extractvalue %dx.types.CBufRet.i32 %arc_pcf_controls, 0\n"
-            <<"  %arc_pcf_enabled = icmp eq i32 %arc_pcf_taps, 9\n";
+            <<"  %arc_pcf_positive = icmp uge i32 %arc_pcf_taps, 1\n"
+            <<"  %arc_pcf_reduced = icmp ult i32 %arc_pcf_taps, 25\n"
+            <<"  %arc_pcf_enabled = and i1 %arc_pcf_positive, %arc_pcf_reduced\n"
+            <<"  %arc_pcf_count = select i1 %arc_pcf_enabled, i32 %arc_pcf_taps, i32 25\n"
+            <<"  %arc_pcf_count_float = uitofp i32 %arc_pcf_count to float\n"
+            <<"  %arc_pcf_reciprocal = fdiv float 1.000000e+00, %arc_pcf_count_float\n";
     }
     std::istringstream changed(generated.str());std::ostringstream fixed;
     while(std::getline(changed,line)){

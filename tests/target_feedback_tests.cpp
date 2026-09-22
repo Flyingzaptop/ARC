@@ -17,7 +17,7 @@ int main(){
     plant.reset();if(plant.step(10,10,.25).output!=0)return 26;
     const arc::ComputeFeedbackTarget knobs[]{{1,8,true,true,true,true,true},{2,1,true,false,false,false,false}};
     auto full=arc::compute_feedback_policy(knobs,1,true);
-    if(!full.valid()||full.compute.size()!=2||full.compute[0].x_rate!=4||full.compute[0].y_rate!=4||full.compute[0].mip_steps!=8||full.compute[0].sample_percent!=25||!full.compute[0].comparison_taps||!full.compute[0].zero_factor)return 27;
+    if(!full.valid()||full.compute.size()!=2||full.compute[0].x_rate!=4||full.compute[0].y_rate!=4||full.compute[0].mip_steps!=8||full.compute[0].sample_percent!=1||!full.compute[0].comparison_taps||!full.compute[0].zero_factor)return 27;
     if(!arc::compute_feedback_policy(knobs,0,true).compute.empty())return 28;
     if(arc::compute_feedback_policy(knobs,.3,true).find(2))return 29;
     auto balanced=arc::compute_feedback_policy(knobs,1,false);
@@ -47,6 +47,10 @@ int main(){
     auto hold=arc::gpu_permission(arc::Bottleneck::CpuThread,24,10,.5,true);if(hold.update)return 44;
     auto recovery=arc::gpu_permission(arc::Bottleneck::CpuThread,5,10,.5,true);if(!recovery.update||recovery.maximum!=.5)return 45;
     auto accelerate=arc::gpu_permission(arc::Bottleneck::Gpu,24,10,.5,true);if(!accelerate.update||accelerate.maximum!=1)return 46;
+    arc::ComputePolicy fine;fine.pipeline=1;arc::ComputeFeedbackTarget all{1,1,false,true,false,true,false};
+    for(unsigned percent=100;percent>1;--percent){if(fine.sample_percent!=percent||!arc::advance_compute_knob(fine,all,1,true))return 47;}
+    if(fine.sample_percent!=1||arc::advance_compute_knob(fine,all,1,true))return 48;
+    for(unsigned taps=24;taps>=1;--taps){if(!arc::advance_compute_knob(fine,all,3,true)||fine.comparison_taps!=taps)return 49;}
     arc::TargetFeedbackGate g;
     g.observe(18,16);if(g.reduce())return 1;
     g.observe(16,16);g.observe(18,16);if(g.reduce())return 2;
