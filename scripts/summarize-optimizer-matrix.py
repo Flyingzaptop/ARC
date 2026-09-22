@@ -33,10 +33,12 @@ def summarize(case):
     if init:result['whole_ready_scene']=frame_summary(init+rows)
     scene_frames=rows[-1]['scene_frame']+1
     result['ready_frame_throughput_including_process_startup_shutdown_fps']=scene_frames/manifest['process_seconds']
-    samples=[]
+    samples=[];all_samples=[]
     for record in json_lines(case/'gpu-samples.jsonl'):
-        if record.get('measured_phase') and record.get('exit_code')==0:
-            samples.extend({k.strip():v.strip() for k,v in row.items()} for row in csv.DictReader(io.StringIO(record['csv'])))
+        if record.get('exit_code')==0:
+            parsed=[{k.strip():v.strip() for k,v in row.items()} for row in csv.DictReader(io.StringIO(record['csv']))]
+            all_samples.extend(parsed)
+            if record.get('measured_phase'):samples.extend(parsed)
     hardware={}
     for field in sorted({k for sample in samples for k in sample}):
         if field=='timestamp':continue
@@ -48,9 +50,10 @@ def summarize(case):
         if values:hardware[field]=dict(min=min(values),max=max(values),mean=statistics.mean(values))
     caps=sorted({float(sample['enforced.power.limit [W]']) for sample in samples if sample.get('enforced.power.limit [W]','N/A')!='N/A'})
     result['hardware']=hardware;result['power_caps_w']=caps
+    result['whole_session_power_caps_w']=sorted({float(s['enforced.power.limit [W]']) for s in all_samples if s.get('enforced.power.limit [W]','N/A')!='N/A'})
     reasons=[]
     if len(caps)!=1:reasons.append('missing_or_mixed_power_limit')
-    if not manifest.get('performance_run'):reasons.append('diagnostic_or_quality_run')
+    if not manifest.get('performance_run') and manifest.get('measurement_phase',{}).get('comparable',True):reasons.append('diagnostic_or_quality_run')
     if not manifest.get('measurement_complete'):reasons.append('incomplete_measurement')
     if not manifest.get('measurement_phase',{}).get('comparable'):reasons.append('initialization_phase_not_comparable')
     if result['measurement']['foreground_fraction']<.99:reasons.append('foreground_not_held')

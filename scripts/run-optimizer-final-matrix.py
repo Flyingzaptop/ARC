@@ -22,7 +22,7 @@ for series,order in enumerate(orders[:a.rounds],1):
     for mode in order:
         if hashes()!=frozen:raise RuntimeError('Frozen input changed during matrix')
         case=root/f'{series:02d}-{mode}'
-        command=[str(a.quality_python),str(runner),str(a.sdk.resolve()),str(case),'--initialization-seconds','100','--measurement-seconds','60','--route',a.route,'--borderless']
+        command=[sys.executable,str(runner),str(a.sdk.resolve()),str(case),'--initialization-seconds','100','--measurement-seconds','60','--route',a.route,'--borderless']
         if a.visible:command+=['--visible']
         if mode!='O':
             dll=previous/'arc-dx12-probe.dll' if mode=='V' else a.dll.resolve()
