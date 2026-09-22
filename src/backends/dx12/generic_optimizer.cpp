@@ -110,6 +110,11 @@ struct State {
     std::deque<UniformJob> uniform_jobs;
     std::size_t queued_code_bytes{};
     std::vector<std::shared_ptr<GpuControl>> controls;
+    // Published only after a prepared variant and its controls become visible
+    // together under mutex. Once true it stays true: cached recordings may
+    // retain controls even if policy changes.
+    std::atomic<bool> controls_available{};
+    std::atomic<std::uint64_t> empty_control_bypasses{};
     std::map<std::uint64_t,VariantStats> history;
     std::uint64_t next{1},prepared{},declined{},modified_dispatches{},coarse_submissions{},neutral_submissions{},faults{},pool_misses{};
     std::string last_error;std::map<std::string,std::uint64_t> admission_reasons;
@@ -380,6 +385,7 @@ DWORD WINAPI worker(void*){
             bool needs_pool=false;{std::lock_guard lock(state().mutex);needs_pool=std::none_of(state().controls.begin(),state().controls.end(),[&](const auto& c){return c->device()==job->device.Get();});}
             if(needs_pool){if(state().controls.size()+8>8)throw std::runtime_error("spatial_control_budget_256MiB_multiple_device_declined");mirror::InternalCall internal;for(unsigned i=0;i<8;++i)controls.push_back(std::make_shared<GpuControl>(job->device.Get(),state().measure_control,true));probe_pool=std::make_shared<SpatialProbeGpu>(job->device.Get(),8ull*1024*1024);}
             std::lock_guard lock(state().mutex);job->variant=std::move(variant);job->reason="prepared_neutral";state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().prepared;state().controls.insert(state().controls.end(),controls.begin(),controls.end());if(probe_pool)state().probe_pools[job->device.Get()]=std::move(probe_pool);
+            if(!state().controls.empty())state().controls_available.store(true,std::memory_order_release);
         }catch(const std::exception& error){event({{"phase","analysis_declined"},{"pipeline",job->id},{"reason",error.what()}});std::lock_guard lock(state().mutex);job->reason=error.what();state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().declined;}
     }
 }
@@ -483,7 +489,7 @@ bool restoration_ready()noexcept{bool ready=false;safe([&]{const auto& s=state()
 ConnectionCoverage connection_coverage()noexcept{ConnectionCoverage result;safe([&]{const auto& s=state();result={s.roots.size(),s.pipelines.size(),s.dispatch_declines[4]};});return result;}
 void coverage_snapshot(std::ostream& out){std::lock_guard lock(state().mutex);out<<"{\"observed_root_signatures\":"<<state().roots.size()<<",\"observed_compute_pipelines\":"<<state().pipelines.size()<<",\"pipeline_declines\":{";bool first=true;for(const auto& [reason,count]:state().pipeline_declines){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}
     out<<"},\"dispatch_declines\":{";const char* reasons[]{"recording_unknown","recording_invalid","recording_closed","inside_render_pass","root_unknown","use_capacity","pipeline_unknown","variant_unavailable","root_mismatch","policy_off","not_selected","root_arguments_uncertain"};for(unsigned i=0;i<state().dispatch_declines.size();++i){if(i)out<<',';out<<std::quoted(reasons[i])<<':'<<state().dispatch_declines[i];}
-    out<<"},\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
+    out<<"},\"empty_control_bypasses\":"<<state().empty_control_bypasses.load(std::memory_order_relaxed)<<",\"pipelines\":[";first=true;for(const auto& [native,p]:state().pipelines){(void)native;if(!first)out<<',';first=false;out<<"{\"id\":"<<p->id<<",\"profile_id\":"<<p->profile_id<<",\"ready\":"<<(p->variant?"true":"false")<<",\"reason\":"<<std::quoted(p->reason)<<'}';}out<<"]}";}
 std::uint64_t cpu_nanoseconds()noexcept{return cpu_ns.load(std::memory_order_relaxed);}
 void intercept_cpu_snapshot(std::ostream& out){const auto c=arc::InterceptCpuMeter::snapshot();const auto workers=cpu_cost::snapshot();
     out<<"{\"enabled\":"<<(arc::InterceptCpuMeter::enabled()?"true":"false")<<",\"measurement\":\"all_interceptor_wall_excluding_application_native_calls\",\"own_ms\":"<<c.own_ns/1.e6<<",\"excluded_native_ms\":"<<c.excluded_native_ns/1.e6<<",\"calls\":"<<c.calls<<",\"worker_thread_cpu_ms\":"<<workers.nanoseconds[0]/1.e6<<",\"compiler_cpu_ms\":"<<workers.nanoseconds[1]/1.e6<<",\"critic_cpu_ms\":"<<workers.nanoseconds[2]/1.e6<<",\"worker_measurement_failures\":"<<workers.failures<<",\"live_workers\":["<<workers.live[0]<<','<<workers.live[1]<<','<<workers.live[2]<<"],\"complete_overhead_evidence\":false,\"sites\":[";bool first=true;for(const auto& site:arc::InterceptCpuMeter::sites()){const auto name=site.name.load();const auto calls=site.calls.load();if(!name||!calls)continue;if(!first)out<<',';first=false;out<<"{\"name\":"<<std::quoted(name)<<",\"calls\":"<<calls<<",\"own_ms\":"<<site.own_ns.load()/1.e6<<'}';}out<<"]}";
@@ -790,7 +796,14 @@ void close(ID3D12GraphicsCommandList* native)noexcept{if(!enabled())return;safe(
 bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists)noexcept {
     if(!enabled()||!queue||(!lists&&count))return false;
     static const auto sample=register_cpu_sample("execute");CpuMeter meter(sample);
-    auto& s=state();std::lock_guard descriptors(s.descriptor_mutex);std::unique_lock lock(s.mutex);meter.locked();
+    auto& s=state();
+    // No recording can contain a control until the worker publishes the first
+    // prepared pool. The interceptor then delegates to mirror and native DX12.
+    if(!s.controls_available.load(std::memory_order_acquire)){
+        s.empty_control_bypasses.fetch_add(1,std::memory_order_relaxed);
+        return false;
+    }
+    std::lock_guard descriptors(s.descriptor_mutex);std::unique_lock lock(s.mutex);meter.locked();
     std::array<std::shared_ptr<GpuControl>,64> controls{};unsigned used=0;
     struct Staged {std::shared_ptr<GpuControl> control;std::array<ControlValue,GpuControl::capacity> values,probes;unsigned count{};std::vector<std::shared_ptr<SpatialProbeGpu>> pools;};
     std::vector<Staged> staged;const auto binding_revision=s.binding_evidence.revision();
