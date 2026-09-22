@@ -24,3 +24,28 @@ Remaining: runtime pixel-shader transformations, intermediate resource resizing,
 mesh simplification/LOD, independent-ray transformations, temporal reuse/reprojection,
 residency control, complete critical-path CPU/GPU attribution. These are NOT
 implemented by the PID or by this report. All-game/console support is not claimed.
+
+## Pixel shader transformation — preparation, not live integration
+
+Added `arc-shader-tool pixel-mip:N` (N=0..8 half steps). Supports float32 pixel
+Sample, SampleBias and SampleLevel, rejects side-effecting UAV operations and
+bindless handles. No root-layout changes in this static variant. DXIL validation
+and a native graphics test compare every output pixel to independently compiled
+HLSL for +1/+2/+4; neutral and original restoration are exact on the fixture.
+An implicit-Sample-only fixture also validates the new SampleBias declaration.
+
+This is NOT enabled in the live game controller. Simply replacing a PSO when
+recording would leave cached command lists modified after disabling the policy.
+Live integration needs a GPU-controlled neutral path, root-argument preservation,
+submission-fenced controls and cached-list/indirect/render-pass tests. No static
+PSO swap is advertised as reversible game optimization.
+
+## Dynamic target change validation
+
+`pid-allocation-dynamic-03`: 60-second functional run, target100 ->300 at20.00s
+->60 at45.24s. PID saturation and subsequent intensity below0.1 confirmed,
+VRS modified submissions observed, final restoration confirmed. Mean97.39FPS
+is across changing targets and is not a speedup measurement. The earlier
+`pid-allocation-dynamic-02` ran normally at target100 (97.65FPS), but its target
+change harness incorrectly read elapsed_ms from status.json instead of JSONL;
+no target-change commands were sent. It is not counted as passing that check.

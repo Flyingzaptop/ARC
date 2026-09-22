@@ -39,4 +39,55 @@ MipTransform bias_explicit_mips(std::string_view input){
     }
     if(result.samples)result.ir=output.str();return result;
 }
+MipTransform bias_pixel_mips(std::string_view input,unsigned half_steps){
+    MipTransform result{std::string(input)};
+    if(half_steps>8||input.size()>8*1024*1024||input.find("arc_pixel_mip_")!=input.npos)return result;
+    std::smatch stage;const std::regex model(R"(!dx.shaderModel = !\{!(\d+)\})");
+    if(!std::regex_search(result.ir,stage,model))return result;
+    const std::regex pixel("!"+stage[1].str()+R"( = !\{!"ps", i32 [0-9]+, i32 [0-9]+\})");
+    if(!std::regex_search(result.ir,pixel))return result;
+    for(const char* op:{"@dx.op.textureStore","@dx.op.bufferStore","@dx.op.rawBufferStore","@dx.op.atomic","@dx.op.bufferUpdateCounter","@dx.op.createHandleFromHeap"})if(input.find(op)!=input.npos)return result;
+    const std::regex call(R"(^([ \t]*%[A-Za-z0-9_.$]+ = call %dx.types.ResRet.f32 @dx.op.)(sample|sampleBias|sampleLevel)(\.f32\()(.*)(\)(?: #[0-9]+)?(?:, !.*)?)$)");
+    std::ostringstream bias;bias.imbue(std::locale::classic());bias<<std::scientific;bias.precision(6);bias<<half_steps*.5;
+    std::istringstream source(result.ir);std::ostringstream output;std::string line,bias_declaration;std::smatch match;bool promoted=false;
+    while(std::getline(source,line)){
+        if(line.starts_with("declare %dx.types.ResRet.f32 @dx.op.sample.f32(")){
+            bias_declaration=line;auto at=bias_declaration.find("sample.f32");bias_declaration.replace(at,10,"sampleBias.f32");bias_declaration.insert(bias_declaration.find(')'),", float");
+        }
+        auto code=line.substr(0,line.find(';'));auto end=code.find_last_not_of(" \t\r");if(end!=code.npos)code.resize(end+1);
+        if(code.size()<65536&&std::regex_match(code,match,call)){
+            auto kind=match[2].str();std::vector<std::string> args;std::istringstream fields(match[4].str());std::string arg;
+            while(std::getline(fields,arg,',')){const auto first=arg.find_first_not_of(" \t");args.push_back(first==arg.npos?"":arg.substr(first));}
+            const unsigned expected=kind=="sampleBias"?12:11;const auto opcode=kind=="sample"?"i32 60":kind=="sampleBias"?"i32 61":"i32 62";
+            if(args.size()==expected&&args[0]==opcode&&(kind=="sample"||(args[10].starts_with("float ")&&args[10]!="float undef"))){
+                const auto id=std::to_string(result.samples++);
+                if(!half_steps){output<<line<<'\n';continue;}
+                if(kind=="sample"){args[0]="i32 61";args.insert(args.begin()+10,"float "+bias.str());kind="sampleBias";promoted=true;}
+                else{
+                    output<<"  %arc_pixel_mip_added"<<id<<" = fadd float "<<args[10].substr(6)<<", "<<bias.str()<<'\n';
+                    if(kind=="sampleBias"){
+                        output<<"  %arc_pixel_mip_limit"<<id<<" = fcmp ogt float %arc_pixel_mip_added"<<id<<", 1.500000e+01\n";
+                        output<<"  %arc_pixel_mip_clamped"<<id<<" = select i1 %arc_pixel_mip_limit"<<id<<", float 1.500000e+01, float %arc_pixel_mip_added"<<id<<'\n';
+                        args[10]="float %arc_pixel_mip_clamped"+id;
+                    }else args[10]="float %arc_pixel_mip_added"+id;
+                }
+                output<<match[1].str()<<kind<<match[3].str();for(unsigned i=0;i<args.size();++i){if(i)output<<", ";output<<args[i];}output<<match[5].str()<<'\n';continue;
+            }
+        }
+        output<<line<<'\n';
+    }
+    if(!result.samples||!half_steps)return result;
+    if(promoted&&input.find("declare %dx.types.ResRet.f32 @dx.op.sampleBias.f32(")==input.npos){
+        if(bias_declaration.empty()){result.samples=0;return result;}output<<'\n'<<bias_declaration<<'\n';
+    }
+    result.ir=output.str();
+    const std::string old_name="@dx.op.sample.f32(";
+    const auto first=result.ir.find(old_name);
+    if(first!=std::string::npos&&result.ir.find(old_name,first+old_name.size())==std::string::npos){
+        const auto begin=result.ir.rfind('\n',first);const auto line_begin=begin==std::string::npos?0:begin+1;
+        if(result.ir.compare(line_begin,8,"declare ")==0){const auto end=result.ir.find('\n',first);result.ir.erase(line_begin,(end==std::string::npos?result.ir.size():end+1)-line_begin);}
+    }
+    return result;
+}
+
 }

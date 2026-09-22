@@ -63,12 +63,14 @@ void convert_dxbc(std::vector<char>& bytes){
 int wmain(int argc, wchar_t** argv) try {
     if (argc != 5) throw std::runtime_error("Usage: arc-shader-tool dump|assemble|roundtrip|coarse2x2|coarse1x2|coarse2x1|neutral INPUT NEW_OUTPUT ABSOLUTE_DXCOMPILER_DLL");
     const std::wstring mode = argv[1];
+    const bool pixel_mips=mode.starts_with(L"pixel-mip:");unsigned pixel_steps=0;
+    if(pixel_mips){std::size_t used{};const auto suffix=mode.substr(10);pixel_steps=std::stoul(suffix,&used);if(used!=suffix.size()||pixel_steps>8)throw std::runtime_error("Pixel mip steps must be 0..8");}
     const bool proof=mode==L"controlled-proof"||mode.starts_with(L"controlled-proof:");
     const bool controlled = proof || mode == L"controlled" || mode.starts_with(L"controlled:");
     unsigned requested_space=UINT32_MAX;
     if(mode.find(L':')!=mode.npos&&controlled){std::size_t used{};const auto suffix=mode.substr(mode.find(L':')+1);const auto value=std::stoul(suffix,&used);if(used!=suffix.size()||value>=65536)throw std::runtime_error("Control space must be 0..65535");requested_space=static_cast<unsigned>(value);}
     const bool transform = mode == L"coarse2x2" || mode == L"coarse1x2" || mode == L"coarse2x1" || mode == L"neutral" || controlled;
-    if (mode != L"dump" && mode != L"assemble" && mode != L"roundtrip" && !transform) throw std::runtime_error("Unknown operation");
+    if (mode != L"dump" && mode != L"assemble" && mode != L"roundtrip" && !transform && !pixel_mips) throw std::runtime_error("Unknown operation");
     const std::filesystem::path input = argv[2], output = argv[3], compiler_path = argv[4];
     if (!std::filesystem::is_regular_file(input) || std::filesystem::exists(output)) throw std::runtime_error("Input file and fresh output required");
     if (std::filesystem::file_size(input) > 32 * 1024 * 1024) throw std::runtime_error("Shader input exceeds 32 MiB");
@@ -93,6 +95,7 @@ int wmain(int argc, wchar_t** argv) try {
         const auto normalized=arc::dx12::shader::normalize_converted_dxil({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()});
         source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(normalized.data(),static_cast<UINT32>(normalized.size()),CP_UTF8,&source),"Create normalized converter IR");
     }
+    if(pixel_mips){auto changed=arc::dx12::shader::bias_pixel_mips({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},pixel_steps);if(!changed.samples)throw std::runtime_error("Shader declined: no supported pure pixel samples");source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(changed.ir.data(),static_cast<UINT32>(changed.ir.size()),CP_UTF8,&source),"Pixel mip variant");}
     arc::dx12::shader::Transform contract;
     std::string original_ir,probe_ir;
     if (transform) {
