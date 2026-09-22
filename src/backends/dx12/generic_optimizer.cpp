@@ -78,7 +78,7 @@ struct State {
     arc::PolicyBindingEvidence binding_evidence;
     UINT surface_width{},surface_height{},surface_format{};bool center_priority{};std::set<std::uint64_t> presentation_resources;
     std::recursive_mutex mutex,descriptor_mutex;std::condition_variable_any changed;
-    std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{};
+    std::atomic<bool> enabled{};UINT x_rate{1},y_rate{1},comparison_taps{},zero_factor{},mip_steps{},sample_percent{100};
     std::atomic<bool> cpu_optimize{};std::atomic<std::uint64_t> cpu_generation{1},cpu_lookup_epoch{1};
     std::uint64_t cpu_state_attempts{},cpu_state_skipped{};
     std::array<RawDescriptor,512> cpu_views;
@@ -349,6 +349,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     if(!description||tag!="ARC_SHADER_CONTRACT_12"||!contract.execution_marker||count>128||contract.control_space==UINT32_MAX)throw std::runtime_error("shader worker contract");
     for(std::size_t i=0;i<count;++i){shader::ResourceContract r;description>>r.resource_class>>r.range_id>>r.shader_register>>r.space>>r.count>>r.kind;contract.resources.push_back(r);}
     if(!description)throw std::runtime_error("truncated shader contract");contract.admitted=true;
+    std::string extension;if(description>>extension){if(extension!="ray_loops"||!(description>>contract.ray_loops)||contract.ray_loops>contract.sample_loops)throw std::runtime_error("ray loop contract");}
     auto access_path=binary;access_path+=L".access.ll";
     if(std::filesystem::is_regular_file(access_path)&&std::filesystem::file_size(access_path)<=8*1024*1024){std::ifstream access(access_path,std::ios::binary);std::string ir{std::istreambuf_iterator<char>(access),{}};result->access=shader::UniformAccessProgram::compile(ir);for(const auto& read:shader::floating_uniform_components(ir)){result->state_reads.push_back({read[0],read[1],read[2]});result->state_masks.push_back(read[3]);}result->scene_words.resize(result->state_reads.size());}
     const auto root=binding::append_control_cbv(pipeline->root->bytes,contract.control_space,contract.execution_marker);if(root.empty())throw std::runtime_error("root_cannot_add_control");
@@ -363,7 +364,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
         if(!bytes.empty()){check(pipeline->device->CreateRootSignature(0,bytes.data(),bytes.size(),IID_PPV_ARGS(&result->probe_root)));auto path=binary;path+=L".probe.bin";const auto size=std::filesystem::file_size(path);if(!size||size>8*1024*1024)throw std::runtime_error("Probe variant size");std::ifstream file(path,std::ios::binary);std::vector<char> code{std::istreambuf_iterator<char>(file),{}};if(code.size()!=size)throw std::runtime_error("Probe variant read");p.pRootSignature=result->probe_root.Get();p.CS={code.data(),code.size()};check(pipeline->device->CreateComputePipelineState(&p,IID_PPV_ARGS(&result->probe_pipeline)));}
     }
     if(!cached){const bool stored=shader_cache::store(s.persistent_cache,key,binary);event({{"phase","analysis_cache_store"},{"pipeline",pipeline->id},{"shader_key",key},{"stored",stored}});shader_cache::trim(s.persistent_cache);}
-    event({{"phase","analysis_ready"},{"pipeline",pipeline->id},{"shader_key",key},{"coarse",true},{"comparison_groups",contract.comparison_filter_groups},{"sample_loops",contract.sample_loops},{"group_shared",contract.group_shared},{"mip_samples",contract.mip_samples},{"edge_inputs",contract.edge_input_mask}});
+    event({{"phase","analysis_ready"},{"pipeline",pipeline->id},{"shader_key",key},{"coarse",true},{"comparison_groups",contract.comparison_filter_groups},{"sample_loops",contract.sample_loops},{"ray_loops",contract.ray_loops},{"group_shared",contract.group_shared},{"mip_samples",contract.mip_samples},{"edge_inputs",contract.edge_input_mask}});
     return result;
 }
 DWORD WINAPI worker(void*){
@@ -621,9 +622,11 @@ bool configure(const wchar_t* input)noexcept{if(!input||!enabled())return false;
     else if(wcscmp(value,L"zero")==0){s.x_rate=s.y_rate=1;s.zero_factor=1;accepted=true;}
     else if(wcscmp(value,L"adaptive-1x2")==0){s.x_rate=1;s.y_rate=2;accepted=true;}
     else if(wcscmp(value,L"adaptive-2x2")==0){s.x_rate=s.y_rate=2;accepted=true;}
+    else if(command==L"samples25"||command==L"samples50"||command==L"samples75"){s.x_rate=s.y_rate=1;s.sample_percent=command==L"samples25"?25:command==L"samples50"?50:75;accepted=true;}
     else if(command==L"mip-half"||command==L"mip1"||command==L"mip2"){s.x_rate=s.y_rate=1;s.mip_steps=command==L"mip-half"?1:command==L"mip1"?2:4;accepted=true;}
     if(accepted&&wcscmp(value,L"pcf9")!=0)s.comparison_taps=0;
     if(accepted&&wcscmp(value,L"zero")!=0)s.zero_factor=0;
+    if(accepted&&!command.starts_with(L"samples"))s.sample_percent=100;
     if(accepted&&command!=L"mip-half"&&command!=L"mip1"&&command!=L"mip2")s.mip_steps=0;
     if(accepted){++s.policy_epoch;s.policy_valid_until=0;s.bundle_mode=false;s.bundle={};s.current_bundle=0;s.calibration_epoch=0;s.instrumentation=command!=L"off";s.protect_edges=command.starts_with(L"adaptive-");s.edge_threshold=edge_threshold;s.heaviest_only=heaviest;
         if(heaviest&&std::none_of(s.pipelines.begin(),s.pipelines.end(),[&](const auto& p){return p.second->id==s.selected_pipeline&&p.second->variant;})){s.selected_pipeline=0;s.cost_session=0;s.selected_cost=0;s.cost_prepared=0;}}
@@ -810,7 +813,7 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 // Neutral and unselected cached recordings require no descriptor
                 // proofs. Their GPU epilogue restores neutral control values.
                 if(!s.sample_state&&((s.bundle_mode&&!requested)||(!s.bundle_mode&&(s.heaviest_only&&use.variant->id!=s.selected_pipeline))||!s.instrumentation))continue;
-                const arc::ComputePolicy setting=requested?*requested:arc::ComputePolicy{use.variant->id,s.x_rate,s.y_rate,s.comparison_taps,s.zero_factor,s.mip_steps,s.protect_edges,s.edge_threshold};
+                const arc::ComputePolicy setting=requested?*requested:arc::ComputePolicy{use.variant->id,s.x_rate,s.y_rate,s.comparison_taps,s.zero_factor,s.mip_steps,s.protect_edges,s.edge_threshold,s.sample_percent};
                 std::vector<binding::DescriptorHeap> heaps;
                 for(auto id:use.heaps){const auto h=s.heaps_by_id.find(id);if(h!=s.heaps_by_id.end())heaps.push_back(h->second);}
                 if(s.sample_state&&use.variant->id==s.selected_pipeline){mirror::InternalCall internal;std::map<std::pair<unsigned,unsigned>,UniformMemory> views;

@@ -2,7 +2,7 @@
 #include <string>
 #include <string_view>
 namespace arc::dx12::shader {
-struct MipTransform {std::string ir;unsigned samples{};};
+struct MipTransform {std::string ir;unsigned samples{};bool controlled{};};
 // Explicit SampleLevel only. Loads, comparison samples, coordinates, samplers
 // and descriptor identities are preserved. Runtime quality admission is separate.
 // Static pixel-shader variant: Sample, SampleBias and SampleLevel, float32 only.

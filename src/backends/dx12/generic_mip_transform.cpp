@@ -98,8 +98,13 @@ static MipTransform pixel_mips_impl(std::string_view input,unsigned half_steps,b
 MipTransform bias_pixel_mips(std::string_view input,unsigned steps){return pixel_mips_impl(input,steps,false);}
 MipTransform controlled_pixel_mips(std::string_view input,unsigned space){
     MipTransform rejected{std::string(input)};
-    if(space>=65536||input.find("@dx.op.createHandleFromBinding")!=input.npos)return rejected;
-    auto result=pixel_mips_impl(input,2,true);if(!result.samples)return rejected;
+    if(space>=65536||input.size()>8*1024*1024||input.find("arc_pixel_mip_")!=input.npos||input.find("@dx.op.createHandleFromBinding")!=input.npos)return rejected;
+    auto result=pixel_mips_impl(input,2,true);
+    if(!result.samples){
+        std::smatch stage;const std::regex model(R"(!dx.shaderModel = !\{!(\d+)\})");
+        if(!std::regex_search(result.ir,stage,model)||!std::regex_search(result.ir,std::regex("!"+stage[1].str()+R"( = !\{!"ps", i32 [0-9]+, i32 [0-9]+\})")))return rejected;
+        for(const char* op:{"@dx.op.textureStore","@dx.op.bufferStore","@dx.op.rawBufferStore","@dx.op.atomic","@dx.op.bufferUpdateCounter","@dx.op.createHandleFromHeap"})if(input.find(op)!=input.npos)return rejected;
+    }
     try{
         const auto split=[](const std::string& text){std::vector<std::string> out;std::size_t start=0;bool quote=false,escape=false;int depth=0;for(std::size_t i=0;i<text.size();++i){const char c=text[i];if(quote){if(escape)escape=false;else if(c=='\\')escape=true;else if(c=='"')quote=false;continue;}if(c=='"'){quote=true;continue;}if(c=='['||c=='{'||c=='('||c=='<')++depth;if(c==']'||c=='}'||c==')'||c=='>')--depth;if(c==','&&!depth){auto f=text.substr(start,i-start);const auto a=f.find_first_not_of(" \t");out.push_back(a==f.npos?"":f.substr(a));start=i+1;}}auto f=text.substr(start);const auto a=f.find_first_not_of(" \t");out.push_back(a==f.npos?"":f.substr(a));return out;};
         std::vector<std::string> lines;std::map<unsigned,std::vector<std::string>> metadata;std::map<unsigned,std::size_t> positions;unsigned root=UINT32_MAX,next=0,range=0;std::string line;std::smatch m;
@@ -113,8 +118,11 @@ MipTransform controlled_pixel_mips(std::string_view input,unsigned space){
         out<<"%arc_pixel_control_buffer = type { [12 x i32] }\n";
         if(input.find("%dx.types.CBufRet.i32 = type")==input.npos)out<<"%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }\n";
         if(input.find("declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(")==input.npos)out<<"declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32, %dx.types.Handle, i32)\n";
-        for(const auto& l:lines){out<<l<<'\n';if(l.starts_with("define ")){if(++definitions>1||l.find("define void ")!=0||l.find("{")==l.npos)return rejected;
-            out<<"  %arc_pixel_mip_handle = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<range<<", i32 0, i1 false)\n"
+        bool in_function=false;const std::regex numeric(R"(%([0-9]+)\b)"),label(R"(^; <label>:([0-9]+).*$)");
+        for(auto l:lines){
+            if(in_function){std::smatch block;if(std::regex_match(l,block,label))l="arc_pixel_orig_"+block[1].str()+":";else l=std::regex_replace(l,numeric,"%arc_pixel_orig_$1");if(l=="}")in_function=false;}
+            out<<l<<'\n';if(l.starts_with("define ")){if(++definitions>1||l.find("define void ")!=0||l.find("{")==l.npos)return rejected;
+            in_function=true;out<<"arc_pixel_orig_0:\n  %arc_pixel_mip_handle = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 "<<range<<", i32 0, i1 false)\n"
                <<"  %arc_pixel_mip_values = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_pixel_mip_handle, i32 2)\n"
                <<"  %arc_pixel_mip_steps = extractvalue %dx.types.CBufRet.i32 %arc_pixel_mip_values, 0\n"
                <<"  %arc_pixel_mip_safe = icmp ule i32 %arc_pixel_mip_steps, 8\n"
@@ -125,7 +133,7 @@ MipTransform controlled_pixel_mips(std::string_view input,unsigned space){
         }}
         if(!injected)return rejected;
         out<<format(list,cbuffers)<<"\n!"<<entry<<" = !{i32 "<<range<<", %arc_pixel_control_buffer* undef, !\"\", i32 "<<space<<", i32 0, i32 1, i32 48, null}\n";
-        result.ir=out.str();return result;
+        result.ir=out.str();result.controlled=true;return result;
     }catch(...){return rejected;}
 }
 

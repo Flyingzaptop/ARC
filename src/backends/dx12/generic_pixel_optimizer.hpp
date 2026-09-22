@@ -22,7 +22,9 @@ struct Submission {std::unique_lock<std::recursive_mutex> lock;std::array<std::s
 Submission before_submit(ID3D12CommandQueue*,UINT,ID3D12CommandList*const*) noexcept;
 void after_submit(Submission&,ID3D12CommandQueue*) noexcept;
 unsigned requested_steps() noexcept;
-bool configure(unsigned half_steps) noexcept;
+std::array<unsigned,3> requested_budget() noexcept;
+bool active() noexcept;
+bool configure(unsigned half_steps,unsigned comparison_taps=0,unsigned sample_percent=100) noexcept;
 bool available() noexcept;
 bool ready() noexcept;
 bool restoration_ready() noexcept;

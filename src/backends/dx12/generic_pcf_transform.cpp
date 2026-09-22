@@ -25,7 +25,8 @@ struct Group {unsigned line{};std::string scale;std::vector<std::string> samples
 }
 ComparisonFilterTransform sparse_comparison_filter(std::string_view input){
     ComparisonFilterTransform result;result.ir=std::string(input);
-    if(input.size()>8*1024*1024||input.find("arc_pcf_")!=input.npos||input.find("%arc_coarse_control =")==input.npos)return result;
+    const std::string control=input.find("%arc_pixel_mip_handle =")!=input.npos?"%arc_pixel_mip_handle":"%arc_coarse_control";
+    if(input.size()>8*1024*1024||input.find("arc_pcf_")!=input.npos||input.find(control+" =")==input.npos)return result;
     std::vector<std::string> lines,code,blocks;std::istringstream stream(result.ir);std::string line,current;
     while(std::getline(stream,line)){lines.push_back(line);const auto comment=line.find(';');const auto c=trim(line.substr(0,comment));code.push_back(c);if(c.ends_with(':'))current=c.substr(0,c.size()-1);blocks.push_back(current);}
     std::map<std::string,unsigned> references;const std::regex reference(R"(%[A-Za-z0-9_.$]+)");
@@ -88,7 +89,7 @@ ComparisonFilterTransform sparse_comparison_filter(std::string_view input){
             generated<<it->second<<'\n';const auto position=it->second.rfind("\narc_pcf_merge");
             if(position!=it->second.npos){const auto end=it->second.find(':',position);predecessors[blocks[i]]=it->second.substr(position+1,end-position-1);}
         }else generated<<lines[i]<<'\n';
-        if(code[i].starts_with("%arc_coarse_control ="))generated<<"  %arc_pcf_controls = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %arc_coarse_control, i32 1)\n"
+        if(code[i].starts_with(control+" ="))generated<<"  %arc_pcf_controls = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle "<<control<<", i32 1)\n"
             <<"  %arc_pcf_taps = extractvalue %dx.types.CBufRet.i32 %arc_pcf_controls, 0\n"
             <<"  %arc_pcf_enabled = icmp eq i32 %arc_pcf_taps, 9\n";
     }

@@ -18,6 +18,7 @@
 #include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <mutex>
 #include <array>
 #include <set>
@@ -302,13 +303,13 @@ bool set_passive_hooks(bool passive){
     if(passive){optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
-    const bool raster=!passive&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::requested_steps()||profile::needs_raster_observation());
+    const bool raster=!passive&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::active()||profile::needs_raster_observation());
     for(std::size_t i=3;i<installed_count;++i){const auto target=installed_targets[i];const bool enabled=raster_targets.contains(target)?raster:!passive&&(detailed_tracking||!detailed_only_targets.contains(target)||(optimizer::enabled()&&optimizer_targets.contains(target)));const auto result=enabled?MH_QueueEnableHook(target):MH_QueueDisableHook(target);if(result!=MH_OK)return false;}
     if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;raster_hooks_enabled=raster;return true;
 }
 void refresh_raster_hooks(){
     std::lock_guard lock(hook_mode_mutex);
-    const bool needed=!passive_hooks&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::requested_steps()||profile::needs_raster_observation());
+    const bool needed=!passive_hooks&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::active()||profile::needs_raster_observation());
     if(needed==raster_hooks_enabled)return;
     for(const auto target:raster_targets)if((needed?MH_QueueEnableHook(target):MH_QueueDisableHook(target))!=MH_OK){++hook_failures;return;}
     if(MH_ApplyQueued()!=MH_OK){++hook_failures;return;}raster_hooks_enabled=needed;
@@ -535,6 +536,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestImage(void* path){if(aut
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestFeatures(void* path){if(autotune::active())return 10;if(!path)return 1;try{return runtime::request_image(static_cast<const wchar_t*>(path),true)?0:2;}catch(...){return 3;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestTiming(void* path){if(autotune::active())return 10;if(!path)return 1;try{std::wstring request=static_cast<const wchar_t*>(path);UINT seconds=60;const auto split=request.find(L'|');if(split!=std::wstring::npos){std::size_t used=0;const auto value=std::stoul(request.substr(0,split),&used);if(used!=split||value<1||value>60)return 4;seconds=static_cast<UINT>(value);request=request.substr(split+1);}return runtime::request_timing(request,seconds)?0:2;}catch(...){return 3;}}
 
+extern "C" __declspec(dllexport) DWORD WINAPI ArcSetPixelBudget(void* value){if(autotune::active()||!value||!optimizer::enabled())return 1;try{std::wistringstream input(static_cast<const wchar_t*>(value));unsigned mip{},taps{},percent{};std::wstring extra;if(!(input>>mip>>taps>>percent)||(input>>extra))return 2;if(!arc::dx12::hooks::begin_raster_observation())return 3;const bool ok=pixel::configure(mip,taps,percent);arc::dx12::hooks::end_raster_observation();return ok?0:4;}catch(...){return 2;}}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSetPixelMipSteps(void* value){if(autotune::active()||!value||!optimizer::enabled())return 1;try{const std::wstring text=static_cast<const wchar_t*>(value);std::size_t used{};const auto steps=std::stoul(text,&used);if(used!=text.size()||steps>8)return 2;if(!arc::dx12::hooks::begin_raster_observation())return 3;const bool ok=pixel::configure(steps);arc::dx12::hooks::end_raster_observation();return ok?0:4;}catch(...){return 2;}}
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){if(autotune::active())return 10;

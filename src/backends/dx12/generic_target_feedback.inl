@@ -40,7 +40,7 @@ void run_target_feedback(){
         row["gpu_policy_held"]=!gpu_updates_allowed;
         row["unsupported_cpu_actuators"]={"game_scene_traversal","game_lod_selection","game_worker_parallelization"};
         row["targets"]=Json::array();for(const auto& p:current.compute)row["targets"].push_back({{"pipeline",p.pipeline},{"rate",{p.x_rate,p.y_rate}},{"mip_steps",p.mip_steps},{"sample_percent",p.sample_percent},{"comparison_taps",p.comparison_taps},{"zero_factor",p.zero_factor}});
-        row["pixel_mip_half_steps"]=pixel::requested_steps();row["pixel_variants_ready"]=pixel::ready();row["vrs_requested"]=vrs_enabled;row["vrs_modified_draw_submissions_total"]=mirror::modified_draws();row["vrs_hardware_available"]=vrs_available;
+        const auto pixel_budget=pixel::requested_budget();row["pixel_mip_half_steps"]=pixel_budget[0];row["pixel_comparison_taps"]=pixel_budget[1];row["pixel_independent_sample_percent"]=pixel_budget[2];row["pixel_variants_ready"]=pixel::ready();row["vrs_requested"]=vrs_enabled;row["vrs_modified_draw_submissions_total"]=mirror::modified_draws();row["vrs_hardware_available"]=vrs_available;
         row["unsupported_actuators"]={"mesh_simplification","shadow_resource_resizing","arbitrary_rt_rewrite","temporal_reprojection","texture_residency_control"};
         double cost=0;for(const auto& c:catalog)cost+=c.gpu_ms_per_window;row["profiled_supported_compute_ms"]=catalog.empty()?Json(nullptr):Json(cost);row["profile_age_seconds"]=std::chrono::duration<double>(Clock::now()-last_profile).count();publish(std::move(row));last_report=Clock::now();
     };
@@ -99,7 +99,7 @@ void run_target_feedback(){
             if(!desired_vrs){mirror::configure(0);vrs_enabled=false;changed=true;}
             else if(hooks::begin_raster_observation()){vrs_enabled=mirror::configure(D3D12_SHADING_RATE_2X2);hooks::end_raster_observation();changed=vrs_enabled;}
         }
-        if(drive_gpu){const auto steps=unsigned(std::clamp(sample.output,0.,1.)*(s.quality_profile=="aggressive"?8.:4.));if(steps!=pixel::requested_steps()){std::lock_guard lock(s.policy_mutex);if(!s.cancel&&hooks::begin_raster_observation()){pixel::configure(steps);hooks::end_raster_observation();}}}
+        if(drive_gpu){const auto steps=unsigned(std::clamp(sample.output,0.,1.)*(s.quality_profile=="aggressive"?8.:4.));const unsigned taps=sample.output>=.5?9:0,percent=sample.output>=.75?25:sample.output>=.5?50:sample.output>=.25?75:100;if(pixel::requested_budget()!=std::array<unsigned,3>{steps,taps,percent}){std::lock_guard lock(s.policy_mutex);if(!s.cancel&&hooks::begin_raster_observation()){pixel::configure(steps,taps,percent);hooks::end_raster_observation();}}}
         if(vrs_enabled)mirror::keep_alive();
         if(now-last_report>=std::chrono::milliseconds(500)){
             const bool met=sample.filtered_ms<=1.03*1000./s.target;

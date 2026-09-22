@@ -96,7 +96,13 @@ int wmain(int argc, wchar_t** argv) try {
         const auto normalized=arc::dx12::shader::normalize_converted_dxil({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()});
         source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(normalized.data(),static_cast<UINT32>(normalized.size()),CP_UTF8,&source),"Create normalized converter IR");
     }
-    if(pixel_mips){auto changed=pixel_controlled?arc::dx12::shader::controlled_pixel_mips({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},pixel_steps):arc::dx12::shader::bias_pixel_mips({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},pixel_steps);if(!changed.samples)throw std::runtime_error("Shader declined: no supported pure pixel samples");source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(changed.ir.data(),static_cast<UINT32>(changed.ir.size()),CP_UTF8,&source),"Pixel mip variant");}
+    unsigned pixel_mip_count{},pixel_filter_count{},pixel_sample_count{},pixel_ray_count{};
+    if(pixel_mips){auto changed=pixel_controlled?arc::dx12::shader::controlled_pixel_mips({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},pixel_steps):arc::dx12::shader::bias_pixel_mips({static_cast<const char*>(source->GetBufferPointer()),source->GetBufferSize()},pixel_steps);
+        pixel_mip_count=changed.samples;
+        if(pixel_controlled&&changed.controlled){auto filters=arc::dx12::shader::sparse_comparison_filter(changed.ir);changed.ir=std::move(filters.ir);pixel_filter_count=filters.groups;auto samples=arc::dx12::shader::reduce_sample_means(changed.ir);changed.ir=std::move(samples.ir);pixel_sample_count=samples.loops;auto rays=arc::dx12::shader::reduce_ray_means(changed.ir);changed.ir=std::move(rays.ir);pixel_ray_count=rays.loops;}
+        if((pixel_controlled&&!changed.controlled)||!(pixel_mip_count||pixel_filter_count||pixel_sample_count||pixel_ray_count))throw std::runtime_error("Shader declined: no supported pure pixel work");
+        source.Reset();require(library->CreateBlobWithEncodingOnHeapCopy(changed.ir.data(),static_cast<UINT32>(changed.ir.size()),CP_UTF8,&source),"Pixel quality variant");
+    }
     arc::dx12::shader::Transform contract;
     std::string original_ir,probe_ir;
     if (transform) {
@@ -109,7 +115,7 @@ int wmain(int argc, wchar_t** argv) try {
         if(controlled&&!transformed.group_shared){auto zero=arc::dx12::shader::short_circuit_zero_factors(transformed.ir);transformed.ir=std::move(zero.ir);transformed.zero_factor_regions=zero.regions;auto filtered=arc::dx12::shader::sparse_comparison_filter(transformed.ir);transformed.ir=std::move(filtered.ir);transformed.comparison_filter_groups=filtered.groups;}
         if(controlled&&!transformed.group_shared){auto edges=arc::dx12::shader::protect_input_edges(transformed.ir,transformed);transformed.ir=std::move(edges.ir);transformed.edge_input_mask=edges.input_mask;}
         if(controlled){auto mips=arc::dx12::shader::bias_explicit_mips(transformed.ir);transformed.ir=std::move(mips.ir);transformed.mip_samples=mips.samples;}
-        if(controlled&&!transformed.group_shared){auto samples=arc::dx12::shader::reduce_sample_means(transformed.ir);transformed.ir=std::move(samples.ir);transformed.sample_loops=samples.loops;}
+        if(controlled&&!transformed.group_shared){auto samples=arc::dx12::shader::reduce_sample_means(transformed.ir);transformed.ir=std::move(samples.ir);transformed.sample_loops=samples.loops;auto rays=arc::dx12::shader::reduce_ray_means(transformed.ir);transformed.ir=std::move(rays.ir);transformed.ray_loops=rays.loops;transformed.sample_loops+=rays.loops;}
         transformed.ir=arc::dx12::shader::preserve_arc_branches(std::move(transformed.ir));
         if(proof&&!transformed.group_shared){auto probe=arc::dx12::shader::sparse_probe(transformed);if(probe.admitted){probe_ir=std::move(probe.ir);transformed.probe_outputs=probe.outputs;}}
         control_space=transformed.control_space;
@@ -139,6 +145,7 @@ int wmain(int argc, wchar_t** argv) try {
     }
     std::ofstream target(output, std::ios::binary); target.write(static_cast<const char*>(generated->GetBufferPointer()), generated->GetBufferSize()); target.close();
     if (!target) throw std::runtime_error("Write shader output");
+    if(pixel_controlled){auto path=output;path+=L".pixel-contract";std::ofstream f(path);f<<"ARC_PIXEL_QUALITY_1\n"<<pixel_mip_count<<' '<<pixel_filter_count<<' '<<pixel_sample_count<<' '<<pixel_ray_count<<'\n';if(!f)throw std::runtime_error("Pixel contract write");}
     if(transform){
         auto manifest_path=output;manifest_path+=L".contract";
         if(std::filesystem::exists(manifest_path))throw std::runtime_error("Fresh contract output required");
@@ -146,7 +153,7 @@ int wmain(int argc, wchar_t** argv) try {
         manifest<<(proof?"ARC_SHADER_CONTRACT_12\n":"ARC_SHADER_CONTRACT_5\n")<<contract.control_space<<' '<<contract.threads[0]<<' '<<contract.threads[1]<<' '<<contract.threads[2]<<' '<<contract.stores<<' '<<contract.resources.size()<<' '<<contract.comparison_filter_groups<<' '<<contract.zero_factor_regions<<' '<<contract.edge_input_mask<<' '<<contract.mip_samples;
         if(proof)manifest<<' '<<contract.execution_marker<<' '<<contract.probe_outputs<<' '<<contract.group_shared<<' '<<contract.sample_loops;manifest<<'\n';
         for(const auto& r:contract.resources)manifest<<r.resource_class<<' '<<r.range_id<<' '<<r.shader_register<<' '<<r.space<<' '<<r.count<<' '<<r.kind<<'\n';
-        manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
+        manifest<<"ray_loops "<<contract.ray_loops<<'\n';manifest.close();if(!manifest)throw std::runtime_error("Write shader contract");
         if(controlled){auto access_path=output;access_path+=L".access.ll";if(std::filesystem::exists(access_path))throw std::runtime_error("Fresh access program required");std::ofstream access(access_path,std::ios::binary);access.write(original_ir.data(),original_ir.size());access.close();if(!access)throw std::runtime_error("Write access program");}
     }
     std::cout << "{\"input_bytes\":" << original_bytes << ",\"output_bytes\":" << generated->GetBufferSize()
