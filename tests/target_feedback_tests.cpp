@@ -1,8 +1,16 @@
 #include "arc/target_feedback.hpp"
+#include "arc/profile_retry.hpp"
 #include "arc/bottleneck_router.hpp"
 #include "arc/compute_feedback_policy.hpp"
 #include <limits>
 int main(){
+    arc::ProfileRetry retry;if(retry.delay_seconds()!=2)return 101;
+    retry.complete(false);if(retry.delay_seconds()!=4)return 102;
+    retry.complete(false);retry.complete(false);
+    if(retry.unavailable(29,false)||retry.unavailable(30,true)||!retry.unavailable(30,false))return 103;
+    for(int i=0;i<20;++i)retry.complete(false);if(retry.delay_seconds()!=30)return 104;
+    retry.complete(true);if(retry.failures()||retry.delay_seconds()!=2||retry.unavailable(100,false))return 105;
+
     arc::FrameTimePid mild,severe;
     auto m=mild.step(12,10,.25),h=severe.step(12,1.2,.25);
     if(!m.valid||h.output<=m.output)return 20;

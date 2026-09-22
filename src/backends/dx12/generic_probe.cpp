@@ -34,6 +34,7 @@ namespace autotune=arc::dx12::autotune;
 std::atomic<bool> mirror_hooks_ready{};
 std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> passive_hooks{};
+std::atomic<unsigned long long> hook_activation_epoch{1},passive_when_idle{};
 std::set<void*> detailed_only_targets;
 std::set<void*> optimizer_targets;
 std::set<void*> raster_targets;
@@ -298,9 +299,11 @@ template<class T>bool install_detailed(T target,T replacement,T* original){
 template<class T>bool install_optimizer(T target,T replacement,T* original){
     const bool ok=install_detailed(target,replacement,original);if(ok)optimizer_targets.insert(reinterpret_cast<void*>(target));return ok;
 }
-bool set_passive_hooks(bool passive){
+bool set_passive_hooks(bool passive,unsigned long long expected_epoch=0){
     std::lock_guard lock(hook_mode_mutex);
-    if(passive){optimizer::invalidate_all();runtime::invalidate_color_spaces();}
+    if(expected_epoch&&hook_activation_epoch.load()!=expected_epoch)return false;
+    if(!passive){++hook_activation_epoch;passive_when_idle=0;}
+    if(passive){detailed_tracking=false;runtime::observation_mode_changed();optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
     const bool raster=!passive&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::active()||profile::needs_raster_observation());
@@ -341,13 +344,18 @@ void snapshot(){
 }
 DWORD WINAPI logger(void*){
     arc::dx12::cpu_cost::Registration worker_cpu;
-    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();refresh_raster_hooks();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
+    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();
+        if(const auto epoch=passive_when_idle.load();epoch&&!autotune::active()&&!profile::busy()&&pixel::restoration_ready()&&mirror::restoration_ready()&&optimizer::restoration_ready()){
+            if(set_passive_hooks(true,epoch)||hook_activation_epoch.load()!=epoch){auto expected=epoch;passive_when_idle.compare_exchange_strong(expected,0);}
+        }
+        refresh_raster_hooks();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
 }
 }
 
 namespace arc::dx12::hooks {
 bool begin_raster_observation()noexcept{++raster_setup;try{if(set_passive_hooks(false))return true;}catch(...){}--raster_setup;return false;}
 void end_raster_observation()noexcept{--raster_setup;}
+void request_passive_when_idle()noexcept{passive_when_idle=hook_activation_epoch.load();}
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){

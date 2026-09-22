@@ -80,6 +80,17 @@ int wmain(int argc,wchar_t** argv)try{
     while((cursor=report.find("\"id\":",cursor))!=std::string::npos){++identities;cursor+=5;}check(identities==2,"Recreated immutable PSO must not split existing profile identity");
     // A cached instrumented list still owns valid storage after report export.
     compute_queue->ExecuteCommandLists(1,lists);wait(compute_queue.Get());verify();commands.Reset();allocator.Reset();previous_allocator.Reset();
+    auto abandoned_output=(directory/L"abandoned.json").wstring();auto abandoned_argument=L"1|"+abandoned_output;check(request(abandoned_argument.data())==0,"Start unfinished-recording regression capture");
+    hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)));
+    hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),a.Get(),IID_PPV_ARGS(&commands)));
+    commands->SetComputeRootSignature(root.Get());commands->SetComputeRootUnorderedAccessView(0,data->GetGPUVirtualAddress());commands->Dispatch(count/64,1,1);
+    check(stop(nullptr)==0,"Stop with application-owned open recording");
+    for(int i=0;i<650&&!std::filesystem::exists(abandoned_output);++i)Sleep(10);
+    check(std::filesystem::exists(abandoned_output),"Abandoned recording capture must publish");
+    check(passive(nullptr)==0,"Open application list must not block passive mode forever");
+    // ARC cannot close the application's list or release its timestamp heap.
+    hr(commands->Close());lists[0]=commands.Get();queue->ExecuteCommandLists(1,lists);wait(queue.Get());
+    commands.Reset();allocator.Reset();
     for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T bytes=0;diagnostics->GetMessage(i,nullptr,&bytes);std::vector<unsigned char> storage(bytes);auto* message=reinterpret_cast<D3D12_MESSAGE*>(storage.data());hr(diagnostics->GetMessage(i,message,&bytes));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';throw std::runtime_error("D3D12 validation error");}}
     CloseHandle(event);hr(device->GetDeviceRemovedReason());std::cout<<"GPU profile: exact compute outputs, reflection, cached replay, in-flight Reset, two queues and post-export lifetime PASS\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}

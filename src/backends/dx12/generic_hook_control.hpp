@@ -4,4 +4,5 @@ namespace arc::dx12::hooks {
 // never once per draw. Balanced begin/end supports overlapping diagnostic setup.
 bool begin_raster_observation() noexcept;
 void end_raster_observation() noexcept;
+void request_passive_when_idle() noexcept;
 }

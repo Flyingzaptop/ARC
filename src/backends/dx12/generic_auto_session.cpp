@@ -12,6 +12,7 @@
 #include "arc/optimizer_session.hpp"
 #include "arc/timing_evidence.hpp"
 #include "arc/target_feedback.hpp"
+#include "arc/profile_retry.hpp"
 #include "arc/bottleneck_router.hpp"
 #include "arc/compute_feedback_policy.hpp"
 #include "generic_hook_control.hpp"
@@ -46,7 +47,7 @@ struct State {
     std::array<double,128> periods{};unsigned count{},cursor{};
     Json status{{"phase","off"}};
     std::filesystem::path directory,python,critic;
-    bool feedback_only{};bool maximize{true};std::string quality_profile{"balanced"};
+    bool feedback_only{},feedback_unavailable{};bool maximize{true};std::string quality_profile{"balanced"};
     std::unique_ptr<QualityWorker> quality_worker;
     double target{};unsigned maximum_seconds{0};
     std::atomic<double> requested_target{};
@@ -231,7 +232,7 @@ DWORD WINAPI run(void*){
     auto& s=state();SetThreadPriority(GetCurrentThread(),THREAD_PRIORITY_BELOW_NORMAL);const auto started=Clock::now();
     placement::configure(L"normal"); // one decision loop; no concurrent affinity experiment
     try{
-        if(s.feedback_only){run_target_feedback();const bool restored=wait_restoration(true);publish({{"phase",restored?"stopped":"faulted"},{"restoration_confirmed",restored}});s.running=false;return 0;}
+        if(s.feedback_only){run_target_feedback();const bool restored=wait_restoration(true);publish({{"phase",restored?"stopped":"faulted"},{"reason",s.feedback_unavailable?"unsupported_profile_runtime_stopped":"stop_requested_or_session_limit"},{"restoration_confirmed",restored}});if(restored)hooks::request_passive_when_idle();s.running=false;return 0;}
         arc::OptimizerSessionConfig config;config.target_fps=s.target;config.maximize_fps=s.maximize;config.enforce_component_budgets=false;config.require_gpu_execution=true;config.warmup_samples=32;config.settle_samples=8;config.hold_samples=120;
         const auto limits=arc::optimizer_quality_limits(s.quality_profile);config.min_ssim=limits.ssim;config.max_mean_error=limits.mean;config.max_tile_p99=limits.p99;config.max_worst_tile=limits.worst;config.max_temporal_p99=limits.temporal;config.require_local_temporal_quality=true;
         optimizer::spatial_learning(true,s.quality_profile=="aggressive"?.08f:.02f);

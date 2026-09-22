@@ -64,7 +64,7 @@ struct Session {
     std::uint64_t id{};
     std::filesystem::path path;Clock::time_point deadline,drain_deadline;
     UINT wanted{},presents{};bool stopped{},written{},publishing{},export_failed{},timed_out{};
-    std::uint64_t recorded{},submitted{},declined{},unsupported{},overwritten{},faults{},dropped{};
+    std::uint64_t recorded{},submitted{},declined{},unsupported{},overwritten{},faults{},dropped{},abandoned{};
     std::vector<Row> rows;
     std::uint64_t cpu_begin{},cpu_end{},qpc_begin{},qpc_end{},completed_tick{};DWORD present_thread{};void* swapchain{};bool cpu_failed{},mixed_present{},pending_publication{};
 };
@@ -72,7 +72,7 @@ struct Recording {
     Ptr<ID3D12Device> device;Ptr<ID3D12QueryHeap> queries;Ptr<ID3D12Resource> readback;
     std::shared_ptr<Session> session;std::shared_ptr<Pipeline> current;
     std::vector<Span> spans;std::uint64_t id{},frame{},serial{};
-    bool open_span{},closed{},render_pass{},quarantined{};
+    bool open_span{},closed{},render_pass{},quarantined{},abandoned{};
 };
 struct Queue {Ptr<ID3D12CommandQueue> native;Ptr<ID3D12Fence> fence;std::uint64_t id{},value{},frequency{};};
 struct Job {std::shared_ptr<Recording> record;std::shared_ptr<Queue> queue;std::uint64_t value{},serial{},frame{};bool signaled{},sample{};};
@@ -155,7 +155,7 @@ void add_work(ID3D12GraphicsCommandList* native,unsigned kind,UINT x,UINT y,UINT
     auto it=state().recordings.find(native);if(it==state().recordings.end())return;auto& r=*it->second;if(r.closed)return;
     if(r.open_span){const auto& old=r.spans.back();if(old.kind!=kind||(kind==2&&old.pipeline!=r.current))end_span(native,r);}
     if(!r.open_span){
-        if(r.spans.size()>=max_spans){++r.session->declined;return;}
+        if(r.spans.size()>=max_spans){++r.session->declined;if(r.session==state().session&&!r.session->stopped)stop();return;}
         Span span;span.kind=kind;span.pipeline=r.current;span.dispatch[0]=x;span.dispatch[1]=y;span.dispatch[2]=z;r.spans.push_back(std::move(span));
         mirror::InternalCall internal;native->EndQuery(r.queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,static_cast<UINT>((r.spans.size()-1)*2));r.open_span=true;
     }
@@ -186,7 +186,7 @@ void write_report(Session& session,unsigned pending){
         <<",\"present_windows\":"<<session.presents<<",\"timed_out\":"<<(session.timed_out?"true":"false")<<",\"recordings\":"<<session.recorded<<",\"submissions\":"<<session.submitted
         <<",\"capacity_declines\":"<<session.declined<<",\"unsupported_segments\":"<<session.unsupported<<",\"cached_replay_samples_dropped\":"<<session.overwritten<<",\"dropped_intervals\":"<<session.dropped
         <<",\"present_thread_id\":"<<session.present_thread<<",\"cpu_begin_100ns\":"<<session.cpu_begin<<",\"cpu_end_100ns\":"<<session.cpu_end<<",\"qpc_begin\":"<<session.qpc_begin<<",\"qpc_end\":"<<session.qpc_end<<",\"mixed_present_sources\":"<<(session.mixed_present?"true":"false")
-        <<",\"faults\":"<<session.faults<<",\"pending_gpu_jobs\":"<<pending<<",\"intervals\":[";
+        <<",\"abandoned_recordings\":"<<session.abandoned<<",\"faults\":"<<session.faults<<",\"pending_gpu_jobs\":"<<pending<<",\"intervals\":[";
     std::map<std::uint64_t,std::shared_ptr<Pipeline>> pipelines;bool first=true;
     for(const auto& row:session.rows){if(!first)out<<',';first=false;const auto& span=row.span;if(span.pipeline)pipelines[span.pipeline->id]=span.pipeline;
         out<<"{\"recording\":"<<row.recording<<",\"frame\":"<<row.frame<<",\"queue\":"<<row.queue<<",\"submission\":"<<row.submission<<",\"kind\":\""<<std::array{"raster_color","raster_depth","compute","opaque","raster_unknown"}[span.kind]
@@ -284,7 +284,7 @@ void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pso)noexcept{
         if(free==s.pool.end())free=std::find(s.pool.begin(),s.pool.end(),nullptr);
         if(free==s.pool.end()){++s.session->declined;return;}
         auto r=*free?*free:std::make_shared<Recording>();r->device=device;r->session=s.session;r->id=++s.next_record;r->frame=s.session->presents;r->current=lookup(pso);
-        r->spans.clear();r->spans.reserve(max_spans);r->serial=0;r->open_span=r->closed=r->render_pass=r->quarantined=false;
+        r->spans.clear();r->spans.reserve(max_spans);r->serial=0;r->open_span=r->closed=r->render_pass=r->quarantined=r->abandoned=false;
         D3D12_QUERY_HEAP_DESC q{};q.Type=D3D12_QUERY_HEAP_TYPE_TIMESTAMP;q.Count=max_spans*2;
         D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_READBACK;D3D12_RESOURCE_DESC d{};d.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;d.Width=max_spans*2*8;d.Height=d.DepthOrArraySize=d.MipLevels=d.SampleDesc.Count=1;d.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         if((!r->queries&&FAILED(r->device->CreateQueryHeap(&q,IID_PPV_ARGS(&r->queries))))||(!r->readback&&FAILED(r->device->CreateCommittedResource(&hp,D3D12_HEAP_FLAG_NONE,&d,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&r->readback))))||!track(native,false)){++s.session->faults;return;}
@@ -323,7 +323,7 @@ Submission before_submit(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
                 if(FAILED(queue->GetTimestampFrequency(&q->frequency))||!q->frequency||FAILED(r->device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&q->fence))))q.reset();else s.queues[queue]=q;}}
             auto free=std::find_if(s.jobs.begin(),s.jobs.end(),[](const Job& job){return !job.record;});
             if(!q||free==s.jobs.end()){r->quarantined=true;++r->session->declined;continue;}
-            *free={r,q,0,r->serial,r->session->presents,false,!r->session->stopped&&!r->session->written&&!r->session->publishing};result.jobs[result.count++]=static_cast<unsigned short>(free-s.jobs.begin());if(free->sample)++r->session->submitted;
+            *free={r,q,0,r->serial,r->session->presents,false,!r->abandoned&&!r->session->stopped&&!r->session->written&&!r->session->publishing};result.jobs[result.count++]=static_cast<unsigned short>(free-s.jobs.begin());if(free->sample)++r->session->submitted;
         }
     }catch(...){++s.faults;for(UINT i=0;i<count;++i){auto it=s.recordings.find(reinterpret_cast<ID3D12GraphicsCommandList*>(native[i]));if(it!=s.recordings.end()){it->second->quarantined=true;++it->second->session->faults;}}}
     return result;
@@ -340,7 +340,7 @@ bool request(const std::wstring& path,UINT windows)noexcept{
 }
 bool busy()noexcept{bool result=true;safe([&]{auto& s=state();result=s.open||s.capturing||(s.session&&!s.session->written&&!s.session->export_failed);});return result;}
 bool needs_raster_observation()noexcept{return state().open.load(std::memory_order_relaxed)||state().capturing.load(std::memory_order_relaxed);}
-void stop()noexcept{safe([&]{auto& s=state();s.capturing=false;if(s.session){s.session->stopped=true;s.session->drain_deadline=Clock::now()+std::chrono::seconds(5);}});}
+void stop()noexcept{safe([&]{auto& s=state();s.capturing=false;if(s.session&&!s.session->stopped){s.session->stopped=true;s.session->drain_deadline=Clock::now()+std::chrono::seconds(5);}});}
 void present(void* swapchain)noexcept{if(!state().capturing)return;safe([&]{auto& s=state();if(!s.session||s.session->stopped)return;auto& session=*s.session;
     FILETIME created{},exited{},kernel{},user{};LARGE_INTEGER now{};QueryPerformanceCounter(&now);
     const auto bits=[](FILETIME v){return (std::uint64_t(v.dwHighDateTime)<<32)|v.dwLowDateTime;};
@@ -369,6 +369,12 @@ void collect()noexcept{
                 }
             }job={};
         }
+        // An application may keep an open command list indefinitely. After
+        // the bounded drain, abandon measurement, not the application's list.
+        // Keep query storage owned by the recording and submission fence jobs.
+        for(auto& [native,r]:s.recordings)if(!r->closed&&r->session->stopped&&Clock::now()>=r->session->drain_deadline){
+            (void)native;r->abandoned=true;r->closed=true;r->open_span=false;--s.open;++r->session->abandoned;
+        }
         for(auto& r:s.pool)if(r&&r.use_count()==1&&!s.capturing&&(!r->quarantined||FAILED(r->device->GetDeviceRemovedReason())))r.reset();
         if(!s.capturing&&!s.tracked){for(auto it=s.queues.begin();it!=s.queues.end();){if(it->second.use_count()==1)it=s.queues.erase(it);else ++it;}}
         if(s.session&&s.session->stopped&&!s.session->written&&!s.session->publishing&&!s.session->export_failed){unsigned pending=0;for(const auto& j:s.jobs)if(j.record&&j.record->session==s.session)++pending;
@@ -391,7 +397,7 @@ LoadEvidence load_evidence()noexcept{
     LoadEvidence out;safe([&]{const auto& s=state();if(!s.completed)return;const auto& p=*s.completed;out.sequence=p.id;out.completed_tick_ms=p.completed_tick;
         LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);if(p.presents<2||p.qpc_end<=p.qpc_begin)return;
         const double windows=p.presents-1,wall=double(p.qpc_end-p.qpc_begin)*1000/frequency.QuadPart;out.frame_ms=wall/windows;
-        const bool healthy=!p.faults&&!p.dropped&&!p.overwritten&&!p.timed_out&&!p.pending_publication&&!p.mixed_present;
+        const bool healthy=!p.faults&&!p.dropped&&!p.overwritten&&!p.timed_out&&!p.pending_publication&&!p.mixed_present&&!p.abandoned&&!p.declined&&!p.unsupported;
         out.cpu_valid=healthy&&!p.cpu_failed&&wall>=200&&p.cpu_end>=p.cpu_begin;
         if(out.cpu_valid)out.cpu_running_ms=double(p.cpu_end-p.cpu_begin)/10000/windows;
         std::map<std::uint64_t,std::vector<std::pair<std::uint64_t,std::uint64_t>>> intervals;std::map<std::uint64_t,std::uint64_t> frequencies;

@@ -23,6 +23,7 @@ int wmain(int argc,wchar_t** argv)try{
         std::ofstream(output/L"parent.json")<<"{\"parent_pid\":"<<GetCurrentProcessId()<<",\"renderer_pid\":"<<child.dwProcessId<<"}";
         CloseHandle(child.hThread);CloseHandle(child.hProcess);return 0; // bootstrap exits immediately
     }
+    const bool overflow=std::wstring(argv[1])==L"--profile-overflow";
     const bool before=GetModuleHandleW(L"arc-dx12-probe.dll")!=nullptr;
     const bool resize_test=std::wstring(argv[1])==L"--resize";
     ComPtr<ID3D12Device> device;hr(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)));
@@ -54,10 +55,13 @@ int wmain(int argc,wchar_t** argv)try{
     DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=desc.Height=2;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;desc.SampleDesc.Count=1;desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.BufferCount=2;desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
     ComPtr<IDXGISwapChain1> swap;hr(factory->CreateSwapChainForHwnd(queue.Get(),window,&desc,nullptr,nullptr,&swap));
     if(argc==4){const auto dll=LoadLibraryW(argv[3]);check(dll,"late load");const auto initialize=reinterpret_cast<DWORD(WINAPI*)(void*)>(GetProcAddress(dll,"ArcInitialize"));auto file=(output/L"arc.json").wstring();check(initialize&&initialize(file.data())==0,"late initialize");}
+    ComPtr<ID3D12PipelineState> alternate;
+    if(overflow){const char extra[]="[numthreads(2,1,1)]void main(){}";ComPtr<ID3DBlob> code;hr(D3DCompile(extra,sizeof(extra)-1,nullptr,nullptr,nullptr,"main","cs_5_1",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&code,nullptr));D3D12_COMPUTE_PIPELINE_STATE_DESC pd{};pd.pRootSignature=root.Get();pd.CS={code->GetBufferPointer(),code->GetBufferSize()};hr(device->CreateComputePipelineState(&pd,IID_PPV_ARGS(&alternate)));}
     ComPtr<ID3D12Fence> fence;hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));HANDLE event=CreateEventW(nullptr,FALSE,FALSE,nullptr);
-    for(unsigned i=1;i<=100;++i){if(resize_test&&i==40)hr(swap->ResizeBuffers(2,4,4,desc.Format,0));if(resize_test&&i==70){swap.Reset();hr(factory->CreateSwapChainForHwnd(queue.Get(),window,&desc,nullptr,nullptr,&swap));}
-        hr(allocator->Reset());hr(list->Reset(allocator.Get(),pso.Get()));list->SetComputeRootSignature(root.Get());list->Dispatch(1,1,1);hr(list->Close());ID3D12CommandList* lists[]{list.Get()};queue->ExecuteCommandLists(1,lists);hr(queue->Signal(fence.Get(),i));hr(fence->SetEventOnCompletion(i,event));check(WaitForSingleObject(event,2000)==WAIT_OBJECT_0,"GPU completion");hr(swap->Present(0,0));Sleep(25);}
+    for(unsigned i=1;i<=(overflow?1800u:100u);++i){if(resize_test&&i==40)hr(swap->ResizeBuffers(2,4,4,desc.Format,0));if(resize_test&&i==70){swap.Reset();hr(factory->CreateSwapChainForHwnd(queue.Get(),window,&desc,nullptr,nullptr,&swap));}
+        hr(allocator->Reset());hr(list->Reset(allocator.Get(),pso.Get()));list->SetComputeRootSignature(root.Get());if(overflow){for(unsigned j=0;j<260;++j){list->SetPipelineState(j%2?pso.Get():alternate.Get());list->Dispatch(1,1,1);}}else list->Dispatch(1,1,1);hr(list->Close());ID3D12CommandList* lists[]{list.Get()};queue->ExecuteCommandLists(1,lists);hr(queue->Signal(fence.Get(),i));hr(fence->SetEventOnCompletion(i,event));check(WaitForSingleObject(event,2000)==WAIT_OBJECT_0,"GPU completion");hr(swap->Present(0,0));Sleep(25);}
     const auto dll=GetModuleHandleW(L"arc-dx12-probe.dll");check(dll,"ARC loaded");const auto snapshot=reinterpret_cast<DWORD(WINAPI*)(void*)>(GetProcAddress(dll,"ArcSnapshot"));check(snapshot&&snapshot(nullptr)==0,"snapshot");
+    if(overflow){std::ifstream file(output/L"arc.json");const auto metrics=nlohmann::json::parse(file);check(metrics.value("render_hooks_passive",false),"Unsupported profile must become passive");const auto session=metrics.at("automatic_session");check(session.value("phase",std::string{})=="stopped"&&session.value("restoration_confirmed",false),"No-actuator controller must stop and restore");check(session.value("reason",std::string{})=="unsupported_profile_runtime_stopped","Expected unsupported runtime stop reason");}
     nlohmann::json arguments=nlohmann::json::array();for(int i=0;i<argc;++i){const auto size=WideCharToMultiByte(CP_UTF8,0,argv[i],-1,nullptr,0,nullptr,nullptr);std::string value(size,'\0');WideCharToMultiByte(CP_UTF8,0,argv[i],-1,value.data(),size,nullptr,nullptr);value.pop_back();arguments.push_back(value);}
     char appid[128]{};GetEnvironmentVariableA("SteamAppId",appid,128);
     std::ofstream(output/L"renderer.json")<<nlohmann::json{{"pid",GetCurrentProcessId()},{"arc_before_main",before},{"device_healthy",device->GetDeviceRemovedReason()==S_OK},{"arguments",arguments},{"steam_app_id",appid}}.dump(2);

@@ -21,7 +21,7 @@ bool feedback_vrs_capable(){
     return device&&SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,&caps,sizeof(caps)))&&caps.VariableShadingRateTier>=D3D12_VARIABLE_SHADING_RATE_TIER_2;
 }
 void run_target_feedback(){
-    auto& s=state();optimizer::spatial_learning(false,0);optimizer::pause_spatial_probes(true);optimizer::sample_frame_state(false);
+    auto& s=state();s.feedback_unavailable=false;arc::ProfileRetry profile_retry;optimizer::spatial_learning(false,0);optimizer::pause_spatial_probes(true);optimizer::sample_frame_state(false);
     struct StopVrs {~StopVrs(){pixel::configure(0);mirror::configure(0);}} stop_vrs;
     arc::BottleneckRouter router;arc::Bottleneck route=arc::Bottleneck::Unknown;gpu_profile::LoadEvidence load;bool cpu_cache=false,gpu_updates_allowed=false;
     arc::FrameTimePid controller;arc::FrameTimePidSample sample;arc::ComputeAllocation allocation;arc::PolicyBundle current;
@@ -33,7 +33,7 @@ void run_target_feedback(){
     auto disable=[&]{select(L"off");pixel::configure(0);mirror::configure(0);optimizer::approve_policy(0,0);current={};vrs_enabled=false;controller.reset();};
     auto report=[&](const char* phase,const char* reason){auto row=feedback_memory();row["phase"]=phase;row["reason"]=reason;row["controller"]="frame_time_pid_v1";row["target_fps"]=s.target;row["target_frame_ms"]=1000./s.target;row["frame_ms"]=period();row["active_action"]=current.id;
         row["pid"]={{"error_ms",sample.error_ms},{"filtered_frame_ms",sample.filtered_ms},{"p",sample.proportional},{"i",sample.integral},{"d",sample.derivative},{"intensity",sample.output},{"saturated",sample.saturated}};
-        row["allocation"]={{"model","measured_pass_cost_with_heuristic_marginal_priors"},{"requested_saving_ms",allocation.requested_saving_ms},{"estimated_saving_ms",allocation.estimated_saved_ms},{"estimated_capacity_ms",allocation.estimated_capacity_ms},{"steps",allocation.steps}};
+        row["profile_retry_seconds"]=profile_retry.delay_seconds();row["profile_failures"]=profile_retry.failures();row["allocation"]={{"model","measured_pass_cost_with_heuristic_marginal_priors"},{"requested_saving_ms",allocation.requested_saving_ms},{"estimated_saving_ms",allocation.estimated_saved_ms},{"estimated_capacity_ms",allocation.estimated_capacity_ms},{"steps",allocation.steps}};
         row["policy_lifetime"]="until_controller_decision_stop_or_incompatible_context";row["quality_verified"]=false;row["bottleneck"]=arc::bottleneck_name(route);
         row["load_profile"]={{"sequence",load.sequence},{"age_seconds",load.completed_tick_ms?Json(double(GetTickCount64()-load.completed_tick_ms)/1000):Json(nullptr)},{"reference_frame_ms",load.frame_ms},{"present_thread_running_ms_per_frame",load.cpu_valid?Json(load.cpu_running_ms):Json(nullptr)},{"busiest_observed_gpu_queue_ms_per_frame",load.gpu_valid?Json(load.gpu_queue_busy_ms):Json(nullptr)},{"scope","CPU_running_on_present_thread_and_GPU_queue_lower_bound_not_complete_critical_path"}};
         row["cpu_state_cache"]=current.cpu_state_cache;row["cpu_cache_outcome"]=cpu_outcome;const auto cpu_counts=optimizer::cpu_cache_counters();row["cpu_redundant_calls_skipped_total"]=cpu_counts.skipped;
@@ -56,13 +56,19 @@ void run_target_feedback(){
             if(same_surface){std::lock_guard lock(s.policy_mutex);if(!s.cancel&&optimizer::configure_bundle(current,true,0,0)){optimizer::approve_policy(current.id,std::numeric_limits<std::uint64_t>::max());rebound=true;}}
             if(!rebound){disable();controller.reset(retained_intensity);sample.output=retained_intensity;reference_cost.clear();catalog.clear();}
             router.reset();route=arc::Bottleneck::Unknown;context_profile_floor=gpu_profile::load_evidence().sequence;
-            revision=s.surface_revision.load();bindings=optimizer::binding_evidence_revision();last_profile=now-std::chrono::seconds(30);report("warmup",rebound?"policy_retained_with_submission_time_binding_checks":"technical_context_requires_rebind");
+            revision=s.surface_revision.load();bindings=optimizer::binding_evidence_revision();if(!profile_retry.failures())last_profile=now-std::chrono::seconds(30);report("warmup",rebound?"policy_retained_with_submission_time_binding_checks":"technical_context_requires_rebind");
         }
         // Discovery is asynchronous. Keep running the PID while GPU profiling
         // completes, rather than blocking the controller on a file wait.
-        if(!profile_path.empty()&&std::filesystem::exists(profile_path)){profile_path.clear();last_catalog=start;}
-        if(!profile_path.empty()&&now-profile_started>std::chrono::seconds(12)){gpu_profile::stop();profile_path.clear();}
-        if(profile_path.empty()&&now-last_profile>std::chrono::seconds(2)){
+        if(!profile_path.empty()&&std::filesystem::exists(profile_path)){
+            bool usable=false;try{const auto p=read_json(profile_path);usable=!p.value("timed_out",true)&&p.value("faults",1u)==0&&p.value("capacity_declines",1u)==0&&p.value("unsupported_segments",1u)==0&&p.value("pending_gpu_jobs",1u)==0&&p.value("abandoned_recordings",0u)==0&&p.value("dropped_intervals",1u)==0;}catch(...){}
+            profile_retry.complete(usable);profile_path.clear();last_catalog=start;
+        }
+        if(!profile_path.empty()&&now-profile_started>std::chrono::seconds(12)){gpu_profile::stop();profile_retry.complete(false);profile_path.clear();}
+        if(profile_retry.unavailable(std::chrono::duration<double>(now-start).count(),current.id!=0||pixel::active()||vrs_enabled)){
+            s.feedback_unavailable=true;report("unsupported","profile_unusable_no_active_policy_stopping");break;
+        }
+        if(profile_path.empty()&&now-last_profile>std::chrono::seconds(profile_retry.delay_seconds())){
             const auto path=s.directory/(L"pid-profile-"+std::to_wstring(++profile)+L".json");
             if(profile>3){std::error_code ec;std::filesystem::remove(s.directory/(L"pid-profile-"+std::to_wstring(profile-3)+L".json"),ec);}
             if(gpu_profile::request(path.wstring(),static_cast<UINT>(std::clamp(std::ceil(300./std::max(1.,period())),16.,128.)))){profile_path=path;profile_started=now;}last_profile=now;
