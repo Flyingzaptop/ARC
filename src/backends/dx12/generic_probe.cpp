@@ -116,7 +116,7 @@ HRESULT STDMETHODCALLTYPE resource1(ID3D12Device4* device,const D3D12_HEAP_PROPE
 }
 HRESULT STDMETHODCALLTYPE root_create(ID3D12Device* d,UINT node,const void* data,SIZE_T size,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const auto result=arc::original_cpu_call([&]{return original_root_create(d,node,data,size,iid,out);});
-    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12RootSignature* root=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12RootSignature,reinterpret_cast<void**>(&root)))){optimizer::root_created(root,data,size);ID3D12RootSignature_Release(root);}}return result;
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12RootSignature* root=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12RootSignature,reinterpret_cast<void**>(&root)))){mirror::root_created(root,data,size);optimizer::root_created(root,data,size);ID3D12RootSignature_Release(root);}}return result;
 }
 HRESULT STDMETHODCALLTYPE placed(ID3D12Device* d,ID3D12Heap* heap,UINT64 offset,const D3D12_RESOURCE_DESC* desc,D3D12_RESOURCE_STATES state,const D3D12_CLEAR_VALUE* clear,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const auto result=arc::original_cpu_call([&]{return original_placed(d,heap,offset,desc,state,clear,iid,out);});
@@ -375,7 +375,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
         ok=install(command->lpVtbl->Dispatch,dispatch,&original_dispatch)&&ok;
         ok=install_optimizer(device->lpVtbl->CreateCommittedResource,resource,&original_resource)&&ok;
         ok=install_optimizer(device->lpVtbl->CreatePlacedResource,placed,&original_placed)&&ok;
-        ok=install_optimizer(device->lpVtbl->CreateRootSignature,root_create,&original_root_create)&&ok;
+        ok=install(device->lpVtbl->CreateRootSignature,root_create,&original_root_create)&&ok;
         {ID3D12Device4* extra=nullptr;if(SUCCEEDED(ID3D12Device_QueryInterface(device,IID_ID3D12Device4,reinterpret_cast<void**>(&extra)))){ok=install_optimizer(extra->lpVtbl->CreateCommittedResource1,resource1,&original_resource1)&&ok;ID3D12Device4_Release(extra);}}
         ok=install(factory->lpVtbl->CreateSwapChainForHwnd,swap_hwnd,&original_swap_hwnd)&&ok;
         ok=install(reinterpret_cast<SwapFn>(factory->lpVtbl->CreateSwapChain),create_swap,&original_swap)&&ok;

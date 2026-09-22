@@ -9,6 +9,9 @@ struct Lease {std::shared_ptr<void> owner;ID3D12GraphicsCommandList* list{};};
 struct InternalCall {bool old;InternalCall() noexcept;~InternalCall();};
 bool internal() noexcept;
 bool configure(UINT rate) noexcept; // 0: neutral maps; 5: experimental Tier 2 VRS
+void root_created(ID3D12RootSignature*,const void*,SIZE_T) noexcept;
+void keep_alive() noexcept;
+bool restoration_ready() noexcept;
 void begin(ID3D12GraphicsCommandList*,ID3D12PipelineState*) noexcept;
 void close(ID3D12GraphicsCommandList*) noexcept;
 void invalidate(ID3D12GraphicsCommandList*) noexcept;

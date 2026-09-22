@@ -53,6 +53,7 @@ struct State {
     std::map<ID3D12GraphicsCommandList*,std::shared_ptr<Command>> commands;
     std::vector<std::shared_ptr<Control>> controls;
     std::map<ID3D12PipelineState*,bool> pipelines;
+    std::map<ID3D12RootSignature*,bool> roots;
     std::map<ID3D12CommandSignature*,bool> signatures;
     std::set<ID3D12GraphicsCommandList*> command_lifetimes;
 };
@@ -64,7 +65,7 @@ public:
     Lifetime(void* p,int k):object(p),kind(k){}
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out)override{if(!out)return E_POINTER;*out=nullptr;if(iid!=IID_IUnknown)return E_NOINTERFACE;*out=this;AddRef();return S_OK;}
     ULONG STDMETHODCALLTYPE AddRef()override{return ++count;}
-    ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){auto& s=state();{std::lock_guard lock(s.mutex);if(kind==1){s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));s.command_lifetimes.erase(static_cast<ID3D12GraphicsCommandList*>(object));}else if(kind==2)s.signatures.erase(static_cast<ID3D12CommandSignature*>(object));else s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));}delete this;}return n;}
+    ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){auto& s=state();{std::lock_guard lock(s.mutex);if(kind==1){s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));s.command_lifetimes.erase(static_cast<ID3D12GraphicsCommandList*>(object));}else if(kind==2)s.signatures.erase(static_cast<ID3D12CommandSignature*>(object));else if(kind==3)s.roots.erase(static_cast<ID3D12RootSignature*>(object));else s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));}delete this;}return n;}
 };
 bool track(ID3D12Object* object,int kind){auto* token=new Lifetime(object,kind);const auto hr=object->SetPrivateDataInterface(lifetime_guid,token);token->Release();return SUCCEEDED(hr);}
 template<class F>void safe(F&& fn)noexcept{try{std::lock_guard lock(state().mutex);fn();}catch(const std::exception& e){std::lock_guard lock(state().mutex);state().rate=0;++state().faults;strncpy_s(state().last_error,e.what(),_TRUNCATE);}catch(...){std::lock_guard lock(state().mutex);state().rate=0;++state().faults;}}
@@ -106,6 +107,24 @@ bool configure(UINT rate)noexcept{
     if(rate!=0&&rate!=D3D12_SHADING_RATE_2X2)return false;
     safe([&]{auto& s=state();++s.epoch;s.rate=rate;s.expires=std::chrono::steady_clock::now()+std::chrono::seconds(60);});return true;
 }
+void keep_alive()noexcept{safe([&]{state().expires=std::chrono::steady_clock::now()+std::chrono::seconds(60);});}
+bool restoration_ready()noexcept{bool ready=false;safe([&]{auto& s=state();ready=!s.rate&&std::all_of(s.controls.begin(),s.controls.end(),[](const auto& c){return !c->failed&&c->fence->GetCompletedValue()!=UINT64_MAX&&c->fence->GetCompletedValue()>=c->value;});});return ready;}
+void root_created(ID3D12RootSignature* root,const void* data,SIZE_T bytes)noexcept{
+    if(!root||!data||!bytes)return;
+    safe([&]{auto& s=state();if(s.roots.contains(root)||s.roots.size()>=16384||!track(root,3))return;s.roots[root]=false;
+        Ptr<ID3D12VersionedRootSignatureDeserializer> reader;
+        if(FAILED(D3D12CreateVersionedRootSignatureDeserializer(data,bytes,IID_PPV_ARGS(&reader))))return;
+        const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* version{};
+        if(FAILED(reader->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1,&version))||!version)return;
+        const auto& d=version->Desc_1_1;
+        if(d.Flags&D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED)return;
+        for(UINT i=0;i<d.NumParameters;++i){const auto& p=d.pParameters[i];
+            if(p.ParameterType==D3D12_ROOT_PARAMETER_TYPE_UAV)return;
+            if(p.ParameterType==D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)for(UINT j=0;j<p.DescriptorTable.NumDescriptorRanges;++j)if(p.DescriptorTable.pDescriptorRanges[j].RangeType==D3D12_DESCRIPTOR_RANGE_TYPE_UAV)return;
+        }
+        s.roots[root]=true;
+    });
+}
 void begin(ID3D12GraphicsCommandList* native,ID3D12PipelineState* pso)noexcept{
     if(nested)return;
     safe([&]{auto& s=state();auto previous=s.commands.find(native);std::shared_ptr<Command> c;
@@ -146,7 +165,7 @@ void close(ID3D12GraphicsCommandList* native)noexcept{if(nested)return;safe([&]{
 void invalidate(ID3D12GraphicsCommandList* native)noexcept{if(nested)return;safe([&]{auto it=state().commands.find(native);if(it!=state().commands.end()){restore(*it->second);it->second->valid=false;}});}
 void pipeline_created(ID3D12PipelineState* pso,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)noexcept{
     if(nested||!pso||!desc)return;safe([&]{auto& s=state();if(s.pipelines.contains(pso)||s.pipelines.size()>=16384)return;if(!track(pso,false))return;
-        s.pipelines[pso]=desc->PS.pShaderBytecode&&desc->PS.BytecodeLength&&desc->SampleDesc.Count>=1&&desc->SampleDesc.Count<=4&&desc->RasterizerState.ForcedSampleCount==0;});
+        s.pipelines[pso]=s.roots.contains(desc->pRootSignature)&&s.roots.at(desc->pRootSignature)&&desc->PS.pShaderBytecode&&desc->PS.BytecodeLength&&desc->SampleDesc.Count>=1&&desc->SampleDesc.Count<=4&&desc->RasterizerState.ForcedSampleCount==0;});
 }
 void signature_created(ID3D12CommandSignature* signature,const D3D12_COMMAND_SIGNATURE_DESC* desc)noexcept{
     if(nested||!signature||!desc)return;safe([&]{auto& s=state();if(s.signatures.contains(signature)||s.signatures.size()>=16384||!track(signature,2))return;
@@ -170,7 +189,7 @@ void pipeline_stream_created(ID3D12PipelineState* pso,const D3D12_PIPELINE_STATE
             bool ok=false;
             switch(type){
 #define SKIP_SUBOBJECT(name,T) case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_##name:ok=read(static_cast<T*>(nullptr));break
-            SKIP_SUBOBJECT(ROOT_SIGNATURE,ID3D12RootSignature*);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:ok=read(&desc.pRootSignature);break;
             SKIP_SUBOBJECT(VS,D3D12_SHADER_BYTECODE);SKIP_SUBOBJECT(DS,D3D12_SHADER_BYTECODE);SKIP_SUBOBJECT(HS,D3D12_SHADER_BYTECODE);SKIP_SUBOBJECT(GS,D3D12_SHADER_BYTECODE);
             case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS:ok=read(&desc.PS);break;
             // Compute/mesh state cannot authorize a raster draw override.

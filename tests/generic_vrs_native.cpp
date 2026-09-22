@@ -39,7 +39,9 @@ int wmain(int argc,wchar_t** argv)try{
     })";
     ComPtr<ID3DBlob> vs,ps,error;hr(D3DCompile(shader,strlen(shader),nullptr,nullptr,nullptr,"vs","vs_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&vs,&error));
     hr(D3DCompile(shader,strlen(shader),nullptr,nullptr,nullptr,"ps","ps_5_0",D3DCOMPILE_OPTIMIZATION_LEVEL3,0,&ps,&error));
-    D3D12_ROOT_SIGNATURE_DESC rd{};rd.Flags=D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    D3D12_ROOT_PARAMETER unsafe_parameter{};unsafe_parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_UAV;
+    const bool uav_root=options.find(L"uavroot")!=std::wstring::npos;
+    D3D12_ROOT_SIGNATURE_DESC rd{};if(uav_root){rd.NumParameters=1;rd.pParameters=&unsafe_parameter;}rd.Flags=D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     ComPtr<ID3DBlob> signature;hr(D3D12SerializeRootSignature(&rd,D3D_ROOT_SIGNATURE_VERSION_1,&signature,&error));
     ComPtr<ID3D12RootSignature> roots;hr(device->CreateRootSignature(0,signature->GetBufferPointer(),signature->GetBufferSize(),IID_PPV_ARGS(&roots)));
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pd{};pd.pRootSignature=roots.Get();pd.VS={vs->GetBufferPointer(),vs->GetBufferSize()};pd.PS={ps->GetBufferPointer(),ps->GetBufferSize()};
@@ -134,6 +136,7 @@ int wmain(int argc,wchar_t** argv)try{
     check(baseline==restored,"Rollback must restore exact pixels without rerecording the cached original list");
     if(diagnostics){for(UINT64 i=0;i<diagnostics->GetNumStoredMessages();++i){SIZE_T size=0;diagnostics->GetMessage(i,nullptr,&size);std::vector<unsigned char> bytes(size);auto* message=reinterpret_cast<D3D12_MESSAGE*>(bytes.data());hr(diagnostics->GetMessage(i,message,&size));if(message->Severity<=D3D12_MESSAGE_SEVERITY_ERROR){std::cerr<<message->pDescription<<'\n';throw std::runtime_error("D3D12 validation error");}}}
     snapshot(nullptr);
+    if(uav_root){check(modified==baseline,"Potential UAV side effects must reject VRS");std::cout<<"UAV-root raster rejected and cached original preserved PASS\n";return 0;}
     check(modified!=baseline,"Experiment must actually change shader frequency/output");
     check(mode(enable)==0,"Enable negative coverage test");record(true);auto declined=run(L"unsupported-original");check(declined==baseline,"Unknown command must select original execution");
     record(false);check(run(L"qualification-original")==baseline,"Previously rejected command must first requalify without modification");

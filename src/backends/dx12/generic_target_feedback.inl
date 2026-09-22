@@ -15,72 +15,75 @@ Json feedback_memory(){
                 adapter->Release();}factory->Release();}device->Release();}
     return result;
 }
+bool feedback_vrs_capable(){
+    Microsoft::WRL::ComPtr<ID3D12Device> device;{std::lock_guard lock(state().mutex);device=state().telemetry_device;}
+    D3D12_FEATURE_DATA_D3D12_OPTIONS6 caps{};
+    return device&&SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6,&caps,sizeof(caps)))&&caps.VariableShadingRateTier>=D3D12_VARIABLE_SHADING_RATE_TIER_2;
+}
 void run_target_feedback(){
     auto& s=state();optimizer::spatial_learning(false,0);optimizer::pause_spatial_probes(true);optimizer::sample_frame_state(false);
-    arc::PolicyBundle current,previous;std::vector<arc::PolicyBundle> history;
+    struct StopVrs {~StopVrs(){mirror::configure(0);}} stop_vrs;
+    arc::FrameTimePid controller;arc::FrameTimePidSample sample;arc::ComputeAllocation allocation;arc::PolicyBundle current;
     std::uint64_t sequence=0,profile=0,revision=s.surface_revision.load(),bindings=optimizer::binding_evidence_revision();
-    std::map<std::pair<std::uint64_t,unsigned>,Clock::time_point> retry;
-    std::vector<optimizer::WorkCandidate> catalog;
-    auto last_profile=Clock::now()-std::chrono::seconds(30),last_decision=Clock::now();
-    const auto start=Clock::now();bool pending=false,recovering=false;double before=0;arc::TargetFeedbackGate gate;
-    std::pair<std::uint64_t,unsigned> pending_key{};std::uint64_t submitted_before{};
-    auto apply=[&](const arc::PolicyBundle& bundle){
-        std::lock_guard lock(s.policy_mutex);if(s.cancel)return false;
-        // Zero expiry means no quality lease. Submission-time resource, bounds,
-        // aliasing, queue and shader-contract checks remain in optimizer::execute.
-        submitted_before=optimizer::policy_stamp().active_submissions;
-        if(!optimizer::configure_bundle(bundle,true,0,0))return false;
-        optimizer::approve_policy(bundle.id,std::numeric_limits<std::uint64_t>::max());return true;
+    std::vector<optimizer::WorkCandidate> catalog;std::map<std::uint64_t,double> reference_cost;
+    const auto start=Clock::now();auto last_profile=start-std::chrono::seconds(30),last_control=start,last_report=start-std::chrono::seconds(2),last_catalog=start-std::chrono::seconds(2),profile_started=start;
+    std::filesystem::path profile_path;bool vrs_available=false,vrs_enabled=false;
+    auto disable=[&]{select(L"off");mirror::configure(0);optimizer::approve_policy(0,0);current={};vrs_enabled=false;controller.reset();};
+    auto report=[&](const char* phase,const char* reason){auto row=feedback_memory();row["phase"]=phase;row["reason"]=reason;row["controller"]="frame_time_pid_v1";row["target_fps"]=s.target;row["target_frame_ms"]=1000./s.target;row["frame_ms"]=period();row["active_action"]=current.id;
+        row["pid"]={{"error_ms",sample.error_ms},{"filtered_frame_ms",sample.filtered_ms},{"p",sample.proportional},{"i",sample.integral},{"d",sample.derivative},{"intensity",sample.output},{"saturated",sample.saturated}};
+        row["allocation"]={{"model","measured_pass_cost_with_heuristic_marginal_priors"},{"requested_saving_ms",allocation.requested_saving_ms},{"estimated_saving_ms",allocation.estimated_saved_ms},{"estimated_capacity_ms",allocation.estimated_capacity_ms},{"steps",allocation.steps}};
+        row["quality_verified"]=false;row["bottleneck"]="unknown_whole_frame_cpu_gpu_timing_unavailable";
+        row["targets"]=Json::array();for(const auto& p:current.compute)row["targets"].push_back({{"pipeline",p.pipeline},{"rate",{p.x_rate,p.y_rate}},{"mip_steps",p.mip_steps},{"sample_percent",p.sample_percent},{"comparison_taps",p.comparison_taps},{"zero_factor",p.zero_factor}});
+        row["vrs_requested"]=vrs_enabled;row["vrs_modified_draw_submissions_total"]=mirror::modified_draws();row["vrs_hardware_available"]=vrs_available;
+        row["unsupported_actuators"]={"mesh_simplification","shadow_resource_resizing","arbitrary_rt_rewrite","temporal_reprojection","texture_residency_control"};
+        double cost=0;for(const auto& c:catalog)cost+=c.gpu_ms_per_window;row["profiled_supported_compute_ms"]=catalog.empty()?Json(nullptr):Json(cost);row["profile_age_seconds"]=std::chrono::duration<double>(Clock::now()-last_profile).count();publish(std::move(row));last_report=Clock::now();
     };
-    auto report=[&](const char* phase,const char* reason){auto row=feedback_memory();row["phase"]=phase;row["reason"]=reason;row["target_fps"]=s.target;row["frame_ms"]=period();row["active_action"]=current.id;
-        row["quality_verified"]=false;row["bottleneck"]="unknown_whole_frame_cpu_gpu_timing_unavailable";row["memory_pressure"]=row["vram_local_budget_bytes"].is_number()&&row["vram_local_budget_bytes"].get<double>()>0?Json(row["vram_local_usage_bytes"].get<double>()>row["vram_local_budget_bytes"].get<double>()*.95):Json(nullptr);row["performance_evidence"]= "sequential_observation_not_causal_ABA";row["targets"]=Json::array();
-        for(const auto& p:current.compute)row["targets"].push_back({{"pipeline",p.pipeline},{"rate",{p.x_rate,p.y_rate}},{"mip_steps",p.mip_steps},{"sample_percent",p.sample_percent}});
-        double cost=0;for(const auto& c:catalog)cost+=c.gpu_ms_per_window;row["profiled_supported_compute_ms"]=catalog.empty()?Json(nullptr):Json(cost);row["profile_age_seconds"]=std::chrono::duration<double>(Clock::now()-last_profile).count();publish(std::move(row));};
-    report("warmup","target_feedback_no_image_critic");
+    report("warmup","pid_discovery");
     while(!s.cancel){
         if(s.maximum_seconds&&Clock::now()-start>std::chrono::seconds(s.maximum_seconds))break;
-        if(!wait_frames(8)){if(s.cancel)break;select(L"off");optimizer::approve_policy(0,0);current={};history.clear();pending=false;gate.reset();report("inactive","no_present_progress");continue;}
-        if(auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;gate.reset();}
+        if(!wait_frames(1)){if(s.cancel)break;disable();sample={};report("inactive","no_present_progress");continue;}
+        if(auto requested=s.requested_target.exchange(0);requested>0){s.target=requested;controller.reset(sample.output);}
         const auto now=Clock::now();
         if(revision!=s.surface_revision.load()||bindings!=optimizer::binding_evidence_revision()){
-            select(L"off");optimizer::approve_policy(0,0);current={};history.clear();pending=false;gate.reset();retry.clear();catalog.clear();
-            optimizer::reset_binding_evidence();revision=s.surface_revision.load();bindings=optimizer::binding_evidence_revision();last_profile=now-std::chrono::seconds(30);report("warmup","technical_context_changed");
+            disable();sample={};reference_cost.clear();catalog.clear();optimizer::reset_binding_evidence();
+            revision=s.surface_revision.load();bindings=optimizer::binding_evidence_revision();last_profile=now-std::chrono::seconds(30);report("warmup","technical_context_changed");
         }
-        if(now-last_decision<std::chrono::seconds(2))continue;last_decision=now;
-        if(now-last_profile>=std::chrono::seconds(15)&&!pending){
-            const auto path=s.directory/(L"feedback-profile-"+std::to_wstring(++profile)+L".json");
-            // Bounded rotating captures; profiling never disables the current policy.
-            if(profile>3){std::error_code ec;std::filesystem::remove(s.directory/(L"feedback-profile-"+std::to_wstring(profile-3)+L".json"),ec);}
-            if(gpu_profile::request(path.wstring(),16)&&wait_file(path,12000))catalog=optimizer::candidate_catalog();else gpu_profile::stop();
-            last_profile=Clock::now();continue;
+        // Discovery is asynchronous. Keep running the PID while GPU profiling
+        // completes, rather than blocking the controller on a file wait.
+        if(!profile_path.empty()&&std::filesystem::exists(profile_path)){profile_path.clear();last_catalog=start;}
+        if(!profile_path.empty()&&now-profile_started>std::chrono::seconds(12)){gpu_profile::stop();profile_path.clear();}
+        if(profile_path.empty()&&now-last_profile>std::chrono::seconds(catalog.empty()?2:15)){
+            const auto path=s.directory/(L"pid-profile-"+std::to_wstring(++profile)+L".json");
+            if(profile>3){std::error_code ec;std::filesystem::remove(s.directory/(L"pid-profile-"+std::to_wstring(profile-3)+L".json"),ec);}
+            if(gpu_profile::request(path.wstring(),16)){profile_path=path;profile_started=now;}last_profile=now;
         }
-        catalog=optimizer::candidate_catalog();
-        std::stable_sort(catalog.begin(),catalog.end(),[](const auto& a,const auto& b){return a.gpu_ms_per_window>b.gpu_ms_per_window;});
-        const double ft=period(),budget=1000./s.target;if(!std::isfinite(ft)||ft<=0)continue;
-        if(pending){
-            // A sequential comparison can be confounded by scene changes. Keep
-            // that uncertainty explicit instead of fabricating quality evidence.
-            const bool no_submission=!current.compute.empty()&&optimizer::policy_stamp().active_submissions<=submitted_before;
-            if(no_submission||arc::reject_feedback_change(before,ft,budget,recovering)){if(!apply(previous))throw TrialInterrupted("feedback_restore_refused");current=previous;retry[pending_key]=now+std::chrono::seconds(30);report("holding",no_submission?"no_modified_submission_reverted":"sequential_regression_reverted");}
-            else{if(recovering){if(!history.empty())history.pop_back();}else history.push_back(previous);report("holding","sequential_change_retained_unverified_quality");}
-            pending=false;recovering=false;gate.reset();continue;
+        if(now-last_catalog>=std::chrono::seconds(1)){
+            catalog=optimizer::candidate_catalog();for(const auto& c:catalog)reference_cost.try_emplace(c.capabilities.pipeline,c.gpu_ms_per_window);
+            vrs_available=feedback_vrs_capable();last_catalog=now;
         }
-        gate.observe(ft,budget);
-        if(gate.recover()&&!history.empty()&&(!retry.contains({0,0})||now>=retry[{0,0}])){
-            previous=current;auto next=history.back();next.id=next.compute.empty()&&!next.cpu_state_cache?0:++sequence;if(apply(next)){current=next;before=ft;pending=true;recovering=true;pending_key={0,0};report("holding","restoring_detail_with_headroom");}gate.reset();continue;
-        }
-        if(!gate.reduce()){report(ft<=budget*1.03?"target_met":"holding","observing_target_band");continue;}
+        if(now-last_control<std::chrono::milliseconds(250))continue;
+        const auto dt=std::chrono::duration<double>(now-last_control).count();last_control=now;
+        sample=controller.step(period(),1000./s.target,dt,(!catalog.empty()||vrs_available)?1.:0.);
+        if(!sample.valid){disable();continue;}
+        std::vector<arc::ComputeFeedbackTarget> targets;for(const auto& work:catalog){const auto& c=work.capabilities;targets.push_back({c.pipeline,reference_cost[c.pipeline],c.coarse,c.samples,c.mips,c.comparison,c.zero});}
+        allocation=arc::allocate_compute_budget(targets,sample.output,s.quality_profile=="aggressive");auto desired=allocation.policy;
         bool changed=false;
-        for(const auto& work:catalog){const auto& c=work.capabilities;arc::ComputePolicy setting;if(auto p=current.find(c.pipeline))setting=*p;setting.pipeline=c.pipeline;
-            for(unsigned knob=0;knob<3&&!changed;++knob){const auto key=std::make_pair(c.pipeline,knob);if(retry.contains(key)&&now<retry[key])continue;auto next=setting;bool possible=false;
-                if(knob==0&&c.coarse){if(next.x_rate==1&&next.y_rate==1){next.y_rate=2;possible=true;}else if(next.x_rate==1&&next.y_rate==2){next.x_rate=2;possible=true;}else if(s.quality_profile=="aggressive"&&next.x_rate==2&&next.y_rate==2){next.y_rate=4;possible=true;}else if(s.quality_profile=="aggressive"&&next.x_rate==2&&next.y_rate==4){next.x_rate=4;possible=true;}}
-                if(knob==1&&c.samples&&next.sample_percent>25){next.sample_percent-=25;possible=true;}
-                if(knob==2&&c.mips&&next.mip_steps<(s.quality_profile=="aggressive"?8u:4u)){++next.mip_steps;possible=true;}
-                if(!possible)continue;next.protect_edges=false;auto candidate=current;candidate.id=++sequence;if(!candidate.replace(next))continue;
-                if(apply(candidate)){previous=current;current=candidate;before=ft;pending=true;pending_key=key;changed=true;report("holding","reducing_measured_expensive_compute");}else retry[key]=now+std::chrono::seconds(30);
-            }if(changed)break;
+        if(desired.compute!=current.compute){
+            desired.id=desired.compute.empty()?0:++sequence;
+            std::lock_guard lock(s.policy_mutex);if(s.cancel)break;
+            if(optimizer::configure_bundle(desired,true,0,0)){optimizer::approve_policy(desired.id,std::numeric_limits<std::uint64_t>::max());current=std::move(desired);changed=true;}
         }
-        gate.reset();if(!changed)report("limited","no_currently_applicable_compute_reduction");
+        const bool desired_vrs=vrs_available&&(vrs_enabled?sample.output>.2:sample.output>.35);
+        if(desired_vrs!=vrs_enabled){
+            std::lock_guard lock(s.policy_mutex);if(s.cancel)break;
+            if(!desired_vrs){mirror::configure(0);vrs_enabled=false;changed=true;}
+            else if(hooks::begin_raster_observation()){vrs_enabled=mirror::configure(D3D12_SHADING_RATE_2X2);hooks::end_raster_observation();changed=vrs_enabled;}
+        }
+        if(vrs_enabled)mirror::keep_alive();
+        if(now-last_report>=std::chrono::milliseconds(500)){
+            const bool met=sample.filtered_ms<=1.03*1000./s.target;
+            report(met?"target_met":sample.output>=.999?"limited":"holding",changed?"pid_policy_updated":met?"pid_tracking_target":sample.output>=.999?"supported_actuators_saturated":"pid_tracking_error");
+        }
     }
-    gpu_profile::stop();select(L"off");optimizer::approve_policy(0,0);
+    gpu_profile::stop();disable();
 }
