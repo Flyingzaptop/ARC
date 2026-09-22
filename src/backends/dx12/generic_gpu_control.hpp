@@ -22,6 +22,7 @@ public:
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS address(unsigned slot) const noexcept;
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS prepass_address(unsigned slot) const noexcept;
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS probe_address(unsigned slot,bool candidate) const noexcept;
+    void shadow_reuse_predicate(ID3D12GraphicsCommandList*,unsigned slot);
     void probe_predicate(ID3D12GraphicsCommandList*,unsigned slot);
     void model(unsigned slot,const arc::SpatialModelTable&);
     [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS marker_address(unsigned slot) const noexcept;

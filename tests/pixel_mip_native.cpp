@@ -1,4 +1,6 @@
 #include "arc/shadow_reuse.hpp"
+#include "generic_gpu_control.hpp"
+#include "generic_shadow_inputs.hpp"
 #include <windows.h>
 #include <d3d12.h>
 #include <dxcapi.h>
@@ -69,9 +71,12 @@ int wmain(int argc,wchar_t** argv)try{
         auto cached=resource(dd,D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_DEPTH_WRITE),reference=resource(dd,D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_DEPTH_WRITE);
         D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_DSV;hd.NumDescriptors=2;ComPtr<ID3D12DescriptorHeap> heap;hr(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&heap)));auto first=heap->GetCPUDescriptorHandleForHeapStart(),second=first;second.ptr+=device->GetDescriptorHandleIncrementSize(hd.Type);device->CreateDepthStencilView(cached.Get(),nullptr,first);device->CreateDepthStencilView(reference.Get(),nullptr,second);
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};UINT64 size{};device->GetCopyableFootprints(&dd,0,1,0,&footprint,nullptr,nullptr,&size);auto read=buffer(size,D3D12_HEAP_TYPE_READBACK,D3D12_RESOURCE_STATE_COPY_DEST);
+        arc::dx12::optimizer::GpuControl shadow_control(device.Get());
+        D3D12_QUERY_HEAP_DESC query_desc{};query_desc.Type=D3D12_QUERY_HEAP_TYPE_OCCLUSION;query_desc.Count=1;ComPtr<ID3D12QueryHeap> query;hr(device->CreateQueryHeap(&query_desc,IID_PPV_ARGS(&query)));auto query_read=buffer(8,D3D12_HEAP_TYPE_READBACK,D3D12_RESOURCE_STATE_COPY_DEST);
         auto frame=[&](ID3D12Resource* map,D3D12_CPU_DESCRIPTOR_HANDLE dsv,float shift,bool draw){
-            begin();if(draw){list->SetPipelineState(pso.Get());list->SetGraphicsRootSignature(root.Get());list->SetGraphicsRoot32BitConstants(0,1,&shift,0);list->OMSetRenderTargets(0,nullptr,FALSE,&dsv);list->ClearDepthStencilView(dsv,D3D12_CLEAR_FLAG_DEPTH,1,0,0,nullptr);D3D12_VIEWPORT vp{0,0,64,64,0,1};D3D12_RECT rect{0,0,64,64};list->RSSetViewports(1,&vp);list->RSSetScissorRects(1,&rect);list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);list->DrawInstanced(3,1,0,0);}
-            barrier(map,D3D12_RESOURCE_STATE_DEPTH_WRITE,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION dst{},src{};dst.pResource=read.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=footprint;src.pResource=map;src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);barrier(map,D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_DEPTH_WRITE);execute();void* data{};D3D12_RANGE range{0,SIZE_T(size)},none{};hr(read->Map(0,&range,&data));std::vector<std::byte> pixels(64*64*4);for(unsigned y=0;y<64;++y)std::memcpy(pixels.data()+y*64*4,static_cast<char*>(data)+y*footprint.Footprint.RowPitch,64*4);read->Unmap(0,&none);return pixels;
+            const bool conditional=map==cached.Get();begin();if(conditional)shadow_control.shadow_reuse_predicate(list.Get(),0);{list->SetPipelineState(pso.Get());list->SetGraphicsRootSignature(root.Get());list->SetGraphicsRoot32BitConstants(0,1,&shift,0);list->OMSetRenderTargets(0,nullptr,FALSE,&dsv);list->ClearDepthStencilView(dsv,D3D12_CLEAR_FLAG_DEPTH,1,0,0,nullptr);D3D12_VIEWPORT vp{0,0,64,64,0,1};D3D12_RECT rect{0,0,64,64};list->RSSetViewports(1,&vp);list->RSSetScissorRects(1,&rect);list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);list->BeginQuery(query.Get(),D3D12_QUERY_TYPE_OCCLUSION,0);list->DrawInstanced(3,1,0,0);list->EndQuery(query.Get(),D3D12_QUERY_TYPE_OCCLUSION,0);}
+            list->SetPredication(nullptr,0,D3D12_PREDICATION_OP_EQUAL_ZERO);list->ResolveQueryData(query.Get(),D3D12_QUERY_TYPE_OCCLUSION,0,1,query_read.Get(),0);
+            barrier(map,D3D12_RESOURCE_STATE_DEPTH_WRITE,D3D12_RESOURCE_STATE_COPY_SOURCE);D3D12_TEXTURE_COPY_LOCATION dst{},src{};dst.pResource=read.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=footprint;src.pResource=map;src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);barrier(map,D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_DEPTH_WRITE);if(conditional)shadow_control.record_neutralize(list.Get());hr(list->Close());if(conditional){arc::dx12::optimizer::ControlValue value;value.reserved=draw?0:1;auto* upload=shadow_control.prepare(queue.Get(),{&value,1});check(draw||upload,"Reuse control upload available");if(upload)queue->ExecuteCommandLists(1,&upload);}execute(false);if(conditional)shadow_control.submitted(queue.Get());void* query_data{};D3D12_RANGE qr{0,8},qn{};hr(query_read->Map(0,&qr,&query_data));UINT64 samples{};std::memcpy(&samples,query_data,8);query_read->Unmap(0,&qn);check(draw?samples>0:samples==0,"GPU occlusion query proves draw executed/skipped");void* data{};D3D12_RANGE range{0,SIZE_T(size)},none{};hr(read->Map(0,&range,&data));std::vector<std::byte> pixels(64*64*4);for(unsigned y=0;y<64;++y)std::memcpy(pixels.data()+y*64*4,static_cast<char*>(data)+y*footprint.Footprint.RowPitch,64*4);read->Unmap(0,&none);return pixels;
         };
         arc::ShadowReuse cache;unsigned rendered=0,reused=0;std::uint64_t epoch=1;std::vector<std::byte> initial,moved;
         for(float shift:{0.f,0.f,0.f,.25f,.25f,0.f,0.f,0.f}){
@@ -82,7 +87,15 @@ int wmain(int argc,wchar_t** argv)try{
             const auto expected=frame(reference.Get(),second,shift,true);check(actual==expected,"Cached shadow map equals freshly rendered moving-light oracle");
             if(initial.empty())initial=actual;if(shift!=0)moved=actual;
         }
-        check(rendered==3&&reused==5&&initial!=moved,"Shadow reuse saves five clear/draw passes and reacts to movement");std::cout<<"Standalone shadow reuse GPU oracle PASS (3 renders, 5 reuse; live adapter not enabled)\n";
+        check(rendered==3&&reused==5&&initial!=moved,"Shadow reuse saves five clear/draw passes and reacts to movement");std::cout<<"GPU-predicated shadow clear/draw oracle PASS (3 renders, 5 GPU skips; live adapter not enabled)\n";
+    }
+    {
+        auto input=buffer(256,D3D12_HEAP_TYPE_UPLOAD,D3D12_RESOURCE_STATE_GENERIC_READ);void* mapped{};D3D12_RANGE none{};hr(input->Map(0,&none,&mapped));std::memset(mapped,0,256);
+        const arc::dx12::ShadowBufferInput range{input.Get(),0,256};auto a=arc::dx12::snapshot_shadow_uploads({&range,1});check(a.complete,"Upload snapshot complete");
+        static_cast<unsigned char*>(mapped)[31]=1;auto b=arc::dx12::snapshot_shadow_uploads({&range,1});check(b.complete&&a.bytes!=b.bytes,"Persistent mapped write detected without resource identity change");
+        auto repeat=arc::dx12::snapshot_shadow_uploads({&range,1});check(repeat.complete&&repeat.bytes==b.bytes,"Stable input exact snapshot");
+        auto gpu=buffer(256,D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_COMMON);arc::dx12::ShadowBufferInput unknown{gpu.Get(),0,256};check(!arc::dx12::snapshot_shadow_uploads({&unknown,1}).complete,"GPU content cannot be inferred from address");
+        arc::dx12::ShadowBufferInput outside{input.Get(),250,16};check(!arc::dx12::snapshot_shadow_uploads({&outside,1}).complete,"Snapshot bounds checked");input->Unmap(0,nullptr);
     }
     D3D12_RESOURCE_DESC td{};td.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;td.Width=td.Height=8;td.DepthOrArraySize=td.SampleDesc.Count=1;td.MipLevels=4;td.Format=DXGI_FORMAT_R32_FLOAT;
     auto texture=resource(td,D3D12_HEAP_TYPE_DEFAULT,D3D12_RESOURCE_STATE_COPY_DEST);D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprints[4]{};UINT64 bytes{};device->GetCopyableFootprints(&td,0,4,0,footprints,nullptr,nullptr,&bytes);auto upload=buffer(bytes,D3D12_HEAP_TYPE_UPLOAD,D3D12_RESOURCE_STATE_GENERIC_READ);

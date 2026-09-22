@@ -146,6 +146,7 @@ void GpuControl::record_neutralize(ID3D12GraphicsCommandList* list){
     }
 }
 D3D12_GPU_VIRTUAL_ADDRESS GpuControl::probe_address(unsigned slot,bool candidate)const noexcept{return buffer_->GetGPUVirtualAddress()+prepass_offset*(candidate?3:2)+UINT64(slot)*256;}
+void GpuControl::shadow_reuse_predicate(ID3D12GraphicsCommandList* list,unsigned slot){if(slot>=capacity)throw std::out_of_range("shadow predicate slot");list->SetPredication(buffer_.Get(),UINT64(slot)*256+offsetof(ControlValue,reserved),D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);}
 void GpuControl::probe_predicate(ID3D12GraphicsCommandList* list,unsigned slot){list->SetPredication(buffer_.Get(),UINT64(slot)*256+offsetof(ControlValue,probe_epoch),D3D12_PREDICATION_OP_EQUAL_ZERO);}
 void GpuControl::model(unsigned slot,const arc::SpatialModelTable& table){if(models_&&slot<capacity){auto& current=(*models_)[slot];if(current.key!=table.key||current.reserved!=table.reserved)current=table;}}
 ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const ControlValue> values,std::span<const ControlValue> probes){
@@ -156,7 +157,7 @@ ID3D12CommandList* GpuControl::prepare(ID3D12CommandQueue* queue,std::span<const
     const auto completed=fence_->GetCompletedValue();
     if(last_queue_&&last_queue_.Get()!=queue&&completed<sequence_)check(queue->Wait(fence_.Get(),sequence_));
     if(values.size()>capacity)throw std::runtime_error("GPU control capacity");
-    bool coarse=false;for(const auto& value:values)coarse|=(value.sample_percent>=1&&value.sample_percent<100)||value.probe_epoch!=0||value.calibration!=0||(value.x==2||value.x==4)||(value.y==2||value.y==4)||(value.comparison_taps>=1&&value.comparison_taps<25)||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=8)||(value.edge_sources&&value.spatial_key);
+    bool coarse=false;for(const auto& value:values)coarse|=value.reserved==1||(value.sample_percent>=1&&value.sample_percent<100)||value.probe_epoch!=0||value.calibration!=0||(value.x==2||value.x==4)||(value.y==2||value.y==4)||(value.comparison_taps>=1&&value.comparison_taps<25)||value.zero_factor==1||(value.mip_steps>=1&&value.mip_steps<=8)||(value.edge_sources&&value.spatial_key);
     if(!coarse)return nullptr;
     // Prefer completed slots already consumed by the background collector.
     // Fall back to overwriting an unread slot rather than delaying the game.
