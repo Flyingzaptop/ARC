@@ -1,4 +1,5 @@
 #include "generic_cpu_workers.hpp"
+#include "arc/bottleneck_router.hpp"
 #include "arc/intercept_cpu_meter.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_hook_control.hpp"
@@ -65,6 +66,7 @@ struct Session {
     UINT wanted{},presents{};bool stopped{},written{},publishing{},export_failed{},timed_out{};
     std::uint64_t recorded{},submitted{},declined{},unsupported{},overwritten{},faults{},dropped{};
     std::vector<Row> rows;
+    std::uint64_t cpu_begin{},cpu_end{},qpc_begin{},qpc_end{},completed_tick{};DWORD present_thread{};void* swapchain{};bool cpu_failed{},mixed_present{},pending_publication{};
 };
 struct Recording {
     Ptr<ID3D12Device> device;Ptr<ID3D12QueryHeap> queries;Ptr<ID3D12Resource> readback;
@@ -78,7 +80,7 @@ struct State {
     std::recursive_mutex mutex;
     std::atomic<bool> capturing{};
     std::atomic<unsigned> tracked{},open{};
-    std::shared_ptr<Session> session;
+    std::shared_ptr<Session> session,completed;
     std::map<ID3D12PipelineState*,std::shared_ptr<Pipeline>> pipelines;
     std::map<ID3D12CommandSignature*,unsigned> signatures;
     std::map<ID3D12GraphicsCommandList*,std::shared_ptr<Recording>> recordings;
@@ -173,6 +175,7 @@ void write_report(Session& session,unsigned pending){
     out<<"{\"schema\":1,\"engine_labels_used\":false,\"shader_mutations\":0,\"image_readbacks\":0,\"resource_dependencies_complete\":false,\"present_windows_requested\":"<<session.wanted
         <<",\"present_windows\":"<<session.presents<<",\"timed_out\":"<<(session.timed_out?"true":"false")<<",\"recordings\":"<<session.recorded<<",\"submissions\":"<<session.submitted
         <<",\"capacity_declines\":"<<session.declined<<",\"unsupported_segments\":"<<session.unsupported<<",\"cached_replay_samples_dropped\":"<<session.overwritten<<",\"dropped_intervals\":"<<session.dropped
+        <<",\"present_thread_id\":"<<session.present_thread<<",\"cpu_begin_100ns\":"<<session.cpu_begin<<",\"cpu_end_100ns\":"<<session.cpu_end<<",\"qpc_begin\":"<<session.qpc_begin<<",\"qpc_end\":"<<session.qpc_end<<",\"mixed_present_sources\":"<<(session.mixed_present?"true":"false")
         <<",\"faults\":"<<session.faults<<",\"pending_gpu_jobs\":"<<pending<<",\"intervals\":[";
     std::map<std::uint64_t,std::shared_ptr<Pipeline>> pipelines;bool first=true;
     for(const auto& row:session.rows){if(!first)out<<',';first=false;const auto& span=row.span;if(span.pipeline)pipelines[span.pipeline->id]=span.pipeline;
@@ -322,13 +325,22 @@ void after_submit(Submission& submission,ID3D12CommandQueue* native)noexcept{
 bool request(const std::wstring& path,UINT windows)noexcept{
     if(!hooks::begin_raster_observation())return false;
     struct EndSetup {~EndSetup(){hooks::end_raster_observation();}} setup;
-    bool accepted=false;safe([&]{auto& s=state();if(path.empty()||windows<1||windows>32||(s.session&&!s.session->written&&!s.session->export_failed)||!std::filesystem::is_directory(std::filesystem::absolute(path).parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path+L".tmp"))return;
+    bool accepted=false;safe([&]{auto& s=state();if(path.empty()||windows<1||windows>128||(s.session&&!s.session->written&&!s.session->export_failed)||!std::filesystem::is_directory(std::filesystem::absolute(path).parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path+L".tmp"))return;
         auto session=std::make_shared<Session>();session->id=++s.next_session;session->path=path;session->wanted=windows;session->deadline=Clock::now()+std::chrono::seconds(10);session->drain_deadline=session->deadline+std::chrono::seconds(5);session->rows.reserve(max_rows);s.session=std::move(session);s.capturing=true;accepted=true;});return accepted;
 }
 bool busy()noexcept{bool result=true;safe([&]{auto& s=state();result=s.open||s.capturing||(s.session&&!s.session->written&&!s.session->export_failed);});return result;}
 bool needs_raster_observation()noexcept{return state().open.load(std::memory_order_relaxed)||state().capturing.load(std::memory_order_relaxed);}
 void stop()noexcept{safe([&]{auto& s=state();s.capturing=false;if(s.session){s.session->stopped=true;s.session->drain_deadline=Clock::now()+std::chrono::seconds(5);}});}
-void present()noexcept{if(!state().capturing)return;safe([&]{auto& s=state();if(s.session&&!s.session->stopped&&++s.session->presents>=s.session->wanted)stop();});}
+void present(void* swapchain)noexcept{if(!state().capturing)return;safe([&]{auto& s=state();if(!s.session||s.session->stopped)return;auto& session=*s.session;
+    FILETIME created{},exited{},kernel{},user{};LARGE_INTEGER now{};QueryPerformanceCounter(&now);
+    const auto bits=[](FILETIME v){return (std::uint64_t(v.dwHighDateTime)<<32)|v.dwLowDateTime;};
+    const bool valid=GetThreadTimes(GetCurrentThread(),&created,&exited,&kernel,&user)!=FALSE;
+    const auto cpu=valid?bits(kernel)+bits(user):0;session.cpu_failed|=!valid;
+    if(!session.presents){session.cpu_begin=cpu;session.qpc_begin=now.QuadPart;session.present_thread=GetCurrentThreadId();session.swapchain=swapchain;}
+    else session.mixed_present|=session.present_thread!=GetCurrentThreadId()||session.swapchain!=swapchain;
+    session.cpu_end=cpu;session.qpc_end=now.QuadPart;
+    if(++session.presents>=session.wanted)stop();
+});}
 void collect()noexcept{
     std::shared_ptr<Session> publication,owner;unsigned publication_pending=0;
     safe([&]{auto& s=state();mirror::InternalCall internal;
@@ -353,17 +365,33 @@ void collect()noexcept{
             for(const auto& [native,r]:s.recordings)if(r->session==s.session&&!r->closed&&!r->spans.empty())++pending;
             if(!pending||Clock::now()>=s.session->drain_deadline){publication=std::make_shared<Session>(*s.session);owner=s.session;publication_pending=pending;s.session->publishing=true;}}
     });
-    if(publication){try{write_report(*publication,publication_pending);safe([&]{owner->written=true;owner->publishing=false;});}catch(...){safe([&]{owner->publishing=false;owner->export_failed=true;++owner->faults;++state().faults;});}}
+    if(publication){try{write_report(*publication,publication_pending);safe([&]{owner->written=true;owner->publishing=false;owner->completed_tick=GetTickCount64();owner->pending_publication=publication_pending!=0;state().completed=owner;});}catch(...){safe([&]{owner->publishing=false;owner->export_failed=true;++owner->faults;++state().faults;});}}
 }
 void snapshot(std::ostream& out){auto& s=state();std::lock_guard lock(s.mutex);out<<"{\"capturing\":"<<(s.capturing?"true":"false")<<",\"export_failed\":"<<(s.session&&s.session->export_failed?"true":"false")<<",\"live_pipelines\":"<<s.pipelines.size()<<",\"tracked_recordings\":"<<s.tracked.load()<<",\"retained_gpu_recordings\":"<<std::count_if(s.pool.begin(),s.pool.end(),[](const auto& r){return bool(r);})<<",\"faults\":"<<s.faults<<'}';}
 std::vector<ComputeCost> compute_costs()noexcept{
     std::vector<ComputeCost> result;
-    safe([&]{const auto& s=state();if(!s.session||!s.session->written||s.session->faults||s.session->rows.empty())return;
+    safe([&]{const auto& s=state();const auto& session=s.completed;if(!session||session->faults||session->rows.empty())return;
         std::map<const Pipeline*,double> costs;
-        for(const auto& row:s.session->rows)if(row.span.kind==2&&row.span.pipeline&&!row.span.mixed_pipeline)
+        for(const auto& row:session->rows)if(row.span.kind==2&&row.span.pipeline&&!row.span.mixed_pipeline)
             costs[row.span.pipeline.get()]+=double(row.end-row.start)*1000.0/double(row.frequency);
-        for(const auto& [native,pipeline]:s.pipelines)if(auto it=costs.find(pipeline.get());it!=costs.end())result.push_back({native,s.session->id,pipeline->id,it->second,s.session->presents});
+        for(const auto& [native,pipeline]:s.pipelines)if(auto it=costs.find(pipeline.get());it!=costs.end())result.push_back({native,session->id,pipeline->id,it->second,session->presents});
     });return result;
+}
+LoadEvidence load_evidence()noexcept{
+    LoadEvidence out;safe([&]{const auto& s=state();if(!s.completed)return;const auto& p=*s.completed;out.sequence=p.id;out.completed_tick_ms=p.completed_tick;
+        LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);if(p.presents<2||p.qpc_end<=p.qpc_begin)return;
+        const double windows=p.presents-1,wall=double(p.qpc_end-p.qpc_begin)*1000/frequency.QuadPart;out.frame_ms=wall/windows;
+        const bool healthy=!p.faults&&!p.dropped&&!p.overwritten&&!p.timed_out&&!p.pending_publication&&!p.mixed_present;
+        out.cpu_valid=healthy&&!p.cpu_failed&&wall>=200&&p.cpu_end>=p.cpu_begin;
+        if(out.cpu_valid)out.cpu_running_ms=double(p.cpu_end-p.cpu_begin)/10000/windows;
+        std::map<std::uint64_t,std::vector<std::pair<std::uint64_t,std::uint64_t>>> intervals;std::map<std::uint64_t,std::uint64_t> frequencies;
+        for(const auto& r:p.rows)if(r.frame>0&&r.frame<p.presents&&r.frequency&&r.end>=r.start){intervals[r.queue].push_back({r.start,r.end});frequencies[r.queue]=r.frequency;}
+        for(auto& [queue,spans]:intervals){const auto total=arc::queue_union_ticks(std::move(spans));
+            out.gpu_queue_busy_ms=std::max(out.gpu_queue_busy_ms,double(total)*1000/frequencies[queue]/windows);}
+        // This is a lower bound from the busiest observed queue, not a sum of
+        // possibly overlapping queues or a claim of complete GPU frame timing.
+        out.gpu_valid=healthy&&!intervals.empty();
+    });return out;
 }
 std::uint64_t pipeline_identity(ID3D12PipelineState* native)noexcept{std::uint64_t id{};safe([&]{if(auto p=lookup(native))id=p->id;});return id;}
 }

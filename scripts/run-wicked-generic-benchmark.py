@@ -17,6 +17,7 @@ parser.add_argument("--dll",type=Path)
 parser.add_argument("--compiler",type=Path)
 parser.add_argument("--compute-mode",choices=['off','neutral','neutral|heaviest','1x2|heaviest','2x2|heaviest','adaptive-2x2@0.9|heaviest'],default='neutral|heaviest')
 parser.add_argument("--auto-target",type=float)
+parser.add_argument("--control-mode",choices=["validated","target_feedback"],default="validated")
 parser.add_argument("--measure-costs",action="store_true")
 parser.add_argument("--seconds",type=int,choices=range(10,61),default=10)
 parser.add_argument("--initialization-seconds",type=int,choices=range(2,121),default=20)
@@ -53,13 +54,13 @@ if args.auto_target is not None:
     if not args.dll or not 0 < args.auto_target <= 1000:
         raise ValueError('Automatic target requires a DLL and FPS in (0,1000]')
     config=output/'automatic-config.json'
-    config.write_text(json.dumps({'quality_profile':args.quality_profile,'target_fps':args.auto_target,'python':sys.executable,
+    config.write_text(json.dumps({'control_mode':args.control_mode,'quality_profile':args.quality_profile,'target_fps':args.auto_target,'python':sys.executable,
         'critic':str(Path(__file__).resolve().parent/'optimizer-live-quality.py'),
         'output':str(output/'automatic'),'maximum_seconds':process_budget-5},indent=2))
     env['ARC_AUTO_CONFIG']=str(config)
 manifest={'host_quality_actions':'off','native_resolution':[1920,1080],'dll_sha256':hashlib.sha256(args.dll.read_bytes()).hexdigest() if args.dll else None,
           'exe_sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'mode':args.compute_mode if args.dll else 'baseline',
-          'automatic_target_fps':args.auto_target,'cost_diagnostics':bool(args.measure_costs and args.dll),
+          'automatic_target_fps':args.auto_target,'control_mode':args.control_mode,'cost_diagnostics':bool(args.measure_costs and args.dll),
           'measurement_seconds':args.seconds,'initialization_seconds':args.initialization_seconds,'process_budget_seconds':process_budget,'quality_profile':args.quality_profile,
           'worker_placement':args.worker_placement,
           'focus_scene':args.focus_scene,'dynamic_camera':args.dynamic_camera,

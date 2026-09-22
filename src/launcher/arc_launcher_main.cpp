@@ -149,7 +149,10 @@ void poll(){
         if(automatic.value("control_mode",std::string{})=="target_feedback"){
             const auto memory=[&](const char* key){return automatic.contains(key)&&automatic[key].is_number()?std::to_wstring(automatic[key].get<unsigned long long>()/(1024*1024))+L" MiB":std::wstring(L"?");};
             details=L"RAM "+memory("process_working_set_bytes")+L" · VRAM "+memory("vram_local_usage_bytes")+L" · CPUft/GPUft: нет полного замера";
-            if(phase=="holding"||phase=="target_met"||phase=="limited")status(phase=="limited"?L"Цель пока недостижима доступными изменениями. Наблюдение продолжается.":L"Удержание целевого FPS. Автоматическая проверка изображения выключена.");
+            if(phase=="holding"||phase=="target_met"||phase=="limited"){
+                const auto direction=automatic.value("bottleneck",std::string{});
+                status(phase=="target_met"?L"FPS в целевом диапазоне. Настройки сохраняются.":direction=="present_thread_cpu_pressure"?L"Приоритет: CPU-поток. Графическая политика сохраняется.":direction=="mixed_cpu_gpu_pressure"?L"Приоритет: CPU и GPU. Применяются доступные регуляторы.":direction=="gpu_queue_pressure"?(phase=="limited"?L"GPU: предел доступных преобразований. Наблюдение продолжается.":L"Приоритет: GPU. Регулируется стоимость графических проходов."):L"Причина задержки пока не определена. Настройки сохраняются.");
+            }
         }
         SetWindowTextW(detail_label,details.c_str());
     }catch(...){/* a replaced or incomplete diagnostic snapshot is retried */}

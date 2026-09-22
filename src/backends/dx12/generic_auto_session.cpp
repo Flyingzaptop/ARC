@@ -11,6 +11,7 @@
 #include "arc/optimizer_session.hpp"
 #include "arc/timing_evidence.hpp"
 #include "arc/target_feedback.hpp"
+#include "arc/bottleneck_router.hpp"
 #include "arc/compute_feedback_policy.hpp"
 #include "generic_hook_control.hpp"
 #include "json.hpp"

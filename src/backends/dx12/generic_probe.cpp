@@ -73,12 +73,12 @@ void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
 HRESULT STDMETHODCALLTYPE present(IDXGISwapChain* self,UINT sync,UINT flags){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const bool outer=!inside_present;inside_present=true;const auto resource=outer&&recording&&!(flags&DXGI_PRESENT_TEST)?runtime::before_present(self):0;
     const HRESULT result=arc::original_cpu_call([&]{return original_present(self,sync,flags);});inside_present=!outer;
-    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present();observe_present(self,sync,flags,result);if(recording)runtime::after_present(self,resource,result,flags);autotune::present(self,result,flags);}return result;
+    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present(self);observe_present(self,sync,flags,result);if(recording)runtime::after_present(self,resource,result,flags);autotune::present(self,result,flags);}return result;
 }
 HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1* self,UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS* parameters){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const bool outer=!inside_present;inside_present=true;auto* base=reinterpret_cast<IDXGISwapChain*>(self);const auto resource=outer&&recording&&!(flags&DXGI_PRESENT_TEST)?runtime::before_present(base):0;
     const HRESULT result=arc::original_cpu_call([&]{return original_present1(self,sync,flags,parameters);});inside_present=!outer;
-    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present();observe_present(base,sync,flags,result);if(recording)runtime::after_present(base,resource,result,flags);autotune::present(base,result,flags);}return result;
+    if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present(base);observe_present(base,sync,flags,result);if(recording)runtime::after_present(base,resource,result,flags);autotune::present(base,result,flags);}return result;
 }
 void STDMETHODCALLTYPE execute(ID3D12CommandQueue* self,UINT count,ID3D12CommandList* const* commands){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const bool observed=observe_api();auto ticket=observed?profile::before_submit(self,count,commands):profile::Submission{};

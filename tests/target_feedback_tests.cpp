@@ -1,4 +1,5 @@
 #include "arc/target_feedback.hpp"
+#include "arc/bottleneck_router.hpp"
 #include "arc/compute_feedback_policy.hpp"
 #include <limits>
 int main(){
@@ -26,6 +27,26 @@ int main(){
     if(!distributed.policy.find(11)||distributed.policy.find(10)->mip_steps==8)return 31;
     const auto impossible=arc::allocate_compute_budget(marginal,100,true);
     if(impossible.estimated_saved_ms>impossible.estimated_capacity_ms+1e-8||!impossible.policy.valid())return 32;
+    arc::BottleneckRouter router;
+    arc::BottleneckEvidence gpu{1,16,2,15,0,true,true};
+    if(router.observe(gpu)!=arc::Bottleneck::Unknown)return 33;
+    if(router.observe(gpu)!=arc::Bottleneck::Unknown)return 34;
+    gpu.sequence=2;if(router.observe(gpu)!=arc::Bottleneck::Gpu)return 35;
+    arc::BottleneckEvidence cpu{3,16,15,3,0,true,true};router.observe(cpu);cpu.sequence=4;
+    if(router.observe(cpu)!=arc::Bottleneck::CpuThread)return 36;
+    cpu.age_seconds=7;if(router.observe(cpu)!=arc::Bottleneck::Unknown)return 37;
+    // Waiting on GPU is low running CPU time; it must never classify as CPU.
+    gpu.sequence=5;router.observe(gpu);gpu.sequence=6;if(router.observe(gpu)!=arc::Bottleneck::Gpu)return 38;
+    arc::BottleneckEvidence mixed{7,16,15,15,0,true,true};router.observe(mixed);mixed.sequence=8;if(router.observe(mixed)!=arc::Bottleneck::Mixed)return 39;
+    if(arc::queue_union_ticks({{10,20},{15,25},{10,20},{30,40}})!=25)return 40;
+    if(arc::queue_union_ticks({{20,10}})!=0)return 41;
+    router.reset();arc::BottleneckEvidence budget_cpu{1,24,12.5,3.4,0,true,true,10};router.observe(budget_cpu);budget_cpu.sequence=2;
+    if(router.observe(budget_cpu)!=arc::Bottleneck::CpuThread)return 42;
+    router.reset();arc::BottleneckEvidence unequal{1,24,14,8,0,true,true,5};router.observe(unequal);unequal.sequence=2;
+    if(router.observe(unequal)!=arc::Bottleneck::CpuThread)return 43;
+    auto hold=arc::gpu_permission(arc::Bottleneck::CpuThread,24,10,.5,true);if(hold.update)return 44;
+    auto recovery=arc::gpu_permission(arc::Bottleneck::CpuThread,5,10,.5,true);if(!recovery.update||recovery.maximum!=.5)return 45;
+    auto accelerate=arc::gpu_permission(arc::Bottleneck::Gpu,24,10,.5,true);if(!accelerate.update||accelerate.maximum!=1)return 46;
     arc::TargetFeedbackGate g;
     g.observe(18,16);if(g.reduce())return 1;
     g.observe(16,16);g.observe(18,16);if(g.reduce())return 2;
