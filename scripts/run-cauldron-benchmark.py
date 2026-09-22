@@ -78,7 +78,7 @@ if args.edge_threshold is not None:
     if not args.mode.startswith("compute-adaptive-") or not 0 <= args.edge_threshold <= 2:
         raise ValueError("Edge threshold 0..2 requires an adaptive compute mode")
     env["ARC_OPTIMIZER_LAZY_COMPILE"]="1" if args.mode=="compute-off" else "0"
-env["ARC_BENCH_MODE"]=args.mode.replace("-hot", f"@{args.edge_threshold}-hot")
+env["ARC_BENCH_MODE"]=args.mode.replace("-hot", f"@{args.edge_threshold}-hot") if args.edge_threshold is not None else args.mode
 if args.dll: env["ARC_BENCH_DLL"]=str(args.dll.resolve())
 for key in ("ARC_OPTIMIZER_WORKER","ARC_OPTIMIZER_COMPILER","ARC_OPTIMIZER_CACHE"):
     env.pop(key,None)

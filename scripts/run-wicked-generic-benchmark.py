@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import time
 import sys
+import shutil
 from benchmark_thermal_gate import wait_for_cool_gpu
 
 parser=argparse.ArgumentParser()
@@ -14,7 +15,7 @@ parser.add_argument("wicked",type=Path)
 parser.add_argument("output",type=Path)
 parser.add_argument("--dll",type=Path)
 parser.add_argument("--compiler",type=Path)
-parser.add_argument("--compute-mode",choices=['neutral','neutral|heaviest','1x2|heaviest','2x2|heaviest','adaptive-2x2@0.9|heaviest'],default='neutral|heaviest')
+parser.add_argument("--compute-mode",choices=['off','neutral','neutral|heaviest','1x2|heaviest','2x2|heaviest','adaptive-2x2@0.9|heaviest'],default='neutral|heaviest')
 parser.add_argument("--auto-target",type=float)
 parser.add_argument("--measure-costs",action="store_true")
 parser.add_argument("--seconds",type=int,choices=range(10,61),default=10)
@@ -35,6 +36,7 @@ for key in list(env):
     if key.startswith(('ARC_WICKED_','ARC_BENCH_','ARC_OPTIMIZER_','ARC_AUTO_','ARC_WORKER_')): env.pop(key)
 if args.worker_placement!='normal' and not args.dll: raise ValueError('Worker placement requires ARC DLL')
 env['ARC_WORKER_PLACEMENT']=args.worker_placement
+env['ARC_OPTIMIZER_LAZY_COMPILE']='1' if args.compute_mode=='off' else '0'
 if args.worker_placement=='partition': env['ARC_WORKER_ALLOW_PARTITION']='1'
 env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_OUTPUT=str(output/'renderer.json'),ARC_WICKED_SECONDS=str(args.seconds),ARC_WICKED_WARMUP_SECONDS=str(args.initialization_seconds),ARC_WICKED_SCENE_SETTLE_MS='500',ARC_WICKED_HOOK_TIMING='0')
 env['ARC_BENCH_OUTPUT']=str(output)
@@ -64,6 +66,10 @@ manifest={'host_quality_actions':'off','native_resolution':[1920,1080],'dll_sha2
           'compiler_sha256':hashlib.sha256(args.compiler.read_bytes()).hexdigest() if args.dll else None}
 startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=1 if args.visible else 0
 manifest['thermal_gate']=wait_for_cool_gpu(args.max_start_temperature)
+def hardware_snapshot():
+    if not shutil.which('nvidia-smi'):return None
+    return subprocess.run(['nvidia-smi','--query-gpu=name,driver_version,enforced.power.limit,clocks.current.graphics,clocks.current.memory,temperature.gpu,power.draw','--format=csv'],capture_output=True,text=True,timeout=5,creationflags=subprocess.CREATE_NO_WINDOW).stdout
+manifest['hardware_before_csv']=hardware_snapshot()
 start=time.monotonic()
 history=[]
 with (output/'stdout.txt').open('w') as out,(output/'stderr.txt').open('w') as err:
@@ -85,7 +91,7 @@ with (output/'stdout.txt').open('w') as out,(output/'stderr.txt').open('w') as e
     except subprocess.TimeoutExpired:
         process.kill();process.wait();raise RuntimeError(f'Owned renderer exceeded {process_budget} seconds')
 (output/'adaptation-history.json').write_text(json.dumps(history,indent=2))
-manifest.update(exit_code=code,seconds=time.monotonic()-start)
+manifest.update(exit_code=code,seconds=time.monotonic()-start,hardware_after_csv=hardware_snapshot())
 (output/'manifest.json').write_text(json.dumps(manifest,indent=2))
 if code: raise RuntimeError(f'Owned renderer failed: {code}')
 print(json.dumps({'output':str(output),'mode':manifest['mode'],'worker_placement':args.worker_placement,
