@@ -252,5 +252,16 @@
     "GPU passive unsupported/oversized inputs report drops",
     "CPU and DX12 launch modes separate"
   ],
-  "rerun_notes": "Only affected mechanisms repeated after execution/state/constructor fixes. Unchanged GPU transforms and full benchmark matrices not rerun."
+  "rerun_notes": "Only affected mechanisms repeated after execution/state/constructor fixes. Unchanged GPU transforms and full benchmark matrices not rerun.",
+  "package": {
+    "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\packages\\arc-m0-m4-corrective-16e97cc",
+    "source_commit": "16e97cc743e97b97fd5b4d6ad18da1f3961598cf",
+    "source_dirty": false,
+    "manifest_sha256": "0aaecf50d9ac6c7fb77beac6da4cb5488f322d9650107adfda8ab9991ce11227",
+    "verified_files": 96,
+    "cpu_native_smoke": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\m0-m4-corrective-package-smoke",
+    "smoke_result": "pass; native state oracle, measured auto trials, stop acknowledged, PID matched",
+    "separate_gpu_dll": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\packages\\arc-m0-m4-corrective-16e97cc\\gpu-update\\arc-dx12-probe.dll",
+    "acceptance": "pending re-review"
+  }
 }
