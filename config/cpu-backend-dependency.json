@@ -1,0 +1,20 @@
+{
+  "name": "DynamoRIO",
+  "version": "11.3.0",
+  "release_tag": "release_11.3.0-1",
+  "url": "https://github.com/DynamoRIO/dynamorio/releases/download/release_11.3.0-1/DynamoRIO-Windows-11.3.0.zip",
+  "archive_sha256": "5516B8B4C929885DC4172E088ED11EA5DB967F80ED739A3E7925FE2CDD798C6D",
+  "license_file": "License.txt",
+  "license": "BSD-style; retain the shipped License.txt and acknowledgements with redistributed binaries",
+  "architecture": "Windows x64",
+  "build_root_hint": "deps/DynamoRIO-Windows-11.3.0-1",
+  "runtime_sha256": {
+    "bin64/drrun.exe": "2db0fe2a7868ecebce10eb5b02a5672d85cbfbc78b98d0f0b24a36b568b644f1",
+    "bin64/drinjectlib.dll": "2a67eb37977c442184ad7aa5b28626cb1551bea9d707a25f766a3a21f4bd8d13",
+    "bin64/drconfiglib.dll": "c5ed8fd3a7bb515906d6f6e02eccfa7992c2a89cb5119e24ddefb841bef43bf6",
+    "lib64/release/dynamorio.dll": "3d965a59504cf090cd56f5adebcff423d0342bc3a117a44a751de805248c6e88",
+    "lib64/debug/dynamorio.dll": "f8f277ed94877a3b233b9872f47ece2545bdd7f5000f3edd98cc53490535dffd",
+    "ext/lib64/release/drmgr.dll": "ce085a28854294a5a67e02476e15e93cca48a2661932f5bf98ae95b4a61102f0",
+    "ext/lib64/debug/drmgr.dll": "ff202e2b7d75e9ae567563e71f6793f950305a8324ec868dac839c3337cb2ca9"
+  }
+}
