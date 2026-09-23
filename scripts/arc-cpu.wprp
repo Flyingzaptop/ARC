@@ -4,6 +4,9 @@
     <SystemCollector Id="ARCSystem" Name="ARC CPU attribution">
       <BufferSize Value="256"/><Buffers Value="128"/>
     </SystemCollector>
+    <EventCollector Id="ARCPresentCollector" Name="ARC synchronized presentation events">
+      <BufferSize Value="256"/><Buffers Value="64"/>
+    </EventCollector>
     <SystemProvider Id="ARCProvider">
       <Keywords>
         <Keyword Value="CpuConfig"/><Keyword Value="ProcessThread"/><Keyword Value="Loader"/>
@@ -12,11 +15,13 @@
       </Keywords>
       <Stacks><Stack Value="SampledProfile"/><Stack Value="CSwitch"/><Stack Value="ReadyThread"/></Stacks>
     </SystemProvider>
+    <EventProvider Id="ARCDXGI" Name="Microsoft-Windows-DXGI" Level="5"/>
+    <EventProvider Id="ARCDxgKrnl" Name="Microsoft-Windows-DxgKrnl" Level="5"/>
     <Profile Id="ARCCPU.Verbose.File" Name="ARCCPU" Description="Bounded CPU attribution before graphics API" DetailLevel="Verbose" LoggingMode="File">
-      <Collectors><SystemCollectorId Value="ARCSystem"><SystemProviderId Value="ARCProvider"/></SystemCollectorId></Collectors>
+      <Collectors><SystemCollectorId Value="ARCSystem"><SystemProviderId Value="ARCProvider"/></SystemCollectorId><EventCollectorId Value="ARCPresentCollector"><EventProviders><EventProviderId Value="ARCDXGI"/><EventProviderId Value="ARCDxgKrnl"/></EventProviders></EventCollectorId></Collectors>
     </Profile>
     <Profile Id="ARCCPU.Verbose.Memory" Name="ARCCPU" Description="Bounded CPU attribution before graphics API" DetailLevel="Verbose" LoggingMode="Memory">
-      <Collectors><SystemCollectorId Value="ARCSystem"><SystemProviderId Value="ARCProvider"/></SystemCollectorId></Collectors>
+      <Collectors><SystemCollectorId Value="ARCSystem"><SystemProviderId Value="ARCProvider"/></SystemCollectorId><EventCollectorId Value="ARCPresentCollector"><EventProviders><EventProviderId Value="ARCDXGI"/><EventProviderId Value="ARCDxgKrnl"/></EventProviders></EventCollectorId></Collectors>
     </Profile>
   </Profiles>
 </WindowsPerformanceRecorder>
