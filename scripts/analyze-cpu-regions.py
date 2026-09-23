@@ -14,7 +14,7 @@ import json
 import math
 import re
 from collections import Counter, defaultdict
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 
 PID_RE = re.compile(r"\((\d+)\)\s*$")
@@ -73,8 +73,26 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
     pid = int(manifest["target_pid"])
     trace_start = dt.datetime.fromisoformat(meta["trace_start_utc"]) if meta["trace_start_utc"] else None
     created = dt.datetime.fromisoformat(manifest["target_creation_utc"].replace("Z", "+00:00"))
-    creation_us = max(0, int((created - trace_start).total_seconds() * 1e6)) if trace_start else None
+    raw_creation_us = int((created - trace_start).total_seconds() * 1e6) if trace_start else None
+    creation_us = max(0, raw_creation_us) if raw_creation_us is not None else None
     lifetime_start = creation_us if creation_us is not None else 0
+    target_start_seen = raw_creation_us is not None and raw_creation_us < 0
+    owner_name = PureWindowsPath(manifest.get("target_image") or "").name.casefold() or None
+    # For an in-trace process start, an explicit same-PID/same-image P-Start
+    # must match the independently captured creation time within 5 ms. One
+    # competing start in that uncertainty window makes identity ambiguous.
+    start_candidates: set[int] = set()
+    if raw_creation_us is not None and raw_creation_us >= 0:
+        for event_kind, event_time, event_fields in event_rows(capture / "events.txt"):
+            if event_kind != "P-Start" or not event_fields or pid_of(event_fields[0]) != pid:
+                continue
+            event_name = event_fields[0].rsplit("(", 1)[0].strip().casefold()
+            if owner_name is not None and event_name != owner_name:
+                continue
+            if abs(event_time - raw_creation_us) <= 5_000:
+                start_candidates.add(event_time)
+    start_ambiguous = len(start_candidates) > 1
+    selected_pstart_us = next(iter(start_candidates)) if len(start_candidates) == 1 else None
     modules: list[dict] = []
     samples: list[tuple[int, int, int]] = []
     presents: list[int] = []
@@ -95,14 +113,43 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
     for kind, timestamp, fields in event_rows(capture / "events.txt"):
         max_us = max(max_us, timestamp)
         event_pid = pid_of(fields[0]) if fields else None
-        if kind in ("P-DCStart", "P-DCEnd", "P-Start") and event_pid == pid:
-            process_rundown_seen = True
-            if kind == "P-Start" and creation_us == 0 and timestamp > 0:
-                pid_reused = True
-                process_end_us = min(process_end_us or timestamp, timestamp)
-        elif kind == "P-End" and event_pid == pid:
+        event_name = fields[0].rsplit("(", 1)[0].strip().casefold() if fields else None
+        if event_pid == pid and target_start_seen and timestamp >= lifetime_start and (
+            process_end_us is None or timestamp < process_end_us
+        ) and owner_name and event_name != owner_name:
+            # An owner-name change without a usable process event also closes
+            # the first lifetime. Never attribute later same-PID events to it.
             process_end_us = timestamp
-        elif kind in ("I-Start", "I-DCStart", "I-DCEnd") and event_pid == pid and len(fields) >= 6:
+            pid_reused = True
+        if kind in ("P-DCStart", "P-DCEnd", "P-Start") and event_pid == pid:
+            if kind == "P-Start":
+                matches_creation = selected_pstart_us == timestamp
+                if target_start_seen and timestamp != selected_pstart_us:
+                    pid_reused = True
+                    if process_end_us is None:
+                        process_end_us = timestamp
+                elif not target_start_seen and matches_creation:
+                    target_start_seen = True
+                    selected_pstart_us = timestamp
+                    lifetime_start = timestamp
+                    owner_name = event_name
+                    process_rundown_seen = True
+            elif target_start_seen and process_end_us is None:
+                process_rundown_seen = True
+                if owner_name is None:
+                    owner_name = event_name
+            elif not target_start_seen and not start_ambiguous and selected_pstart_us is None and raw_creation_us == 0 and timestamp == 0:
+                target_start_seen = True
+                owner_name = event_name
+                process_rundown_seen = True
+        elif kind == "P-End" and event_pid == pid and target_start_seen:
+            if process_end_us is None and timestamp >= lifetime_start:
+                process_end_us = timestamp
+        if not target_start_seen or timestamp < lifetime_start or (
+            process_end_us is not None and timestamp >= process_end_us
+        ):
+            continue
+        if kind in ("I-Start", "I-DCStart", "I-DCEnd") and event_pid == pid and len(fields) >= 6:
             try:
                 base, end = int(fields[1], 16), int(fields[2], 16)
             except ValueError:
@@ -114,7 +161,7 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
                     metadata_overflow += 1
                     continue
                 modules.append({"base": base, "end": end,
-                                "start_us": 0 if kind == "I-DCEnd" else timestamp,
+                                "start_us": lifetime_start if kind == "I-DCEnd" else timestamp,
                                 "end_us": None, "checksum": fields[3],
                                 "image_timestamp": fields[4], "path": fields[6] if len(fields) > 6 else fields[5]})
         elif kind == "I-End" and event_pid == pid and len(fields) >= 3:
@@ -185,7 +232,7 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
     unattributed = 0
     valid_samples = 0
     for timestamp, thread_id, pc in samples:
-        if not lifetime_start <= timestamp <= lifetime_end:
+        if timestamp < lifetime_start or (process_end_us is not None and timestamp >= lifetime_end):
             continue
         valid_samples += 1
         # Loaded images are time scoped. ASLR bases never become identities.
@@ -207,7 +254,8 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
             continue
         region_hits[key].append(timestamp)
 
-    presents = sorted(set(t for t in presents if lifetime_start <= t <= lifetime_end))
+    presents = sorted(set(t for t in presents if t >= lifetime_start and
+                          (process_end_us is None or t < lifetime_end)))
     regions = []
     for (path, checksum, image_timestamp, offset), times in region_hits.items():
         bins = {time // 100_000 for time in times}
@@ -235,6 +283,10 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
         missing.append("zero_event_and_buffer_loss_not_verified")
     if not process_rundown_seen:
         missing.append("target_process_lifetime_not_seen_in_etw")
+    if start_ambiguous:
+        missing.append("target_process_start_ambiguous")
+    elif raw_creation_us is not None and raw_creation_us > 0 and selected_pstart_us is None:
+        missing.append("target_process_start_unmatched")
     if not modules:
         missing.append("target_module_map_missing")
     if len(presents) < 2:
@@ -261,7 +313,10 @@ def analyze(capture: Path, bucket_size: int = 4096, limit: int = 25) -> dict:
         "module_identity_strength": "weak_path_checksum_pe_timestamp; no content hash",
         "frame_event_parser_status": "event-name heuristic; provider payload layout needs native validation",
         "process_lifetime": {"rundown_seen": process_rundown_seen,
-                             "end_event_offset_us": process_end_us, "pid_reused": pid_reused},
+                             "start_event_offset_us": lifetime_start,
+                             "end_event_offset_us": process_end_us, "pid_reused": pid_reused,
+                             "start_match_tolerance_us": 5_000,
+                             "start_candidates_in_tolerance": len(start_candidates)},
         "counts": {"samples": valid_samples, "unattributed_samples": unattributed,
                    "samples_dropped_by_budget": sample_overflow,
                    "metadata_dropped_by_budget": metadata_overflow,
