@@ -109,3 +109,13 @@ consumer admission is needed before GPU code generation, specifically for the
 selected visibility predicate plus its surrounding compaction/dependency boundary.
 Its absence is not solved by GPU submission or additional PID control. This plan's
 stop condition applies: stop expansion here; do not resume M5–M7 or claim O1 done.
+
+## Follow-up: authorized source-assisted economic experiment
+
+The user explicitly separated profitability from automatic extraction after reviewing
+84bb25c. Source-assisted replacement is allowed for this control experiment only.
+Implemented predicate offload and a wider predicate + compaction variant in the
+existing Wicked workload. Both failed to improve measured CPU submission cadence;
+no improvement in p95/p99 was confirmed. Full GPU-completed-frame O2 was not measured.
+Original EXE restored, experiment default off. Automatic O0 admission/O1 remain blocked.
+See [controlled experiment report](reports/2026-09-23-controlled-visibility-offload.md).

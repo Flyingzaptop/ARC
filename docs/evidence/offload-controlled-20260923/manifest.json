@@ -1,0 +1,218 @@
+{
+  "experiment": "source-assisted Wicked visibility; not universal ARC",
+  "result": "NEGATIVE_ON_MEASURED_CPU_SUBMISSION_CADENCE",
+  "full_GPU_completed_frame_gate": "not measured",
+  "source_base": "84bb25c",
+  "scene": 18,
+  "nominal_objects": 65536,
+  "render_device": "existing Wicked D3D12 device, dedicated compute queue on same adapter",
+  "driver": "616.64",
+  "gpu": "RTX 3060 Laptop",
+  "quality": "Existing CPU-profile full-quality mode; TAA disabled in all arms; unchanged scene size. Surface resolution not separately captured.",
+  "window": "6 <= elapsed seconds < 15 per existing bounded 15-second run",
+  "cost_scope": "Offload total includes setup when first invoked, upload, submission, fence wait, readback and mask copy. Excludes logging and main-thread final list copy, both included in application cadence. CPU batch is a serial diagnostic of original predicate, NOT original parallel critical path.",
+  "invalid_runs": {
+    "A1": "Only CSV header, no measured frames. Excluded. Same original hash at canonical Tests.exe path produced valid retry; cause unproven."
+  },
+  "binaries": {
+    "Tests-before.exe": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\Tests-before.exe",
+      "bytes": 9332224,
+      "sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf"
+    },
+    "Tests-controlled-wide.exe": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\Tests-controlled-wide.exe",
+      "bytes": 9342464,
+      "sha256": "3a51b43f44b0cd2948570d53acd90a761b25f3cab64f88fe2b23f0db651a1201"
+    },
+    "Tests-controlled.exe": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\Tests-controlled.exe",
+      "bytes": 9341440,
+      "sha256": "071f715073198f7ef819a172f7c26ad86ac596ae92cacfeb0aaf8c4fe8916a24"
+    }
+  },
+  "files": {
+    "A1-retry.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A1-retry.csv",
+      "bytes": 550256,
+      "sha256": "dad2cecf28cd07021b8bbe76f823a9cb02f6964b96af3862410cb0bc0af0ba34"
+    },
+    "A1-retry.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A1-retry.csv.json",
+      "bytes": 289,
+      "sha256": "d2fa6ea783f4a54284c9de4be9771eab5a4faf62378aad20c2e45861146a2cfa"
+    },
+    "A1.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A1.csv",
+      "bytes": 33,
+      "sha256": "88c8cc817064a80cbebf77915a51c15358e3b3d97c08eaacc217bd0ae66897e5"
+    },
+    "A1.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A1.csv.json",
+      "bytes": 289,
+      "sha256": "e7411e834b0234c41d335e599f6937ac28a4d10d48a21c0bfcbbc2bc57cfeed7"
+    },
+    "A2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A2.csv",
+      "bytes": 537012,
+      "sha256": "c473b08f62f367c9136b849e0e039d4446f1b81deff0036bb79990ce247a9dc1"
+    },
+    "A2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A2.csv.json",
+      "bytes": 289,
+      "sha256": "e2f036bff704906ea555bd1e7b33004968368e3efbf1d39e0b35decb8a714b70"
+    },
+    "A3.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A3.csv",
+      "bytes": 541178,
+      "sha256": "509aaf147cb5cf546e6c590d117477d664cd181307ade616ffefbd58eadfdc4a"
+    },
+    "A3.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\A3.csv.json",
+      "bytes": 289,
+      "sha256": "5bffdb9583500887f42c4faebe13dddee8c288b5abc9455f0c4809696679a041"
+    },
+    "build-wide.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\build-wide.log",
+      "bytes": 934,
+      "sha256": "00bf3c5cc645577c0fe7e636e2168383ab0338ee2e025c291533df6aefe84bf8"
+    },
+    "build.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\build.log",
+      "bytes": 15502,
+      "sha256": "433daad177b4e6cc68588d412623c2f021d76b7f051e1b3bcb62b0a282c64455"
+    },
+    "build2.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\build2.log",
+      "bytes": 15583,
+      "sha256": "190b0fdb430be851233afcea8870fffbf776ac0930d3896196ad19852584b384"
+    },
+    "build3.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\build3.log",
+      "bytes": 11292,
+      "sha256": "39884e14da139fdb8c9eddc439fc88cfb675efb33979f1b11e6e0e34f6aa55ea"
+    },
+    "build4.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\build4.log",
+      "bytes": 530,
+      "sha256": "991cf9432ae9b098a05aa7155f6ab41860cbc887bfbef4e0e003ccae6ff51dad"
+    },
+    "C1.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\C1.csv",
+      "bytes": 700518,
+      "sha256": "f4c2dc0e6026bf5df3ae252e46adaf706e0c90f20d4350f2522cf1a6411c5aa7"
+    },
+    "C1.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\C1.csv.json",
+      "bytes": 289,
+      "sha256": "b7e39ed5992df4ce338fc5a45021bdb7efea1c936cb84cf70881ba41ea5e819f"
+    },
+    "C2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\C2.csv",
+      "bytes": 675573,
+      "sha256": "6e313a5684ef55e24d9b7888040dad5cd1bfbf0ab446be2648983febe803c96d"
+    },
+    "C2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\C2.csv.json",
+      "bytes": 289,
+      "sha256": "8281de1cacde0ae2d3d55ef291351471ac30849badb79c0409295688b6cd0202"
+    },
+    "comparison.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\comparison.json",
+      "bytes": 28907,
+      "sha256": "57723efba75038d69b0fbfaad9b84e2227409e75b8aa1df3e9984b987138d94e"
+    },
+    "CPU.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\CPU.csv",
+      "bytes": 531957,
+      "sha256": "12c86476127ce06a6758c3a97b6c5fcc2b1edc09be42cc4a295de2b38591233e"
+    },
+    "CPU.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\CPU.csv.json",
+      "bytes": 289,
+      "sha256": "0990196910c79e90068f38bcb86ef5c413c3fee8a38c1ba3c020b74950341cf2"
+    },
+    "N.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\N.csv",
+      "bytes": 572930,
+      "sha256": "cd611efe8e7295cc0a049f1154b436cb5be605e05fb04f660f1665e097447c7e"
+    },
+    "N.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\N.csv.json",
+      "bytes": 289,
+      "sha256": "414a4fe11acfee5e0ccdf110296bfa9217a96582b2e8b473bd86bdd2ae889e25"
+    },
+    "oracle-wide.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\oracle-wide.csv",
+      "bytes": 721165,
+      "sha256": "c82bf4c498f23b6f46b2813873976f022ec5edb4af08540505b81f73c96cd3ab"
+    },
+    "oracle-wide.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\oracle-wide.csv.json",
+      "bytes": 289,
+      "sha256": "e3fa2b62f43b6a672110876c689d1ec85344984b0e51e249f6fcb12a019ac645"
+    },
+    "oracle.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\oracle.csv",
+      "bytes": 679458,
+      "sha256": "895ada2c15e21cab53bfd10f2e02dab3fd286f311f49bbcdbcbf353c17733d8d"
+    },
+    "oracle.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\oracle.csv.json",
+      "bytes": 289,
+      "sha256": "5e961415fcc0052b0ca23fcf0655ab4c8aba9ab02fe6a824793b2f94cced2682"
+    },
+    "W1.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\W1.csv",
+      "bytes": 700580,
+      "sha256": "7c25bb0f3ddb76e3b4fd83da9f19536d28926318ce578616f853ea4cd84a0569"
+    },
+    "W1.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\W1.csv.json",
+      "bytes": 289,
+      "sha256": "fb68feb8cdd04db0906d60dcbf5e6e7783b224ec19280adc988fb45cb9c1fba8"
+    },
+    "W2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\W2.csv",
+      "bytes": 708917,
+      "sha256": "f020c383a2a05642561adcf5f1ea871dcbd2f39cd6b38f0dcedaa8fc48304122"
+    },
+    "W2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\W2.csv.json",
+      "bytes": 289,
+      "sha256": "8705b231c84544b165b85f14c990a64778a60ced111d6af0a64572fe4a1ac92e"
+    }
+  },
+  "oracle": {
+    "oracle": {
+      "Offload mismatches count": 0.0,
+      "Offload compact errors count": 0,
+      "Offload predicates count": 31522816.0
+    },
+    "oracle-wide": {
+      "Offload mismatches count": 0.0,
+      "Offload compact errors count": 0.0,
+      "Offload predicates count": 32309248.0
+    }
+  },
+  "limitations": [
+    "Short diagnostic windows, not full O2 matrix",
+    "CPU submission timestamps are not GPU/display completion",
+    "No synchronized running/ready/waiting trace",
+    "No continuous thermal or power trace",
+    "Oracle covers observed 65536-object scene, not arbitrary IEEE edge values or partial final groups",
+    "Compaction verifies exact visible set; ordering is parallel and not guaranteed bit-identical",
+    "No universal admission, image equivalence claim, driver portability or game claim"
+  ],
+  "default": "disabled; canonical Tests.exe restored to original saved binary after trials",
+  "raw_archive": {
+    "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-controlled-20260923\\raw-measurements.zip",
+    "sha256": "927ffd8099fe1bb08a16b7c70a3d386e682386f6e8312b5f45ca1af52604a3b0"
+  },
+  "implementation": {
+    "experiments\\wicked-offload\\analyze.py": "d6ca1534d6f78702a976dd72926733ec60f4ca07211d29041b8daa120b9cbd20",
+    "experiments\\wicked-offload\\ArcControlledVisibility.h": "be934d2a504de949c8e23e74227cb8771c1c1276716680d6071c5ad4026f7e14",
+    "experiments\\wicked-offload\\README.md": "b16182a53dbee88452469c789f93359591569373e1b5d1c0334a376c76ece983",
+    "experiments\\wicked-offload\\wicked.patch": "3b151569a1ce9b87a56518e0d7e8b2b7aab613049d2533223cc475516c51acb0"
+  }
+}
