@@ -682,7 +682,8 @@ void compute_created(ID3D12PipelineState* native,const D3D12_COMPUTE_PIPELINE_ST
     const auto root=s.roots.find(desc->pRootSignature);if(root==s.roots.end()){decline("unobserved_root_signature");return;}if(!root->second->layout->complete){decline("root:"+root->second->layout->rejection);return;}
     auto p=std::make_shared<Pipeline>();p->id=s.next++;p->profile_id=profile_id;p->root=root->second;check(native->GetDevice(IID_PPV_ARGS(&p->device)));if(p->device->GetNodeCount()!=1)return;
     const auto* bytes=static_cast<const std::byte*>(desc->CS.pShaderBytecode);p->code.assign(bytes,bytes+desc->CS.BytecodeLength);if(!track(native,2))return;s.pipelines[native]=p;s.queued_code_bytes+=desc->CS.BytecodeLength;
-    if(s.compile_on_demand)p->reason="awaiting_measured_cost";
+    if(!s.discovery_enabled)p->reason="discovery_cancelled";
+    else if(s.compile_on_demand)p->reason="awaiting_measured_cost";
     else if(reserve_job(p)){s.jobs.push_back(p);p->queued=true;s.changed.notify_one();}
 });}
 void heap_created(ID3D12DescriptorHeap* native)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();if(s.heaps.contains(native)||s.heaps.size()>=4096)return;mirror::InternalCall guard;const auto desc=native->GetDesc();Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));

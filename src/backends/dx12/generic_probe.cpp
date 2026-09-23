@@ -26,6 +26,12 @@
 #include <array>
 #include <set>
 #include <tuple>
+#include <deque>
+#include <memory>
+#include <vector>
+#include <cstring>
+#include <stdexcept>
+#include <cstddef>
 
 namespace {
 namespace runtime=arc::dx12::generic;
@@ -46,6 +52,179 @@ std::atomic<unsigned> raster_setup{};
 std::atomic<bool> raster_hooks_enabled{true};
 std::array<void*,256> installed_targets{};std::size_t installed_count{};
 std::mutex hook_mode_mutex;
+// Passive creation records only bounded, owned inputs. Reflection and variant
+// preparation run after explicit discovery resumes, on the logger/worker path.
+struct PassiveObject {
+    enum class Kind { Root, Compute, Graphics, Stream } kind{};
+    ID3D12RootSignature* root{};ID3D12PipelineState* pipeline{};
+    std::vector<std::byte> root_bytes,stream_bytes;
+    D3D12_COMPUTE_PIPELINE_STATE_DESC compute{};
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC graphics{};
+    std::array<std::vector<std::byte>,5> shaders;
+    std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
+    std::vector<std::string> names;
+    std::size_t stream_layout_offset{SIZE_MAX};
+    struct StreamShader {std::size_t offset{};std::vector<std::byte> bytes;};
+    std::vector<StreamShader> stream_shaders;
+    std::size_t charged{};
+    ~PassiveObject(){if(pipeline)ID3D12PipelineState_Release(pipeline);if(root)ID3D12RootSignature_Release(root);}
+    PassiveObject()=default;PassiveObject(const PassiveObject&)=delete;PassiveObject& operator=(const PassiveObject&)=delete;
+    void hold_root(ID3D12RootSignature* value){if(value){ID3D12RootSignature_AddRef(value);root=value;}}
+};
+std::mutex passive_capture_mutex;
+std::deque<std::unique_ptr<PassiveObject>> passive_captures;
+using PassiveKey=std::pair<PassiveObject::Kind,void*>;
+std::set<PassiveKey> passive_capture_keys;
+std::size_t passive_capture_bytes{};
+std::atomic<unsigned long long> passive_capture_drops{},passive_capture_capacity_drops{},passive_capture_unsupported_drops{},
+    passive_capture_copy_drops{},passive_capture_replay_failures{},passive_capture_replayed{};
+std::atomic<bool> passive_replay_requested{};
+constexpr std::size_t passive_capture_limit=256,passive_capture_byte_limit=16*1024*1024;
+void passive_unsupported()noexcept{++passive_capture_drops;++passive_capture_unsupported_drops;}
+struct PassiveReservation {
+    PassiveKey key{};std::size_t bytes{};bool active{};
+    PassiveReservation(PassiveObject::Kind kind,void* object,std::size_t size):key(kind,object),bytes(size){
+        if(!object||!size||size>passive_capture_byte_limit){passive_unsupported();return;}
+        std::lock_guard lock(passive_capture_mutex);
+        if(passive_capture_keys.contains(key))return;
+        if(passive_capture_keys.size()>=passive_capture_limit||size>passive_capture_byte_limit-passive_capture_bytes){
+            ++passive_capture_drops;++passive_capture_capacity_drops;return;}
+        passive_capture_keys.insert(key);passive_capture_bytes+=size;active=true;
+    }
+    ~PassiveReservation(){if(active)release();}
+    void release(){std::lock_guard lock(passive_capture_mutex);passive_capture_keys.erase(key);passive_capture_bytes-=bytes;active=false;}
+    void adjust(std::size_t actual){std::lock_guard lock(passive_capture_mutex);passive_capture_bytes-=bytes-actual;bytes=actual;}
+    void commit(std::unique_ptr<PassiveObject> entry){entry->charged=bytes;std::lock_guard lock(passive_capture_mutex);
+        passive_captures.push_back(std::move(entry));active=false;}
+};
+std::vector<std::byte> passive_shader(const D3D12_SHADER_BYTECODE& shader){
+    if(!shader.BytecodeLength)return {};
+    if(!shader.pShaderBytecode||shader.BytecodeLength>2*1024*1024)throw std::runtime_error("passive shader size");
+    const auto* first=static_cast<const std::byte*>(shader.pShaderBytecode);return {first,first+shader.BytecodeLength};
+}
+void passive_root(ID3D12RootSignature* root,const void* bytes,SIZE_T size)noexcept{try{
+    if(!root||!bytes||!size||size>65536){passive_unsupported();return;}
+    PassiveReservation reservation(PassiveObject::Kind::Root,root,size);if(!reservation.active)return;
+    auto entry=std::make_unique<PassiveObject>();entry->kind=PassiveObject::Kind::Root;
+    entry->hold_root(root);const auto* first=static_cast<const std::byte*>(bytes);entry->root_bytes.assign(first,first+size);
+    reservation.commit(std::move(entry));
+}catch(...){++passive_capture_drops;++passive_capture_copy_drops;}}
+void passive_compute(ID3D12PipelineState* pipeline,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc)noexcept{try{
+    if(!pipeline||!desc||!desc->CS.pShaderBytecode||!desc->CS.BytecodeLength||desc->CS.BytecodeLength>2*1024*1024){passive_unsupported();return;}
+    PassiveReservation reservation(PassiveObject::Kind::Compute,pipeline,desc->CS.BytecodeLength);if(!reservation.active)return;
+    auto entry=std::make_unique<PassiveObject>();entry->kind=PassiveObject::Kind::Compute;
+    entry->pipeline=pipeline;ID3D12PipelineState_AddRef(pipeline);entry->hold_root(desc->pRootSignature);entry->compute=*desc;entry->compute.CachedPSO={};
+    entry->shaders[0]=passive_shader(desc->CS);reservation.commit(std::move(entry));
+}catch(...){++passive_capture_drops;++passive_capture_copy_drops;}}
+void passive_graphics(ID3D12PipelineState* pipeline,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)noexcept{try{
+    if(!pipeline||!desc||desc->StreamOutput.NumEntries||desc->StreamOutput.NumStrides||desc->InputLayout.NumElements>64||
+        !desc->PS.pShaderBytecode||!desc->PS.BytecodeLength){passive_unsupported();return;}
+    const D3D12_SHADER_BYTECODE codes[]{desc->VS,desc->PS,desc->DS,desc->HS,desc->GS};
+    std::size_t estimate=desc->InputLayout.NumElements*sizeof(D3D12_INPUT_ELEMENT_DESC);
+    for(const auto& code:codes){if(code.BytecodeLength>2*1024*1024||(code.BytecodeLength&&!code.pShaderBytecode)){passive_unsupported();return;}estimate+=code.BytecodeLength;}
+    if(desc->InputLayout.NumElements){if(!desc->InputLayout.pInputElementDescs){passive_unsupported();return;}
+        for(UINT i=0;i<desc->InputLayout.NumElements;++i){const auto* name=desc->InputLayout.pInputElementDescs[i].SemanticName;
+            if(!name){passive_unsupported();return;}const auto length=strnlen_s(name,256);if(length==256){passive_unsupported();return;}estimate+=length+1;}}
+    PassiveReservation reservation(PassiveObject::Kind::Graphics,pipeline,estimate);if(!reservation.active)return;
+    auto entry=std::make_unique<PassiveObject>();entry->kind=PassiveObject::Kind::Graphics;
+    entry->pipeline=pipeline;ID3D12PipelineState_AddRef(pipeline);entry->hold_root(desc->pRootSignature);entry->graphics=*desc;
+    for(unsigned i=0;i<5;++i)entry->shaders[i]=passive_shader(codes[i]);
+    if(desc->InputLayout.NumElements){
+        entry->elements.assign(desc->InputLayout.pInputElementDescs,desc->InputLayout.pInputElementDescs+desc->InputLayout.NumElements);
+        entry->names.reserve(entry->elements.size());for(const auto& element:entry->elements)entry->names.emplace_back(element.SemanticName);}
+    entry->graphics.CachedPSO={};entry->graphics.StreamOutput={};reservation.commit(std::move(entry));
+}catch(...){++passive_capture_drops;++passive_capture_copy_drops;}}
+void passive_stream(ID3D12PipelineState* pipeline,const D3D12_PIPELINE_STATE_STREAM_DESC* desc)noexcept{try{
+    if(!pipeline||!desc||!desc->pPipelineStateSubobjectStream||!desc->SizeInBytes||desc->SizeInBytes>65536){passive_unsupported();return;}
+    // Reserve the maximum accepted shader payload before copying the stream.
+    // The reservation is reduced to the exact size after every pointer is proved.
+    PassiveReservation reservation(PassiveObject::Kind::Stream,pipeline,
+        desc->SizeInBytes+6*2*1024*1024+64*(sizeof(D3D12_INPUT_ELEMENT_DESC)+256));
+    if(!reservation.active)return;
+    auto entry=std::make_unique<PassiveObject>();entry->kind=PassiveObject::Kind::Stream;
+    entry->pipeline=pipeline;ID3D12PipelineState_AddRef(pipeline);
+    const auto* first=static_cast<const std::byte*>(desc->pPipelineStateSubobjectStream);
+    entry->stream_bytes.assign(first,first+desc->SizeInBytes);entry->charged=desc->SizeInBytes;
+    std::size_t offset{};std::set<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE> seen;bool shader_seen=false;
+    auto scalar=[&]<class T>(T* value){struct alignas(void*) Item{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;T value;};
+        if(sizeof(Item)>entry->stream_bytes.size()-offset)return false;
+        if(value)std::memcpy(value,entry->stream_bytes.data()+offset+offsetof(Item,value),sizeof(T));
+        offset+=sizeof(Item);return true;};
+    auto shader=[&]{struct alignas(void*) Item{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_SHADER_BYTECODE value;};
+        const auto at=offset+offsetof(Item,value);D3D12_SHADER_BYTECODE code{};if(!scalar(&code))return false;
+        auto bytes=passive_shader(code);if(!bytes.empty())shader_seen=true;
+        entry->charged+=bytes.size();entry->stream_shaders.push_back({at,std::move(bytes)});return true;};
+    while(offset<entry->stream_bytes.size()){
+        if(entry->stream_bytes.size()-offset<sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE)){passive_unsupported();return;}
+        D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type{};std::memcpy(&type,entry->stream_bytes.data()+offset,sizeof(type));
+        if(!seen.insert(type).second){passive_unsupported();return;}bool ok=false;
+        switch(type){
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:{ID3D12RootSignature* root{};ok=scalar(&root);if(ok)entry->hold_root(root);break;}
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS:case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS:
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS:case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS:
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS:case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS:ok=shader();break;
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS:case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS:passive_unsupported();return;
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT:{D3D12_STREAM_OUTPUT_DESC value{};ok=scalar(&value);if(value.NumEntries||value.NumStrides||value.pSODeclaration||value.pBufferStrides){passive_unsupported();return;}break;}
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT:{
+            struct alignas(void*) Item{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_INPUT_LAYOUT_DESC value;};
+            const auto at=offset+offsetof(Item,value);D3D12_INPUT_LAYOUT_DESC value{};ok=scalar(&value);
+            if(!ok||value.NumElements>64||(value.NumElements&&!value.pInputElementDescs)){passive_unsupported();return;}
+            entry->stream_layout_offset=at;
+            if(value.NumElements){entry->elements.assign(value.pInputElementDescs,value.pInputElementDescs+value.NumElements);
+                entry->names.reserve(entry->elements.size());entry->charged+=entry->elements.size()*sizeof(D3D12_INPUT_ELEMENT_DESC);
+                for(const auto& element:entry->elements){if(!element.SemanticName){passive_unsupported();return;}
+                    const auto length=strnlen_s(element.SemanticName,256);if(length==256){passive_unsupported();return;}
+                    entry->names.emplace_back(element.SemanticName);entry->charged+=length+1;}}
+            break;}
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO:{D3D12_CACHED_PIPELINE_STATE value{};ok=scalar(&value);if(value.pCachedBlob||value.CachedBlobSizeInBytes){passive_unsupported();return;}break;}
+        case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING:{D3D12_VIEW_INSTANCING_DESC value{};ok=scalar(&value);if(value.ViewInstanceCount||value.pViewInstanceLocations){passive_unsupported();return;}break;}
+#define PASSIVE_SCALAR(name,T) case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_##name:ok=scalar(static_cast<T*>(nullptr));break
+        PASSIVE_SCALAR(BLEND,D3D12_BLEND_DESC);PASSIVE_SCALAR(SAMPLE_MASK,UINT);
+        PASSIVE_SCALAR(RASTERIZER,D3D12_RASTERIZER_DESC);PASSIVE_SCALAR(RASTERIZER1,D3D12_RASTERIZER_DESC1);PASSIVE_SCALAR(RASTERIZER2,D3D12_RASTERIZER_DESC2);
+        PASSIVE_SCALAR(DEPTH_STENCIL,D3D12_DEPTH_STENCIL_DESC);PASSIVE_SCALAR(DEPTH_STENCIL1,D3D12_DEPTH_STENCIL_DESC1);PASSIVE_SCALAR(DEPTH_STENCIL2,D3D12_DEPTH_STENCIL_DESC2);
+        PASSIVE_SCALAR(IB_STRIP_CUT_VALUE,D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);PASSIVE_SCALAR(PRIMITIVE_TOPOLOGY,D3D12_PRIMITIVE_TOPOLOGY_TYPE);
+        PASSIVE_SCALAR(RENDER_TARGET_FORMATS,D3D12_RT_FORMAT_ARRAY);PASSIVE_SCALAR(DEPTH_STENCIL_FORMAT,DXGI_FORMAT);
+        PASSIVE_SCALAR(SAMPLE_DESC,DXGI_SAMPLE_DESC);PASSIVE_SCALAR(NODE_MASK,UINT);PASSIVE_SCALAR(FLAGS,D3D12_PIPELINE_STATE_FLAGS);
+#undef PASSIVE_SCALAR
+        default:passive_unsupported();return;
+        }if(!ok){passive_unsupported();return;}
+    }
+    if(!shader_seen){passive_unsupported();return;}reservation.adjust(entry->charged);reservation.commit(std::move(entry));
+}catch(...){++passive_capture_drops;++passive_capture_copy_drops;}}
+void replay_passive_captures()noexcept{
+    if(passive_hooks||(!passive_replay_requested&&!profile::busy()))return;
+    for(unsigned n=0;n<8&&!passive_hooks;++n){std::unique_ptr<PassiveObject> entry;{
+        std::lock_guard lock(passive_capture_mutex);if(passive_captures.empty())break;
+        entry=std::move(passive_captures.front());passive_captures.pop_front();}
+        if(passive_hooks){std::lock_guard lock(passive_capture_mutex);passive_captures.push_front(std::move(entry));break;}
+        const PassiveKey key{entry->kind,entry->kind==PassiveObject::Kind::Root?static_cast<void*>(entry->root):static_cast<void*>(entry->pipeline)};
+        const auto charged=entry->charged;
+        try{
+            if(entry->kind==PassiveObject::Kind::Root){pixel::root_created(entry->root,entry->root_bytes.data(),entry->root_bytes.size());
+                mirror::root_created(entry->root,entry->root_bytes.data(),entry->root_bytes.size());optimizer::root_created(entry->root,entry->root_bytes.data(),entry->root_bytes.size());}
+            else if(entry->kind==PassiveObject::Kind::Compute){entry->compute.CS={entry->shaders[0].data(),entry->shaders[0].size()};
+                profile::compute_created(entry->pipeline,&entry->compute);optimizer::compute_created(entry->pipeline,&entry->compute);}
+            else if(entry->kind==PassiveObject::Kind::Graphics){
+                D3D12_SHADER_BYTECODE* destinations[]{&entry->graphics.VS,&entry->graphics.PS,&entry->graphics.DS,&entry->graphics.HS,&entry->graphics.GS};
+                for(unsigned i=0;i<5;++i)*destinations[i]={entry->shaders[i].empty()?nullptr:entry->shaders[i].data(),entry->shaders[i].size()};
+                for(unsigned i=0;i<entry->elements.size();++i)entry->elements[i].SemanticName=entry->names[i].c_str();
+                entry->graphics.InputLayout={entry->elements.empty()?nullptr:entry->elements.data(),UINT(entry->elements.size())};
+                pixel::created(entry->pipeline,&entry->graphics);mirror::pipeline_created(entry->pipeline,&entry->graphics);profile::graphics_created(entry->pipeline,&entry->graphics);
+            }else{
+                for(auto& patch:entry->stream_shaders){D3D12_SHADER_BYTECODE code{patch.bytes.empty()?nullptr:patch.bytes.data(),patch.bytes.size()};
+                    std::memcpy(entry->stream_bytes.data()+patch.offset,&code,sizeof(code));}
+                if(entry->stream_layout_offset!=SIZE_MAX){
+                    for(unsigned i=0;i<entry->elements.size();++i)entry->elements[i].SemanticName=entry->names[i].c_str();
+                    D3D12_INPUT_LAYOUT_DESC layout{entry->elements.empty()?nullptr:entry->elements.data(),UINT(entry->elements.size())};
+                    std::memcpy(entry->stream_bytes.data()+entry->stream_layout_offset,&layout,sizeof(layout));}
+                D3D12_PIPELINE_STATE_STREAM_DESC stream{entry->stream_bytes.size(),entry->stream_bytes.data()};
+                mirror::pipeline_stream_created(entry->pipeline,&stream);profile::stream_created(entry->pipeline,&stream);optimizer::stream_created(entry->pipeline,&stream);
+            }
+            ++passive_capture_replayed;
+        }catch(...){++passive_capture_drops;++passive_capture_replay_failures;}
+        entry.reset();{std::lock_guard lock(passive_capture_mutex);passive_capture_keys.erase(key);passive_capture_bytes-=charged;}
+    }
+}
 std::atomic<bool> initialized{},initializing{},recording{};
 std::atomic<unsigned long long> presents{},present_failures{},submits{},lists{},draws{},indexed{},dispatches{},resources{},hook_failures{};
 std::atomic<long> last_present_error{},last_device_reason{};
@@ -124,7 +303,7 @@ HRESULT STDMETHODCALLTYPE resource1(ID3D12Device4* device,const D3D12_HEAP_PROPE
 }
 HRESULT STDMETHODCALLTYPE root_create(ID3D12Device* d,UINT node,const void* data,SIZE_T size,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const auto result=arc::original_cpu_call([&]{return original_root_create(d,node,data,size,iid,out);});
-    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12RootSignature* root=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12RootSignature,reinterpret_cast<void**>(&root)))){pixel::root_created(root,data,size);mirror::root_created(root,data,size);optimizer::root_created(root,data,size);ID3D12RootSignature_Release(root);}}return result;
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12RootSignature* root=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12RootSignature,reinterpret_cast<void**>(&root)))){if(passive_hooks)passive_root(root,data,size);else{pixel::root_created(root,data,size);mirror::root_created(root,data,size);optimizer::root_created(root,data,size);}ID3D12RootSignature_Release(root);}}return result;
 }
 HRESULT STDMETHODCALLTYPE placed(ID3D12Device* d,ID3D12Heap* heap,UINT64 offset,const D3D12_RESOURCE_DESC* desc,D3D12_RESOURCE_STATES state,const D3D12_CLEAR_VALUE* clear,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const auto result=arc::original_cpu_call([&]{return original_placed(d,heap,offset,desc,state,clear,iid,out);});
@@ -232,7 +411,7 @@ HRESULT STDMETHODCALLTYPE graphics_pso(ID3D12Device* d,const D3D12_GRAPHICS_PIPE
     if(observe_api()&&!passive_hooks)optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_graphics_pso(d,desc,iid,out);});}();
     if(observe_api()&&SUCCEEDED(result)&&out&&*out)arc::dx12::observation::state().notify_creation(1,reinterpret_cast<UINT64>(*out),desc?desc->PS.BytecodeLength:0);
-    if(passive_hooks)return result;
+    if(passive_hooks){if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){passive_graphics(p,desc);ID3D12PipelineState_Release(p);}}return result;}
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){pixel::created(p,desc);mirror::pipeline_created(p,desc);profile::graphics_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using ComputePsoFn=decltype(ID3D12DeviceVtbl::CreateComputePipelineState);ComputePsoFn original_compute_pso{};
@@ -240,7 +419,7 @@ HRESULT STDMETHODCALLTYPE compute_pso(ID3D12Device* d,const D3D12_COMPUTE_PIPELI
     if(observe_api()&&!passive_hooks)optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_compute_pso(d,desc,iid,out);});}();
     if(observe_api()&&SUCCEEDED(result)&&out&&*out)arc::dx12::observation::state().notify_creation(2,reinterpret_cast<UINT64>(*out),desc?desc->CS.BytecodeLength:0);
-    if(passive_hooks)return result;
+    if(passive_hooks){if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){passive_compute(p,desc);ID3D12PipelineState_Release(p);}}return result;}
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){profile::compute_created(p,desc);optimizer::compute_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using StreamPsoFn=decltype(ID3D12Device2Vtbl::CreatePipelineState);StreamPsoFn original_stream_pso{};
@@ -248,7 +427,7 @@ HRESULT STDMETHODCALLTYPE stream_pso(ID3D12Device2* d,const D3D12_PIPELINE_STATE
     if(observe_api()&&!passive_hooks)optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_stream_pso(d,desc,iid,out);});}();
     if(observe_api()&&SUCCEEDED(result)&&out&&*out)arc::dx12::observation::state().notify_creation(3,reinterpret_cast<UINT64>(*out),desc?desc->SizeInBytes:0);
-    if(passive_hooks)return result;
+    if(passive_hooks){if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){passive_stream(p,desc);ID3D12PipelineState_Release(p);}}return result;}
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_stream_created(p,desc);profile::stream_created(p,desc);optimizer::stream_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using RateFn=decltype(ID3D12GraphicsCommandList5Vtbl::RSSetShadingRate);RateFn original_rate{};
@@ -300,7 +479,7 @@ template<class T>bool install(T target,T replacement,T* original){
     // loaded for the process lifetime, just like the probe itself.
     if(installed_count>=installed_targets.size()){++hook_failures;return false;}HMODULE owner{};
     if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(target),&owner)){++hook_failures;return false;}
-    if(reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(graphics_pso)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(compute_pso)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(stream_pso))discovery_hint_targets.insert(reinterpret_cast<void*>(target));
+    if(reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(root_create)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(graphics_pso)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(compute_pso)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(stream_pso))discovery_hint_targets.insert(reinterpret_cast<void*>(target));
     const auto status=MH_CreateHook(reinterpret_cast<void*>(target),reinterpret_cast<void*>(replacement),reinterpret_cast<void**>(original));
     if(status!=MH_OK){++hook_failures;return false;}installed_targets[installed_count++]=reinterpret_cast<void*>(target);return true;
 }
@@ -315,7 +494,7 @@ bool set_passive_hooks(bool passive,unsigned long long expected_epoch=0){
     if(expected_epoch&&hook_activation_epoch.load()!=expected_epoch)return false;
     if(!passive){++hook_activation_epoch;passive_when_idle=0;}
     if(passive&&!passive_hooks){optimizer::observation_gap();arc::dx12::observation::state().mark_correctness_loss();}
-    if(passive){detailed_tracking=false;runtime::observation_mode_changed();optimizer::invalidate_all();runtime::invalidate_color_spaces();}
+    if(passive){passive_replay_requested=false;detailed_tracking=false;runtime::observation_mode_changed();optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
     const bool raster=!passive&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::active()||profile::needs_raster_observation());
@@ -334,6 +513,8 @@ template<int Tag,bool Copy,class Fn>bool install_extra(Fn target){using Hook=Ext
 
 void snapshot(){
     std::lock_guard snapshot_lock(output_mutex);
+    std::size_t retained_objects{},retained_bytes{};{
+        std::lock_guard lock(passive_capture_mutex);retained_objects=passive_capture_keys.size();retained_bytes=passive_capture_bytes;}
     // No reference replay/readback or safe mutation capability has been established
     // for an unknown process. The portable policy must therefore abstain.
     arc::PerceptualTrialController policy;
@@ -354,7 +535,7 @@ void snapshot(){
     const auto cache_stats=arc::dx12::shader_cache::stats();
     file<<",\"analysis_cache\":{\"disk_high_water\":"<<cache_stats.bytes_high_water<<",\"last_scanned_bytes\":"<<cache_stats.last_scanned_bytes<<",\"evicted_entries\":"<<cache_stats.evicted_entries<<"}";
     const auto observed=arc::dx12::observation::state().snapshot();const auto budget=arc::dx12::background_discovery_budget().snapshot();const auto& limits=arc::dx12::background_discovery_budget().config();
-    file<<",\"cheap_observer\":{\"enabled\":true,\"presents\":"<<observed.presents<<",\"submissions\":"<<observed.submissions<<",\"novelty\":"<<observed.novelty<<",\"diagnostic_drops\":"<<observed.diagnostic_drops<<",\"correctness_epoch\":"<<observed.correctness_epoch<<",\"producer_high_water\":"<<observed.claimed_slots_high_water<<",\"creation_hints_are_proof\":false,\"idle_hints_retain_shader_bytecode\":false}"
+    file<<",\"cheap_observer\":{\"enabled\":true,\"presents\":"<<observed.presents<<",\"submissions\":"<<observed.submissions<<",\"novelty\":"<<observed.novelty<<",\"diagnostic_drops\":"<<observed.diagnostic_drops<<",\"correctness_epoch\":"<<observed.correctness_epoch<<",\"producer_high_water\":"<<observed.claimed_slots_high_water<<",\"creation_hints_are_proof\":false,\"idle_hints_retain_shader_bytecode\":true,\"retained_pso_and_roots\":"<<retained_objects<<",\"retained_code_and_layout_bytes\":"<<retained_bytes<<",\"retained_capture_drops\":"<<passive_capture_drops.load()<<",\"retained_capacity_drops\":"<<passive_capture_capacity_drops.load()<<",\"retained_unsupported_drops\":"<<passive_capture_unsupported_drops.load()<<",\"retained_copy_drops\":"<<passive_capture_copy_drops.load()<<",\"replay_failures\":"<<passive_capture_replay_failures.load()<<",\"replayed_objects\":"<<passive_capture_replayed.load()<<"}"
         <<",\"discovery_budget\":{\"jobs\":"<<budget.active_jobs<<",\"bytes\":"<<budget.bytes_in_flight<<",\"jobs_high_water\":"<<budget.jobs_high_water<<",\"bytes_high_water\":"<<budget.bytes_high_water<<",\"rejected_jobs\":"<<budget.rejected_jobs<<",\"epoch\":"<<budget.epoch<<",\"active_cpu_captures\":"<<budget.active_captures<<",\"incomplete_cpu_captures\":"<<budget.incomplete_captures<<",\"heavy_workers\":1,\"max_jobs\":"<<limits.outstanding_jobs<<",\"max_bytes\":"<<limits.outstanding_bytes<<",\"cpu_capture_ms\":"<<limits.capture_window.count()<<",\"cpu_capture_events\":"<<limits.capture_events<<",\"cpu_capture_bytes\":"<<limits.capture_bytes<<",\"gpu_capture_ms\":"<<limits.gpu_capture_window.count()<<",\"gpu_capture_events\":"<<limits.gpu_capture_events<<",\"gpu_capture_bytes\":"<<limits.gpu_capture_bytes<<",\"cpu_capture_backend_available\":false}";
     file<<",\"raster_draw_hooks_enabled\":"<<(raster_hooks_enabled?"true":"false")<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
@@ -365,19 +546,19 @@ DWORD WINAPI logger(void*){
         if(const auto epoch=passive_when_idle.load();epoch&&!autotune::active()&&!profile::busy()&&pixel::restoration_ready()&&mirror::restoration_ready()&&optimizer::restoration_ready()){
             if(set_passive_hooks(true,epoch)||hook_activation_epoch.load()!=epoch){auto expected=epoch;passive_when_idle.compare_exchange_strong(expected,0);}
         }
-        refresh_raster_hooks();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
+        refresh_raster_hooks();replay_passive_captures();optimizer::collect();if(arc::dx12::placement::adaptive()){const auto placement_epoch=optimizer::policy_stamp();arc::dx12::placement::collect(placement_epoch.epoch,placement_epoch.selected_pipeline);}runtime::flush_image();runtime::flush_timing();if(tick++%100==0){runtime::flush_capture();snapshot();}}catch(...){}Sleep(10);}return 0;
 }
 }
 
 namespace arc::dx12::hooks {
-bool begin_raster_observation()noexcept{optimizer::set_discovery_enabled(true);pixel::set_discovery_enabled(true);++raster_setup;try{if(set_passive_hooks(false))return true;}catch(...){}--raster_setup;return false;}
+bool begin_raster_observation()noexcept{optimizer::set_discovery_enabled(true);pixel::set_discovery_enabled(true);++raster_setup;try{if(set_passive_hooks(false)){passive_replay_requested=true;return true;}}catch(...){}--raster_setup;return false;}
 void end_raster_observation()noexcept{--raster_setup;}
 void request_passive_when_idle()noexcept{passive_when_idle=hook_activation_epoch.load();}
 bool idle_observation(bool idle)noexcept{
     if(idle){if(profile::busy()||!pixel::restoration_ready()||!mirror::restoration_ready()||!optimizer::restoration_ready())return false;
-        arc::dx12::background_discovery_budget().cancel();optimizer::set_discovery_enabled(false);pixel::set_discovery_enabled(false);}
+        arc::dx12::background_discovery_budget().cancel();optimizer::set_discovery_enabled(false);pixel::set_discovery_enabled(false);passive_replay_requested=false;}
     else{optimizer::set_discovery_enabled(true);pixel::set_discovery_enabled(true);}
-    return set_passive_hooks(idle);
+    const bool changed=set_passive_hooks(idle);if(changed&&!idle)passive_replay_requested=true;return changed;
 }
 
 }
@@ -588,17 +769,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestGpuProfile(void* path){i
     if(!path)return 1;if(mirror::requested_rate())return 5;if(!mirror_hooks_ready)return 7;
     try{std::wstring request=static_cast<const wchar_t*>(path);UINT frames=8;const auto split=request.find(L'|');
         if(split!=std::wstring::npos){std::size_t used=0;const auto value=std::stoul(request.substr(0,split),&used);if(used!=split||value<1||value>32)return 4;frames=static_cast<UINT>(value);request=request.substr(split+1);}
-        if(!set_passive_hooks(false))return 6;return profile::request(request,frames)?0:2;
+        if(!set_passive_hooks(false))return 6;const bool started=profile::request(request,frames);if(started)passive_replay_requested=true;return started?0:2;
     }catch(...){return 3;}
 }
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){if(autotune::active())return 10;profile::stop();return 0;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(autotune::active())return 10;if(!mode||!optimizer::enabled())return 1;if(!arc::dx12::hooks::idle_observation(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
-extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){if(!set_passive_hooks(false))return 3;return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){if(!set_passive_hooks(false))return 3;const bool started=config&&autotune::start(static_cast<const wchar_t*>(config));if(started)passive_replay_requested=true;return started?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcConfigureRuntime(void* config){
     if(!config||!autotune::configure_runtime(static_cast<const wchar_t*>(config)))return 1;
     if(!arc::dx12::children::configure(static_cast<const wchar_t*>(config)))return 4;
     if(!initialized)return 0;
-    if(!optimizer::initialize())return 2;return set_passive_hooks(false)?0:3;
+    if(!optimizer::initialize())return 2;const bool resumed=set_passive_hooks(false);if(resumed)passive_replay_requested=true;return resumed?0:3;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI ArcSetTargetFps(void* value){
     if(!value)return 1;try{const std::wstring text=static_cast<const wchar_t*>(value);std::size_t used{};const auto fps=std::stod(text,&used);return used==text.size()&&autotune::target(fps)?0:2;}catch(...){return 2;}
@@ -609,7 +790,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalPolicy(void* path){
 extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCpuState(void* mode){if(autotune::active())return 10;
     if(!mode)return 1;const auto* text=static_cast<const wchar_t*>(mode);const bool enabled=wcscmp(text,L"on")==0;
     if(!enabled&&wcscmp(text,L"off")!=0)return 2;
-    if(enabled&&!set_passive_hooks(false))return 3;
+    if(enabled){if(!set_passive_hooks(false))return 3;passive_replay_requested=true;}
     return optimizer::cpu_configure(enabled)?0:4;
 }
 

@@ -2,16 +2,120 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <d3dcompiler.h>
+#include <dxcapi.h>
 #include <wrl/client.h>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <source_location>
 #include "json.hpp"
 using Microsoft::WRL::ComPtr;
 void check(bool value,const char* message){if(!value)throw std::runtime_error(message);}
-void hr(HRESULT value){check(SUCCEEDED(value),"DX12 call failed");}
+void hr(HRESULT value,std::source_location where=std::source_location::current()){
+    if(FAILED(value))throw std::runtime_error("DX12 call failed at line "+std::to_string(where.line())+": "+std::to_string(value));}
+int passive_pso_case(const std::filesystem::path& output,const std::filesystem::path& probe_path,const std::filesystem::path& worker_path,const std::filesystem::path& compiler_path){
+    check(std::filesystem::is_regular_file(probe_path)&&std::filesystem::is_regular_file(worker_path)&&std::filesystem::is_regular_file(compiler_path),"Fixture dependencies");
+    SetEnvironmentVariableW(L"ARC_OPTIMIZER_WORKER",worker_path.c_str());SetEnvironmentVariableW(L"ARC_OPTIMIZER_COMPILER",compiler_path.c_str());
+    const auto cache=(output/L"shader-cache").wstring();SetEnvironmentVariableW(L"ARC_OPTIMIZER_CACHE",cache.c_str());
+    SetEnvironmentVariableW(L"ARC_OPTIMIZER_LAZY_COMPILE",L"0");
+    const auto module=LoadLibraryW(probe_path.c_str());check(module,"Load probe");using Api=DWORD(WINAPI*)(void*);
+    const auto initialize=reinterpret_cast<Api>(GetProcAddress(module,"ArcInitialize"));
+    const auto passive=reinterpret_cast<Api>(GetProcAddress(module,"ArcUsePassiveMode"));
+    const auto resume=reinterpret_cast<Api>(GetProcAddress(module,"ArcExperimentalCompute"));
+    const auto snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));
+    check(initialize&&passive&&resume&&snapshot,"Probe controls");auto report=(output/L"arc.json").wstring();
+    check(initialize(report.data())==0&&passive(nullptr)==0,"Enter passive capture");
+    ComPtr<ID3D12Device> device;hr(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_12_0,IID_PPV_ARGS(&device)));
+    D3D12_DESCRIPTOR_RANGE range{D3D12_DESCRIPTOR_RANGE_TYPE_UAV,1,0,0,0};
+    D3D12_ROOT_PARAMETER parameter{};parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;parameter.DescriptorTable={1,&range};
+    D3D12_ROOT_SIGNATURE_DESC root_desc{1,&parameter,0,nullptr,D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT};
+    ComPtr<ID3DBlob> root_blob;hr(D3D12SerializeRootSignature(&root_desc,D3D_ROOT_SIGNATURE_VERSION_1,&root_blob,nullptr));
+    ComPtr<ID3D12RootSignature> root;hr(device->CreateRootSignature(0,root_blob->GetBufferPointer(),root_blob->GetBufferSize(),IID_PPV_ARGS(&root)));
+    HMODULE compiler_module=LoadLibraryExW(compiler_path.c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_SYSTEM32);
+    check(compiler_module,"Load DXC");auto create=reinterpret_cast<DxcCreateInstanceProc>(GetProcAddress(compiler_module,"DxcCreateInstance"));check(create,"DXC factory");
+    ComPtr<IDxcLibrary> library;ComPtr<IDxcCompiler> compiler;hr(create(CLSID_DxcLibrary,IID_PPV_ARGS(&library)));hr(create(CLSID_DxcCompiler,IID_PPV_ARGS(&compiler)));
+    auto compile=[&](const std::string& source,const wchar_t* entry,const wchar_t* model){
+        ComPtr<IDxcBlobEncoding> text;hr(library->CreateBlobWithEncodingOnHeapCopy(source.data(),UINT(source.size()),CP_UTF8,&text));
+        ComPtr<IDxcOperationResult> operation;hr(compiler->Compile(text.Get(),L"passive",entry,model,nullptr,0,nullptr,0,nullptr,&operation));
+        HRESULT compiled{};hr(operation->GetStatus(&compiled));hr(compiled);ComPtr<IDxcBlob> shader;hr(operation->GetResult(&shader));return shader;};
+    auto shader=compile("RWTexture2D<float4> output:register(u0); [numthreads(8,8,1)] void MainCS(uint3 p:SV_DispatchThreadID){output[p.xy]=float4(p.xy,0,1);}",L"MainCS",L"cs_6_0");
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc{};pso_desc.pRootSignature=root.Get();pso_desc.CS={shader->GetBufferPointer(),shader->GetBufferSize()};
+    ComPtr<ID3D12PipelineState> same_pso;hr(device->CreateComputePipelineState(&pso_desc,IID_PPV_ARGS(&same_pso)));
+    auto vs=compile("float4 MainVS(uint id:SV_VertexID):SV_Position{return float4(float(id&1),float((id>>1)&1),0,1);}",L"MainVS",L"vs_6_0");
+    auto ps=compile("float4 MainPS():SV_Target{return float4(1,0,0,1);}",L"MainPS",L"ps_6_0");
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC graphics{};graphics.pRootSignature=root.Get();graphics.VS={vs->GetBufferPointer(),vs->GetBufferSize()};
+    graphics.PS={ps->GetBufferPointer(),ps->GetBufferSize()};graphics.SampleMask=UINT_MAX;
+    graphics.RasterizerState.FillMode=D3D12_FILL_MODE_SOLID;graphics.RasterizerState.CullMode=D3D12_CULL_MODE_NONE;
+    graphics.RasterizerState.DepthClipEnable=TRUE;graphics.BlendState.RenderTarget[0].RenderTargetWriteMask=D3D12_COLOR_WRITE_ENABLE_ALL;
+    graphics.PrimitiveTopologyType=D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;graphics.NumRenderTargets=1;
+    graphics.RTVFormats[0]=DXGI_FORMAT_R8G8B8A8_UNORM;graphics.SampleDesc.Count=1;
+    ComPtr<ID3D12PipelineState> pixel_pso;hr(device->CreateGraphicsPipelineState(&graphics,IID_PPV_ARGS(&pixel_pso)));
+    auto stream_shader=compile("[numthreads(16,8,1)] void MainCS(uint3 p:SV_DispatchThreadID){}",L"MainCS",L"cs_6_0");
+    struct alignas(void*) RootPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;ID3D12RootSignature* value;};
+    struct alignas(void*) CsPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_SHADER_BYTECODE value;};
+    struct Stream{RootPart root;CsPart cs;} stream_data{
+        {D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE,root.Get()},
+        {D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS,{stream_shader->GetBufferPointer(),stream_shader->GetBufferSize()}}};
+    D3D12_PIPELINE_STATE_STREAM_DESC stream{sizeof(stream_data),&stream_data};ComPtr<ID3D12Device2> device2;
+    hr(device.As(&device2));ComPtr<ID3D12PipelineState> stream_pso;
+    hr(device2->CreatePipelineState(&stream,IID_PPV_ARGS(&stream_pso)));
+    auto input_vs=compile("float4 MainVS(float3 p:POSITION):SV_Position{return float4(p,1);}",L"MainVS",L"vs_6_0");
+    char semantic[]="POSITION";D3D12_INPUT_ELEMENT_DESC input_element{semantic,0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0};
+    D3D12_INPUT_LAYOUT_DESC input_layout{&input_element,1};
+    struct alignas(void*) InputPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_INPUT_LAYOUT_DESC value;};
+    struct alignas(void*) RasterPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_RASTERIZER_DESC value;};
+    struct alignas(void*) BlendPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_BLEND_DESC value;};
+    struct alignas(void*) MaskPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;UINT value;};
+    struct alignas(void*) TopologyPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_PRIMITIVE_TOPOLOGY_TYPE value;};
+    struct alignas(void*) FormatsPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;D3D12_RT_FORMAT_ARRAY value;};
+    struct alignas(void*) SamplesPart{D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;DXGI_SAMPLE_DESC value;};
+    struct GraphicsStream{RootPart root;CsPart vs;CsPart ps;InputPart input;RasterPart raster;BlendPart blend;MaskPart mask;
+        TopologyPart topology;FormatsPart formats;SamplesPart samples;} graphics_stream{};
+    graphics_stream.root={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE,root.Get()};
+    graphics_stream.vs={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS,{input_vs->GetBufferPointer(),input_vs->GetBufferSize()}};
+    graphics_stream.ps={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS,{ps->GetBufferPointer(),ps->GetBufferSize()}};
+    graphics_stream.input={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT,input_layout};
+    graphics_stream.raster={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER,graphics.RasterizerState};
+    graphics_stream.blend={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND,graphics.BlendState};
+    graphics_stream.mask={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK,UINT_MAX};
+    graphics_stream.topology={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY,D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE};
+    D3D12_RT_FORMAT_ARRAY formats{};formats.NumRenderTargets=1;formats.RTFormats[0]=DXGI_FORMAT_R8G8B8A8_UNORM;
+    graphics_stream.formats={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS,formats};
+    graphics_stream.samples={D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC,{1,0}};
+    D3D12_PIPELINE_STATE_STREAM_DESC graphics_stream_desc{sizeof(graphics_stream),&graphics_stream};
+    ComPtr<ID3D12PipelineState> pixel_stream_pso;hr(device2->CreatePipelineState(&graphics_stream_desc,IID_PPV_ARGS(&pixel_stream_pso)));
+    semantic[0]='X';
+    // The application drops another root and PSO before resume. The passive
+    // queue must keep them valid through replay, then release both identities.
+    D3D12_ROOT_PARAMETER extra_parameter{};extra_parameter.ParameterType=D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    extra_parameter.Constants={7,0,1};D3D12_ROOT_SIGNATURE_DESC extra_desc{1,&extra_parameter,0,nullptr,D3D12_ROOT_SIGNATURE_FLAG_NONE};
+    ComPtr<ID3DBlob> extra_blob;hr(D3D12SerializeRootSignature(&extra_desc,D3D_ROOT_SIGNATURE_VERSION_1,&extra_blob,nullptr));
+    ComPtr<ID3D12RootSignature> released_root;hr(device->CreateRootSignature(0,extra_blob->GetBufferPointer(),extra_blob->GetBufferSize(),IID_PPV_ARGS(&released_root)));
+    auto released_shader=compile("[numthreads(4,1,1)]void MainCS(uint3 p:SV_DispatchThreadID){}",L"MainCS",L"cs_6_0");
+    auto released_desc=pso_desc;released_desc.pRootSignature=released_root.Get();released_desc.CS={released_shader->GetBufferPointer(),released_shader->GetBufferSize()};
+    ComPtr<ID3D12PipelineState> released_pso;hr(device->CreateComputePipelineState(&released_desc,IID_PPV_ARGS(&released_pso)));
+    released_pso.Reset();released_root.Reset();released_shader.Reset();
+    shader.Reset();vs.Reset();ps.Reset();stream_shader.Reset();input_vs.Reset();compiler.Reset();library.Reset();FreeLibrary(compiler_module);
+    check(snapshot(nullptr)==0,"Passive snapshot");{
+        std::ifstream file(output/L"arc.json");const auto json=nlohmann::json::parse(file);
+        check(json.at("cheap_observer").at("retained_pso_and_roots").get<unsigned>()>=7,"Passive root and PSOs retained");
+        check(json.at("optimizer_coverage").at("observed_compute_pipelines").get<unsigned>()==0,"No passive analysis");}
+    auto* identity=same_pso.Get();wchar_t neutral[]=L"neutral";check(resume(neutral)==0,"Resume ANALYZE");
+    const auto deadline=GetTickCount64()+15000;bool analyzed=false;
+    while(GetTickCount64()<deadline){Sleep(50);check(snapshot(nullptr)==0,"Resume snapshot");
+        std::ifstream file(output/L"arc.json");const auto json=nlohmann::json::parse(file);
+        const auto& observer=json.at("cheap_observer"),&optimizer=json.at("optimizer");
+        if(observer.at("replayed_objects").get<unsigned>()>=7&&observer.at("retained_pso_and_roots").get<unsigned>()==0&&
+            json.at("optimizer_coverage").at("observed_compute_pipelines").get<unsigned>()>=2&&
+            json.at("optimizer_coverage").at("observed_root_signatures").get<unsigned>()>=1&&
+            json.at("pixel_optimizer").at("tracked_pipelines").get<unsigned>()>=1&&
+            json.at("gpu_profile").at("live_pipelines").get<unsigned>()>=4&&optimizer.at("prepared").get<unsigned>()>=1){analyzed=true;break;}}
+    check(analyzed&&same_pso.Get()==identity,"Same passive PSO analyzed without recreation");
+    std::cout<<"Passive PSO resumed and analyzed without recreation\n";return 0;
+}
 int wmain(int argc,wchar_t** argv)try{
+    if(argc==6&&std::wstring(argv[1])==L"--passive-pso")return passive_pso_case(argv[2],argv[3],argv[4],argv[5]);
     if(argc==5&&std::wstring(argv[1]).starts_with(L"controlled-proof:")){std::ofstream(std::filesystem::path(std::wstring(argv[3])+L".entered"))<<GetCurrentProcessId();Sleep(10000);return 3;}
     check(argc>=3,"--parent/--render <evidence directory> [late DLL]");const std::filesystem::path output=argv[2];
     if(std::wstring(argv[1]).starts_with(L"--parent")){
