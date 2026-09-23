@@ -346,7 +346,7 @@ if(ARC_BUILD_TESTS)
 endif()
 
 if(ARC_BUILD_TESTS)
-    foreach(name candidate_contract discovery_budget cheap_observer cpu_region)
+    foreach(name candidate_contract discovery_budget cheap_observer cpu_region cpu_runtime_cost)
         string(REPLACE "_" "-" target_name "${name}")
         add_executable(arc-${target_name}-tests tests/${name}_tests.cpp)
         target_link_libraries(arc-${target_name}-tests PRIVATE arc::core)

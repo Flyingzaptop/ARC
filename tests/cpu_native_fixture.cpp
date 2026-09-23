@@ -6,9 +6,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <xmmintrin.h>
 
 extern "C" std::uint64_t arc_native_region(std::uint64_t a,std::uint64_t b);
 extern "C" std::uint64_t arc_native_side_effect(std::uint64_t a,std::uint64_t* out);
+#include "cpu_late_regions.hpp"
 struct NativeProbe {
     std::uint64_t rax{}, r10{}, flags_before{}, flags_after{},
                   rsp_before{}, rsp_after{};
@@ -48,8 +50,18 @@ static bool transition(const char* action,const char* path) {
         CloseHandle(file);
         return flushed;
     }
+    if (std::strcmp(action,"--protect-other")==0) {
+        void* const page=VirtualAlloc(nullptr,4096,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
+        if (!page) return false;
+        DWORD old{};
+        const bool protected_page=VirtualProtect(page,4096,PAGE_READONLY,&old)!=0;
+        VirtualFree(page,0,MEM_RELEASE);
+        return protected_page;
+    }
     DWORD old_protection{};
     void* const page=reinterpret_cast<void*>(&arc_native_region);
+    if(std::strcmp(action,"--protect-same")==0)
+        return VirtualProtect(page,1,PAGE_EXECUTE_READ,&old_protection)!=0;
     if (!VirtualProtect(page,1,PAGE_EXECUTE_READWRITE,&old_protection)) return false;
     DWORD ignored{};
     return VirtualProtect(page,1,old_protection,&ignored)!=0;
@@ -60,16 +72,43 @@ int main(int argc,char** argv) {
     const char* path=nullptr;
     if (argc==3 && std::strcmp(argv[1],"--stop")==0) {
         action=argv[1]; path=argv[2];
-    } else if (argc==2 && std::strcmp(argv[1],"--protect")==0) {
+    } else if (argc==2 && (std::strcmp(argv[1],"--protect")==0 ||
+                           std::strcmp(argv[1],"--protect-other")==0 ||
+                           std::strcmp(argv[1],"--protect-same")==0 ||
+                           std::strcmp(argv[1],"--fp-state")==0 ||
+                           std::strcmp(argv[1],"--study-two")==0 ||
+                           std::strcmp(argv[1],"--cost-churn")==0 ||
+                           std::strcmp(argv[1],"--late-hot")==0 || std::strcmp(argv[1],"--return-evicted")==0)) {
         action=argv[1];
     } else if (argc!=1) {
-        std::fprintf(stderr,"usage: cpu_native_fixture [--stop path | --protect]\n");
+        std::fprintf(stderr,"usage: cpu_native_fixture [--stop path | --protect | --protect-other | --protect-same | --late-hot | --return-evicted]\n");
         return 3;
     }
     const auto started=GetTickCount64();
+    const auto saved_mxcsr=_mm_getcsr();
+    if(action && std::strcmp(action,"--fp-state")==0) _mm_setcsr(0x0f80); // precision exceptions unmasked
+    if(action && std::strcmp(action,"--cost-churn")==0)
+        for(unsigned i=0;i<128;++i) for(unsigned n=0;n<5;++n)
+            if(late_regions[n](41)!=42) return 12;
+    if (action && std::strcmp(action,"--late-hot")==0) {
+        for (const auto fn:late_regions)
+            if (fn(41)!=42) return 6;
+        for (unsigned i=0;i<256;++i)
+            if (late_regions[64](41)!=42) return 7;
+        for (unsigned i=0;i<256;++i)
+            if (late_regions[209](41)!=42) return 8;
+    }
+    if(action && std::strcmp(action,"--return-evicted")==0) {
+        for(const auto fn:late_regions) if(fn(41)!=42) return 9;
+        for(unsigned region=64;region<210;++region)
+            for(unsigned n=0;n<64;++n) if(late_regions[region](41)!=42) return 10;
+        for(unsigned n=0;n<256;++n) if(late_regions[0](41)!=42) return 11;
+        std::printf("revisited_offset=%llu\n",(unsigned long long)(reinterpret_cast<std::uintptr_t>(late_regions[0])-reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr))));
+    }
     std::uint64_t side=0;
     for (unsigned i=0;i<512;++i) {
-        if (i==256 && !transition(action,path)) {
+        if(i==256 && action && std::strcmp(action,"--study-two")==0) Sleep(1200);
+        if (i==256 && (!action || (std::strcmp(action,"--late-hot")!=0 && std::strcmp(action,"--return-evicted")!=0 && std::strcmp(action,"--fp-state")!=0 && std::strcmp(action,"--study-two")!=0 && std::strcmp(action,"--cost-churn")!=0)) && !transition(action,path)) {
             std::fprintf(stderr,"transition failed: %s\n",action);
             return 4;
         }
@@ -105,6 +144,7 @@ int main(int argc,char** argv) {
             std::fprintf(stderr,"side effect mismatch %u\n",i); return 2;
         }
     }
+    _mm_setcsr(saved_mxcsr);
     std::printf("cpu-native-fixture: passed 512 iterations, GPR/flags/SIMD/MXCSR/x87/stack oracle, side effects; action=%s; elapsed_ms=%llu\n",
         action?action:"none",(unsigned long long)(GetTickCount64()-started));
     return 0;

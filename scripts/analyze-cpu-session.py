@@ -40,6 +40,7 @@ def analyze(folder):
         if result['transformed_work_observed'] else
         'No transformed CPU work established for this session.')
     result['raw_runtime'] = report
+    result['retained_region_slots'] = len(report.get('regions', []))
     ranked = []
     for region in report.get('regions', []):
         calls = region.get('calls', 0)
@@ -48,11 +49,17 @@ def analyze(folder):
             'id': region.get('id'), 'module_offset': region.get('module_offset'),
             'code_hash': region.get('code_hash'), 'calls': calls,
             'work_proxy_instructions': calls * operations,
-            'cost_scope': 'instruction_count_proxy_not_CPU_nanoseconds',
+            'cost_scope': region.get('cost_scope', 'instruction_count_proxy_not_CPU_nanoseconds'),
             'observed_executions': region.get('executions'),
             'supported_opportunities': ['guarded_specialization', 'register_memoization', 'acyclic_incremental'],
             'admission_active': region.get('active'),
-            'profitability': 'not_established',
+            'profitability': {1: 'positive_within_DBI_estimate', 2: 'rejected_within_DBI_cost'}.get(region.get('cost_reason'), 'not_established'),
+            'action_median_ns': region.get('action_median_ns'),
+            'cost_aggregation': region.get('cost_aggregation'),
+            'cost_thread_id': region.get('cost_thread_id'),
+            'selected_action': {0: 'original', 1: 'specialize', 2: 'memo', 3: 'incremental'}.get(region.get('cost_action')),
+            'auto_trial_executions': region.get('auto_trial_executions'),
+            'auto_policy_executions': region.get('auto_policy_executions'),
         })
     ranked.sort(key=lambda r: r['work_proxy_instructions'], reverse=True)
     result['ranked_cpu_regions'] = ranked

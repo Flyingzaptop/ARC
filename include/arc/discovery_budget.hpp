@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -21,6 +22,7 @@ public:
         unsigned outstanding_jobs = 8;
         std::size_t outstanding_bytes = 64u * 1024u * 1024u;
         unsigned cpu_captures = 1;
+        bool initial_probe = true;
         std::chrono::milliseconds gpu_capture_window{10000};
         std::uint64_t gpu_capture_events = 100000;
         std::size_t gpu_capture_bytes = 8u * 1024u * 1024u;
@@ -34,10 +36,11 @@ public:
         unsigned active_jobs{}, active_captures{}, jobs_high_water{};
         std::size_t bytes_in_flight{}, bytes_high_water{};
         std::uint64_t epoch{}, rejected_jobs{}, rejected_captures{}, incomplete_captures{};
+        std::uint64_t pending_novelty{}, novelty_overflow{};
     };
 
-    DiscoveryBudget() noexcept = default;
-    explicit DiscoveryBudget(Config config) noexcept : config_(config) {}
+    DiscoveryBudget() noexcept { init_novelty(); }
+    explicit DiscoveryBudget(Config config) noexcept : config_(config) { init_novelty(); }
     DiscoveryBudget(const DiscoveryBudget&) = delete;
     DiscoveryBudget& operator=(const DiscoveryBudget&) = delete;
 
@@ -76,12 +79,14 @@ public:
         CaptureLease& operator=(const CaptureLease&) = delete;
         CaptureLease(CaptureLease&& other) noexcept { *this = std::move(other); }
         CaptureLease& operator=(CaptureLease&& other) noexcept {
-            if (this != &other) { release(); owner_ = other.owner_; start_ = other.start_; epoch_ = other.epoch_; events_ = other.events_; bytes_ = other.bytes_; incomplete_ = other.incomplete_; finished_ = other.finished_; other.owner_ = nullptr; }
+            if (this != &other) { release(); owner_ = other.owner_; start_ = other.start_; epoch_ = other.epoch_; ticket_ = other.ticket_; events_ = other.events_; bytes_ = other.bytes_; incomplete_ = other.incomplete_; finished_ = other.finished_; other.owner_ = nullptr; }
             return *this;
         }
         ~CaptureLease() { release(); }
         explicit operator bool() const noexcept { return owner_ != nullptr; }
         bool valid() const noexcept { return owner_ && !incomplete_ && owner_->epoch_.load(std::memory_order_acquire) == epoch_; }
+        std::uint64_t epoch() const noexcept { return epoch_; }
+        unsigned ticket() const noexcept { return ticket_; }
         // false means the trace crossed a bound and cannot support a complete contract.
         bool record(std::uint64_t events, std::size_t bytes, Time now = Clock::now()) noexcept {
             if (!valid() || now - start_ >= owner_->config_.capture_window ||
@@ -107,15 +112,17 @@ public:
         void release() noexcept {
             if (!owner_) return;
             if (!finished_ || owner_->epoch_.load(std::memory_order_acquire) != epoch_) mark_incomplete();
+            if (incomplete_) owner_->restore_capture_ticket(ticket_, epoch_);
             owner_->captures_.fetch_sub(1, std::memory_order_acq_rel);
             owner_ = nullptr;
         }
     private:
         friend class DiscoveryBudget;
-        CaptureLease(DiscoveryBudget* owner, Time start, std::uint64_t epoch) noexcept : owner_(owner), start_(start), epoch_(epoch) {}
+        CaptureLease(DiscoveryBudget* owner, Time start, std::uint64_t epoch, unsigned ticket) noexcept : owner_(owner), start_(start), epoch_(epoch), ticket_(ticket) {}
         DiscoveryBudget* owner_{};
         Time start_{};
         std::uint64_t epoch_{}, events_{};
+        unsigned ticket_{novelty_slots};
         std::size_t bytes_{};
         bool incomplete_{};
         bool finished_{};
@@ -146,29 +153,114 @@ public:
         return reject_job();
     }
 
-    // A new context only marks pending novelty. It cannot bypass cooldown.
-    void note_novelty() noexcept { novelty_.store(true, std::memory_order_release); }
-    bool ready(Time now = Clock::now()) const noexcept {
-        return novelty_.load(std::memory_order_acquire) && ticks(now) >= retry_after_.load(std::memory_order_acquire);
+    // Stable nonzero generation (< 2^62-1); UINT64_MAX is the legacy token.
+    // Store the identity exactly, never a truncated hash that aliases work. A key
+    // has one pending/active ticket. Completion frees the slot, so a later
+    // observation can re-arm even after many generations. No allocation/lock.
+    bool note_novelty(std::uint64_t key) noexcept {
+        NoveltyWriter writer(novelty_writers_);
+        if (!key || cancelled_.load(std::memory_order_acquire)) return false;
+        const auto epoch = epoch_.load(std::memory_order_acquire);
+        const auto identity = novelty_identity(key);
+        if (!identity) { novelty_overflow_.fetch_add(1, std::memory_order_relaxed); return false; }
+        const auto pending_word = (identity << 2) | 1u;
+        const auto start = identity % novelty_slots;
+        // Scan the full table before insertion: completed slots create gaps,
+        // so stopping at the first gap could duplicate a key farther along.
+        for (std::size_t attempt = 0; attempt < novelty_slots; ++attempt) {
+            std::size_t empty = novelty_slots;
+            for (std::size_t probe = 0; probe < novelty_slots; ++probe) {
+                const auto index = (start + probe) % novelty_slots;
+                const auto value = novelty_keys_[index].load(std::memory_order_acquire);
+                if (value != 0 && (value >> 2) == identity) return false;
+                if (value == 0 && empty == novelty_slots) empty = index;
+            }
+            if (empty == novelty_slots) break;
+            auto expected = std::uint64_t{0};
+            auto& slot = novelty_keys_[empty];
+            if (slot.compare_exchange_strong(expected, pending_word, std::memory_order_acq_rel)) {
+                pending_novelty_.fetch_add(1, std::memory_order_release);
+                if (cancelled_.load(std::memory_order_acquire) || epoch != epoch_.load(std::memory_order_acquire)) {
+                    expected = pending_word;
+                    slot.compare_exchange_strong(expected, 0, std::memory_order_acq_rel);
+                    pending_novelty_.store(0, std::memory_order_release);
+                    return false;
+                }
+                return true;
+            }
+        }
+        novelty_overflow_.fetch_add(1, std::memory_order_relaxed);
+        return false;
     }
-    void discovery_finished(bool success, Time now = Clock::now()) noexcept {
-        if (success) { failures_.store(0, std::memory_order_relaxed); novelty_.store(false, std::memory_order_release); return; }
+    // Compatibility token for callers without a stable identity. Repeated
+    // calls coalesce while pending; success frees the token for later work.
+    void note_novelty() noexcept { (void)note_novelty(legacy_novelty_key); }
+    // Eviction removes only a pending ticket. Active work must finish/cancel
+    // through its lease and cannot be mistaken for another region's ticket.
+    bool forget_novelty(std::uint64_t key) noexcept {
+        if (!key) return false;
+        const auto identity = novelty_identity(key);
+        if (!identity) return false;
+        for (auto& slot : novelty_keys_) {
+            auto word = slot.load(std::memory_order_acquire);
+            if ((word >> 2) != identity || (word & 3u) != 1u) continue;
+            if (!slot.compare_exchange_strong(word, 0, std::memory_order_acq_rel)) return false;
+            auto pending = pending_novelty_.load(std::memory_order_acquire);
+            while (pending && !pending_novelty_.compare_exchange_weak(
+                pending, pending - 1, std::memory_order_acq_rel)) {}
+            return true;
+        }
+        return false;
+    }
+    bool ready(Time now = Clock::now()) const noexcept {
+        return !cancelled_.load(std::memory_order_acquire) && pending_novelty_.load(std::memory_order_acquire) != 0 &&
+               ticks(now) >= retry_after_.load(std::memory_order_acquire);
+    }
+    void discovery_finished(bool success, Time now = Clock::now(), std::uint64_t work_epoch = 0,
+                            unsigned ticket = novelty_slots) noexcept {
+        if (work_epoch && work_epoch != epoch_.load(std::memory_order_acquire)) return;
+        if (cancelled_.load(std::memory_order_acquire)) return;
+        if (ticket == novelty_slots) ticket = active_ticket_.load(std::memory_order_acquire);
+        if (ticket >= novelty_slots) return;
+        auto& slot = novelty_keys_[ticket];
+        auto active_word = slot.load(std::memory_order_acquire);
+        if ((active_word & 3u) != 2u && (success || (active_word & 3u) != 1u)) return;
+        if (success) {
+            if (!slot.compare_exchange_strong(active_word, 0, std::memory_order_acq_rel)) return;
+            failures_.store(0, std::memory_order_relaxed);
+            return;
+        }
+        if ((active_word & 3u) == 2u) restore_capture_ticket(ticket, work_epoch);
         const unsigned failures = failures_.fetch_add(1, std::memory_order_acq_rel);
         retry_after_.store(ticks(now + config_.retry_backoff[std::min(failures, 3u)]), std::memory_order_release);
-        novelty_.store(true, std::memory_order_release);
     }
-    std::optional<CaptureLease> try_begin_capture(Time now = Clock::now()) noexcept {
+    std::optional<CaptureLease> try_begin_capture(Time now = Clock::now(), std::uint64_t requested_key = 0) noexcept {
         if (!ready(now) || !config_.cpu_captures) return reject_capture();
+        const auto requested_identity = requested_key ? novelty_identity(requested_key) : 0;
+        if (requested_key && !requested_identity) return reject_capture();
+        if (requested_identity && !has_pending_ticket(requested_identity)) return reject_capture();
         const auto epoch = epoch_.load(std::memory_order_acquire);
         unsigned active = captures_.load(std::memory_order_relaxed);
-        while (active < config_.cpu_captures) {
+        while (active < std::min(config_.cpu_captures, 1u)) {
             if (captures_.compare_exchange_weak(active, active + 1, std::memory_order_acq_rel)) {
                 auto next = next_capture_.load(std::memory_order_acquire);
                 const auto until = ticks(now + config_.capture_spacing);
                 if (ticks(now) >= next && next_capture_.compare_exchange_strong(next, until, std::memory_order_acq_rel)) {
-                    CaptureLease lease(this, now, epoch);
-                    if (!lease.valid()) return reject_capture();
-                    return std::optional<CaptureLease>(std::move(lease));
+                    for (unsigned i = 0; i < novelty_slots; ++i) {
+                        auto pending_word = novelty_keys_[i].load(std::memory_order_acquire);
+                        if ((pending_word & 3u) != 1u) continue;
+                        if (requested_identity && (pending_word >> 2) != requested_identity) continue;
+                        if (novelty_keys_[i].compare_exchange_strong(pending_word, (pending_word & ~3ull) | 2u,
+                                                                      std::memory_order_acq_rel)) {
+                            auto pending = pending_novelty_.load(std::memory_order_acquire);
+                            while (pending && !pending_novelty_.compare_exchange_weak(
+                                pending, pending - 1, std::memory_order_acq_rel)) {}
+                            active_ticket_.store(i, std::memory_order_release);
+                            CaptureLease lease(this, now, epoch, i);
+                            if (!lease.valid()) return reject_capture();
+                            return std::optional<CaptureLease>(std::move(lease));
+                        }
+                    }
                 }
                 captures_.fetch_sub(1, std::memory_order_acq_rel);
                 break;
@@ -176,14 +268,69 @@ public:
         }
         return reject_capture();
     }
-    void cancel() noexcept { epoch_.fetch_add(1, std::memory_order_acq_rel); novelty_.store(false, std::memory_order_release); }
+    void cancel() noexcept {
+        cancelled_.store(true, std::memory_order_release);
+        epoch_.fetch_add(1, std::memory_order_acq_rel);
+        pending_novelty_.store(0, std::memory_order_release);
+        for (auto& slot : novelty_keys_) slot.store(0, std::memory_order_release);
+        active_ticket_.store(novelty_slots, std::memory_order_release);
+    }
+    // A later session may explicitly re-arm after old capture leases drain.
+    bool resume() noexcept {
+        if (captures_.load(std::memory_order_acquire) != 0 ||
+            novelty_writers_.load(std::memory_order_acquire) != 0) return false;
+        retry_after_.store(0, std::memory_order_release);
+        failures_.store(0, std::memory_order_release);
+        cancelled_.store(false, std::memory_order_release);
+        return true;
+    }
     Snapshot snapshot() const noexcept {
         return {jobs_.load(), captures_.load(), jobs_high_.load(), bytes_.load(), bytes_high_.load(),
-                epoch_.load(), rejected_jobs_.load(), rejected_captures_.load(), incomplete_captures_.load()};
+                epoch_.load(), rejected_jobs_.load(), rejected_captures_.load(), incomplete_captures_.load(),
+                pending_novelty_.load(), novelty_overflow_.load()};
     }
     const Config& config() const noexcept { return config_; }
 
 private:
+    bool has_pending_ticket(std::uint64_t identity) const noexcept {
+        for (const auto& slot : novelty_keys_) {
+            const auto word = slot.load(std::memory_order_acquire);
+            if ((word & 3u) == 1u && (word >> 2) == identity) return true;
+        }
+        return false;
+    }
+    struct NoveltyWriter {
+        explicit NoveltyWriter(std::atomic<unsigned>& writers) noexcept : writers_(writers) {
+            writers_.fetch_add(1, std::memory_order_acq_rel);
+        }
+        ~NoveltyWriter() noexcept { writers_.fetch_sub(1, std::memory_order_acq_rel); }
+        std::atomic<unsigned>& writers_;
+    };
+    void restore_capture_ticket(unsigned ticket, std::uint64_t work_epoch) noexcept {
+        if (ticket >= novelty_slots || work_epoch != epoch_.load(std::memory_order_acquire) ||
+            cancelled_.load(std::memory_order_acquire)) return;
+        auto& slot = novelty_keys_[ticket];
+        auto active_word = slot.load(std::memory_order_acquire);
+        if ((active_word & 3u) == 2u &&
+            slot.compare_exchange_strong(active_word, (active_word & ~3ull) | 1u, std::memory_order_acq_rel)) {
+            pending_novelty_.fetch_add(1, std::memory_order_release);
+            if (cancelled_.load(std::memory_order_acquire) || work_epoch != epoch_.load(std::memory_order_acquire))
+                pending_novelty_.store(0, std::memory_order_release);
+        }
+    }
+    static constexpr std::size_t novelty_slots = 256;
+    static constexpr std::uint64_t legacy_novelty_key = UINT64_MAX;
+    static std::uint64_t novelty_identity(std::uint64_t key) noexcept {
+        constexpr auto legacy = (1ull << 62) - 1;
+        return key == legacy_novelty_key ? legacy : (key < legacy ? key : 0);
+    }
+    void init_novelty() noexcept {
+        if (config_.initial_probe) {
+            novelty_keys_[0].store((novelty_identity(0x9e3779b97f4a7c15ull) << 2) | 1u,
+                                   std::memory_order_relaxed);
+            pending_novelty_.store(1, std::memory_order_relaxed);
+        }
+    }
     static std::int64_t ticks(Time time) noexcept { return std::chrono::duration_cast<std::chrono::nanoseconds>(time.time_since_epoch()).count(); }
     template<class T> static void high_water(std::atomic<T>& peak, T value) noexcept {
         T current = peak.load(std::memory_order_relaxed);
@@ -196,7 +343,11 @@ private:
     std::atomic<std::size_t> bytes_{}, bytes_high_{};
     std::atomic<std::uint64_t> epoch_{1}, rejected_jobs_{}, rejected_captures_{}, incomplete_captures_{};
     std::atomic<std::int64_t> next_capture_{}, retry_after_{};
-    std::atomic<bool> novelty_{true};
+    std::atomic<std::uint64_t> pending_novelty_{}, novelty_overflow_{};
+    std::atomic<unsigned> active_ticket_{novelty_slots};
+    std::atomic<unsigned> novelty_writers_{};
+    std::atomic<bool> cancelled_{};
+    std::array<std::atomic<std::uint64_t>, novelty_slots> novelty_keys_{};
 };
 
 } // namespace arc

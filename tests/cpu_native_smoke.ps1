@@ -37,13 +37,26 @@ function Invoke-CpuCase([string]$name, [string]$mode, [string]$actuator, [string
         command = "$dr $($args -join ' ')"
     }
     if ($exitCode -ne 0) { throw "CPU smoke $name failed; see $stdout" }
-    if ($name -in @('neutral','study','auto') -and $run.executions -ne 0) { throw "$name unexpectedly changed application work" }
+    if ($name -in @('neutral','study') -and $run.executions -ne 0) { throw "$name unexpectedly changed application work" }
+    if($name -eq 'auto') {
+        $measured=@($run.regions|Where-Object {$_.timed_spans -ge 36 -and $_.cost_reason -in @(1,2)})
+        if($run.auto_application_disabled -or -not $measured.Count){throw 'Auto did not compare measured actions'}
+        foreach($region in $measured){
+            if($region.cost_reason -eq 1 -and ($region.net_saved_ns -le $region.noise_ns -or $region.cost_action -eq 0)){
+                throw 'Auto accepted an unprofitable action'
+            }
+        }
+    }
     if ($name -eq 'study' -and $run.capture_completed -lt 1) { throw 'No complete bounded CPU study' }
     if ($name -in @('specialize','memo','incremental','protect','stop') -and $run.executions -lt 1) { throw "$name never executed its actuator" }
     if ($name -eq 'specialize' -and $run.guard_misses -lt 1) { throw 'Specialization fallback untested' }
     if ($name -eq 'incremental' -and -not @($run.regions | Where-Object {$_.dirty_nodes -gt 0 -and $_.reused_nodes -gt 0}).Count) { throw 'No partial incremental recomputation' }
     if ($name -eq 'stop' -and (-not $run.stopped -or -not $run.stop_control_available)) { throw 'Stop was not acknowledged' }
-    if ($name -in @('stop','protect') -and @($run.regions | Where-Object {$_.active}).Count) { throw "$name left an active publication" }
+    if ($name -eq 'stop' -and @($run.regions | Where-Object {$_.active}).Count) { throw 'stop left an active publication' }
+    if ($name -eq 'protect' -and ($run.range_invalidations -lt 1 -or
+        -not @($run.regions | Where-Object {$_.active -and $_.generation -gt 1}).Count)) {
+        throw 'protect did not reanalyze the restored code'
+    }
 }
 
 $watch = [Diagnostics.Stopwatch]::StartNew()

@@ -1,18 +1,23 @@
 #include "decoder.hpp"
 #include "capture.hpp"
+#include "cost_clock.hpp"
+#include "arc/cpu/runtime_cost.hpp"
 #include "arc/cpu/publication.hpp"
 #include "drmgr.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include <atomic>
 #include <cstring>
 #include <new>
 #include <utility>
+#include <xmmintrin.h>
 
 using namespace arc::cpu;
 using namespace arc::cpu::dbi;
 namespace {
 enum class Mode { Study, Neutral, Apply };
 enum class Actuator { Auto, Specialize, Memo, Incremental };
-constexpr unsigned max_regions = 64, hot_threshold = 32;
+constexpr unsigned max_regions = 64, max_observations = 128, hot_threshold = 32;
 struct Candidate {
     Decoded decoded{};
     Analysis analysis{};
@@ -20,31 +25,61 @@ struct Candidate {
         reused_nodes{0}, dirty_nodes{0};
     std::atomic<bool> active{false};
     std::uint64_t generation{};
+    std::uint64_t discovery_ticks{};
+    std::uint64_t last_seen{}, recent_hits{};
     app_pc module_start{}, module_end{};
     arc::PublishedCandidate publication{};
     arc::CandidateFingerprint fingerprint{};
     std::atomic<unsigned> sample_status{0};
     State sample{};
+    RuntimeCost::Decision cost_decision{};
+    std::array<unsigned,4> cost_sample_counts{}, cost_actuations{};
+    std::array<double,4> cost_medians{}, cost_spreads{};
+    std::uint64_t tracking_ticks{};
+    unsigned cost_snapshot_tid{};
+    std::uint64_t timed_spans{}, timing_drops{}, auto_trial_executions{}, auto_policy_executions{};
 };
 struct LocalCache {
     unsigned candidate{~0u};
+    std::uint64_t generation{};
     alignas(RegionCache) byte storage[sizeof(RegionCache)]{};
     RegionCache* cache{};
     Specialization spec{};
     ~LocalCache() { if (cache) cache->~RegionCache(); }
-    RegionCache& get(unsigned id, const Analysis& a) {
-        if (candidate != id) {
+    RegionCache& get(unsigned id, std::uint64_t gen, const Analysis& a) {
+        if (candidate != id || generation != gen) {
             if (cache) cache->~RegionCache();
             cache = new (storage) RegionCache(a);
             spec = {};
             candidate = id;
+            generation = gen;
         }
         return *cache;
     }
 };
-struct ThreadState { LocalCache slot[4]; };
+struct PendingCost {
+    bool active{}, actuated{};
+    unsigned id{}, local_slot{};
+    std::uint64_t generation{}, started{};
+    app_pc end{};
+    CostAction action{CostAction::Original};
+};
+// Cost histories survive data-cache eviction: one fixed policy per candidate slot.
+struct ThreadState { LocalCache slot[4]; RuntimeCost policy[max_regions]; PendingCost pending{}; };
+struct BuildContext { std::uintptr_t token{}; app_pc end{}; };
+struct Observation {
+    Decoded decoded{};
+    std::uint64_t serial{}, calls{}, last_seen{}, recent_hits{};
+    std::uint64_t decode_ticks{};
+    unsigned candidate{~0u};
+    std::uint64_t candidate_generation{};
+};
 Candidate candidates[max_regions];
+Observation observations[max_observations];
 std::atomic<unsigned> candidate_count{};
+std::uint64_t next_generation{1}, next_observation_serial{1}, observation_clock{};
+std::atomic<std::uint64_t> replacements{0}, observations_seen{0};
+std::atomic<std::uint64_t> total_calls{0},total_executions{0},total_guards{0},total_misses{0};
 void* candidate_lock{};
 int tls_slot{-1};
 Mode mode{Mode::Neutral};
@@ -53,15 +88,21 @@ char output_path[MAXIMUM_PATH]{}, stop_path[MAXIMUM_PATH]{};
 std::atomic<bool> stopped{false}, ending{false}, conflict{false};
 std::atomic<std::uint64_t> rejected{0}, discovered{0}, code_changed{0};
 std::atomic<std::uint64_t> protection_events{0}, module_unloads{0};
+std::atomic<std::uint64_t> range_invalidations{0};
 app_pc main_start{}, main_end{};
 int protect_sysnum{-1};
-DiscoveryCapture capture{};
+// DynamoRIO's private loader does not run this client's dynamic C++
+// initializers. Construct the configured budget explicitly before callbacks.
+alignas(DiscoveryCapture) byte capture_storage[sizeof(DiscoveryCapture)]{};
+DiscoveryCapture* capture{};
+CostClock cost_clock{};
 std::uint64_t start_us{};
 file_t stop_file{INVALID_FILE};
 void* stop_map{};
 size_t stop_map_size{sizeof(std::uint32_t)};
 bool stop_control_available{};
 
+#include "client_cost.inl"
 void parse_args(int argc, const char* argv[]) {
     for (int i = 1; i + 1 < argc; ++i) {
         if (!strcmp(argv[i], "-mode")) {
@@ -87,9 +128,11 @@ void check_stop_control() {
     auto& word=*static_cast<std::uint32_t*>(stop_map);
     if (!std::atomic_ref<std::uint32_t>(word).load(std::memory_order_acquire)) return;
     if (stopped.exchange(true,std::memory_order_acq_rel)) return;
-    capture.cancel();
+    capture->cancel();
+    dr_mutex_lock(candidate_lock);
     for (unsigned i=0;i<candidate_count.load(std::memory_order_acquire);++i)
         candidates[i].publication.invalidate(arc::CandidateReason::UserStopped);
+    dr_mutex_unlock(candidate_lock);
 }
 bool read_state(const dr_mcontext_t& mc, State& s) {
     const std::uint64_t r[] = {mc.xax,mc.xcx,mc.xdx,mc.xbx,mc.xsp,mc.xbp,mc.xsi,mc.xdi,
@@ -129,98 +172,50 @@ int syscall_number(const char* name) {
     if (!read || bytes[0]!=0x4c || bytes[1]!=0x8b || bytes[2]!=0xd1 || bytes[3]!=0xb8) return -1;
     int n{}; std::memcpy(&n,bytes+4,sizeof(n)); return n;
 }
-bool pre_syscall(void*,int number) {
+bool overlaps(app_pc begin, app_pc end, std::uintptr_t address, std::size_t size) {
+    if (!size) return false;
+    const auto lo=reinterpret_cast<std::uintptr_t>(begin);
+    const auto hi=reinterpret_cast<std::uintptr_t>(end);
+    const auto page=dr_page_size();
+    const auto first=address & ~(static_cast<std::uintptr_t>(page)-1);
+    const auto requested_end=address > UINTPTR_MAX-size ? UINTPTR_MAX : address+size;
+    const auto last=requested_end > UINTPTR_MAX-(page-1) ? UINTPTR_MAX :
+        (requested_end+page-1)&~(static_cast<std::uintptr_t>(page)-1);
+    return first<hi && lo<last;
+}
+bool pre_syscall(void* dc,int number) {
     if (number==protect_sysnum) {
         ++protection_events;
+        const auto process=static_cast<std::uintptr_t>(dr_syscall_get_param(dc,0));
+        // The pseudo handle is the common VirtualProtect path. Real handles
+        // are checked so protection of another process cannot retire us.
+        if (process!=UINTPTR_MAX && GetProcessId(reinterpret_cast<HANDLE>(process))!=dr_get_process_id())
+            return true;
+        const auto base_ptr=reinterpret_cast<const void*>(dr_syscall_get_param(dc,1));
+        const auto size_ptr=reinterpret_cast<const void*>(dr_syscall_get_param(dc,2));
+        std::uintptr_t base{}; std::size_t size{};
+        const bool known=dr_safe_read(base_ptr,sizeof(base),&base,nullptr) &&
+                         dr_safe_read(size_ptr,sizeof(size),&size,nullptr);
+        dr_mutex_lock(candidate_lock);
         for (unsigned i=0;i<candidate_count.load(std::memory_order_acquire);++i) {
-            candidates[i].active.store(false,std::memory_order_release);
-            candidates[i].publication.invalidate(arc::CandidateReason::GenerationChanged);
+            auto& c=candidates[i];
+            if (!known || overlaps(c.decoded.start,c.decoded.end,base,size)) {
+                c.active.store(false,std::memory_order_release);
+                c.publication.invalidate(arc::CandidateReason::GenerationChanged);
+                ++range_invalidations;
+            }
         }
+        for (auto& o:observations)
+            if (o.serial && (!known || overlaps(o.decoded.start,o.decoded.end,base,size))) {
+                o.serial=0; o.candidate=~0u;
+            }
+        dr_mutex_unlock(candidate_lock);
     }
     return true;
 }
 bool filter_syscall(void*,int number) { return number==protect_sysnum; }
-void on_region(unsigned id) {
-    struct FpScope {
-        alignas(16) byte state[DR_FPSTATE_BUF_SIZE]{};
-        FpScope() { proc_save_fpstate(state); }
-        ~FpScope() { proc_restore_fpstate(state); }
-        void before_redirect() { proc_restore_fpstate(state); }
-    } fp;
-    check_stop_control();
-    Candidate& c=candidates[id];
-    const auto calls=c.calls.fetch_add(1,std::memory_order_relaxed)+1;
-    if (mode==Mode::Study && calls>=hot_threshold && c.sample_status.load(std::memory_order_acquire)==0) {
-        unsigned expected=0;
-        if (c.sample_status.compare_exchange_strong(expected,1)) {
-            const auto observation=capture.try_observe(reinterpret_cast<std::uintptr_t>(c.decoded.start),
-                c.decoded.region.count,c.decoded.byte_count+sizeof(State),c.analysis.live_in_mask,c.decoded.code_hash);
-            if (observation!=DiscoveryCapture::Observation::Started &&
-                observation!=DiscoveryCapture::Observation::Recorded) {
-                c.sample_status.store(0,std::memory_order_release);
-                return;
-            }
-            dr_mcontext_t mc{sizeof(mc),DR_MC_ALL};
-            if (dr_get_mcontext(dr_get_current_drcontext(),&mc)) {
-                read_state(mc,c.sample);
-                c.sample_status.store(capture.finish(true)?2:0,std::memory_order_release);
-            } else {
-                capture.finish(false);
-                c.sample_status.store(0,std::memory_order_release);
-            }
-        }
-    }
-    // Without an end-to-end cost estimate the automatic policy cannot claim
-    // this tiny region repays clean-call, comparison and redirection costs.
-    if (actuator==Actuator::Auto) return;
-    if (mode!=Mode::Apply || calls<hot_threshold || stopped.load(std::memory_order_acquire) ||
-        conflict.load(std::memory_order_acquire) || !c.active.load(std::memory_order_acquire)) return;
-    if (!code_matches(c)) { c.active.store(false,std::memory_order_release);
-        c.publication.invalidate(arc::CandidateReason::GenerationChanged); ++code_changed; return; }
-    void* dc=dr_get_current_drcontext();
-    auto* thread=static_cast<ThreadState*>(drmgr_get_tls_field(dc,tls_slot));
-    if (!thread) return;
-    auto lease=c.publication.try_acquire(c.fingerprint,
-        guard_code_identity|guard_module_lifetime|guard_complete_inputs);
-    if (!lease) return;
-    dr_mcontext_t mc{sizeof(mc),DR_MC_ALL};
-    if (!dr_get_mcontext(dc,&mc)) return;
-    State state{}; read_state(mc,state);
-    RunResult result{};
-    if (actuator==Actuator::Specialize) {
-        // A specialization is published from the first value observation in
-        // this thread. The guard checks all required live-ins on every use.
-        auto& slot=thread->slot[id%4];
-        auto& cache=slot.get(id,c.analysis);
-        if (!slot.spec.valid) {
-            slot.spec=specialize(c.analysis,state,c.analysis.live_in_mask,c.generation);
-            ++c.misses;
-            return; // original instructions establish the first observation
-        }
-        bool guard=false;
-        result=execute_specialized(c.analysis,slot.spec,state,c.generation,guard);
-        if (guard) ++c.guards; else { ++c.misses; return; }
-        (void)cache;
-    } else {
-        auto& cache=thread->slot[id%4].get(id,c.analysis);
-        RegionCache::Action action=(actuator==Actuator::Incremental) ? RegionCache::Action::Incremental : RegionCache::Action::Memo;
-        result=cache.run(action,state,c.generation);
-        if (result.reused_nodes) ++c.guards; else { ++c.misses; return; }
-    }
-    if (!result.output_mask) return;
-    c.reused_nodes.fetch_add(result.reused_nodes,std::memory_order_relaxed);
-    c.dirty_nodes.fetch_add(result.evaluated_nodes,std::memory_order_relaxed);
-    write_state(mc,result);
-    mc.pc=c.decoded.end;
-    ++c.executions;
-    // Candidate/model storage is fixed for process lifetime. The immutable
-    // projection has been consumed; release before non-returning redirect.
-    lease.reset();
-    fp.before_redirect();
-    // Redirection is the execution boundary: on admission miss we return to
-    // untouched original instructions; on hit the entire closed prefix is skipped.
-    dr_redirect_execution(&mc);
-}
+#include "client_execution.inl"
+
 void thread_init(void* dc) {
     auto* p=static_cast<ThreadState*>(dr_thread_alloc(dc,sizeof(ThreadState)));
     new (p) ThreadState();
@@ -232,12 +227,18 @@ void thread_exit(void* dc) {
 }
 void module_unload(void*,const module_data_t* m) {
     bool found=false;
+    dr_mutex_lock(candidate_lock);
     for (unsigned i=0;i<candidate_count.load(std::memory_order_acquire);++i)
         if (candidates[i].module_start==m->start) {
             found=true;
+            capture->forget_novelty(candidates[i].generation);
             candidates[i].active.store(false,std::memory_order_release);
             candidates[i].publication.invalidate(arc::CandidateReason::GenerationChanged);
         }
+    for (auto& o:observations)
+        if (o.serial && o.decoded.start>=m->start && o.decoded.start<m->end)
+            o.serial=0;
+    dr_mutex_unlock(candidate_lock);
     if (found) ++module_unloads;
 }
 void module_load(void*,const module_data_t* m,bool) {
@@ -245,6 +246,8 @@ void module_load(void*,const module_data_t* m,bool) {
     if (name && (strstr(name,"arc-dx12-probe") || strstr(name,"arc_dx12_probe")))
         conflict.store(true,std::memory_order_release);
 }
+#include "client_registry.inl"
+
 dr_emit_flags_t analyze_block(void*,void*,instrlist_t* bb,bool for_trace,bool translating,void** user_data) {
     *user_data=nullptr;
     if (translating || stopped.load(std::memory_order_relaxed) ||
@@ -252,117 +255,100 @@ dr_emit_flags_t analyze_block(void*,void*,instrlist_t* bb,bool for_trace,bool tr
     auto* first=instrlist_first_app(bb);
     if (!first || !instr_get_app_pc(first) || instr_get_app_pc(first)<main_start ||
         instr_get_app_pc(first)>=main_end) return DR_EMIT_DEFAULT;
+    const auto decode_started=cost_clock.now();
     Decoded d{};
     if (!decode_block(bb,d)) { ++rejected; return DR_EMIT_DEFAULT; }
+    const auto decode_finished=cost_clock.now();
+    const auto decode_ticks=decode_finished>decode_started ? decode_finished-decode_started : 0;
     if (d.start<main_start || d.start>=main_end || d.end>main_end) return DR_EMIT_DEFAULT;
     dr_mutex_lock(candidate_lock);
     unsigned id=candidate_count.load(std::memory_order_relaxed);
     for (unsigned i=0;i<id;++i)
-        if (candidates[i].decoded.start==d.start && candidates[i].decoded.byte_count==d.byte_count &&
-            candidates[i].decoded.code_hash==d.code_hash &&
-            std::memcmp(candidates[i].decoded.original_bytes.data(),d.original_bytes.data(),d.byte_count)==0) { id=i; break; }
-    if (id==candidate_count.load(std::memory_order_relaxed) && id<max_regions) {
-        auto& c=candidates[id]; c.decoded=d; c.analysis=analyze(d.region);
-        c.module_start=main_start; c.module_end=main_end; c.generation=1;
-        c.fingerprint.content=d.code_hash ? d.code_hash : 1;
-        c.fingerprint.code_generation=c.generation;
-        c.fingerprint.context=reinterpret_cast<std::uintptr_t>(main_start);
-        CpuPublicationInput publication{};
-        publication.id=id+1; publication.code_begin=reinterpret_cast<std::uintptr_t>(d.start);
-        publication.code_end=reinterpret_cast<std::uintptr_t>(d.end);
-        publication.original_entry=publication.code_begin;
-        publication.variant_entry=reinterpret_cast<std::uintptr_t>(on_region);
-        publication.fingerprint=c.fingerprint;
-        publication.kind=actuator==Actuator::Incremental ? arc::CandidateKind::Incremental :
-            actuator==Actuator::Memo ? arc::CandidateKind::ExactReuse : arc::CandidateKind::Specialization;
-        dr_mem_info_t info{};
-        const bool immutable_page=dr_query_memory_ex(d.start,&info) &&
-            (info.prot & (DR_MEMPROT_EXEC|DR_MEMPROT_WRITE))==DR_MEMPROT_EXEC &&
-            d.end<=info.base_pc+info.size;
-        const auto admission=make_cpu_pod_admission(c.analysis,publication);
-        c.active.store(immutable_page && protect_sysnum>=0 &&
-            publish_cpu_candidate(c.publication,admission,true),std::memory_order_release);
-        candidate_count.store(id+1,std::memory_order_release); ++discovered;
-        if (mode==Mode::Study) capture.note_novelty();
+        if (same_code(candidates[i].decoded,d)) { id=i; break; }
+    if (id==candidate_count.load(std::memory_order_relaxed))
+        for (unsigned i=0;i<id;++i)
+            if (candidates[i].decoded.start==d.start &&
+                candidates[i].publication.outstanding()==0 &&
+                (!candidates[i].active.load(std::memory_order_acquire) || !code_matches(candidates[i]))) {
+                candidates[i].active.store(false,std::memory_order_release);
+                candidates[i].publication.invalidate(arc::CandidateReason::GenerationChanged);
+                id=i; break;
+            }
+    if (id<max_regions && id==candidate_count.load(std::memory_order_relaxed)) {
+        admit_slot(id,d,0,decode_ticks);
+        candidate_count.store(id+1,std::memory_order_release);
+    } else if (id<max_regions && !candidates[id].active.load(std::memory_order_acquire) &&
+               candidates[id].publication.outstanding()==0 &&
+               !stopped.load(std::memory_order_acquire)) {
+        admit_slot(id,d,0,decode_ticks);
     }
+    if (id<max_regions) {
+        const auto gen=candidates[id].generation;
+        *user_data=reinterpret_cast<void*>(static_cast<std::uintptr_t>((gen<<8)|(id+1)));
+    } else {
+        unsigned observation=max_observations;
+        std::uint64_t oldest=UINT64_MAX;
+        for (unsigned i=0;i<max_observations;++i) {
+            if (observations[i].serial && same_code(observations[i].decoded,d)) {
+                observation=i; break;
+            }
+            if (!observations[i].serial) { observation=i; break; }
+            if (observations[i].last_seen<oldest) { oldest=observations[i].last_seen; observation=i; }
+        }
+        auto& o=observations[observation];
+        if (!o.serial || !same_code(o.decoded,d)) {
+            o.decoded=d; o.decode_ticks=decode_ticks; o.serial=next_observation_serial++;
+            o.calls=0; o.recent_hits=0; o.candidate=~0u; o.candidate_generation=0;
+        }
+        o.last_seen=++observation_clock;
+        *user_data=reinterpret_cast<void*>(static_cast<std::uintptr_t>((o.serial<<8)|(observation+max_regions+1)));
+    }
+    const auto token=reinterpret_cast<std::uintptr_t>(*user_data);
     dr_mutex_unlock(candidate_lock);
-    if (id>=max_regions) return DR_EMIT_DEFAULT;
-    *user_data=reinterpret_cast<void*>(static_cast<std::uintptr_t>(id+1));
+    auto* context=static_cast<BuildContext*>(dr_thread_alloc(dr_get_current_drcontext(),sizeof(BuildContext)));
+    context->token=token; context->end=d.end; *user_data=context;
     return DR_EMIT_MUST_END_TRACE;
 }
 dr_emit_flags_t insert_block(void* dc,void*,instrlist_t* bb,instr_t* ins,bool,bool,void* user_data) {
-    if (user_data && ins==instrlist_first_app(bb)) {
-        const auto id=static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(user_data)-1);
-        dr_insert_clean_call(dc,bb,ins,reinterpret_cast<void*>(on_region),false,1,OPND_CREATE_INT32(id));
+    // drmgr also visits trailing metadata after the last app instruction,
+    // where the per-BB context has already been released.
+    if(!instr_is_app(ins)) return DR_EMIT_DEFAULT;
+    auto* context=static_cast<BuildContext*>(user_data);
+    const auto pc=instr_get_app_pc(ins);
+    bool boundary=context && pc==context->end;
+    if(mode==Mode::Apply && actuator==Actuator::Auto && pc && ins==instrlist_first_app(bb)) {
+        // Translation-time scan only. Do not add a timing callback to every
+        // game basic block when only a bounded set of exits is being studied.
+        dr_mutex_lock(candidate_lock);
+        for(unsigned i=0;i<candidate_count.load();++i)
+            if(candidates[i].decoded.end==pc) { boundary=true; break; }
+        dr_mutex_unlock(candidate_lock);
     }
+    if(mode==Mode::Apply && actuator==Actuator::Auto && pc && boundary)
+        dr_insert_clean_call(dc,bb,ins,reinterpret_cast<void*>(cost_boundary),false,1,OPND_CREATE_INTPTR(pc));
+    if (context && ins==instrlist_first_app(bb)) {
+        const auto token=context->token;
+        const unsigned encoded=static_cast<unsigned>((token&255u)-1u);
+        const auto generation=static_cast<std::uint64_t>(token>>8);
+        if (encoded<max_regions)
+            dr_insert_clean_call(dc,bb,ins,reinterpret_cast<void*>(on_region),false,3,
+                OPND_CREATE_INT32(encoded),OPND_CREATE_INTPTR(generation),OPND_CREATE_INTPTR(pc));
+        else
+            dr_insert_clean_call(dc,bb,ins,reinterpret_cast<void*>(on_observed),false,3,
+                OPND_CREATE_INT32(encoded-max_regions),OPND_CREATE_INTPTR(generation),
+                OPND_CREATE_INTPTR(instr_get_app_pc(ins)));
+    }
+    if(context && ins==instrlist_last_app(bb)) dr_thread_free(dc,context,sizeof(BuildContext));
     return DR_EMIT_DEFAULT;
 }
-void exit_event() {
-    ending.store(true,std::memory_order_release);
-    if (stop_map) dr_unmap_file(stop_map,stop_map_size);
-    if (stop_file!=INVALID_FILE) dr_close_file(stop_file);
-    if (!output_path[0]) return;
-    const file_t f=dr_open_file(output_path,DR_FILE_WRITE_OVERWRITE);
-    if (f==INVALID_FILE) return;
-    std::uint64_t calls=0,exec=0,guards=0,misses=0;
-    for (unsigned i=0;i<candidate_count.load();++i) {
-        calls+=candidates[i].calls.load(); exec+=candidates[i].executions.load();
-        guards+=candidates[i].guards.load(); misses+=candidates[i].misses.load();
-    }
-    const auto cap=capture.snapshot();
-    dr_fprintf(f,"{\"backend\":\"dynamorio-11.3.0\",\"mode\":\"%s\",\"actuator\":\"%s\",\"pid\":%u,\"start_utc_us_since_1601\":%llu,\"regions_discovered\":%u,\"regions_rejected\":%llu,\"calls\":%llu,\"executions\":%llu,\"guard_hits\":%llu,\"guard_misses\":%llu,\"code_changed\":%llu,\"protection_events\":%llu,\"module_unloads\":%llu,\"stopped\":%s,\"stop_control_available\":%s,\"dx12_conflict\":%s,\"capture_started\":%llu,\"capture_completed\":%llu,\"capture_incomplete\":%llu,\"capture_events\":%llu,\"capture_bytes\":%llu,\"capture_rejected\":%llu,\"auto_application_disabled\":%s,\"regions\":[",
-        mode==Mode::Apply?"apply":mode==Mode::Study?"study":"neutral",
-        actuator==Actuator::Memo?"memo":actuator==Actuator::Incremental?"incremental":actuator==Actuator::Specialize?"specialize":"auto",
-        static_cast<unsigned>(dr_get_process_id()),(unsigned long long)start_us,
-        candidate_count.load(),(unsigned long long)rejected.load(),(unsigned long long)calls,(unsigned long long)exec,
-        (unsigned long long)guards,(unsigned long long)misses,(unsigned long long)code_changed.load(),
-        (unsigned long long)protection_events.load(),(unsigned long long)module_unloads.load(),
-        stopped.load()?"true":"false",stop_control_available?"true":"false",conflict.load()?"true":"false",
-        (unsigned long long)cap.started,(unsigned long long)cap.completed,(unsigned long long)cap.incomplete,
-        (unsigned long long)cap.events,(unsigned long long)cap.bytes,(unsigned long long)cap.budget.rejected_captures,
-        actuator==Actuator::Auto?"true":"false");
-    for (unsigned i=0;i<candidate_count.load();++i) {
-        const auto& c=candidates[i];
-        if (i) dr_fprintf(f,",");
-        dr_fprintf(f,"{\"id\":%u,\"module_offset\":%llu,\"code_hash\":\"%llx\",\"generation\":%llu,\"bytes\":%u,\"instructions\":%u,\"live_in_mask\":%u,\"live_out_mask\":%u,\"calls\":%llu,\"executions\":%llu,\"skipped_instructions\":%llu,\"guard_hits\":%llu,\"guard_misses\":%llu,\"reused_nodes\":%llu,\"dirty_nodes\":%llu,\"lifecycle\":%u,\"reason\":%u,\"active\":%s,\"sampled\":%s,\"sample_live_ins\":[",
-            i+1,(unsigned long long)(c.decoded.start-c.module_start),(unsigned long long)c.decoded.code_hash,
-            (unsigned long long)c.generation,
-            (unsigned)c.decoded.byte_count,(unsigned)c.decoded.region.count,(unsigned)c.analysis.live_in_mask,
-            (unsigned)c.analysis.live_out_mask,(unsigned long long)c.calls.load(),
-            (unsigned long long)c.executions.load(),
-            (unsigned long long)(c.executions.load()*c.decoded.region.count),
-            (unsigned long long)c.guards.load(),(unsigned long long)c.misses.load(),
-            (unsigned long long)c.reused_nodes.load(),(unsigned long long)c.dirty_nodes.load(),
-            (unsigned)c.publication.lifecycle(),(unsigned)c.publication.reason(),
-            (c.active.load() && c.publication.lifecycle()==arc::CandidateLifecycle::Active)?"true":"false",
-            c.sample_status.load()==2?"true":"false");
-        bool comma=false;
-        for (unsigned r=0;r<register_count;++r) if (c.analysis.live_in_mask & (1u<<r)) {
-            if (comma) dr_fprintf(f,","); comma=true;
-            dr_fprintf(f,"%llu",(unsigned long long)c.sample.regs[r]);
-        }
-        dr_fprintf(f,"],\"raw_hex\":\"");
-        for (unsigned n=0;n<c.decoded.byte_count;++n) dr_fprintf(f,"%02x",c.decoded.original_bytes[n]);
-        dr_fprintf(f,"\",\"ops\":[");
-        for (unsigned n=0;n<c.decoded.region.count;++n) {
-            const auto& op=c.decoded.region.instructions[n];
-            if (n) dr_fprintf(f,",");
-            dr_fprintf(f,"{\"op\":%u,\"dst\":%u,\"a_reg\":%d,\"a\":%llu,\"b_reg\":%d,\"b\":%llu,\"scale\":%u,\"disp\":%lld}",
-                (unsigned)op.op,(unsigned)op.dst,op.a.is_register?1:0,
-                (unsigned long long)(op.a.is_register?(unsigned)op.a.register_id:op.a.immediate),
-                op.b.is_register?1:0,
-                (unsigned long long)(op.b.is_register?(unsigned)op.b.register_id:op.b.immediate),
-                (unsigned)op.scale,(long long)op.displacement);
-        }
-        dr_fprintf(f,"]}");
-    }
-    dr_fprintf(f,"]}\n");
-    dr_close_file(f);
-}
+#include "client_report.inl"
+
 }
 DR_EXPORT void dr_client_main(client_id_t,int argc,const char* argv[]) {
     dr_set_client_name("ARC CPU backend","https://github.com/Flyingzaptop/ARC");
     parse_args(argc,argv);
+    cost_clock.initialize();
+    capture=new (capture_storage) DiscoveryCapture();
     start_us=dr_get_microseconds();
     if (!drmgr_init()) return;
     tls_slot=drmgr_register_tls_field();
