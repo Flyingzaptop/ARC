@@ -254,5 +254,18 @@
     "no combined CPU/DX12 hook ownership; CPU launch is separate",
     "no arbitrary remote code patch safety guarantee"
   ],
-  "rerun_policy": "Repeated native checks only after decoded/execution/state/stop changes or observed regressions; unrelated GPU suites not repeated."
+  "rerun_policy": "Repeated native checks only after decoded/execution/state/stop changes or observed regressions; unrelated GPU suites not repeated.",
+  "package": {
+    "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\packages\\arc-cpu-m234-915a10a",
+    "source_commit": "915a10ad2735ee90a5b799d8219238a210355d4d",
+    "source_dirty": false,
+    "manifest_sha256": "212c451dab6cc8a302383a1fadb365425828d1264f190245e619c021994189ca",
+    "shipped_files_verified": 83,
+    "bytes": 23324560,
+    "smoke": "C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/m234-packaged-smoke",
+    "result": "pass",
+    "executions": 944,
+    "stopped": true,
+    "scope": "packaged DLL/runtime through packaged launcher, same state oracle and mapped stop; no game"
+  }
 }
