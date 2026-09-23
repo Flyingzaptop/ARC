@@ -1,0 +1,83 @@
+query	rva	length	name
+*UpdateVisibility*	0x1cba20	2609	wi::renderer::UpdateVisibility
+*UpdateVisibility*	0x210780	1290	std::_Sort_unchecked<wi::scene::ColliderComponent *,``wi::renderer::UpdateVisibility'::`29'::<lambda_7>::operator()'::`2'::<lambda_1> >
+*UpdateVisibility*	0x20c970	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`14'::<lambda_2> >::move_to
+*UpdateVisibility*	0x20c810	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`23'::<lambda_5> >::move_to
+*UpdateVisibility*	0xaaea0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`11'::<lambda_1> >::`scalar deleting destructor'
+*UpdateVisibility*	0xaaea0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`26'::<lambda_6> >::`scalar deleting destructor'
+*UpdateVisibility*	0x216c20	2421	std::_Partition_by_pivot_unchecked<wi::scene::ColliderComponent *,``wi::renderer::UpdateVisibility'::`29'::<lambda_7>::operator()'::`2'::<lambda_1> >
+*UpdateVisibility*	0x20c930	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`17'::<lambda_3> >::move_to
+*UpdateVisibility*	0x20c8f0	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`20'::<lambda_4> >::move_to
+*UpdateVisibility*	0x20c790	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`29'::<lambda_7> >::copy_to
+*UpdateVisibility*	0x20c7b0	18	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`29'::<lambda_7> >::call
+*UpdateVisibility*	0xaaea0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`14'::<lambda_2> >::`scalar deleting destructor'
+*UpdateVisibility*	0xaaea0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`23'::<lambda_5> >::`scalar deleting destructor'
+*UpdateVisibility*	0x1cc660	981	`wi::renderer::UpdateVisibility'::`14'::<lambda_2>::operator()
+*UpdateVisibility*	0x1cca40	417	`wi::renderer::UpdateVisibility'::`17'::<lambda_3>::operator()
+*UpdateVisibility*	0x1cc460	499	`wi::renderer::UpdateVisibility'::`11'::<lambda_1>::operator()
+*UpdateVisibility*	0xaaea0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`17'::<lambda_3> >::`scalar deleting destructor'
+*UpdateVisibility*	0xaaea0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`20'::<lambda_4> >::`scalar deleting destructor'
+*UpdateVisibility*	0x1ccbf0	417	`wi::renderer::UpdateVisibility'::`20'::<lambda_4>::operator()
+*UpdateVisibility*	0x1ccda0	691	`wi::renderer::UpdateVisibility'::`26'::<lambda_6>::operator()
+*UpdateVisibility*	0x1cd060	1295	`wi::renderer::UpdateVisibility'::`29'::<lambda_7>::operator()
+*UpdateVisibility*	0x20c9c0	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`11'::<lambda_1> >::move_to
+*UpdateVisibility*	0x20c7d0	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`26'::<lambda_6> >::move_to
+*UpdateVisibility*	0x20c790	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`29'::<lambda_7> >::move_to
+*UpdateVisibility*	0x20c930	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`17'::<lambda_3> >::copy_to
+*UpdateVisibility*	0x20c8f0	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`20'::<lambda_4> >::copy_to
+*UpdateVisibility*	0x20c7f0	18	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`26'::<lambda_6> >::call
+*UpdateVisibility*	0x20c9e0	44	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`11'::<lambda_1> >::call
+*UpdateVisibility*	0x20c970	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`14'::<lambda_2> >::copy_to
+*UpdateVisibility*	0x20c810	19	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`23'::<lambda_5> >::copy_to
+*UpdateVisibility*	0x20c830	189	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`23'::<lambda_5> >::call
+*UpdateVisibility*	0x20c990	44	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::renderer::UpdateVisibility'::`14'::<lambda_2> >::call
+*TestsRenderer::Update*	0xa9b70	284	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_1> >::call
+*TestsRenderer::Update*	0xa9a70	224	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_2> >::call
+*TestsRenderer::Update*	0xa1060	5606	TestsRenderer::Update
+*TestsRenderer::Update*	0xa9790	35	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::function<void __cdecl(wi::jobsystem::JobArgs),96><`TestsRenderer::Update'::`26'::<lambda_1>,void>
+*TestsRenderer::Update*	0xa97c0	35	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::function<void __cdecl(wi::jobsystem::JobArgs),96><`TestsRenderer::Update'::`26'::<lambda_2>,void>
+*TestsRenderer::Update*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_1> >::`scalar deleting destructor'
+*TestsRenderer::Update*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_2> >::`scalar deleting destructor'
+*TestsRenderer::Update*	0xa9b50	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_1> >::copy_to
+*TestsRenderer::Update*	0xa9a50	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_2> >::copy_to
+*TestsRenderer::Update*	0xa9a50	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_2> >::move_to
+*TestsRenderer::Update*	0xa9b50	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`TestsRenderer::Update'::`26'::<lambda_1> >::move_to
+*TestsRenderer::Update*	0x5d3cd0	56	`TestsRenderer::Update'::`13'::`dynamic atexit destructor for 'text_head_axes''
+*TestsRenderer::Update*	0x5d3c80	68	`TestsRenderer::Update'::`13'::`dynamic atexit destructor for 'color_sets_desc''
+*UpdateRenderData*	0x1d0980	8341	wi::renderer::UpdateRenderData
+*UpdateRenderData*	0x5d7df0	111	`wi::renderer::UpdateRenderData'::`2'::`dynamic atexit destructor for 'hair_updates''
+*UpdateRenderData*	0x1d2a20	2715	wi::renderer::UpdateRenderDataAsync
+*RenderPath3D::Render*	0x17bbb0	191	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_19> >::call
+*RenderPath3D::Render*	0x16efa0	2503	wi::RenderPath3D::Render
+*RenderPath3D::Render*	0x17bb50	31	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::RenderCameraComponents'::`4'::<lambda_1> >::move_to
+*RenderPath3D::Render*	0x17bb70	18	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::RenderCameraComponents'::`4'::<lambda_1> >::call
+*RenderPath3D::Render*	0x17bd20	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_17> >::move_to
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`17'::<lambda_6> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0x17bc90	133	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_18> >::call
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`29'::<lambda_8> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0x17bfb0	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`44'::<lambda_13> >::copy_to
+*RenderPath3D::Render*	0x17bf70	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`54'::<lambda_14> >::copy_to
+*RenderPath3D::Render*	0x17c2b0	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`20'::<lambda_7> >::copy_to
+*RenderPath3D::Render*	0x17bdf0	172	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`60'::<lambda_16> >::call
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`35'::<lambda_10> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0x171290	89	wi::RenderPath3D::RenderSSGI
+*RenderPath3D::Render*	0x17bec0	172	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`60'::<lambda_15> >::call
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_19> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0x171240	73	wi::RenderPath3D::RenderSSR
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`44'::<lambda_13> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`54'::<lambda_14> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0x17c290	20	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`29'::<lambda_8> >::call
+*RenderPath3D::Render*	0x17c4c0	18	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`17'::<lambda_6> >::call
+*RenderPath3D::Render*	0xaaed0	33	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_18> >::`scalar deleting destructor'
+*RenderPath3D::Render*	0x17c150	18	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`41'::<lambda_11> >::call
+*RenderPath3D::Render*	0x17c170	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`35'::<lambda_10> >::copy_to
+*RenderPath3D::Render*	0x17c0f0	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_12> >::move_to
+*RenderPath3D::Render*	0x17c270	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`29'::<lambda_8> >::copy_to
+*RenderPath3D::Render*	0x17c4a0	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`17'::<lambda_6> >::copy_to
+*RenderPath3D::Render*	0x16fbf0	684	`wi::RenderPath3D::Render'::`2'::<lambda_5>::operator()
+*RenderPath3D::Render*	0x172610	1835	wi::RenderPath3D::RenderPostprocessChain
+*RenderPath3D::Render*	0x17c2d0	458	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`20'::<lambda_7> >::call
+*RenderPath3D::Render*	0x16f970	633	`wi::RenderPath3D::Render'::`2'::<lambda_4>::operator()
+*RenderPath3D::Render*	0x17bc70	21	wi::function<void __cdecl(wi::jobsystem::JobArgs),96>::callable_impl<`wi::RenderPath3D::Render'::`2'::<lambda_18> >::copy_to
+*SubmitCommandLists*	0x346500	6613	wi::graphics::GraphicsDevice_Vulkan::SubmitCommandLists
+*SubmitCommandLists*	0x30d1f0	3276	wi::graphics::GraphicsDevice_DX12::SubmitCommandLists

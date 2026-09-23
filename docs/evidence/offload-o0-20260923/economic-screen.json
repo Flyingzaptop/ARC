@@ -1,0 +1,114 @@
+{
+  "diagnostic_only": true,
+  "runtime_admission": false,
+  "warmup_ms": 6000,
+  "cpu_submit_cadence": {
+    "count": 296,
+    "mean_ms": 30.403902364864862,
+    "p50_ms": 30.11475000000064,
+    "p95_ms": 42.45290000000023,
+    "p99_ms": 52.59619999999995
+  },
+  "cadence_scope": "CPU submission completion timestamps, not GPU/display completion",
+  "screen_gain_floor_ms": 1.5201951182432432,
+  "control_drift_ms": null,
+  "final_O2_gate": "not_evaluated",
+  "duplicate_event_frame_rows": 0,
+  "ranked_candidates": [
+    {
+      "candidate": "render_command_construction",
+      "timer": "Application Render",
+      "wall": {
+        "count": 297,
+        "mean_ms": 16.465914141414142,
+        "p50_ms": 16.5526,
+        "p95_ms": 22.0455,
+        "p99_ms": 25.1983
+      },
+      "running_ms": null,
+      "waiting_ms": null,
+      "critical_path_saving_upper_bound_ms": 16.465914141414142,
+      "critical_path_saving_lower_bound_ms": 0,
+      "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+      "exceeds_screen_floor": true
+    },
+    {
+      "candidate": "visibility",
+      "timer": "Frustum Culling",
+      "wall": {
+        "count": 296,
+        "mean_ms": 2.193957433952703,
+        "p50_ms": 1.74425,
+        "p95_ms": 4.65310001,
+        "p99_ms": 6.50489998
+      },
+      "running_ms": null,
+      "waiting_ms": null,
+      "critical_path_saving_upper_bound_ms": 2.193957433952703,
+      "critical_path_saving_lower_bound_ms": 0,
+      "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+      "exceeds_screen_floor": true
+    },
+    {
+      "candidate": "instance_update_residual",
+      "timer": null,
+      "wall": {
+        "count": 296,
+        "mean_ms": 1.8186307432432434,
+        "p50_ms": 1.4019999999999992,
+        "p95_ms": 4.7944,
+        "p99_ms": 7.724
+      },
+      "running_ms": null,
+      "waiting_ms": null,
+      "critical_path_saving_upper_bound_ms": 1.8186307432432434,
+      "critical_path_saving_lower_bound_ms": 0,
+      "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+      "exceeds_screen_floor": true
+    },
+    {
+      "candidate": "submission",
+      "timer": "SubmitCommandLists",
+      "wall": {
+        "count": 297,
+        "mean_ms": 1.4744828282828284,
+        "p50_ms": 1.3727,
+        "p95_ms": 2.3827,
+        "p99_ms": 3.3049
+      },
+      "running_ms": null,
+      "waiting_ms": null,
+      "critical_path_saving_upper_bound_ms": 1.4744828282828284,
+      "critical_path_saving_lower_bound_ms": 0,
+      "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+      "exceeds_screen_floor": false
+    },
+    {
+      "candidate": "buffer_update",
+      "timer": "Update Buffers (CPU)",
+      "wall": {
+        "count": 296,
+        "mean_ms": 0.22086621714763513,
+        "p50_ms": 0.172650002,
+        "p95_ms": 0.407999992,
+        "p99_ms": 0.526499987
+      },
+      "running_ms": null,
+      "waiting_ms": null,
+      "critical_path_saving_upper_bound_ms": 0.22086621714763513,
+      "critical_path_saving_lower_bound_ms": 0,
+      "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+      "exceeds_screen_floor": false
+    }
+  ],
+  "profiler_alignment": "completed profiler ranges read before HarnessUpdate increments frame ID; no manual frame shift",
+  "residual_scope": "Application Update minus nested RenderPath3D Update; an upper bound including unisolated work",
+  "application": {
+    "sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf",
+    "pe_timestamp": 1790030999,
+    "pdb_guid": "b38c56fa-8750-42bf-bab2-a5536af909af",
+    "pdb_age": 15,
+    "pdb_path_recorded": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\WickedEngine\\BUILD\\x64\\Release\\Tests\\Tests.pdb"
+  },
+  "csv_sha256": "cc4694c60a3dae31f6e7f93670b1f55404cb87ece6173a784a54365b79ab2ad0"
+}

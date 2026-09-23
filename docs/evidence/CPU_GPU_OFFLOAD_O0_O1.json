@@ -1,0 +1,251 @@
+{
+  "result": "BLOCKED_SEMANTICS",
+  "base": "afca857b50de0312d02debfc1d95fc9fafd067fa",
+  "m_checkpoint": "41a5434",
+  "gates": {
+    "O0": "bounded screen complete; admission not established",
+    "O1": "blocked before GPU generation",
+    "O2": "not run",
+    "O3": "not run",
+    "O4": "not run"
+  },
+  "application": {
+    "sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf",
+    "pe_timestamp": 1790030999,
+    "pdb_guid": "b38c56fa-8750-42bf-bab2-a5536af909af",
+    "pdb_age": 15,
+    "pdb_path_recorded": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\WickedEngine\\BUILD\\x64\\Release\\Tests\\Tests.pdb"
+  },
+  "configuration": {
+    "scene": 18,
+    "instances_nominal": 65536,
+    "seconds": 15,
+    "warmup_ms": 6000,
+    "mode": "off",
+    "always_active": true,
+    "workload_size_changed": false,
+    "profiler_mode": "existing full-quality CPU profiling; TAA disabled by existing harness",
+    "final_baseline": false
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX 3060 Laptop",
+    "driver": "616.64",
+    "queried_power_limit": null,
+    "user_stated_power_limit_W": 30
+  },
+  "screen": {
+    "diagnostic_only": true,
+    "runtime_admission": false,
+    "warmup_ms": 6000,
+    "cpu_submit_cadence": {
+      "count": 296,
+      "mean_ms": 30.403902364864862,
+      "p50_ms": 30.11475000000064,
+      "p95_ms": 42.45290000000023,
+      "p99_ms": 52.59619999999995
+    },
+    "cadence_scope": "CPU submission completion timestamps, not GPU/display completion",
+    "screen_gain_floor_ms": 1.5201951182432432,
+    "control_drift_ms": null,
+    "final_O2_gate": "not_evaluated",
+    "duplicate_event_frame_rows": 0,
+    "ranked_candidates": [
+      {
+        "candidate": "render_command_construction",
+        "timer": "Application Render",
+        "wall": {
+          "count": 297,
+          "mean_ms": 16.465914141414142,
+          "p50_ms": 16.5526,
+          "p95_ms": 22.0455,
+          "p99_ms": 25.1983
+        },
+        "running_ms": null,
+        "waiting_ms": null,
+        "critical_path_saving_upper_bound_ms": 16.465914141414142,
+        "critical_path_saving_lower_bound_ms": 0,
+        "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+        "exceeds_screen_floor": true
+      },
+      {
+        "candidate": "visibility",
+        "timer": "Frustum Culling",
+        "wall": {
+          "count": 296,
+          "mean_ms": 2.193957433952703,
+          "p50_ms": 1.74425,
+          "p95_ms": 4.65310001,
+          "p99_ms": 6.50489998
+        },
+        "running_ms": null,
+        "waiting_ms": null,
+        "critical_path_saving_upper_bound_ms": 2.193957433952703,
+        "critical_path_saving_lower_bound_ms": 0,
+        "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+        "exceeds_screen_floor": true
+      },
+      {
+        "candidate": "instance_update_residual",
+        "timer": null,
+        "wall": {
+          "count": 296,
+          "mean_ms": 1.8186307432432434,
+          "p50_ms": 1.4019999999999992,
+          "p95_ms": 4.7944,
+          "p99_ms": 7.724
+        },
+        "running_ms": null,
+        "waiting_ms": null,
+        "critical_path_saving_upper_bound_ms": 1.8186307432432434,
+        "critical_path_saving_lower_bound_ms": 0,
+        "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+        "exceeds_screen_floor": true
+      },
+      {
+        "candidate": "submission",
+        "timer": "SubmitCommandLists",
+        "wall": {
+          "count": 297,
+          "mean_ms": 1.4744828282828284,
+          "p50_ms": 1.3727,
+          "p95_ms": 2.3827,
+          "p99_ms": 3.3049
+        },
+        "running_ms": null,
+        "waiting_ms": null,
+        "critical_path_saving_upper_bound_ms": 1.4744828282828284,
+        "critical_path_saving_lower_bound_ms": 0,
+        "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+        "exceeds_screen_floor": false
+      },
+      {
+        "candidate": "buffer_update",
+        "timer": "Update Buffers (CPU)",
+        "wall": {
+          "count": 296,
+          "mean_ms": 0.22086621714763513,
+          "p50_ms": 0.172650002,
+          "p95_ms": 0.407999992,
+          "p99_ms": 0.526499987
+        },
+        "running_ms": null,
+        "waiting_ms": null,
+        "critical_path_saving_upper_bound_ms": 0.22086621714763513,
+        "critical_path_saving_lower_bound_ms": 0,
+        "scope": "aggregate elapsed upper bound, not isolated CPU kernel time",
+        "exceeds_screen_floor": false
+      }
+    ],
+    "profiler_alignment": "completed profiler ranges read before HarnessUpdate increments frame ID; no manual frame shift",
+    "residual_scope": "Application Update minus nested RenderPath3D Update; an upper bound including unisolated work",
+    "application": {
+      "sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf",
+      "pe_timestamp": 1790030999,
+      "pdb_guid": "b38c56fa-8750-42bf-bab2-a5536af909af",
+      "pdb_age": 15,
+      "pdb_path_recorded": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\WickedEngine\\BUILD\\x64\\Release\\Tests\\Tests.pdb"
+    },
+    "csv_sha256": "cc4694c60a3dae31f6e7f93670b1f55404cb87ece6173a784a54365b79ab2ad0"
+  },
+  "selected_for_deep_screen": "visibility",
+  "investigated": [
+    {
+      "candidate": "visibility",
+      "module_rva": "0x1cba20",
+      "symbol_length": 2609,
+      "symbol_oracle_only": true,
+      "effects": [
+        "parallel job dispatch and wait",
+        "shared output compaction with atomics",
+        "occlusion history and query updates",
+        "reflection lock",
+        "optional texture creation"
+      ],
+      "inputs": "Source estimate: 32-byte AABB per object plus 96-byte frustum, object state and other scene collections; complete dynamic read set unknown.",
+      "outputs": "Compacted visible indices and shared scene/occlusion state; complete write set unknown.",
+      "consumer": "CPU iterates visibleObjects to issue occlusion queries/draw commands; GPU-only output route not established.",
+      "route_considered": "private GPU output followed by readback before original CPU consumer; not admitted",
+      "smallest_missing_capability": "Recover bulk predicate/compaction boundary from binary, prove all effects/ownership/consumers, preserve output order or prove its irrelevance.",
+      "rejected_shortcut": "Per-object CheckBoxFast is not the whole profiled operation. A hand-authored AABB kernel selected by PDB/engine name violates automatic admission."
+    },
+    {
+      "candidate": "instance_update_residual",
+      "module_rva": "0xa1060",
+      "symbol_length": 5606,
+      "symbol_oracle_only": true,
+      "effects": [
+        "two jobs plus wait",
+        "matrix and emissive-color writes",
+        "CPU sin/pow floating-point behavior",
+        "timer and material state"
+      ],
+      "bytes_source_estimate": {
+        "world_matrix_outputs": 4194304,
+        "emissive_outputs": 1048576,
+        "complete_capture": false
+      },
+      "consumer": "CPU scene update consumes transforms and object data before GPU upload.",
+      "smallest_missing_capability": "Automatic task/strided-memory extraction, complete concurrent-writer ownership, and exact supported FP/library behavior.",
+      "rejected_shortcut": "Replacing CPU sin/pow with HLSL intrinsics without equivalence, or supplying source-defined job offsets."
+    }
+  ],
+  "counts": {
+    "original_invocations_skipped": 0,
+    "offload_GPU_executions": 0
+  },
+  "unknown": [
+    "region running/ready/waiting split",
+    "same-window GPU critical path",
+    "complete input/output ranges and ownership",
+    "transfer and guard costs",
+    "drift",
+    "full-frame offload benefit"
+  ],
+  "source_oracle_fingerprints": {
+    "Samples/Tests/Tests.cpp": "74a1ed1e35a95449ee22aa7da1a1c52d25a653d02d0f9b3a467a8f8fab8c48ea",
+    "Samples/Tests/ArcWickedBridge.cpp": "b68730db39beed9999c1067f9fb82d39eb6eb46dcd4ea4405d28f0f93a104190",
+    "WickedEngine/wiRenderer.cpp": "cd42a6e6d6a60fad3a721edc8de37d2515adb6b2b1e70d004b5089ea66abb172",
+    "WickedEngine/wiPrimitive.cpp": "ffd90c5df48c7a29ea6833f993f4aa2e792497ca339d962b2d46f5ed83e7e4c1",
+    "WickedEngine/wiPrimitive.h": "1365ae79aab6d05a2184088016e60ac6a0dff0c61a9ff09eb811f50e11fa86e9",
+    "WickedEngine/wiProfiler.cpp": "90a2316ef102ce04d7f5fad7d2d91f9293b38bbf21afa0a053da696ced174aa8",
+    "WickedEngine/wiApplication.cpp": "78f09e88cbc1a3c83e3a77f224cf67c71bdf281f7f9de64486655e6bfb16e2fb"
+  },
+  "raw_files": {
+    "cpu-screen-summary.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\cpu-screen-summary.json",
+      "bytes": 3364,
+      "sha256": "af14211add60716f983b439feaec2f92d84cb1a86854328ea6227291c128a1b7"
+    },
+    "cpu-screen.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\cpu-screen.csv",
+      "bytes": 344083,
+      "sha256": "cc4694c60a3dae31f6e7f93670b1f55404cb87ece6173a784a54365b79ab2ad0"
+    },
+    "cpu-screen.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\cpu-screen.csv.json",
+      "bytes": 289,
+      "sha256": "213148492a9a2d91feafaf9816f4f2d99ecad0cfe1a968cf195c3b47d2e8f142"
+    },
+    "deep-symbols.tsv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\deep-symbols.tsv",
+      "bytes": 203,
+      "sha256": "22d89ea0c0ec29892808ab143c77f6e7f85d26b8af876624f527d91eb02f11eb"
+    },
+    "economic-screen.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\economic-screen.json",
+      "bytes": 3968,
+      "sha256": "773a6c1e1611ebe76a681656c2fad777f08e61e16e7eda5d2031356276caa38c"
+    },
+    "symbols.tsv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\symbols.tsv",
+      "bytes": 12085,
+      "sha256": "c62fb7020ab9b26c0a29b4e717463483e0e12a1233af1c392c90e2ff2b13272a"
+    },
+    "visibility-disassembly.txt": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-o0-20260923\\visibility-disassembly.txt",
+      "bytes": 29508,
+      "sha256": "8d9a12793d61655fd77145ccc0a9cbbdcd6e7fb6e50ab7d5c5c41cf211682fad"
+    }
+  },
+  "next_action": "Stop this bounded experiment. A separately scoped automatic bulk-region/memory-ownership capability is required before O1 can execute. Do not resume M5-M7 automatically."
+}

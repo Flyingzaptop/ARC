@@ -1,0 +1,3 @@
+query	rva	length	name
+*CheckBoxFast*	0x239ed0	442	wi::primitive::Frustum::CheckBoxFast
+*UpdateVisibility*lambda_2*operator*	0x1cc660	981	`wi::renderer::UpdateVisibility'::`14'::<lambda_2>::operator()
