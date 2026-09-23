@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "base_commit": "3413c2b",
+  "acceptance": "M0 accepted; M1-M4 corrected, pending re-review; old package unaccepted",
+  "source_sha256_lf": {
+    "src/backends/cpu/capture.hpp": "7444a4870519fb6810d1f1ae06332858055f82ff87a4d49a5a3a7cd4a9ad1a0d",
+    "src/backends/cpu/client.cpp": "f1a85c4ea5780aeea4e0504a5e9d70229305bf5215767013d5b8d4ec8d4d8e79",
+    "src/backends/cpu/client_cost.inl": "54b9bcdc1f1111759de087eb5166258fdddb4bb7db94d799aee5fb8098f04df6",
+    "src/backends/cpu/client_execution.inl": "c17d3e51ef5260054b3491cf3227fc3507f3281b255cda1973ca3af22060e951",
+    "src/backends/cpu/client_registry.inl": "434a6b231fd362386e56a725fdd2f5dee0e5bf987cfacff61723d62ae8df22a9",
+    "src/backends/cpu/client_report.inl": "0652cac3c80335a110dbfd99b0aa9f8eec52c0705ac74e3027349f6e60d45660",
+    "src/backends/cpu/CMakeLists.txt": "7de85603f85f26bf4691d8c77bbe441e64739c6f18ba1a67d9ebe99790eeea2a",
+    "src/backends/cpu/cost_clock.hpp": "a6390b6ba707e2cd6148ebafbd53bdaf5184d0eb2e6c1f7c4f51675048283bd4",
+    "src/backends/cpu/decoder.hpp": "0cb541cc684ae1ab0c0309aa199cd9adc21f5c8c2055d47b9668198c556e6c8e",
+    "include/arc/cpu/publication.hpp": "19678c66a4a38058bee047ab6f6818758ff1b9352e2b81a363e357486b17320c",
+    "include/arc/cpu/region_model.hpp": "5dae54b6c89a8fcdb821a631333305d8a7c525beb52ade72728738328f939dcf",
+    "include/arc/cpu/runtime_cost.hpp": "9cb42e2ea85d28b9597da3461b93a0b7b3c9de515b15408d1baa3cab75d6d3de",
+    "include/arc/discovery_budget.hpp": "cab11de928765de1dbda8cebf0975760d367559efec514845e4342deb01ff8b5",
+    "src/backends/dx12/generic_probe.cpp": "b54941896440b9b20e0970afc3235839443a2f2ee1084ce3130b87c4a1032c0c",
+    "src/backends/dx12/generic_optimizer.cpp": "c917a4a06d00e7b470857eb6717664a0d4967b77baeb7a4183e08f61ce829f0b",
+    "scripts/analyze-cpu-regions.py": "9f3d690469e16eaa6211e91eaaf71078548ae6c646a7c020d51e9fd9707916f3",
+    "tests/discovery_budget_tests.cpp": "4b9a86bb8487571028f52009f458d9b3d8c53fe95648bd56354e5eb05d76777a",
+    "tests/analyze_cpu_regions_test.py": "23abff5ac246c3117b2e4a0d45db211cd3b5ce4e039bc6000eb4efcdc786f10d",
+    "tests/connection_native.cpp": "6ace32fc81289db36e968fb60da9f80a391f9524668c137de2044e1869263d23",
+    "tests/cpu_late_regions.hpp": "5b79e226c3b5420d3c40b58d250e6925f12c7ca6c616be6140ecb652fcd39f13",
+    "tests/cpu_lifecycle_smoke.ps1": "f8ee18f471dcfb30e6e0b9f58b2cbef50a191f928b31590df8cfda4f8e43500f",
+    "tests/cpu_native_fixture.cpp": "5dc315dbb4b4fe29b62077d966af02978ed1c8afed8e412137659a866c2c5534",
+    "tests/cpu_native_regions.asm": "65de155301a70ef68e73c7f19c50d485664fca5a4fbd4333716d8d4731cb31fc",
+    "tests/cpu_native_smoke.ps1": "c522505be8145b144b06ff86f8bc4753c48d041b5ddc0c7d559d98ed0cde71fe",
+    "tests/cpu_region_tests.cpp": "407aad61e4b9c671ec38968b9dad6bd20d1ae912a841afd76a5824ec57499c66",
+    "tests/cpu_runtime_cost_tests.cpp": "082ef280364fdef2ff9e04c57cffb23cf5b8fc6f0f02fe79c4f3d5ad5d8269c0",
+    "tests/cpu_corrective_smoke.ps1": "0e96e14d8895f8deb6d0e28349c80d040c5fdc0054edaa5044243a2e46db82f8"
+  },
+  "binary_sha256": {
+    "cpu_client": "fc7c23fc44bc837b266ef56b9a65376989c9a25e8e30c6c5cbe23c69675e5c6f",
+    "cpu_fixture": "cb6ebdbe7789cf3c1456017974810bac9d589458850d5d73df9685be3fd60ef0",
+    "gpu_probe": "72b9533b36c17c5d3d500941d007d4a487353bafc9d88ad2c14353e63d6424ea",
+    "gpu_fixture": "ebb353fcbdfd7d95e38ceee4d778ea5d30e0cd18ecd2868c04a7661a7b854ac2",
+    "budget_tests": "212254b5ac4e02fd560733762f262179e8b33299e76896b6cc482ff4f93dbc0b",
+    "cost_tests": "a4a152fca717245dd953beb46d0906d569352bdaff2b77093f5f8f195606b0f2"
+  },
+  "environment": {
+    "os": "Windows x64 10.0.26200",
+    "compiler": "MSVC 14.50.35717 Release",
+    "DynamoRIO": "11.3.0-1 pinned",
+    "DXC": "1.9.2602.24 pinned"
+  },
+  "evidence_root": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\m0-m4-corrective-final-verified",
+  "checks": [
+    {
+      "id": "P1-protection",
+      "result": "pass",
+      "command": "tests/cpu_lifecycle_smoke.ps1",
+      "cases": [
+        "protect-other",
+        "protect",
+        "protect-same"
+      ],
+      "risk": "unrelated pages unaffected; restored code has fresh publication"
+    },
+    {
+      "id": "P1-capacity",
+      "result": "pass",
+      "command": "tests/cpu_lifecycle_smoke.ps1",
+      "cases": [
+        "late-hot",
+        "return-evicted"
+      ],
+      "risk": "210 regions, late hot work beyond64, previously admitted evicted code returns"
+    },
+    {
+      "id": "P2-novelty",
+      "result": "pass",
+      "command": "build/Release/arc-discovery-budget-tests.exe",
+      "risk": "exact reusable keyed tickets; two queued captures +2/+60s; >300 completions/evictions; cancellation; concurrency; legacy rearm; no truncated-hash alias"
+    },
+    {
+      "id": "P1-passive-PSO",
+      "result": "pass",
+      "command": "arc-connection-native-tests --passive-pso <fresh> <probe.dll> <arc-shader-tool.exe> <dxcompiler.dll>",
+      "evidence": "gpu-passive/arc.json",
+      "risk": "only eligible same compute PSO prepared without recreation; root/stream/pixel ownership"
+    },
+    {
+      "id": "P2-PID",
+      "result": "pass",
+      "command": "python -m unittest tests/analyze_cpu_regions_test.py -v",
+      "risk": "immutable first end; previous same-name and later different-name owners excluded; ambiguous start declines; exactly3 target samples"
+    },
+    {
+      "id": "M4-cost-model",
+      "result": "pass",
+      "command": "build/Release/arc-cpu-runtime-cost-tests.exe",
+      "risk": "positive/negative choice and timer/tracking/admission charges"
+    },
+    {
+      "id": "M4-runtime",
+      "result": "pass",
+      "evidence": "cpu-auto.json",
+      "risk": "bounded interleaved original/S/M/I real timing through redirect; measured decision"
+    },
+    {
+      "id": "M2-runtime-study",
+      "result": "pass",
+      "evidence": "cpu-study-two.json",
+      "risk": "actual private-loader initialization and both known region tickets consumed over 1.2s"
+    },
+    {
+      "id": "FP-state",
+      "result": "pass",
+      "evidence": "cpu-fp-state.json",
+      "risk": "unmasked precision exceptions and state preservation during timing arithmetic"
+    },
+    {
+      "id": "two-native-studies",
+      "result": "pass",
+      "evidence": "cpu-study-two.json",
+      "expected_completed": 2,
+      "wait_ms": 1200
+    },
+    {
+      "id": "cost-cache-churn",
+      "result": "pass",
+      "evidence": "cpu-cost-churn.json",
+      "risk": "five alternating regions retain independent cost histories despite four data caches",
+      "reproduce": "tests/cpu_corrective_smoke.ps1 -EvidenceDir <fresh>"
+    }
+  ],
+  "cpu_lifecycle": [
+    {
+      "Case": "protect-other",
+      "Discovered": 3,
+      "Invalidations": 0,
+      "Replacements": 0,
+      "ObservedCalls": 0,
+      "Executions": 1952
+    },
+    {
+      "Case": "protect",
+      "Discovered": 5,
+      "Invalidations": 6,
+      "Replacements": 2,
+      "ObservedCalls": 0,
+      "Executions": 1888
+    },
+    {
+      "Case": "protect-same",
+      "Discovered": 5,
+      "Invalidations": 3,
+      "Replacements": 2,
+      "ObservedCalls": 0,
+      "Executions": 1886
+    },
+    {
+      "Case": "late-hot",
+      "Discovered": 68,
+      "Invalidations": 0,
+      "Replacements": 4,
+      "ObservedCalls": 349,
+      "Executions": 2400
+    },
+    {
+      "Case": "return-evicted",
+      "Discovered": 213,
+      "Invalidations": 0,
+      "Replacements": 149,
+      "ObservedCalls": 7360,
+      "Executions": 6847
+    }
+  ],
+  "cpu_cost": [
+    {
+      "id": 2,
+      "timed_spans": 72,
+      "action_median_ns": [
+        200,
+        2200,
+        2200,
+        2200
+      ],
+      "timer_pair_ns": 200,
+      "tracking_ns": 11400,
+      "discovery_ns": 10100,
+      "cost_reason": 2,
+      "cost_action": 0,
+      "cost_samples": [
+        9,
+        9,
+        9,
+        9
+      ],
+      "auto_trial_executions": 45,
+      "auto_policy_executions": 0,
+      "cost_scope": "within_DBI_entry_to_prefix_exit",
+      "cost_aggregation": "last_thread_snapshot"
+    },
+    {
+      "id": 3,
+      "timed_spans": 72,
+      "action_median_ns": [
+        200,
+        2100,
+        2100,
+        2000
+      ],
+      "timer_pair_ns": 200,
+      "tracking_ns": 9800,
+      "discovery_ns": 25600,
+      "cost_reason": 2,
+      "cost_action": 0,
+      "cost_samples": [
+        9,
+        9,
+        9,
+        9
+      ],
+      "auto_trial_executions": 51,
+      "auto_policy_executions": 0,
+      "cost_scope": "within_DBI_entry_to_prefix_exit",
+      "cost_aggregation": "last_thread_snapshot"
+    }
+  ],
+  "gpu": {
+    "observer": {
+      "enabled": true,
+      "presents": 0,
+      "submissions": 0,
+      "novelty": 7,
+      "diagnostic_drops": 0,
+      "correctness_epoch": 2,
+      "producer_high_water": 1,
+      "creation_hints_are_proof": false,
+      "idle_hints_retain_shader_bytecode": true,
+      "retained_pso_and_roots": 0,
+      "retained_code_and_layout_bytes": 0,
+      "retained_capture_drops": 1,
+      "retained_capacity_drops": 0,
+      "retained_unsupported_drops": 1,
+      "retained_copy_drops": 0,
+      "replay_failures": 0,
+      "replayed_objects": 9
+    },
+    "prepared": 1,
+    "faults": 0,
+    "pixel_tracked": 1
+  },
+  "limits": [
+    "No commercial games/full historical matrix run",
+    "CPU register-only MOV/LEA main-EXE subset",
+    "Within-DBI per-thread costs are not no-ARC FPS evidence",
+    "New elevated ETW capture pending",
+    "GPU passive unsupported/oversized inputs report drops",
+    "CPU and DX12 launch modes separate"
+  ],
+  "rerun_notes": "Only affected mechanisms repeated after execution/state/constructor fixes. Unchanged GPU transforms and full benchmark matrices not rerun."
+}

@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--client', required=True, type=Path)
     parser.add_argument('--fixture', type=Path)
     parser.add_argument('--evidence', type=Path)
+    parser.add_argument('--gpu-probe', type=Path, help='Separate DX12 observer update; never loaded by the CPU launcher')
     args = parser.parse_args()
     dr = args.dynamorio.resolve()
     for required in (dr / 'bin64/drrun.exe', dr / 'lib64/release/dynamorio.dll',
@@ -41,6 +42,12 @@ def main():
     shutil.copy2(args.client, out / 'bin/arc_cpu_client.dll')
     if args.fixture:
         shutil.copy2(args.fixture, out / 'bin/cpu_native_fixture.exe')
+    if args.gpu_probe:
+        gpu = out / 'gpu-update'
+        gpu.mkdir()
+        shutil.copy2(args.gpu_probe, gpu / 'arc-dx12-probe.dll')
+        (gpu / 'README.txt').write_text('Separate DX12 passive-discovery correction. Not installed automatically. '
+            'Do not combine this DLL with the CPU DynamoRIO session. See repository correction evidence.\n')
     runtime = out / 'runtime/dynamorio'
     # Keep official relative layout: drrun locates its core and extensions here.
     for subdir in ('bin64', 'lib64', 'ext/lib64', 'ext/bin64'):
@@ -70,7 +77,9 @@ def main():
         'CPU-neutral.cmd — цена DynamoRIO без применения преобразований.\n'
         'CPU-study.cmd — ограниченное изучение CPU-участков.\n'
         'CPU-apply.cmd — применение допустимых CPU-преобразований.\n'
-        'По умолчанию auto сохраняет оригинал: чистый выигрыш ещё не подтверждён.\n'
+        'Auto выполняет ограниченные точные пробы и выбирает действие по замерам\n'
+        'внутри DBI; при отсутствии подтверждённой экономии оставляет оригинал.\n'
+        'Эти замеры не доказывают выигрыш относительно запуска без ARC.\n'
         'Для диагностической проверки: CPU-apply.cmd -Actuator memo\n'
         '(также specialize и incremental). Это может замедлять приложение.\n'
         'Дважды нажмите нужный файл и выберите EXE. Игра должна быть закрыта.\n'

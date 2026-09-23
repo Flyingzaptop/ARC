@@ -20,7 +20,7 @@ but that does not expand the current native decoder's supported set.
 
 The executor observes current register state before effects and skips a prefix
 only when its contract and guards pass. Original execution remains available at
-the same boundary. A changed generation or user stop prevents new admissions.
+the same boundary. A changed generation or user stop prevents new admissions. Protection changes are range-scoped; restored code receives a fresh publication. A 64-slot recency/activity pool admits late hot code and permits evicted code to return.
 This first implementation uses a clean-call execution boundary; DBI and transition
 costs can exceed the removed arithmetic. Execution counts are not speedup evidence.
 
@@ -48,10 +48,17 @@ The first launches natively; the others have separately identified DBI costs.
 The package provides matching `.cmd` entry points with an EXE picker. Select the
 actual target executable; child-process inheritance is disabled by default.
 
-The default `apply/auto` does not infer profitability from a hit count and retains
-original execution while a net-benefit measurement is unavailable. Explicit
-`-Actuator specialize`, `memo` or `incremental` enables diagnostic application of
-that admitted mechanism. These are not automatically accepted performance winners.
+`apply/auto` now takes nine interleaved timing samples per action (original,
+specialize, memo, incremental), including guard failures and redirects. It uses
+median/IQR noise, measured timer and tracking costs, and amortized cold admission
+cost to choose an action. Probing is bounded and repeated after 512 calls. Missing
+clock/completion evidence or no positive margin keeps original execution.
+The scope is **within DBI with the same timing boundary**, not a no-ARC FPS claim.
+Each reported policy is a last-thread snapshot, not process-wide consensus.
+Cost histories have separate fixed storage for all 64 candidate slots per thread;
+evicting one of the four data caches does not restart calibration. A new candidate
+generation does invalidate its old cost evidence.
+Explicit `-Actuator specialize`, `memo` or `incremental` remains diagnostic.
 
 The output folder records executable/client/runner identities, mode and lifetime.
 Its `stop.ps1` requests disabling CPU transformations without killing the game.
