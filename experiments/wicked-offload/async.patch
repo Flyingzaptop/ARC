@@ -1,0 +1,109 @@
+--- a/WickedEngine/wiRenderer.cpp
++++ b/WickedEngine/wiRenderer.cpp
+@@ -39,6 +39,7 @@
+ #include <mutex>
+ #include <cstdlib>
+ extern "C" int ARCControlledCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
++extern "C" int ARCChainCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
+ 
+ using namespace wi::primitive;
+ using namespace wi::graphics;
+@@ -3749,11 +3750,11 @@
+ 		const uint32_t object_loop = (uint32_t)std::min(vis.scene->aabb_objects.size(), vis.scene->objects.GetCount());
+ 		vis.visibleObjects.resize(object_loop);
+         // Explicit source-assisted experiment. All original CPU effects remain.
+-        static const bool controlled = []{const char* p=std::getenv("ARC_CONTROLLED_CULL");return p && std::atoi(p)!=0;}();
++        static const bool controlled = []{const char* p=std::getenv("ARC_CONTROLLED_CULL");const char* q=std::getenv("ARC_ASYNC_CHAIN");return (p && std::atoi(p)!=0)||(q && std::atoi(q)!=0);}();
+         thread_local std::vector<uint32_t> controlled_results;
+         auto& cull_results=controlled_results;
+         int replaced=0;
+-        if(controlled){controlled_results.resize(size_t(object_loop)*2+1);replaced=ARCControlledCull(vis.scene->aabb_objects.data(),object_loop,&vis.frustum,vis.layerMask,controlled_results.data());}
++        if(controlled){controlled_results.resize(size_t(object_loop)*2+1);replaced=ARCChainCull(vis.scene,object_loop,&vis.frustum,vis.layerMask,controlled_results.data());if(!replaced)replaced=ARCControlledCull(vis.scene->aabb_objects.data(),object_loop,&vis.frustum,vis.layerMask,controlled_results.data());}
+ 
+         if(replaced==2){auto count=cull_results[object_loop*2];vis.object_counter.store(count);std::copy_n(cull_results.data()+object_loop,count,vis.visibleObjects.data());}
+ 
+--- a/Samples/Tests/ArcWickedBridge.cpp
++++ b/Samples/Tests/ArcWickedBridge.cpp
+@@ -5,6 +5,7 @@
+ #include "ArcWickedSemanticAudit.h"
+ #include "ArcWickedAttribution.h"
+ #include "ArcControlledVisibility.h"
++#include "ArcAsyncObjectChain.h"
+ 
+ #include "arc/dx12_host_adapter.hpp"
+ #include "arc/quality_profile.hpp"
+@@ -1755,6 +1756,7 @@
+ {
+     if (!device) return;
+     arc_controlled::state.attach(device);
++    arc_chain::chain.attach(device);
+     std::scoped_lock lock(g_bridge_mutex);
+     if (!g_bridge)
+     {
+--- a/WickedEngine/wiScene.cpp
++++ b/WickedEngine/wiScene.cpp
+@@ -12,6 +12,9 @@
+ #include "wiLua.h"
+ #include "wiAllocator.h"
+ #include "wiProfiler.h"
++extern "C" bool ARCChainBegin(void*);
++extern "C" const void* ARCChainFinish(void*);
++#include "ArcChainContract.h"
+ 
+ #include "shaders/ShaderInterop_SurfelGI.h"
+ #include "shaders/ShaderInterop_DDGI.h"
+@@ -381,7 +384,8 @@
+ 
+ 		wi::jobsystem::Wait(ctx); // dependencies
+ 
+-		RunObjectUpdateSystem(ctx);
++		const bool arc_chain_pending = ARCChainBegin(this);
++		if(!arc_chain_pending) RunObjectUpdateSystem(ctx);
+ 
+ 		RunCameraUpdateSystem(ctx);
+ 
+@@ -402,6 +406,9 @@
+ 		RunSpriteUpdateSystem(ctx);
+ 
+ 		RunFontUpdateSystem(ctx);
++
++		// Other independent jobs are now scheduled; consume GPU results only here.
++		if(arc_chain_pending) RunObjectUpdateSystem(ctx);
+ 
+ 		wi::jobsystem::Wait(ctx); // dependencies
+ 
+@@ -4432,6 +4439,7 @@
+ 	}
+ 	void Scene::RunObjectUpdateSystem(wi::jobsystem::context& ctx)
+ 	{
++        const auto* arc_chain_results = static_cast<const ArcChainResult*>(ARCChainFinish(this));
+ 		aabb_objects.resize(objects.GetCount());
+ 		matrix_objects.resize(objects.GetCount());
+ 		matrix_objects_prev.resize(objects.GetCount());
+@@ -4441,7 +4449,7 @@
+ 		parallel_bounds.clear();
+ 		parallel_bounds.resize((size_t)wi::jobsystem::DispatchGroupCount((uint32_t)objects.GetCount(), small_subtask_groupsize));
+ 		
+-		wi::jobsystem::Dispatch(ctx, (uint32_t)objects.GetCount(), small_subtask_groupsize, [&](wi::jobsystem::JobArgs args) {
++		wi::jobsystem::Dispatch(ctx, (uint32_t)objects.GetCount(), small_subtask_groupsize, [&, arc_chain_results](wi::jobsystem::JobArgs args) {
+ 
+ 			Entity entity = objects.GetEntity(args.jobIndex);
+ 			ObjectComponent& object = objects[args.jobIndex];
+@@ -4493,7 +4501,7 @@
+ 				const TransformComponent& transform = *transforms.GetComponent(entity);
+ 
+ 				XMMATRIX W = XMLoadFloat4x4(&transform.world);
+-				aabb = mesh.aabb.transform(W);
++				aabb = arc_chain_results ? arc_chain_results[args.jobIndex].box : mesh.aabb.transform(W);
+ 
+ 				if (mesh.IsSkinned() || mesh.IsDynamic())
+ 				{
+@@ -4533,7 +4541,7 @@
+ 					}
+ 				}
+ 
+-				object.center = aabb.getCenter();
++				object.center = arc_chain_results ? arc_chain_results[args.jobIndex].center : aabb.getCenter();
+ 				object.radius = aabb.getRadius();
+ 
+ 				// LOD select:

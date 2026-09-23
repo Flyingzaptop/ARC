@@ -119,3 +119,17 @@ existing Wicked workload. Both failed to improve measured CPU submission cadence
 no improvement in p95/p99 was confirmed. Full GPU-completed-frame O2 was not measured.
 Original EXE restored, experiment default off. Automatic O0 admission/O1 remain blocked.
 See [controlled experiment report](reports/2026-09-23-controlled-visibility-offload.md).
+
+## Follow-up: larger asynchronous chain
+
+Implemented a source-assisted matrix-to-bounds/center/visibility/compaction chain
+(one or two natural disjoint object packets per frame), deferred CPU consumption,
+resident metadata and sparse metadata updates. Matrices remain CPU-produced.
+Exact native oracle passed on the observed scene after correcting startup partition
+and deferred pointer lifetime faults. Final arithmetic/protocol evidence and faults
+are retained. Two packets reduced consumer wait but both variants slowed measured
+CPU submission cadence. Full GPU-completed-frame gate remains unavailable.
+
+Terminal result: negative on this measured workload, original EXE restored, default
+off. No universal extractor or automatic fraction controller added after failure.
+[Async chain report](reports/2026-09-23-async-object-chain.md).

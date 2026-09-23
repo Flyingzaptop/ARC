@@ -1,0 +1,254 @@
+{
+  "result": "NEGATIVE_ON_CPU_SUBMISSION_CADENCE",
+  "scope": "source-assisted arithmetic/visibility chain; not universal ARC or full O2",
+  "base_commit": "a4c3665",
+  "configuration": {
+    "scene": 18,
+    "objects": 65536,
+    "process_cap_seconds": 15,
+    "analysis_window_seconds": [
+      6,
+      15
+    ],
+    "arc_DLL": false,
+    "existing_profiler": "enabled equally; full-quality mode with TAA off",
+    "resizing_or_quality_changes": false,
+    "full_GPU_completed_frametime": "not captured",
+    "temperature_power_trace": "not captured"
+  },
+  "runs": {
+    "A1": "original saved EXE",
+    "A2": "original saved EXE",
+    "N": "new EXE, chain off",
+    "P1": "one packet per frame, oracle off",
+    "P2": "one packet per frame, oracle off",
+    "Q1": "two disjoint packets per frame, oracle off",
+    "Q2": "two disjoint packets per frame, oracle off",
+    "oracle-final": "two packets, exact CPU oracle; excluded from performance"
+  },
+  "excluded_failures": {
+    "oracle.csv": "Exit 95: startup scene with one object was split into an empty packet; fixed by min(chunks,objects).",
+    "oracle2.csv": "Access violation: deferred object job captured local result pointer by reference; fixed value capture and common result type."
+  },
+  "pipeline": [
+    "snapshot current world matrices and static mesh bounds/layers after scene transform dependencies",
+    "submit private compute packets",
+    "schedule existing independent camera/decal/probe/force/light/sound/sprite/font systems",
+    "wait only before object-update consumers",
+    "consume exact transformed bounds/centers on CPU",
+    "reuse same-frame mask/list during visibility only on matching scene/count/frustum"
+  ],
+  "admission": "Source-assisted rigid meshes; skinned/dynamic meshes, soft bodies, emitters, hair and impostors are excluded. This is not binary inference or production ARC admission.",
+  "resident_data": "Mesh bounds/layers stay in per-slot default buffers; compare current metadata and copy only enclosing changed span. Matrices are uploaded every frame. Bounds/center/culling/compaction are fused on GPU; CPU requires current results.",
+  "constraints": [
+    "Object matrices are still produced on CPU",
+    "GPU instance/draw-command preparation stays on CPU",
+    "No cross-frame reuse or added frames in flight",
+    "Two submitted packets do not prove simultaneous shader execution",
+    "No automatic placement/fraction controller after failed economic screen",
+    "No general FP/alias/lifetime proof beyond controlled scene and source-reviewed ordering",
+    "Process exits on GPU error/timeout: prototype, not production recovery"
+  ],
+  "replacement_ABI": "int values 0/1/2; a4c3665 already used int; actual bounds and cull/compaction skip counts are recorded",
+  "first_consumer_analysis": "Scene object update needs bounds for CPU LOD, radius, GPU instance preparation and other consumers. Only ~0.04 ms of independent CPU work remains between final submit and first wait on this scene.",
+  "oracle": {
+    "oracle3": {
+      "Chain oracle errors": 0.0,
+      "Chain CPU bounds skipped": 26542081.0,
+      "Chain CPU cull compact skipped": 26542080.0
+    },
+    "oracle-final": {
+      "Chain oracle errors": 0.0,
+      "Chain CPU bounds skipped": 28835841.0,
+      "Chain CPU cull compact skipped": 28835840.0
+    }
+  },
+  "files": {
+    "A1.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\A1.csv",
+      "bytes": 560327,
+      "sha256": "2d6f07e2af835cd65f57046355306c94b9edfde8b2f06858f06b4f2174b4820d"
+    },
+    "A1.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\A1.csv.json",
+      "bytes": 289,
+      "sha256": "b8ac254e5de73af8f4590516ff438fbf3c260e7af50d81d58897a9601134966f"
+    },
+    "A2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\A2.csv",
+      "bytes": 527853,
+      "sha256": "150ef673f51bad2a7deaaf2f75fe2e0a7ce6e3523129fe2079472dd9a3d53684"
+    },
+    "A2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\A2.csv.json",
+      "bytes": 289,
+      "sha256": "8913e100023b3654e7f008a055cf58173d4e5ddefee570dcfba5ca4106d3fe49"
+    },
+    "ArcWickedBridge-before.cpp": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\ArcWickedBridge-before.cpp",
+      "bytes": 87913,
+      "sha256": "8453b0fb5585844cb39b13373020fd6b386206e9994e297069ace616f14d5f09"
+    },
+    "build.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\build.log",
+      "bytes": 1474,
+      "sha256": "1f3538fe36a6543ea84acaa75bd5ce172c4f8714ff1fd37513d5c7ddb105e1d4"
+    },
+    "build2.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\build2.log",
+      "bytes": 2370,
+      "sha256": "01a012bb3605e67bb6829f8ebbb46eff685fa3ddae5b77d7814caac5ad4b0508"
+    },
+    "build3.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\build3.log",
+      "bytes": 2394,
+      "sha256": "5a5f64af46491540cb72dccbf88d371967e295c832f8faf12fa9cbe31dd694ce"
+    },
+    "build4.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\build4.log",
+      "bytes": 2410,
+      "sha256": "7d08a9b0da356622a7d85c3726a2f92a517b0091bb8a0cec118087712e3faac2"
+    },
+    "build5.log": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\build5.log",
+      "bytes": 2393,
+      "sha256": "2f053ea40284df78c385b34ab3388ba2aad7c26518fd0b98bae5303bc995f203"
+    },
+    "comparison.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\comparison.json",
+      "bytes": 36255,
+      "sha256": "cd634591d52e2b0a4da02aa7629b741bda4c85826f700d64157a276437c5f772"
+    },
+    "frametimes.svg": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\frametimes.svg",
+      "bytes": 28967,
+      "sha256": "818b9213aa09e384c4a9b1c7c89f0e4a7b102fcd1d3eb86c66891a83e52032c8"
+    },
+    "N.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\N.csv",
+      "bytes": 568343,
+      "sha256": "56295e58c6189f3a4e02942010b9c3443c75b4b03012c37b50a7de67d0991eb8"
+    },
+    "N.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\N.csv.json",
+      "bytes": 289,
+      "sha256": "0653867d3688e3ff08e764d67e6194223fad52427819015366f7ccd450bd9f8c"
+    },
+    "oracle-final.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle-final.csv",
+      "bytes": 902308,
+      "sha256": "08418e3680c074057879389be692c2cfa62f2c6678b22e5f39b45b810d330ead"
+    },
+    "oracle-final.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle-final.csv.json",
+      "bytes": 289,
+      "sha256": "4ed79722db158a2a9cd8bf09650f49ad2e566dc2f6c6ba7d46fc49a898a355c1"
+    },
+    "oracle.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle.csv",
+      "bytes": 16700,
+      "sha256": "fb668ef90d5340d695250f63b6782b5cdc602068e5c36c163ad66b7363f20d89"
+    },
+    "oracle.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle.csv.json",
+      "bytes": 290,
+      "sha256": "c2b9cdf1b023bc24a9fc9d60799df881a95b9bee0e5a9505292c83724712e2bb"
+    },
+    "oracle2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle2.csv",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle2.csv.crash.txt": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle2.csv.crash.txt",
+      "bytes": 87,
+      "sha256": "789b86221e14f8edf608ffe5dd28a21c9fca78da8e34809c56d097718b50b301"
+    },
+    "oracle2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle2.csv.json",
+      "bytes": 299,
+      "sha256": "72c15db34216a963989f547f37cc6621e9dc9474488171711ffa63bfa5896726"
+    },
+    "oracle3.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle3.csv",
+      "bytes": 830286,
+      "sha256": "2a6424e0d92a5c331c758afa409114acf8457a74b52623afeafd4da4aace1a9a"
+    },
+    "oracle3.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\oracle3.csv.json",
+      "bytes": 289,
+      "sha256": "787edf9122fc7c5840a4c565a5982f483c2ce631acc104bd54b93cc0e249a896"
+    },
+    "P1.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\P1.csv",
+      "bytes": 740225,
+      "sha256": "fc7ee194316434f65a91e47503df13a39b6e2c37f5c45bb513b14c317077ec19"
+    },
+    "P1.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\P1.csv.json",
+      "bytes": 289,
+      "sha256": "c9df145bd5c6fe774a8578c9c2bd6212fbe9604838d66a750ff4f420def31c2d"
+    },
+    "P2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\P2.csv",
+      "bytes": 743243,
+      "sha256": "37ff9c76d0c5def73504fa2f29421688ecce043b2745954d4a6e1e9e691c24ee"
+    },
+    "P2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\P2.csv.json",
+      "bytes": 289,
+      "sha256": "12a604fcfc76368fe9fd05252e6a9b2ad7ae7a9769f8e9d35267514a6af38552"
+    },
+    "Q1.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\Q1.csv",
+      "bytes": 880234,
+      "sha256": "67481725fdbbeb33344004d245724f4894ce1dd4f5375b930d1cbef229ee16c3"
+    },
+    "Q1.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\Q1.csv.json",
+      "bytes": 289,
+      "sha256": "e35cb96414b0390c477ad0e410737a554d9d96611c12e2cd924343cea73a8c51"
+    },
+    "Q2.csv": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\Q2.csv",
+      "bytes": 896533,
+      "sha256": "bc818eebee3d518de352395b8c7571da41611ddf08751d91f503cc47cbab2b96"
+    },
+    "Q2.csv.json": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\Q2.csv.json",
+      "bytes": 289,
+      "sha256": "2bcac20696d35bcff6123ba22a0320b6585e9b20d147be1f95d537891f802b39"
+    },
+    "Tests-async-final.exe": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\Tests-async-final.exe",
+      "bytes": 9355776,
+      "sha256": "7c3d8c050c686732204465038bf6c76ea4ea72aeee4a50ca0e0932de0e0d9bef"
+    },
+    "Tests-async.exe": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\Tests-async.exe",
+      "bytes": 9355264,
+      "sha256": "56e839fb0eeb5635e0ccd699e1ac58f0a2c2b7f84b8d8e01fdaba3c5aa8cdf2d"
+    },
+    "wiRenderer-before.cpp": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\wiRenderer-before.cpp",
+      "bytes": 752114,
+      "sha256": "4aca17bb2028e0ecc8fcf983b6382a508751c40d89be7659703527ee4b6de316"
+    },
+    "wiScene-before.cpp": {
+      "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\wiScene-before.cpp",
+      "bytes": 370683,
+      "sha256": "3d6bd924865c4ef9391eef0b74800af33a9099f477759647cad5cc72d148ced3"
+    }
+  },
+  "source_files": {
+    "ArcAsyncObjectChain.h": "4dade4e6bc3ca6e22f30f06e12e1292efa62c3458a06ed6ceebfd54ab3663e79",
+    "ArcChainContract.h": "9d636904e5e0de35b0abd8ef2a23b643959948b8a917463a082c2278ac8edcc5",
+    "async.patch": "c90c6573aaa4e7b99ee42578309011dee04efa95d8150e1f8d54eabee1de0b8f",
+    "analyze_async.py": "bee1ce48c8277a4b479f17a2b2828cf2ce438361c3e2507cde9111138f498937",
+    "test_analyze_async.py": "7c7e7517faf9bd51c01476c753e8d119319ea2c546383042a2bfe3afef10ed32"
+  },
+  "archive": {
+    "path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\offload-async-20260923\\raw-measurements.zip",
+    "sha256": "9e0bec0d6a7aff6f4386007717d8dad574f69437359bcf3b4915be1292310fef"
+  }
+}

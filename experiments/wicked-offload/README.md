@@ -48,3 +48,35 @@ Modes 4/5 assume the observed opaque-instance workload permits parallel list ord
 The GPU uses the real renderer's device, a dedicated compute queue and one in-flight
 operation. Every invocation waits for CPU consumers. No pipelined multi-packet
 scheduler has been implemented or evaluated.
+
+## Async chain follow-up
+
+Apply `async.patch` on top of the recorded synchronous experiment. Copy
+`ArcAsyncObjectChain.h` into Samples/Tests and `ArcChainContract.h` into WickedEngine.
+Use the same Release/x64 build command and MT ARC libraries above.
+
+Keep ARC_CONTROLLED_CULL=0. Set ARC_ASYNC_CHAIN=1 for the source-assisted chain,
+2 for its exact CPU oracle, or 0/unset for the original path. ARC_CHAIN_CHUNKS=1
+submits the whole natural object batch; 2 partitions it into two disjoint batches.
+A one-object scene uses one packet even when two were requested. No frames are
+added to the renderer queue; each batch is consumed in the same Scene::Update.
+
+`analyze_async.py <raw-directory>` produces comparison.json and frametimes.svg.
+`test_analyze_async.py` checks packet-level versus frame-level attribution and the
+first-consumer boundary. Do not sum submit-to-consume gaps as independent CPU work.
+
+The extension replaces AABB corner transformation, center calculation, visibility
+and index compaction for admitted rigid objects. It does not update world matrices
+or generate all draw/instance data. Geometry/metadata stay resident between calls;
+changed metadata spans are uploaded. Current matrices and required CPU outputs
+still cross the bus. GPU shader execution can contend with real rendering.
+
+Source-reviewed supported ordering excludes skinned/dynamic meshes, soft bodies,
+emitters, hair and impostors. The new deferred CPU job captures the result pointer
+BY VALUE. Result storage survives the existing jobsystem Wait; each slot retires by
+its own fence before reuse. Exact scene/count/frustum match gates mask/list reuse.
+Device recreation and production stop/recovery are not provided by this experiment.
+
+The measured result is negative; no automatic placement/fraction controller was
+added. The original Tests.exe has been restored. The source-assisted binaries and
+raw captures remain local at the paths in the async manifest.

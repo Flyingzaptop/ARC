@@ -1,0 +1,1329 @@
+{
+  "runs": {
+    "A1": {
+      "sha256": "2d6f07e2af835cd65f57046355306c94b9edfde8b2f06858f06b4f2174b4820d",
+      "cadence": {
+        "count": 427,
+        "mean": 21.062007962529275,
+        "p50": 20.51970000000074,
+        "p95": 24.115999999999985,
+        "p99": 26.46429999999964,
+        "maximum": 28.037199999999757,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 428,
+          "mean": 11.605910280373832,
+          "p50": 11.3549,
+          "p95": 14.3269,
+          "p99": 15.2214,
+          "maximum": 16.9437,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 427,
+          "mean": 7.709785714285714,
+          "p50": 7.4448,
+          "p95": 9.1566,
+          "p99": 10.0578,
+          "maximum": 11.5127,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 428,
+          "mean": 1.8569457944158878,
+          "p50": 1.70960003,
+          "p95": 2.85039997,
+          "p99": 3.34770012,
+          "maximum": 3.95539999,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 12178,
+      "chain_per_frame": {}
+    },
+    "A2": {
+      "sha256": "150ef673f51bad2a7deaaf2f75fe2e0a7ce6e3523129fe2079472dd9a3d53684",
+      "cadence": {
+        "count": 421,
+        "mean": 21.308521140142517,
+        "p50": 20.871799999998984,
+        "p95": 23.949899999999616,
+        "p99": 25.021300000000338,
+        "maximum": 26.32630000000063,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 422,
+          "mean": 11.74423933649289,
+          "p50": 11.5732,
+          "p95": 13.8173,
+          "p99": 15.0666,
+          "maximum": 15.9597,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 423,
+          "mean": 7.839401654846336,
+          "p50": 7.5956,
+          "p95": 9.4854,
+          "p99": 10.2891,
+          "maximum": 12.6439,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 422,
+          "mean": 1.90492204007109,
+          "p50": 1.79495001,
+          "p95": 2.81640005,
+          "p99": 3.50200009,
+          "maximum": 4.44589996,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 11474,
+      "chain_per_frame": {}
+    },
+    "N": {
+      "sha256": "56295e58c6189f3a4e02942010b9c3443c75b4b03012c37b50a7de67d0991eb8",
+      "cadence": {
+        "count": 422,
+        "mean": 21.259272748815164,
+        "p50": 20.741900000000896,
+        "p95": 23.99409999999989,
+        "p99": 26.141900000000533,
+        "maximum": 28.85200000000077,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 424,
+          "mean": 11.67304103773585,
+          "p50": 11.4165,
+          "p95": 14.1834,
+          "p99": 15.3017,
+          "maximum": 17.5458,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 423,
+          "mean": 7.84005390070922,
+          "p50": 7.5536,
+          "p95": 9.2853,
+          "p99": 10.0586,
+          "maximum": 13.6676,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 423,
+          "mean": 21.258578014184398,
+          "p50": 20.7453,
+          "p95": 23.9964,
+          "p99": 26.1045,
+          "maximum": 28.9029,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 423,
+          "mean": 1.8305463341371158,
+          "p50": 1.71519995,
+          "p95": 2.54970002,
+          "p99": 3.34010005,
+          "maximum": 4.24660015,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 12227,
+      "chain_per_frame": {}
+    },
+    "oracle-final": {
+      "sha256": "08418e3680c074057879389be692c2cfa62f2c6678b22e5f39b45b810d330ead",
+      "cadence": {
+        "count": 338,
+        "mean": 26.540002366863906,
+        "p50": 25.916049999999814,
+        "p95": 29.875199999999495,
+        "p99": 31.80500000000029,
+        "maximum": 42.59399999999914,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 339,
+          "mean": 10.64548466076696,
+          "p50": 10.1839,
+          "p95": 13.0767,
+          "p99": 14.3413,
+          "maximum": 24.0684,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 339,
+          "mean": 14.261959587020648,
+          "p50": 14.0638,
+          "p95": 15.7299,
+          "p99": 17.2746,
+          "maximum": 20.6077,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 339,
+          "mean": 26.53642005899705,
+          "p50": 25.9221,
+          "p95": 29.8823,
+          "p99": 31.7404,
+          "maximum": 42.6645,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 339,
+          "mean": 1.7350333328908554,
+          "p50": 1.60360003,
+          "p95": 2.1961,
+          "p99": 2.48909998,
+          "maximum": 14.6222,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 19342,
+      "chain_per_frame": {
+        "independent_CPU_interval_ms": {
+          "count": 339,
+          "mean": 0.040925368731534205,
+          "p50": 0.03140000000166765,
+          "p95": 0.08449999999993452,
+          "p99": 0.1363999999994121,
+          "maximum": 0.22990000000027067,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain gather ms": {
+          "count": 339,
+          "mean": 1.1784017699115044,
+          "p50": 1.1317,
+          "p95": 1.4986,
+          "p99": 1.7921,
+          "maximum": 2.8369,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain submit ms": {
+          "count": 339,
+          "mean": 1.0994646017699115,
+          "p50": 0.994,
+          "p95": 1.5786,
+          "p99": 2.566,
+          "maximum": 4.0088,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain upload bytes": {
+          "count": 339,
+          "mean": 4194312.0,
+          "p50": 4194312.0,
+          "p95": 4194312.0,
+          "p99": 4194312.0,
+          "maximum": 4194312.0,
+          "above50": 339,
+          "above100": 339
+        },
+        "Chain metadata bytes": {
+          "count": 339,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain in flight packets": {
+          "count": 339,
+          "mean": 2.0,
+          "p50": 2.0,
+          "p95": 2.0,
+          "p99": 2.0,
+          "maximum": 2.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain consumer wait ms": {
+          "count": 339,
+          "mean": 0.5373286135693215,
+          "p50": 0.4214,
+          "p95": 0.8739,
+          "p99": 3.0977,
+          "maximum": 3.243,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain independent gap ms": {
+          "count": 339,
+          "mean": 1.3455209439528024,
+          "p50": 1.2036,
+          "p95": 2.5469,
+          "p99": 3.8445,
+          "maximum": 4.0068,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain readback bytes": {
+          "count": 339,
+          "mean": 3407880.0,
+          "p50": 3407880.0,
+          "p95": 3407880.0,
+          "p99": 3407880.0,
+          "maximum": 3407880.0,
+          "above50": 339,
+          "above100": 339
+        },
+        "Chain commit ms": {
+          "count": 339,
+          "mean": 0.5589076696165192,
+          "p50": 0.48929999999999996,
+          "p95": 1.0877,
+          "p99": 1.4947,
+          "maximum": 1.7567,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain kernel ms": {
+          "count": 339,
+          "mean": 0.1111598820058997,
+          "p50": 0.067584,
+          "p95": 0.357376,
+          "p99": 0.9062399999999999,
+          "maximum": 1.58208,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain oracle errors": {
+          "count": 339,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain CPU bounds skipped": {
+          "count": 339,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 339,
+          "above100": 339
+        },
+        "Chain CPU cull compact skipped": {
+          "count": 339,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 339,
+          "above100": 339
+        }
+      }
+    },
+    "oracle": {
+      "sha256": "fb668ef90d5340d695250f63b6782b5cdc602068e5c36c163ad66b7363f20d89",
+      "cadence": null,
+      "events": {},
+      "total_rows": 316,
+      "chain_per_frame": {}
+    },
+    "oracle2": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cadence": null,
+      "events": {},
+      "total_rows": 0,
+      "chain_per_frame": {}
+    },
+    "oracle3": {
+      "sha256": "2a6424e0d92a5c331c758afa409114acf8457a74b52623afeafd4da4aace1a9a",
+      "cadence": {
+        "count": 327,
+        "mean": 27.43519724770642,
+        "p50": 27.020700000000033,
+        "p95": 30.102599999999256,
+        "p99": 32.30249999999978,
+        "maximum": 35.770800000000236,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 328,
+          "mean": 10.264776219512195,
+          "p50": 9.88175,
+          "p95": 12.4801,
+          "p99": 13.5393,
+          "maximum": 15.4331,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 328,
+          "mean": 15.58560243902439,
+          "p50": 15.4452,
+          "p95": 17.1002,
+          "p99": 18.1076,
+          "maximum": 22.1487,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 328,
+          "mean": 27.440053353658538,
+          "p50": 27.02525,
+          "p95": 30.1041,
+          "p99": 32.3019,
+          "maximum": 35.7939,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 328,
+          "mean": 1.5831359730792682,
+          "p50": 1.502249955,
+          "p95": 2.05850005,
+          "p99": 2.43950009,
+          "maximum": 3.15840006,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 17802,
+      "chain_per_frame": {
+        "independent_CPU_interval_ms": {
+          "count": 328,
+          "mean": 0.058857317073158985,
+          "p50": 0.037599999999656575,
+          "p95": 0.15520000000105938,
+          "p99": 0.1959999999999127,
+          "maximum": 0.263199999999415,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain submit ms": {
+          "count": 328,
+          "mean": 1.6752966463414634,
+          "p50": 1.2292,
+          "p95": 3.0275999999999996,
+          "p99": 3.2965999999999998,
+          "maximum": 3.4863,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain upload bytes": {
+          "count": 328,
+          "mean": 4187918.2317073173,
+          "p50": 4194312.0,
+          "p95": 4194312.0,
+          "p99": 4194312.0,
+          "maximum": 4194312.0,
+          "above50": 328,
+          "above100": 328
+        },
+        "Chain metadata bytes": {
+          "count": 328,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain in flight packets": {
+          "count": 328,
+          "mean": 2.0,
+          "p50": 2.0,
+          "p95": 2.0,
+          "p99": 2.0,
+          "maximum": 2.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain consumer wait ms": {
+          "count": 328,
+          "mean": 0.42980548780487804,
+          "p50": 0.3224,
+          "p95": 1.0093999999999999,
+          "p99": 2.9511000000000003,
+          "maximum": 3.589,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain independent gap ms": {
+          "count": 328,
+          "mean": 1.7179588414634146,
+          "p50": 1.3857499999999998,
+          "p95": 3.1497,
+          "p99": 3.7094,
+          "maximum": 4.3675,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain readback bytes": {
+          "count": 328,
+          "mean": 3407880.0,
+          "p50": 3407880.0,
+          "p95": 3407880.0,
+          "p99": 3407880.0,
+          "maximum": 3407880.0,
+          "above50": 328,
+          "above100": 328
+        },
+        "Chain commit ms": {
+          "count": 328,
+          "mean": 0.7080780487804879,
+          "p50": 0.5468500000000001,
+          "p95": 1.6472,
+          "p99": 1.7545000000000002,
+          "maximum": 2.1624,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain kernel ms": {
+          "count": 328,
+          "mean": 0.11597424390243902,
+          "p50": 0.059392,
+          "p95": 0.257024,
+          "p99": 1.364992,
+          "maximum": 1.49504,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain oracle errors": {
+          "count": 328,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain CPU bounds skipped": {
+          "count": 328,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 328,
+          "above100": 328
+        },
+        "Chain CPU cull compact skipped": {
+          "count": 328,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 328,
+          "above100": 328
+        },
+        "Chain gather ms": {
+          "count": 327,
+          "mean": 2.641724770642202,
+          "p50": 2.4698,
+          "p95": 3.7604,
+          "p99": 4.6802,
+          "maximum": 5.7106,
+          "above50": 0,
+          "above100": 0
+        }
+      }
+    },
+    "P1": {
+      "sha256": "fc7ee194316434f65a91e47503df13a39b6e2c37f5c45bb513b14c317077ec19",
+      "cadence": {
+        "count": 352,
+        "mean": 25.52148863636364,
+        "p50": 25.041849999999613,
+        "p95": 28.155399999999645,
+        "p99": 32.175100000000384,
+        "maximum": 33.40599999999904,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 352,
+          "mean": 11.029727840909091,
+          "p50": 10.8987,
+          "p95": 12.8895,
+          "p99": 14.2473,
+          "maximum": 15.2045,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 353,
+          "mean": 12.81902521246459,
+          "p50": 12.6071,
+          "p95": 14.3762,
+          "p99": 16.6096,
+          "maximum": 21.4341,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 353,
+          "mean": 25.518354674220962,
+          "p50": 25.0393,
+          "p95": 28.139,
+          "p99": 32.1819,
+          "maximum": 33.4038,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 353,
+          "mean": 2.2215118904815863,
+          "p50": 2.18479991,
+          "p95": 2.9914999,
+          "p99": 3.49799991,
+          "maximum": 3.56599998,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 15800,
+      "chain_per_frame": {
+        "independent_CPU_interval_ms": {
+          "count": 353,
+          "mean": 0.043709915014142224,
+          "p50": 0.03240000000005239,
+          "p95": 0.113999999999578,
+          "p99": 0.13870000000133587,
+          "maximum": 0.1592000000000553,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain gather ms": {
+          "count": 353,
+          "mean": 1.244372804532578,
+          "p50": 1.1734,
+          "p95": 1.6039,
+          "p99": 2.0533,
+          "maximum": 3.0696,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain submit ms": {
+          "count": 353,
+          "mean": 1.015585552407932,
+          "p50": 0.8394,
+          "p95": 2.3338,
+          "p99": 2.7564,
+          "maximum": 2.9384,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain upload bytes": {
+          "count": 353,
+          "mean": 4194308.0,
+          "p50": 4194308.0,
+          "p95": 4194308.0,
+          "p99": 4194308.0,
+          "maximum": 4194308.0,
+          "above50": 353,
+          "above100": 353
+        },
+        "Chain metadata bytes": {
+          "count": 353,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain in flight packets": {
+          "count": 353,
+          "mean": 1.0,
+          "p50": 1.0,
+          "p95": 1.0,
+          "p99": 1.0,
+          "maximum": 1.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain consumer wait ms": {
+          "count": 353,
+          "mean": 1.0518390934844193,
+          "p50": 1.0059,
+          "p95": 1.3307,
+          "p99": 3.374,
+          "maximum": 3.5846,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain independent gap ms": {
+          "count": 353,
+          "mean": 0.060690084985835696,
+          "p50": 0.0462,
+          "p95": 0.1372,
+          "p99": 0.1974,
+          "maximum": 0.3175,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain readback bytes": {
+          "count": 353,
+          "mean": 3407876.0,
+          "p50": 3407876.0,
+          "p95": 3407876.0,
+          "p99": 3407876.0,
+          "maximum": 3407876.0,
+          "above50": 353,
+          "above100": 353
+        },
+        "Chain commit ms": {
+          "count": 353,
+          "mean": 0.6366345609065156,
+          "p50": 0.516,
+          "p95": 1.5853,
+          "p99": 1.7624,
+          "maximum": 1.8726,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain kernel ms": {
+          "count": 353,
+          "mean": 0.06354311614730879,
+          "p50": 0.054272,
+          "p95": 0.083968,
+          "p99": 0.391168,
+          "maximum": 0.516096,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain CPU bounds skipped": {
+          "count": 353,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 353,
+          "above100": 353
+        },
+        "Chain CPU cull compact skipped": {
+          "count": 353,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 353,
+          "above100": 353
+        }
+      }
+    },
+    "P2": {
+      "sha256": "37ff9c76d0c5def73504fa2f29421688ecce043b2745954d4a6e1e9e691c24ee",
+      "cadence": {
+        "count": 350,
+        "mean": 25.606748,
+        "p50": 25.14680000000044,
+        "p95": 28.45550000000003,
+        "p99": 30.161800000000767,
+        "maximum": 35.88140000000021,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 351,
+          "mean": 11.082066666666666,
+          "p50": 10.9118,
+          "p95": 13.4518,
+          "p99": 14.7055,
+          "maximum": 15.7112,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 352,
+          "mean": 12.871601704545455,
+          "p50": 12.6098,
+          "p95": 14.267,
+          "p99": 15.2755,
+          "maximum": 23.4815,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 351,
+          "mean": 25.603466096866097,
+          "p50": 25.1443,
+          "p95": 28.468,
+          "p99": 30.1649,
+          "maximum": 35.8991,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 351,
+          "mean": 2.206738751823362,
+          "p50": 2.20900011,
+          "p95": 2.9835999,
+          "p99": 3.29040003,
+          "maximum": 3.85330009,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 15870,
+      "chain_per_frame": {
+        "independent_CPU_interval_ms": {
+          "count": 352,
+          "mean": 0.03653778409083037,
+          "p50": 0.029800000000250293,
+          "p95": 0.07160000000021682,
+          "p99": 0.12170000000151049,
+          "maximum": 0.16040000000066357,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain gather ms": {
+          "count": 352,
+          "mean": 1.2742497159090909,
+          "p50": 1.21045,
+          "p95": 1.6766,
+          "p99": 2.1885,
+          "maximum": 2.4125,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain submit ms": {
+          "count": 352,
+          "mean": 0.9264548295454546,
+          "p50": 0.8092,
+          "p95": 1.6609,
+          "p99": 2.7313,
+          "maximum": 3.3196,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain upload bytes": {
+          "count": 352,
+          "mean": 4194308.0,
+          "p50": 4194308.0,
+          "p95": 4194308.0,
+          "p99": 4194308.0,
+          "maximum": 4194308.0,
+          "above50": 352,
+          "above100": 352
+        },
+        "Chain metadata bytes": {
+          "count": 352,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain in flight packets": {
+          "count": 352,
+          "mean": 1.0,
+          "p50": 1.0,
+          "p95": 1.0,
+          "p99": 1.0,
+          "maximum": 1.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain consumer wait ms": {
+          "count": 352,
+          "mean": 1.0354522727272728,
+          "p50": 0.9468,
+          "p95": 1.4916,
+          "p99": 3.4295,
+          "maximum": 3.6103,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain independent gap ms": {
+          "count": 352,
+          "mean": 0.053359375,
+          "p50": 0.0407,
+          "p95": 0.1139,
+          "p99": 0.1988,
+          "maximum": 0.2599,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain readback bytes": {
+          "count": 352,
+          "mean": 3407876.0,
+          "p50": 3407876.0,
+          "p95": 3407876.0,
+          "p99": 3407876.0,
+          "maximum": 3407876.0,
+          "above50": 352,
+          "above100": 352
+        },
+        "Chain commit ms": {
+          "count": 352,
+          "mean": 0.6402605113636364,
+          "p50": 0.5167,
+          "p95": 1.4406,
+          "p99": 1.7418,
+          "maximum": 2.114,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain kernel ms": {
+          "count": 352,
+          "mean": 0.06187927272727273,
+          "p50": 0.054272,
+          "p95": 0.08192,
+          "p99": 0.344064,
+          "maximum": 0.57856,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain CPU bounds skipped": {
+          "count": 352,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 352,
+          "above100": 352
+        },
+        "Chain CPU cull compact skipped": {
+          "count": 352,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 352,
+          "above100": 352
+        }
+      }
+    },
+    "Q1": {
+      "sha256": "67481725fdbbeb33344004d245724f4894ce1dd4f5375b930d1cbef229ee16c3",
+      "cadence": {
+        "count": 354,
+        "mean": 25.394459887005652,
+        "p50": 24.820349999999962,
+        "p95": 28.63300000000163,
+        "p99": 30.725399999999354,
+        "maximum": 32.2455000000009,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 355,
+          "mean": 11.39714281690141,
+          "p50": 11.2886,
+          "p95": 13.8274,
+          "p99": 14.6463,
+          "maximum": 15.5649,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 354,
+          "mean": 12.32186836158192,
+          "p50": 12.10275,
+          "p95": 13.9799,
+          "p99": 15.9677,
+          "maximum": 17.7965,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 355,
+          "mean": 25.398858028169013,
+          "p50": 24.8186,
+          "p95": 28.6423,
+          "p99": 30.7185,
+          "maximum": 32.2445,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 355,
+          "mean": 2.4137746485070424,
+          "p50": 2.50620008,
+          "p95": 3.17330003,
+          "p99": 3.53699994,
+          "maximum": 4.00930023,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 18815,
+      "chain_per_frame": {
+        "independent_CPU_interval_ms": {
+          "count": 355,
+          "mean": 0.04136816901410243,
+          "p50": 0.03240000000005239,
+          "p95": 0.06870000000071741,
+          "p99": 0.10659999999916181,
+          "maximum": 0.2753000000011525,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain gather ms": {
+          "count": 355,
+          "mean": 1.2038115492957746,
+          "p50": 1.1333,
+          "p95": 1.6392,
+          "p99": 2.1244,
+          "maximum": 3.5213,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain submit ms": {
+          "count": 355,
+          "mean": 1.1681842253521126,
+          "p50": 1.0167,
+          "p95": 1.8771,
+          "p99": 3.0762,
+          "maximum": 4.9458,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain upload bytes": {
+          "count": 355,
+          "mean": 4194312.0,
+          "p50": 4194312.0,
+          "p95": 4194312.0,
+          "p99": 4194312.0,
+          "maximum": 4194312.0,
+          "above50": 355,
+          "above100": 355
+        },
+        "Chain metadata bytes": {
+          "count": 355,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain in flight packets": {
+          "count": 355,
+          "mean": 2.0,
+          "p50": 2.0,
+          "p95": 2.0,
+          "p99": 2.0,
+          "maximum": 2.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain consumer wait ms": {
+          "count": 355,
+          "mean": 0.4851774647887324,
+          "p50": 0.4144,
+          "p95": 0.7805000000000001,
+          "p99": 2.8764000000000003,
+          "maximum": 4.6303,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain independent gap ms": {
+          "count": 355,
+          "mean": 1.2760222535211267,
+          "p50": 1.1745,
+          "p95": 2.2185,
+          "p99": 3.4075,
+          "maximum": 5.3931000000000004,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain readback bytes": {
+          "count": 355,
+          "mean": 3407880.0,
+          "p50": 3407880.0,
+          "p95": 3407880.0,
+          "p99": 3407880.0,
+          "maximum": 3407880.0,
+          "above50": 355,
+          "above100": 355
+        },
+        "Chain commit ms": {
+          "count": 355,
+          "mean": 0.5355121126760564,
+          "p50": 0.44920000000000004,
+          "p95": 0.9779,
+          "p99": 1.6193,
+          "maximum": 1.9887,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain kernel ms": {
+          "count": 355,
+          "mean": 0.09618388732394366,
+          "p50": 0.064512,
+          "p95": 0.253952,
+          "p99": 0.809984,
+          "maximum": 1.518592,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain CPU bounds skipped": {
+          "count": 355,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 355,
+          "above100": 355
+        },
+        "Chain CPU cull compact skipped": {
+          "count": 354,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 354,
+          "above100": 354
+        }
+      }
+    },
+    "Q2": {
+      "sha256": "bc818eebee3d518de352395b8c7571da41611ddf08751d91f503cc47cbab2b96",
+      "cadence": {
+        "count": 359,
+        "mean": 24.947832311977713,
+        "p50": 24.550499999999374,
+        "p95": 27.91440000000057,
+        "p99": 29.6804000000011,
+        "maximum": 31.864199999999983,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Render": {
+          "count": 360,
+          "mean": 10.982293333333333,
+          "p50": 10.884599999999999,
+          "p95": 12.902,
+          "p99": 14.6818,
+          "maximum": 16.0518,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 361,
+          "mean": 12.283157340720221,
+          "p50": 12.1085,
+          "p95": 13.7061,
+          "p99": 14.94,
+          "maximum": 18.789,
+          "above50": 0,
+          "above100": 0
+        },
+        "Controlled Present interval": {
+          "count": 360,
+          "mean": 24.94690027777778,
+          "p50": 24.5622,
+          "p95": 27.9029,
+          "p99": 29.6483,
+          "maximum": 31.8746,
+          "above50": 0,
+          "above100": 0
+        },
+        "Frustum Culling": {
+          "count": 360,
+          "mean": 2.2544588873333335,
+          "p50": 2.272449975,
+          "p95": 3.03439999,
+          "p99": 3.24419999,
+          "maximum": 3.83640003,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "total_rows": 19159,
+      "chain_per_frame": {
+        "independent_CPU_interval_ms": {
+          "count": 361,
+          "mean": 0.03743268698061788,
+          "p50": 0.030899999999746797,
+          "p95": 0.06809999999859428,
+          "p99": 0.09730000000126893,
+          "maximum": 0.13699999999880674,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain gather ms": {
+          "count": 361,
+          "mean": 1.1830747922437672,
+          "p50": 1.1305,
+          "p95": 1.5124,
+          "p99": 2.138,
+          "maximum": 2.4073,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain submit ms": {
+          "count": 361,
+          "mean": 1.0997282548476455,
+          "p50": 0.9794,
+          "p95": 1.7448,
+          "p99": 2.5676,
+          "maximum": 3.4690000000000003,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain upload bytes": {
+          "count": 361,
+          "mean": 4194312.0,
+          "p50": 4194312.0,
+          "p95": 4194312.0,
+          "p99": 4194312.0,
+          "maximum": 4194312.0,
+          "above50": 361,
+          "above100": 361
+        },
+        "Chain metadata bytes": {
+          "count": 361,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0,
+          "maximum": 0.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain in flight packets": {
+          "count": 361,
+          "mean": 2.0,
+          "p50": 2.0,
+          "p95": 2.0,
+          "p99": 2.0,
+          "maximum": 2.0,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain consumer wait ms": {
+          "count": 361,
+          "mean": 0.45020249307479226,
+          "p50": 0.3853,
+          "p95": 0.7232,
+          "p99": 2.9878,
+          "maximum": 3.1346,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain independent gap ms": {
+          "count": 361,
+          "mean": 1.2779975069252079,
+          "p50": 1.1944,
+          "p95": 2.1273,
+          "p99": 3.6688,
+          "maximum": 3.8876,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain readback bytes": {
+          "count": 361,
+          "mean": 3407880.0,
+          "p50": 3407880.0,
+          "p95": 3407880.0,
+          "p99": 3407880.0,
+          "maximum": 3407880.0,
+          "above50": 361,
+          "above100": 361
+        },
+        "Chain commit ms": {
+          "count": 361,
+          "mean": 0.5803861495844875,
+          "p50": 0.4879,
+          "p95": 1.1168,
+          "p99": 1.5269,
+          "maximum": 1.9552,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain kernel ms": {
+          "count": 361,
+          "mean": 0.08658047645429363,
+          "p50": 0.063488,
+          "p95": 0.242688,
+          "p99": 0.478208,
+          "maximum": 0.879616,
+          "above50": 0,
+          "above100": 0
+        },
+        "Chain CPU bounds skipped": {
+          "count": 361,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 361,
+          "above100": 361
+        },
+        "Chain CPU cull compact skipped": {
+          "count": 361,
+          "mean": 65536.0,
+          "p50": 65536.0,
+          "p95": 65536.0,
+          "p99": 65536.0,
+          "maximum": 65536.0,
+          "above50": 361,
+          "above100": 361
+        }
+      }
+    }
+  },
+  "gates": {
+    "P": {
+      "required_ms": 1.059263227566795,
+      "conservative_gain_ms": -4.544740037470724,
+      "scope": "CPU submission cadence only; full GPU completion gate unavailable"
+    },
+    "Q": {
+      "required_ms": 1.059263227566795,
+      "conservative_gain_ms": -4.332451924476377,
+      "scope": "CPU submission cadence only; full GPU completion gate unavailable"
+    }
+  }
+}
