@@ -82,25 +82,35 @@ public:
     std::uint64_t generation() const noexcept { return generation_; }
     std::uint64_t invalid_samples() const noexcept { return invalid_; }
 private:
+    static double mean(const SampleSet& sample) noexcept {
+        // All calls contribute, including expensive misses and failed guards.
+        // Online averaging avoids overflowing a sum of finite durations.
+        double value=0;
+        for(unsigned i=0;i<sample.count;++i)
+            value+=(sample.ns[i]-value)/double(i+1);
+        return value;
+    }
     static std::array<double,2> robust(SampleSet sample) noexcept {
         std::sort(sample.ns.begin(),sample.ns.end());
         return {sample.ns[4],sample.ns[6]-sample.ns[2]};
     }
     void evaluate() noexcept {
         const auto original=robust(sets_[0]);
-        decision_={CostAction::Original,CostReason::NoBenefit,original[0],original[0],0,original[1],
+        const double original_mean=mean(sets_[0]);
+        decision_={CostAction::Original,CostReason::NoBenefit,original_mean,original_mean,0,original[1],
                    timer_ns_+(discovery_ns_+tracking_ns_)/512.0};
         for(unsigned i=1;i<actions;++i) {
             if(!sets_[i].actuations) continue;
             const auto candidate=robust(sets_[i]);
+            const double candidate_mean=mean(sets_[i]);
             // Failed guards/misses are already represented in candidate spans.
             // Do not multiply by hit rate again or hide miss/restore costs.
-            ProfitEstimate estimate{1,1,original[0],candidate[0],0,
+            ProfitEstimate estimate{1,1,original_mean,candidate_mean,0,
                                     timer_ns_,(discovery_ns_+tracking_ns_)/512.0};
             const double noise=std::max({original[1],candidate[1],timer_ns_*2,original[0]*0.05});
             const double saved=estimate.net_work_saved_ns();
             if(estimate.profitable() && saved>noise && saved>decision_.net_saved_ns) {
-                decision_={static_cast<CostAction>(i),CostReason::Profitable,original[0],candidate[0],
+                decision_={static_cast<CostAction>(i),CostReason::Profitable,original_mean,candidate_mean,
                            saved,noise,timer_ns_+(discovery_ns_+tracking_ns_)/512.0};
             }
         }

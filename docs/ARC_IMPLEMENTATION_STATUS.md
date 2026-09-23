@@ -4,7 +4,9 @@ Execution ledger for `ARC_AGENT_IMPLEMENTATION_PLAN.md` (2026-09-23). Status lab
 
 ## Acceptance correction after review of `3413c2b`
 
-M0 is accepted. The review blockers against `3413c2b` have a corrective implementation and targeted evidence in `docs/reports/2026-09-23-m0-m4-corrections.md` and `docs/evidence/M0_M4_CORRECTIONS.json`. M1–M4 are **pending acceptance/re-review**, not declared complete. The old `915a10a` package remains unaccepted; its historical PASS entries do not supersede this review. No full historical test matrix or commercial game was run in the correction pass.
+Following the user's review of `8af02dc`, **M0–M3 are accepted in the declared prototype scope**. M4 remains pending acceptance. Its reproduced mixed-hit/miss cost error is corrected: profitability uses the arithmetic mean of all calls; median/IQR remain noise diagnostics. The exact 9,000 ns versus 20,800 ns regression and the existing positive selection test pass. See `docs/evidence/M4_MEAN_COST_FIX.json`. No full matrix or native execution was repeated for this arithmetic-only correction.
+
+The earlier blockers and scoped checks remain recorded in `docs/reports/2026-09-23-m0-m4-corrections.md` and `docs/evidence/M0_M4_CORRECTIONS.json`; those historical records describe their original versions.
 
 ## Grounded base
 

@@ -27,4 +27,17 @@ int main() {
     assert(!cost.record(CostAction::Memo,7,-1,true));
     assert(cost.invalid_samples()==2);
     cost.clock_unavailable(); assert(cost.next()==CostAction::Original);
+
+    // Eight cheap hits must not hide a miss that makes total cost worse.
+    cost.reset(7);
+    unsigned memo_calls=0;
+    for(unsigned n=0;n<RuntimeCost::samples_per_action*4;++n) {
+        const auto action=cost.next();
+        const bool miss=action==CostAction::Memo && ++memo_calls==9;
+        const double ns=action==CostAction::Original ? 1000 :
+            action==CostAction::Memo ? (miss ? 20000 : 100) : 2000;
+        assert(cost.record(action,7,ns,action!=CostAction::Original && !miss));
+    }
+    assert(cost.decision().action==CostAction::Original);
+    assert(cost.decision().reason==CostReason::NoBenefit);
 }

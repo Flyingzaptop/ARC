@@ -49,9 +49,10 @@ The package provides matching `.cmd` entry points with an EXE picker. Select the
 actual target executable; child-process inheritance is disabled by default.
 
 `apply/auto` now takes nine interleaved timing samples per action (original,
-specialize, memo, incremental), including guard failures and redirects. It uses
-median/IQR noise, measured timer and tracking costs, and amortized cold admission
-cost to choose an action. Probing is bounded and repeated after 512 calls. Missing
+specialize, memo, incremental), including guard failures and redirects. Profit
+uses the arithmetic mean of **all** calls, so expensive misses are not discarded.
+Median/IQR are only noise diagnostics. Measured timer, tracking and amortized cold
+admission costs are also charged. Probing is bounded and repeated after 512 calls. Missing
 clock/completion evidence or no positive margin keeps original execution.
 The scope is **within DBI with the same timing boundary**, not a no-ARC FPS claim.
 Each reported policy is a last-thread snapshot, not process-wide consensus.

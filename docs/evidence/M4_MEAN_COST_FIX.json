@@ -1,0 +1,66 @@
+{
+  "base_commit": "8af02dc",
+  "change": "Mean of all measured call costs drives profitability; median/IQR only estimate noise",
+  "regression": {
+    "original_calls_ns": [
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000
+    ],
+    "memo_calls_ns": [
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      100,
+      20000
+    ],
+    "memo_actuations": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ],
+    "original_total_ns": 9000,
+    "memo_total_ns": 20800,
+    "expected": "Original / NoBenefit",
+    "reproduced_before_fix": "assertion failed at expected Original",
+    "after_fix": "pass"
+  },
+  "positive_case": {
+    "preserved": true,
+    "expected": "Memo / Profitable; net_saved_ns=494",
+    "result": "pass"
+  },
+  "validation": {
+    "command": "cmake --build build --config Release --target arc-cpu-runtime-cost-tests; build/Release/arc-cpu-runtime-cost-tests.exe",
+    "result": "pass",
+    "runtime_build": "arc_cpu_client Release compiled and linked",
+    "native_execution": "not repeated; arithmetic-only change",
+    "full_matrix": "not repeated"
+  },
+  "source_sha256_lf": {
+    "include/arc/cpu/runtime_cost.hpp": "97b09aff34ae1850be03af3f4ee790d7860fdf217499bfa26c2a25dc3bd089ff",
+    "tests/cpu_runtime_cost_tests.cpp": "348fadea28b2e2781835464c92e912d4a8fc74109f70e49e7b9d6e774eb2222b"
+  },
+  "binary_sha256": {
+    "build/Release/arc-cpu-runtime-cost-tests.exe": "c1f351a4afd2151cb0ed2c7c7047d6f10bf40f65a2d99c27e32c82622fa4705b",
+    "build/cpu_backend/Release/arc_cpu_client.dll": "af50cef536c4e08f32310d7bbb2620119e913cbe4047a1ef77911f090b14ca4c"
+  },
+  "acceptance": "M0-M3 accepted by user in prototype scope; M4 correction pending re-review",
+  "old_packages": "Existing packages retain their prior binaries and evidence; not relabeled as containing this fix"
+}
