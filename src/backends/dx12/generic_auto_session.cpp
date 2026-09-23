@@ -1,6 +1,7 @@
 #include "generic_trial_storage.hpp"
 #include "generic_quality_worker.hpp"
 #include "arc/optimizer_quality_profile.hpp"
+#include "arc/gpu_approx_quality.hpp"
 #include "generic_auto_session.hpp"
 #include "generic_optimizer.hpp"
 #include "generic_observation.hpp"
