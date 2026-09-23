@@ -7,6 +7,9 @@
 #include "arc/perceptual_trial.hpp"
 #include "arc/intercept_cpu_meter.hpp"
 #include "generic_runtime.hpp"
+#include "generic_observation.hpp"
+#include "generic_shader_cache.hpp"
+#include "generic_background_budget.hpp"
 #include "generic_command_mirror.hpp"
 #include "generic_pixel_optimizer.hpp"
 #include "generic_gpu_profile.hpp"
@@ -35,6 +38,7 @@ std::atomic<bool> mirror_hooks_ready{};
 std::atomic<bool> detailed_tracking{true};
 std::atomic<bool> passive_hooks{};
 std::atomic<unsigned long long> hook_activation_epoch{1},passive_when_idle{};
+std::set<void*> discovery_hint_targets;
 std::set<void*> detailed_only_targets;
 std::set<void*> optimizer_targets;
 std::set<void*> raster_targets;
@@ -65,7 +69,7 @@ thread_local bool inside_present{};
 bool observe_api() noexcept {return recording.load(std::memory_order_relaxed)&&!inside_present&&!mirror::internal();}
 void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
     if(!recording.load(std::memory_order_relaxed)||(flags&DXGI_PRESENT_TEST))return;
-    presents.fetch_add(1,std::memory_order_relaxed);if(result==S_OK)arc::dx12::placement::present(self);
+    arc::dx12::observation::state().observe_present(0);presents.fetch_add(1,std::memory_order_relaxed);if(result==S_OK)arc::dx12::placement::present(self);
     if(FAILED(result)){
         present_failures.fetch_add(1,std::memory_order_relaxed);last_present_error=result;last_present_sync=sync;last_present_flags=flags;
         ID3D12Device* device=nullptr;
@@ -85,7 +89,7 @@ HRESULT STDMETHODCALLTYPE present1(IDXGISwapChain1* self,UINT sync,UINT flags,co
     if(outer){if(result==S_OK&&!(flags&DXGI_PRESENT_TEST))profile::present(base);observe_present(base,sync,flags,result);if(recording)runtime::after_present(base,resource,result,flags);autotune::present(base,result,flags);}return result;
 }
 void STDMETHODCALLTYPE execute(ID3D12CommandQueue* self,UINT count,ID3D12CommandList* const* commands){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
-    const bool observed=observe_api();auto pixel_ticket=observed?pixel::before_submit(self,count,commands):pixel::Submission{};auto ticket=observed?profile::before_submit(self,count,commands):profile::Submission{};
+    const bool observed=observe_api();if(observed)arc::dx12::observation::state().observe_submission();auto pixel_ticket=observed?pixel::before_submit(self,count,commands):pixel::Submission{};auto ticket=observed?profile::before_submit(self,count,commands):profile::Submission{};
     if(!observed||(!optimizer::execute(self,count,commands)&&!mirror::execute(self,count,commands))){mirror::InternalCall native_call;arc::original_cpu_call([&]{return original_execute(self,count,commands);});}
     if(observed){pixel::after_submit(pixel_ticket,self);profile::after_submit(ticket,self);submits.fetch_add(1,std::memory_order_relaxed);lists.fetch_add(count,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::submit(self,count,commands);}
 }
@@ -225,20 +229,26 @@ HRESULT STDMETHODCALLTYPE command_signature(ID3D12Device* d,const D3D12_COMMAND_
 }
 using GraphicsPsoFn=decltype(ID3D12DeviceVtbl::CreateGraphicsPipelineState);GraphicsPsoFn original_graphics_pso{};
 HRESULT STDMETHODCALLTYPE graphics_pso(ID3D12Device* d,const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
-    if(observe_api())optimizer::cpu_objects_changed();
+    if(observe_api()&&!passive_hooks)optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_graphics_pso(d,desc,iid,out);});}();
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out)arc::dx12::observation::state().notify_creation(1,reinterpret_cast<UINT64>(*out),desc?desc->PS.BytecodeLength:0);
+    if(passive_hooks)return result;
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){pixel::created(p,desc);mirror::pipeline_created(p,desc);profile::graphics_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using ComputePsoFn=decltype(ID3D12DeviceVtbl::CreateComputePipelineState);ComputePsoFn original_compute_pso{};
 HRESULT STDMETHODCALLTYPE compute_pso(ID3D12Device* d,const D3D12_COMPUTE_PIPELINE_STATE_DESC* desc,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
-    if(observe_api())optimizer::cpu_objects_changed();
+    if(observe_api()&&!passive_hooks)optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_compute_pso(d,desc,iid,out);});}();
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out)arc::dx12::observation::state().notify_creation(2,reinterpret_cast<UINT64>(*out),desc?desc->CS.BytecodeLength:0);
+    if(passive_hooks)return result;
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){profile::compute_created(p,desc);optimizer::compute_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using StreamPsoFn=decltype(ID3D12Device2Vtbl::CreatePipelineState);StreamPsoFn original_stream_pso{};
 HRESULT STDMETHODCALLTYPE stream_pso(ID3D12Device2* d,const D3D12_PIPELINE_STATE_STREAM_DESC* desc,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
-    if(observe_api())optimizer::cpu_objects_changed();
+    if(observe_api()&&!passive_hooks)optimizer::cpu_objects_changed();
     const auto result=[&]{mirror::InternalCall native_call;return arc::original_cpu_call([&]{return original_stream_pso(d,desc,iid,out);});}();
+    if(observe_api()&&SUCCEEDED(result)&&out&&*out)arc::dx12::observation::state().notify_creation(3,reinterpret_cast<UINT64>(*out),desc?desc->SizeInBytes:0);
+    if(passive_hooks)return result;
     if(observe_api()&&SUCCEEDED(result)&&out&&*out){ID3D12PipelineState* p=nullptr;if(SUCCEEDED(IUnknown_QueryInterface(reinterpret_cast<IUnknown*>(*out),IID_ID3D12PipelineState,reinterpret_cast<void**>(&p)))){mirror::pipeline_stream_created(p,desc);profile::stream_created(p,desc);optimizer::stream_created(p,desc);ID3D12PipelineState_Release(p);}}return result;
 }
 using RateFn=decltype(ID3D12GraphicsCommandList5Vtbl::RSSetShadingRate);RateFn original_rate{};
@@ -290,6 +300,7 @@ template<class T>bool install(T target,T replacement,T* original){
     // loaded for the process lifetime, just like the probe itself.
     if(installed_count>=installed_targets.size()){++hook_failures;return false;}HMODULE owner{};
     if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,reinterpret_cast<LPCWSTR>(target),&owner)){++hook_failures;return false;}
+    if(reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(graphics_pso)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(compute_pso)||reinterpret_cast<void*>(replacement)==reinterpret_cast<void*>(stream_pso))discovery_hint_targets.insert(reinterpret_cast<void*>(target));
     const auto status=MH_CreateHook(reinterpret_cast<void*>(target),reinterpret_cast<void*>(replacement),reinterpret_cast<void**>(original));
     if(status!=MH_OK){++hook_failures;return false;}installed_targets[installed_count++]=reinterpret_cast<void*>(target);return true;
 }
@@ -303,11 +314,12 @@ bool set_passive_hooks(bool passive,unsigned long long expected_epoch=0){
     std::lock_guard lock(hook_mode_mutex);
     if(expected_epoch&&hook_activation_epoch.load()!=expected_epoch)return false;
     if(!passive){++hook_activation_epoch;passive_when_idle=0;}
+    if(passive&&!passive_hooks){optimizer::observation_gap();arc::dx12::observation::state().mark_correctness_loss();}
     if(passive){detailed_tracking=false;runtime::observation_mode_changed();optimizer::invalidate_all();runtime::invalidate_color_spaces();}
     // Present, Present1 and ExecuteCommandLists stay installed. Cached lists
     // can contain a rate image, which must be neutralized even in passive mode.
     const bool raster=!passive&&(detailed_tracking||raster_setup||mirror::requested_rate()||pixel::active()||profile::needs_raster_observation());
-    for(std::size_t i=3;i<installed_count;++i){const auto target=installed_targets[i];const bool enabled=raster_targets.contains(target)?raster:!passive&&(detailed_tracking||!detailed_only_targets.contains(target)||(optimizer::enabled()&&optimizer_targets.contains(target)));const auto result=enabled?MH_QueueEnableHook(target):MH_QueueDisableHook(target);if(result!=MH_OK)return false;}
+    for(std::size_t i=3;i<installed_count;++i){const auto target=installed_targets[i];const bool enabled=discovery_hint_targets.contains(target)|| (raster_targets.contains(target)?raster:!passive&&(detailed_tracking||!detailed_only_targets.contains(target)||(optimizer::enabled()&&optimizer_targets.contains(target))));const auto result=enabled?MH_QueueEnableHook(target):MH_QueueDisableHook(target);if(result!=MH_OK)return false;}
     if(MH_ApplyQueued()!=MH_OK)return false;passive_hooks=passive;raster_hooks_enabled=raster;return true;
 }
 void refresh_raster_hooks(){
@@ -339,12 +351,17 @@ void snapshot(){
         <<",\"indexed_draw_calls\":"<<indexed.load()<<",\"dispatch_calls\":"<<dispatches.load()
         <<",\"committed_resources\":"<<resources.load()<<",\"hook_failures\":"<<hook_failures.load()
         <<",\"runtime\":";runtime::snapshot(file);file<<",\"pixel_optimizer\":";pixel::snapshot(file);file<<",\"command_mirror\":";mirror::snapshot(file);file<<",\"gpu_profile\":";profile::snapshot(file);file<<",\"optimizer\":";optimizer::snapshot(file);file<<",\"optimizer_cpu\":";optimizer::cpu_snapshot(file);file<<",\"cpu_state_cache\":";optimizer::cpu_cache_snapshot(file);file<<",\"interceptor_cpu\":";optimizer::intercept_cpu_snapshot(file);file<<",\"worker_placement\":";arc::dx12::placement::snapshot(file);file<<",\"optimizer_gpu_control\":";optimizer::control_timing_snapshot(file);file<<",\"optimizer_coverage\":";optimizer::coverage_snapshot(file);file<<",\"automatic_session\":";autotune::snapshot(file);file<<",\"optimizer_calibration\":";optimizer::calibration_snapshot(file);
+    const auto cache_stats=arc::dx12::shader_cache::stats();
+    file<<",\"analysis_cache\":{\"disk_high_water\":"<<cache_stats.bytes_high_water<<",\"last_scanned_bytes\":"<<cache_stats.last_scanned_bytes<<",\"evicted_entries\":"<<cache_stats.evicted_entries<<"}";
+    const auto observed=arc::dx12::observation::state().snapshot();const auto budget=arc::dx12::background_discovery_budget().snapshot();const auto& limits=arc::dx12::background_discovery_budget().config();
+    file<<",\"cheap_observer\":{\"enabled\":true,\"presents\":"<<observed.presents<<",\"submissions\":"<<observed.submissions<<",\"novelty\":"<<observed.novelty<<",\"diagnostic_drops\":"<<observed.diagnostic_drops<<",\"correctness_epoch\":"<<observed.correctness_epoch<<",\"producer_high_water\":"<<observed.claimed_slots_high_water<<",\"creation_hints_are_proof\":false,\"idle_hints_retain_shader_bytecode\":false}"
+        <<",\"discovery_budget\":{\"jobs\":"<<budget.active_jobs<<",\"bytes\":"<<budget.bytes_in_flight<<",\"jobs_high_water\":"<<budget.jobs_high_water<<",\"bytes_high_water\":"<<budget.bytes_high_water<<",\"rejected_jobs\":"<<budget.rejected_jobs<<",\"epoch\":"<<budget.epoch<<",\"active_cpu_captures\":"<<budget.active_captures<<",\"incomplete_cpu_captures\":"<<budget.incomplete_captures<<",\"heavy_workers\":1,\"max_jobs\":"<<limits.outstanding_jobs<<",\"max_bytes\":"<<limits.outstanding_bytes<<",\"cpu_capture_ms\":"<<limits.capture_window.count()<<",\"cpu_capture_events\":"<<limits.capture_events<<",\"cpu_capture_bytes\":"<<limits.capture_bytes<<",\"gpu_capture_ms\":"<<limits.gpu_capture_window.count()<<",\"gpu_capture_events\":"<<limits.gpu_capture_events<<",\"gpu_capture_bytes\":"<<limits.gpu_capture_bytes<<",\"cpu_capture_backend_available\":false}";
     file<<",\"raster_draw_hooks_enabled\":"<<(raster_hooks_enabled?"true":"false")<<",\"render_hooks_passive\":"<<(passive_hooks?"true":"false")<<",\"detailed_tracking_enabled\":"<<(detailed_tracking?"true":"false")<<",\"runtime_object_snapshot_current\":"<<(detailed_tracking?"true":"false")<<",\"coverage_complete\":false,\"note\":\"Object/descriptor lifetime tracking and bounded submitted-work capture. Shader accesses are possible candidates; experimental VRS command substitution is separate from the perceptual controller; no comparable replay reference is established.\"}\n";
     file.close();MoveFileExW(temporary.c_str(),output.c_str(),MOVEFILE_REPLACE_EXISTING);
 }
 DWORD WINAPI logger(void*){
     arc::dx12::cpu_cost::Registration worker_cpu;
-    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();
+    unsigned tick=0;for(;;){try{mirror::collect();profile::collect();arc::dx12::observation::state().drain([](const arc::Event&){});
         if(const auto epoch=passive_when_idle.load();epoch&&!autotune::active()&&!profile::busy()&&pixel::restoration_ready()&&mirror::restoration_ready()&&optimizer::restoration_ready()){
             if(set_passive_hooks(true,epoch)||hook_activation_epoch.load()!=epoch){auto expected=epoch;passive_when_idle.compare_exchange_strong(expected,0);}
         }
@@ -353,13 +370,21 @@ DWORD WINAPI logger(void*){
 }
 
 namespace arc::dx12::hooks {
-bool begin_raster_observation()noexcept{++raster_setup;try{if(set_passive_hooks(false))return true;}catch(...){}--raster_setup;return false;}
+bool begin_raster_observation()noexcept{optimizer::set_discovery_enabled(true);pixel::set_discovery_enabled(true);++raster_setup;try{if(set_passive_hooks(false))return true;}catch(...){}--raster_setup;return false;}
 void end_raster_observation()noexcept{--raster_setup;}
 void request_passive_when_idle()noexcept{passive_when_idle=hook_activation_epoch.load();}
+bool idle_observation(bool idle)noexcept{
+    if(idle){if(profile::busy()||!pixel::restoration_ready()||!mirror::restoration_ready()||!optimizer::restoration_ready())return false;
+        arc::dx12::background_discovery_budget().cancel();optimizer::set_discovery_enabled(false);pixel::set_discovery_enabled(false);}
+    else{optimizer::set_discovery_enabled(true);pixel::set_discovery_enabled(true);}
+    return set_passive_hooks(idle);
+}
+
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcInitialize(void* path){
     if(initialized.load())return 0;
+    try{(void)arc::dx12::observation::state();}catch(...){return 12;}
     bool expected=false;if(!initializing.compare_exchange_strong(expected,true))return 7;
     if(!path)return 1;
     try{output=static_cast<const wchar_t*>(path);if(!output.is_absolute())return 2;std::filesystem::create_directories(output.parent_path());}catch(...){return 3;}
@@ -557,7 +582,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalVrs(void* value){if
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcUseLeanMode(void*){detailed_tracking=false;runtime::observation_mode_changed();return set_passive_hooks(passive_hooks)?0:1;}
-extern "C" __declspec(dllexport) DWORD WINAPI ArcUsePassiveMode(void*){if(autotune::active())return 10;if(profile::busy())return 2;pixel::configure(0);mirror::configure(0);detailed_tracking=false;runtime::observation_mode_changed();return set_passive_hooks(true)?0:1;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcUsePassiveMode(void*){if(autotune::active())return 10;if(profile::busy())return 2;pixel::configure(0);mirror::configure(0);detailed_tracking=false;runtime::observation_mode_changed();return arc::dx12::hooks::idle_observation(true)?0:2;}
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestGpuProfile(void* path){if(autotune::active())return 10;
     if(!path)return 1;if(mirror::requested_rate())return 5;if(!mirror_hooks_ready)return 7;
@@ -567,7 +592,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcRequestGpuProfile(void* path){i
     }catch(...){return 3;}
 }
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStopGpuProfile(void*){if(autotune::active())return 10;profile::stop();return 0;}
-extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(autotune::active())return 10;if(!mode||!optimizer::enabled())return 1;if(!set_passive_hooks(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
+extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCompute(void* mode){if(autotune::active())return 10;if(!mode||!optimizer::enabled())return 1;if(!arc::dx12::hooks::idle_observation(false))return 3;return optimizer::configure(static_cast<const wchar_t*>(mode))?0:4;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcStartOptimizer(void* config){if(!set_passive_hooks(false))return 3;return config&&autotune::start(static_cast<const wchar_t*>(config))?0:1;}
 extern "C" __declspec(dllexport) DWORD WINAPI ArcConfigureRuntime(void* config){
     if(!config||!autotune::configure_runtime(static_cast<const wchar_t*>(config)))return 1;

@@ -1,4 +1,5 @@
 #include "generic_cpu_workers.hpp"
+#include "generic_background_budget.hpp"
 #include "arc/bottleneck_router.hpp"
 #include "arc/intercept_cpu_meter.hpp"
 #include "generic_gpu_profile.hpp"
@@ -64,6 +65,7 @@ struct Session {
     std::uint64_t id{};
     std::filesystem::path path;Clock::time_point deadline,drain_deadline;
     UINT wanted{},presents{};bool stopped{},written{},publishing{},export_failed{},timed_out{};
+    std::uint64_t observed_events{},trace_bytes{};
     std::uint64_t recorded{},submitted{},declined{},unsupported{},overwritten{},faults{},dropped{},abandoned{};
     std::vector<Row> rows;
     std::uint64_t cpu_begin{},cpu_end{},qpc_begin{},qpc_end{},completed_tick{};DWORD present_thread{};void* swapchain{};bool cpu_failed{},mixed_present{},pending_publication{};
@@ -153,9 +155,14 @@ void finish(ID3D12GraphicsCommandList* native,Recording& r){
 }
 void add_work(ID3D12GraphicsCommandList* native,unsigned kind,UINT x,UINT y,UINT z){
     auto it=state().recordings.find(native);if(it==state().recordings.end())return;auto& r=*it->second;if(r.closed)return;
+    auto& session=*r.session;const auto& limits=background_budget_config();if(session.stopped)return;
+    if(++session.observed_events>=limits.gpu_capture_events){++session.declined;if(r.session==state().session)stop();return;}
+    if((session.observed_events&63)==0&&Clock::now()>=session.deadline){session.timed_out=true;if(r.session==state().session)stop();return;}
+
     if(r.open_span){const auto& old=r.spans.back();if(old.kind!=kind||(kind==2&&old.pipeline!=r.current))end_span(native,r);}
     if(!r.open_span){
         if(r.spans.size()>=max_spans){++r.session->declined;if(r.session==state().session&&!r.session->stopped)stop();return;}
+        if(session.trace_bytes+sizeof(Span)+16>limits.gpu_capture_bytes){++session.declined;if(r.session==state().session)stop();return;}session.trace_bytes+=sizeof(Span)+16;
         Span span;span.kind=kind;span.pipeline=r.current;span.dispatch[0]=x;span.dispatch[1]=y;span.dispatch[2]=z;r.spans.push_back(std::move(span));
         mirror::InternalCall internal;native->EndQuery(r.queries.Get(),D3D12_QUERY_TYPE_TIMESTAMP,static_cast<UINT>((r.spans.size()-1)*2));r.open_span=true;
     }
@@ -184,7 +191,7 @@ void write_report(Session& session,unsigned pending){
     auto temp=session.path;temp+=L".tmp";std::ofstream out(temp,std::ios::trunc);out<<std::setprecision(14);
     out<<"{\"schema\":1,\"engine_labels_used\":false,\"shader_mutations\":0,\"image_readbacks\":0,\"resource_dependencies_complete\":false,\"present_windows_requested\":"<<session.wanted
         <<",\"present_windows\":"<<session.presents<<",\"timed_out\":"<<(session.timed_out?"true":"false")<<",\"recordings\":"<<session.recorded<<",\"submissions\":"<<session.submitted
-        <<",\"capacity_declines\":"<<session.declined<<",\"unsupported_segments\":"<<session.unsupported<<",\"cached_replay_samples_dropped\":"<<session.overwritten<<",\"dropped_intervals\":"<<session.dropped
+        <<",\"observed_events\":"<<session.observed_events<<",\"trace_bytes\":"<<session.trace_bytes<<",\"capacity_declines\":"<<session.declined<<",\"unsupported_segments\":"<<session.unsupported<<",\"cached_replay_samples_dropped\":"<<session.overwritten<<",\"dropped_intervals\":"<<session.dropped
         <<",\"present_thread_id\":"<<session.present_thread<<",\"cpu_begin_100ns\":"<<session.cpu_begin<<",\"cpu_end_100ns\":"<<session.cpu_end<<",\"qpc_begin\":"<<session.qpc_begin<<",\"qpc_end\":"<<session.qpc_end<<",\"mixed_present_sources\":"<<(session.mixed_present?"true":"false")
         <<",\"abandoned_recordings\":"<<session.abandoned<<",\"faults\":"<<session.faults<<",\"pending_gpu_jobs\":"<<pending<<",\"intervals\":[";
     std::map<std::uint64_t,std::shared_ptr<Pipeline>> pipelines;bool first=true;
@@ -336,7 +343,7 @@ bool request(const std::wstring& path,UINT windows)noexcept{
     if(!hooks::begin_raster_observation())return false;
     struct EndSetup {~EndSetup(){hooks::end_raster_observation();}} setup;
     bool accepted=false;safe([&]{auto& s=state();if(path.empty()||windows<1||windows>128||(s.session&&!s.session->written&&!s.session->export_failed)||!std::filesystem::is_directory(std::filesystem::absolute(path).parent_path())||std::filesystem::exists(path)||std::filesystem::exists(path+L".tmp"))return;
-        auto session=std::make_shared<Session>();session->id=++s.next_session;session->path=path;session->wanted=windows;session->deadline=Clock::now()+std::chrono::seconds(10);session->drain_deadline=session->deadline+std::chrono::seconds(5);session->rows.reserve(max_rows);s.session=std::move(session);s.capturing=true;accepted=true;});return accepted;
+        auto session=std::make_shared<Session>();session->id=++s.next_session;session->path=path;session->wanted=windows;session->deadline=Clock::now()+background_budget_config().gpu_capture_window;session->drain_deadline=session->deadline+std::chrono::seconds(5);session->rows.reserve(max_rows);s.session=std::move(session);s.capturing=true;accepted=true;});return accepted;
 }
 bool busy()noexcept{bool result=true;safe([&]{auto& s=state();result=s.open||s.capturing||(s.session&&!s.session->written&&!s.session->export_failed);});return result;}
 bool needs_raster_observation()noexcept{return state().open.load(std::memory_order_relaxed)||state().capturing.load(std::memory_order_relaxed);}
@@ -362,7 +369,7 @@ void collect()noexcept{
                 if(job.serial!=r.serial)++session.overwritten;
                 else{void* data{};D3D12_RANGE range{0,r.spans.size()*16},empty{};
                     if(SUCCEEDED(r.readback->Map(0,&range,&data))){const auto* ticks=static_cast<const UINT64*>(data);
-                        for(std::size_t i=0;i<r.spans.size();++i){if(session.rows.size()>=max_rows){++session.dropped;continue;}if(!ticks[i*2]||!ticks[i*2+1]||ticks[i*2+1]<ticks[i*2]||double(ticks[i*2+1]-ticks[i*2])/double(job.queue->frequency)>10){++session.faults;continue;}
+                        for(std::size_t i=0;i<r.spans.size();++i){if(session.rows.size()>=max_rows||session.trace_bytes+sizeof(Row)>background_budget_config().gpu_capture_bytes){++session.dropped;continue;}session.trace_bytes+=sizeof(Row);if(!ticks[i*2]||!ticks[i*2+1]||ticks[i*2+1]<ticks[i*2]||double(ticks[i*2+1]-ticks[i*2])/double(job.queue->frequency)>10){++session.faults;continue;}
                             session.rows.push_back({r.spans[i],r.id,job.frame,job.queue->id,job.serial,ticks[i*2],ticks[i*2+1],job.queue->frequency});}
                         r.readback->Unmap(0,&empty);
                     }else ++session.faults;

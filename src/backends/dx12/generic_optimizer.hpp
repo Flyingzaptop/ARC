@@ -15,6 +15,8 @@
 
 namespace arc::dx12::optimizer {
 bool enabled() noexcept;
+void set_discovery_enabled(bool) noexcept;
+void observation_gap() noexcept;
 std::uint64_t cpu_nanoseconds() noexcept;
 void cpu_snapshot(std::ostream&);
 void intercept_cpu_snapshot(std::ostream&);

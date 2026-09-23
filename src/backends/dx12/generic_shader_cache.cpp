@@ -6,6 +6,8 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <atomic>
+#include <cctype>
 #include <stdexcept>
 namespace arc::dx12::shader_cache {
 namespace {
@@ -13,6 +15,8 @@ using Json=nlohmann::json;
 std::filesystem::path suffix(std::filesystem::path path,std::string_view ending){path+=std::filesystem::path(ending);return path;}
 const std::array<const char*,3> suffixes{"", ".contract", ".access.ll"};
 const std::array<const char*,2> optional_suffixes{".spatial.bin",".probe.bin"};
+std::atomic<std::uintmax_t> cache_bytes_high{}, cache_last_bytes{};
+std::atomic<std::uint64_t> cache_evictions{};
 bool valid_key(const std::string& key){return key.size()==64&&std::all_of(key.begin(),key.end(),[](char c){return(c>='0'&&c<='9')||(c>='a'&&c<='f');});}
 std::vector<std::byte> read(const std::filesystem::path& path,std::uintmax_t cap=128*1024*1024){
     const auto size=std::filesystem::file_size(path);if(!size||size>cap)throw std::runtime_error("Shader cache file size");
@@ -20,6 +24,15 @@ std::vector<std::byte> read(const std::filesystem::path& path,std::uintmax_t cap
 }
 void write(const std::filesystem::path& path,std::span<const std::byte> bytes){std::ofstream file(path,std::ios::binary);file.write(reinterpret_cast<const char*>(bytes.data()),bytes.size());file.close();if(!file)throw std::runtime_error("Shader cache write");}
 }
+bool stable_decline(std::string_view reason)noexcept{
+    if(!reason.starts_with("Shader declined:")||reason.size()>512)return false;
+    // A bounded analyzer can run out of space or time on a later retry. Such
+    // outcomes are operational, not semantic facts about the shader.
+    constexpr std::string_view transient[]{"capacity","budget","timeout","incomplete","overflow","exhausted","out_of_memory","oom","retry"};
+    for(const auto word:transient){auto found=std::search(reason.begin(),reason.end(),word.begin(),word.end(),[](char a,char b){return std::tolower(static_cast<unsigned char>(a))==b;});if(found!=reason.end())return false;}
+    return true;
+}
+CacheStats stats()noexcept{return {cache_bytes_high.load(),cache_last_bytes.load(),cache_evictions.load()};}
 std::string digest(std::span<const std::byte> bytes){
     if(bytes.size()>ULONG_MAX)throw std::runtime_error("Hash size");std::array<UCHAR,32> hash{};
     if(BCryptHash(BCRYPT_SHA256_ALG_HANDLE,nullptr,0,reinterpret_cast<PUCHAR>(const_cast<std::byte*>(bytes.data())),ULONG(bytes.size()),hash.data(),ULONG(hash.size()))<0)throw std::runtime_error("SHA256");
@@ -50,12 +63,12 @@ bool store(const std::filesystem::path& root,const std::string& key,const std::f
 std::string restore_decline(const std::filesystem::path& root,const std::string& key)noexcept{
     try{if(!valid_key(key))return {};const auto path=root/(key+".json");if(std::filesystem::file_size(path)>4096)return {};
         std::ifstream file(path);const auto value=Json::parse(file);const auto reason=value.at("declined").get<std::string>();
-        if(value.at("schema")!=1||value.at("key")!=key||reason.empty()||reason.size()>512||value.at("reason_sha256")!=digest({reinterpret_cast<const std::byte*>(reason.data()),reason.size()}))return {};
+        if(value.at("schema")!=1||value.at("key")!=key||!stable_decline(reason)||value.at("reason_sha256")!=digest({reinterpret_cast<const std::byte*>(reason.data()),reason.size()}))return {};
         return reason;
     }catch(...){return {};}
 }
 bool store_decline(const std::filesystem::path& root,const std::string& key,const std::string& reason)noexcept{
-    try{if(!valid_key(key)||reason.empty()||reason.size()>512)return false;std::filesystem::create_directories(root);
+    try{if(!valid_key(key)||!stable_decline(reason))return false;std::filesystem::create_directories(root);
         const auto final=root/(key+".json"),temp=root/(key+".tmp-"+std::to_string(GetCurrentProcessId()));
         const Json value{{"schema",1},{"key",key},{"declined",reason},{"reason_sha256",digest({reinterpret_cast<const std::byte*>(reason.data()),reason.size()})}};
         std::ofstream file(temp);file<<value.dump();file.close();return file&&MoveFileExW(temp.c_str(),final.c_str(),MOVEFILE_REPLACE_EXISTING);
@@ -64,8 +77,10 @@ bool store_decline(const std::filesystem::path& root,const std::string& key,cons
 void trim(const std::filesystem::path& root,std::uintmax_t maximum)noexcept{
     try{if(!std::filesystem::is_directory(root))return;std::uintmax_t total=0;std::vector<std::filesystem::directory_entry> manifests;
         for(const auto& entry:std::filesystem::directory_iterator(root)){if(!entry.is_regular_file())continue;total+=entry.file_size();if(entry.path().extension()==L".json"&&valid_key(entry.path().stem().string()))manifests.push_back(entry);}
+        cache_last_bytes.store(total);auto peak=cache_bytes_high.load();while(peak<total&&!cache_bytes_high.compare_exchange_weak(peak,total)){}
         std::sort(manifests.begin(),manifests.end(),[](const auto& a,const auto& b){return a.last_write_time()<b.last_write_time();});
-        for(const auto& entry:manifests){if(total<=maximum)break;const auto key=entry.path().stem().string();for(const char* suffix:{".json","", ".contract", ".access.ll", ".spatial.bin", ".probe.bin"}){const auto path=root/(key+suffix);if(std::filesystem::is_regular_file(path)){const auto bytes=std::filesystem::file_size(path);if(std::filesystem::remove(path))total=total>bytes?total-bytes:0;}}}
+        for(const auto& entry:manifests){if(total<=maximum)break;const auto key=entry.path().stem().string();bool removed=false;for(const char* suffix:{".json","", ".contract", ".access.ll", ".spatial.bin", ".probe.bin"}){const auto path=root/(key+suffix);if(std::filesystem::is_regular_file(path)){const auto bytes=std::filesystem::file_size(path);if(std::filesystem::remove(path)){total=total>bytes?total-bytes:0;removed=true;}}}if(removed)cache_evictions.fetch_add(1);}
+        cache_last_bytes.store(total);
     }catch(...){}
 }
 }

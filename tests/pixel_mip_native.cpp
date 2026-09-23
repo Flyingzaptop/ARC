@@ -126,6 +126,8 @@ int wmain(int argc,wchar_t** argv)try{
         check(pixel_control(off)==0,"Disable live pixel control");check(cached()==reference,"Live cached command restores original pixels");
         check(pixel_control(strong)==0,"Enable before unknown-state test");check(render(original.Get(),true)==reference,"Late unknown state selects neutral cached shader");
         check(render(original.Get())==oracle_pixels[8],"Fresh recording requalifies");check(passive_control&&passive_control(nullptr)==0,"Passive disable");check(cached()==reference,"Passive mode restores cached pixel shader");
+        check(pixel_control(strong)==0,"Reenable after passive mode");check(cached()==reference,"Old cached list remains neutral after republication");
+        check(render(original.Get())==oracle_pixels[8],"Fresh list uses republished pixel variant");
         std::cout<<"Live injected pixel mip switching and cached rollback PASS\n";
     }
 

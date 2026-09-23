@@ -21,6 +21,10 @@ int main(){
     cache::trim(root/L"cache",0);assert(!cache::restore(root/L"cache",key,missing));
     assert(cache::store_decline(root/L"cache",key,"Shader declined: unsupported_group_memory"));
     assert(cache::restore_decline(root/L"cache",key)=="Shader declined: unsupported_group_memory");
+    assert(!cache::stable_decline("Shader declined: analysis_capacity"));
+    assert(!cache::stable_decline("Shader declined: budget_exhausted"));
+    assert(!cache::store_decline(root/L"cache",key,"Shader declined: analysis_capacity"));
+    assert(cache::restore_decline(root/L"cache",key)=="Shader declined: unsupported_group_memory");
     assert(cache::restore_decline(root/L"cache",std::string(64,'e')).empty());
     {std::ofstream corrupt(root/L"cache"/(key+".json"));corrupt<<"{bad json";}
     assert(cache::restore_decline(root/L"cache",key).empty());

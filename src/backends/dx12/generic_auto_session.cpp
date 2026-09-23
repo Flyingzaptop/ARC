@@ -3,6 +3,8 @@
 #include "arc/optimizer_quality_profile.hpp"
 #include "generic_auto_session.hpp"
 #include "generic_optimizer.hpp"
+#include "generic_observation.hpp"
+#include "generic_background_budget.hpp"
 #include "generic_runtime.hpp"
 #include "generic_gpu_profile.hpp"
 #include "generic_command_mirror.hpp"
@@ -532,10 +534,10 @@ bool start(const wchar_t* config_path)noexcept{
         if((!s.feedback_only&&(!s.python.is_absolute()||!s.critic.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)))||!s.directory.is_absolute()||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
         std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.telemetry_device.Reset();s.swapchain=nullptr;s.window=nullptr;s.width=s.height=0;s.fullscreen=false;s.swapchain_identity=0;s.surface_revision=0;s.transaction_revision=0;s.retained_action=s.retained_until=0;s.capture_invalid=false;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
         const auto importance_profile=config.value("importance_profile",std::string("balanced"));if(importance_profile!="balanced"&&importance_profile!="center")throw std::runtime_error("Unknown importance profile");optimizer::center_priority(importance_profile=="center");
-        optimizer::configure(L"off");optimizer::reset_binding_evidence();optimizer::reset_activity_counters();s.observing=true;HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
+        optimizer::set_discovery_enabled(true);pixel::set_discovery_enabled(true);optimizer::configure(L"off");optimizer::reset_binding_evidence();optimizer::reset_activity_counters();s.observing=true;HANDLE thread=CreateThread(nullptr,0,run,nullptr,0,nullptr);if(!thread)throw std::runtime_error("Session thread");CloseHandle(thread);return true;
     }catch(...){s.running=false;return false;}
 }
-void stop()noexcept{auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();pixel::configure(0);mirror::configure(0);optimizer::approve_policy(0,0);optimizer::pause_spatial_probes(true);optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
+void stop()noexcept{background_discovery_budget().cancel();optimizer::set_discovery_enabled(false);pixel::set_discovery_enabled(false);auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();pixel::configure(0);mirror::configure(0);optimizer::approve_policy(0,0);optimizer::pause_spatial_probes(true);optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
 bool target(double fps)noexcept{auto& s=state();if(!std::isfinite(fps)||fps<=0||fps>1000||!s.running||s.cancel)return false;s.requested_target=fps;return true;}
 bool active()noexcept{return state().running.load();}
 void diagnostics(bool enabled)noexcept{state().diagnostics_enabled=enabled;}

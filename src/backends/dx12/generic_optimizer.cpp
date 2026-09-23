@@ -1,4 +1,5 @@
 #include "arc/uniform_scene_guard.hpp"
+#include "arc/candidate_contract.hpp"
 #include "generic_performance_proposal.hpp"
 #include <dxgi1_6.h>
 #include "generic_spatial_probe.hpp"
@@ -40,9 +41,9 @@ struct Root {std::uint64_t id{};ID3D12RootSignature* native{};std::vector<std::b
 struct AllocationCache {Ptr<ID3D12Device> device;std::map<std::array<UINT64,11>,UINT64> sizes;};
 struct VariantStats {std::uint64_t id{},attempts{},admitted{},uniform_attempts{},uniform_proven{},uniform_steps{},uniform_known_reads{},uniform_unknown_reads{};double uniform_cpu_ms{};std::string last_reason,uniform_reason;UINT binding_class{},binding_register{},binding_space{};};
 using UniformReadKey=std::tuple<unsigned,unsigned,unsigned>;
-struct Variant:VariantStats {std::string analysis_key;Ptr<ID3D12RootSignature> root,probe_root;Ptr<ID3D12PipelineState> pipeline,spatial_pipeline,probe_pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;std::vector<std::array<unsigned,3>> state_reads;std::vector<unsigned> state_masks;std::vector<shader::UniformWords> scene_words;std::uint64_t scene_frame{};bool proof_pending{};std::uint64_t retry_after{};};
-struct UniformJob {std::shared_ptr<Variant> variant;std::map<UniformReadKey,shader::UniformWords> words;};
-struct Pipeline {std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};bool queued{};};
+struct Variant:VariantStats {arc::CandidateRecord candidate;std::unique_ptr<arc::PublishedCandidate> publication;arc::CandidateFingerprint fingerprint{};std::string analysis_key;Ptr<ID3D12RootSignature> root,probe_root;Ptr<ID3D12PipelineState> pipeline,spatial_pipeline,probe_pipeline;shader::Transform contract;std::shared_ptr<const shader::UniformAccessProgram> access;shader::ResourceUsage cached_usage;std::map<UniformReadKey,shader::UniformWords> cached_reads;std::set<UniformReadKey> requested_reads;std::vector<std::array<unsigned,3>> state_reads;std::vector<unsigned> state_masks;std::vector<shader::UniformWords> scene_words;std::uint64_t scene_frame{};bool proof_pending{};std::uint64_t retry_after{};};
+struct UniformJob {std::uint64_t epoch{};std::shared_ptr<Variant> variant;std::map<UniformReadKey,shader::UniformWords> words;};
+struct Pipeline {std::atomic<bool> retired{};std::optional<arc::DiscoveryBudget::JobLease> reservation;std::uint64_t id{},profile_id{};Ptr<ID3D12Device> device;std::shared_ptr<Root> root;std::vector<std::byte> code;std::shared_ptr<Variant> variant;std::string reason{"queued"};bool queued{};};
 struct Signature {bool known{},compute{};std::shared_ptr<Root> root;std::vector<D3D12_INDIRECT_ARGUMENT_DESC> resets;};
 struct Use {std::shared_ptr<Variant> variant;binding::Arguments arguments;std::vector<std::uint64_t> heaps;UINT x{},y{},z{};bool calibration{};std::shared_ptr<SpatialProbeGpu> probe;};
 struct CpuRecordingState {
@@ -89,7 +90,7 @@ struct State {
     std::vector<std::uint64_t> catalog_targets,record_targets;
     std::uint64_t selected_pipeline{},cost_session{},cost_prepared{};double selected_cost{};
     bool protect_edges{},instrumentation{true},measure_control{};float edge_threshold{.08f};
-    bool compile_on_demand{};
+    bool compile_on_demand{};std::atomic<bool> discovery_enabled{true};std::uint64_t cancelled_jobs{},candidate_guard_declines{},candidate_guard_passes{},correctness_epoch{1};
     std::filesystem::path worker,compiler,cache,persistent_cache;
     std::string compiler_identity;
     std::deque<std::string> events;std::uint64_t cache_hits{},cache_misses{},events_dropped{};
@@ -177,7 +178,7 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()override{return ++count;}
     ULONG STDMETHODCALLTYPE Release()override{arc::InterceptCpuMeter::Scope cpu_hook(!cpu_cost::on_worker_thread());const auto n=--count;if(!n){safe([&]{auto& s=state();
         if(kind==1)s.roots.erase(static_cast<ID3D12RootSignature*>(object));
-        else if(kind==2){const auto it=s.pipelines.find(static_cast<ID3D12PipelineState*>(object));if(it!=s.pipelines.end())s.binding_evidence.retire_pipeline(it->second->id);if(it!=s.pipelines.end()&&!it->second->queued)s.queued_code_bytes-=it->second->code.size();s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));++s.cpu_generation;}
+        else if(kind==2){const auto it=s.pipelines.find(static_cast<ID3D12PipelineState*>(object));if(it!=s.pipelines.end()){it->second->retired=true;if(it->second->variant&&it->second->variant->publication)it->second->variant->publication->invalidate(arc::CandidateReason::GenerationChanged);s.binding_evidence.retire_pipeline(it->second->id);}if(it!=s.pipelines.end()&&!it->second->queued)s.queued_code_bytes-=it->second->code.size();s.pipelines.erase(static_cast<ID3D12PipelineState*>(object));++s.cpu_generation;}
         else if(kind==3){auto found=s.commands.find(static_cast<ID3D12GraphicsCommandList*>(object));
             if(found!=s.commands.end()&&found->second.cpu_cache){const auto& cpu=*found->second.cpu_cache;found->second.cpu_cache->usable=false;s.cpu_state_attempts+=cpu.attempts.load();s.cpu_state_skipped+=cpu.skipped.load();}
             ++s.cpu_lookup_epoch;s.commands.erase(static_cast<ID3D12GraphicsCommandList*>(object));}
@@ -277,8 +278,8 @@ shader::ResourceUsage uniform_usage(const Use& use,const std::vector<binding::De
     }
     // Abstract interpretation can explore many paths. Only bounded CPU-visible
     // snapshots and cached-proof validation belong on the submission thread.
-    if(!variant.proof_pending&&variant.uniform_attempts>=variant.retry_after&&state().uniform_jobs.size()<64){
-        UniformJob job;job.variant=use.variant;
+    if(state().discovery_enabled&&!variant.proof_pending&&variant.uniform_attempts>=variant.retry_after&&state().uniform_jobs.size()<64){
+        UniformJob job;job.epoch=background_discovery_budget().snapshot().epoch;job.variant=use.variant;
         for(const auto& key:variant.requested_reads){const auto [range,reg,offset]=key;auto words=read_memory(range,reg,offset);job.words.emplace(key,words);if(words.valid_mask)++variant.uniform_known_reads;else ++variant.uniform_unknown_reads;}
         state().uniform_jobs.push_back(std::move(job));variant.proof_pending=true;state().changed.notify_one();
     }
@@ -295,7 +296,7 @@ void evaluate_uniform_job(UniformJob job){
         auto found=job.words.find(key);missing|=found==job.words.end();auto value=found==job.words.end()?shader::UniformWords{}:found->second;used.emplace(key,value);return value;
     });}catch(const ReadCapacity&){result.reason="uniform_read_capacity";}
     catch(const std::exception&){result.reason="uniform_worker_failure";}
-    std::lock_guard lock(state().mutex);auto& variant=*job.variant;variant.proof_pending=false;variant.uniform_steps+=result.steps;
+    std::lock_guard lock(state().mutex);auto& variant=*job.variant;variant.proof_pending=false;if(!state().discovery_enabled||job.epoch!=background_discovery_budget().snapshot().epoch)return;variant.uniform_steps+=result.steps;
     variant.requested_reads.clear();for(const auto& [key,words]:used){(void)words;variant.requested_reads.insert(key);}
     if(!missing&&result.complete){
         // No missing input may become a permanent unknown cache entry. Every
@@ -306,8 +307,36 @@ void evaluate_uniform_job(UniformJob job){
         if((capacity&&!missing)||(!missing&&!result.complete))variant.retry_after=variant.uniform_attempts+120;
     }
 }
+bool reserve_job(const std::shared_ptr<Pipeline>& p){
+    auto& s=state();if(!s.discovery_enabled)return false;
+    auto lease=background_discovery_budget().try_reserve(std::max<std::size_t>(1,p->code.size()));
+    if(!lease){p->reason="discovery_budget_exhausted";return false;}
+    p->reservation=std::move(lease);return true;
+}
+void retry_deferred_jobs(){
+    auto& s=state();if(!s.discovery_enabled||s.compile_on_demand)return;
+    // Worker/control path only: a transient quota decline must be retryable.
+    for(auto& [native,p]:s.pipelines){(void)native;
+        if(p->queued||p->variant||p->code.empty()||(p->reason!="discovery_budget_exhausted"&&p->reason!="discovery_cancelled"))continue;
+        if(!reserve_job(p))break;p->queued=true;p->reason="queued_after_budget";s.jobs.push_back(p);s.changed.notify_one();
+    }
+}
+void check_job(const std::shared_ptr<Pipeline>& p){if(p->retired||!state().discovery_enabled||!p->reservation||!p->reservation->valid())throw std::runtime_error("discovery_cancelled");}
+void publish_contract(Variant& v){
+    arc::CandidateRecord r;r.id=v.id;r.analyzer_version=12;r.backend=arc::CandidateBackend::Dx12;r.kind=arc::CandidateKind::ApproximateShader;r.exactness=arc::CandidateExactness::Approximate;
+    r.fingerprint={std::stoull(v.analysis_key.substr(0,16),nullptr,16),v.id,0,0,state().correctness_epoch,0};r.supported_scope=true;
+    r.completeness=arc::EvidenceCompleteness::ProvenUnderAssumptions;r.required_facts=r.proven_facts=1;r.required_guards=1;r.dependency_scope=1;
+    r.guard_before_effects=true;r.guard_boundary=arc::GuardBoundary::Dx12Submit;r.execution_lifetime=arc::ExecutionLifetime::GpuExternalFence;r.experimental_unverified=true;
+    r.original_entry=v.id;r.variant_entry=reinterpret_cast<std::uintptr_t>(v.pipeline.Get());r.supported_model="bounded DXIL transformation; dynamic physical bindings/alias/lifetime proven at submission";r.assumptions="Original shader is valid; runtime admission supplies complete supported resource and command-state guards";r.corpus_identity=v.analysis_key;r.input_effect_scope="contract resources and UAV writes";
+    auto admission=arc::admit_candidate(r);auto publication=std::make_unique<arc::PublishedCandidate>();
+    if(!publication->mark_analyzed()||!publication->mark_eligible()||!publication->prepare(admission)||!publication->local_validate(true)||!publication->activate())throw std::runtime_error("candidate_contract_rejected");
+    v.fingerprint=r.fingerprint;v.candidate=std::move(r);v.publication=std::move(publication);
+}
 std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeline){
-    auto& s=state();const auto source=s.cache/(std::to_string(pipeline->id)+".source.bin"),binary=s.cache/(std::to_string(pipeline->id)+".controlled.bin");
+    while(background_quality_waiters().load()){check_job(pipeline);Sleep(2);}
+    std::unique_lock<std::timed_mutex> background_gate(background_compute_gate(),std::defer_lock);
+    while(!background_gate.try_lock_for(std::chrono::milliseconds(10)))check_job(pipeline);check_job(pipeline);
+    check_job(pipeline);auto& s=state();const auto source=s.cache/(std::to_string(pipeline->id)+".source.bin"),binary=s.cache/(std::to_string(pipeline->id)+".controlled.bin");
     struct ScratchCleanup {std::filesystem::path source,binary;bool retain{};~ScratchCleanup(){if(retain)return;std::error_code ignored;std::filesystem::remove(source,ignored);for(const wchar_t* ending:{L"",L".contract",L".access.ll",L".spatial.bin",L".probe.bin",L".worker.txt"}){auto path=binary;path+=ending;std::filesystem::remove(path,ignored);}}};
     ScratchCleanup cleanup{source,binary,environment(L"ARC_CAPTURE_SHADER_CODE")==L"1"};
     std::set<UINT> spaces;for(const auto& p:pipeline->root->layout->parameters){if(p.type==D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE){for(const auto& r:p.ranges)spaces.insert(r.space);}else spaces.insert(p.space);}for(const auto& sampler:pipeline->root->layout->samplers)spaces.insert(sampler.RegisterSpace);
@@ -323,8 +352,7 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     {std::lock_guard lock(s.mutex);if(cached)++s.cache_hits;else ++s.cache_misses;}
     event({{"phase",cached?"analysis_cache_hit":"analysis_cache_miss"},{"pipeline",pipeline->id},{"shader_key",key}});
     if(!cached){
-    while(background_quality_waiters().load())Sleep(2);
-    std::lock_guard background_gate(background_compute_gate());
+
     for(const wchar_t* suffix:{L"",L".contract",L".access.ll",L".spatial.bin",L".probe.bin"}){auto partial=binary;partial+=suffix;std::error_code ignored;std::filesystem::remove(partial,ignored);}
     {std::ofstream file(source,std::ios::binary);file.write(reinterpret_cast<const char*>(pipeline->code.data()),pipeline->code.size());file.close();if(!file)throw std::runtime_error("shader source cache IO");}
     auto command=quote(s.worker.wstring())+L" controlled-proof:"+std::to_wstring(space)+L" "+quote(source.wstring())+L" "+quote(binary.wstring())+L" "+quote(s.compiler.wstring());
@@ -340,9 +368,10 @@ std::shared_ptr<Variant> prepare_variant(const std::shared_ptr<Pipeline>& pipeli
     cpu_cost::Registration child_cpu(cpu_cost::Kind::Compiler,process.hProcess,process.hThread);
     if(ResumeThread(process.hThread)==DWORD(-1)){TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);CloseHandle(process.hThread);CloseHandle(process.hProcess);throw std::runtime_error("shader worker resume");}
     CloseHandle(process.hThread);DWORD waited=WAIT_TIMEOUT;const auto worker_deadline=GetTickCount64()+20000;
-    while(GetTickCount64()<worker_deadline&&(waited=WaitForSingleObject(process.hProcess,50))==WAIT_TIMEOUT)cpu_cost::memory_snapshot();
+    while(GetTickCount64()<worker_deadline&&s.discovery_enabled&&pipeline->reservation&&pipeline->reservation->valid()&&(waited=WaitForSingleObject(process.hProcess,50))==WAIT_TIMEOUT)cpu_cost::memory_snapshot();
     DWORD code=1;
     if(waited!=WAIT_OBJECT_0){TerminateProcess(process.hProcess,2);WaitForSingleObject(process.hProcess,1000);}else GetExitCodeProcess(process.hProcess,&code);CloseHandle(process.hProcess);
+    check_job(pipeline);
     if(code){std::ifstream log(log_path);std::string reason;std::getline(log,reason);reason=reason.substr(0,512);
         if(reason.starts_with("Shader declined:")){shader_cache::store_decline(s.persistent_cache,key,reason);shader_cache::trim(s.persistent_cache);}
         throw std::runtime_error(reason.empty()?"shader_worker_failed":reason);}
@@ -379,17 +408,20 @@ DWORD WINAPI worker(void*){
         auto& s=state();std::unique_lock lock(s.mutex);s.changed.wait(lock,[&]{return !s.jobs.empty()||!s.uniform_jobs.empty();});
         if(!s.uniform_jobs.empty()){proof=std::move(s.uniform_jobs.front());s.uniform_jobs.pop_front();}
         else{job=std::move(s.jobs.front());s.jobs.pop_front();}}
-        if(proof.variant){auto variant=proof.variant;try{evaluate_uniform_job(std::move(proof));}catch(...){safe([&]{variant->proof_pending=false;variant->retry_after=variant->uniform_attempts+120;variant->cached_usage={};variant->cached_reads.clear();++state().faults;});}continue;}
+        if(proof.variant){auto variant=proof.variant;try{std::unique_lock<std::timed_mutex> gate(background_compute_gate(),std::defer_lock);while(!gate.try_lock_for(std::chrono::milliseconds(10))){if(!state().discovery_enabled||proof.epoch!=background_discovery_budget().snapshot().epoch)break;}if(gate.owns_lock())evaluate_uniform_job(std::move(proof));else{std::lock_guard lock(state().mutex);variant->proof_pending=false;}}catch(...){safe([&]{variant->proof_pending=false;variant->retry_after=variant->uniform_attempts+120;variant->cached_usage={};variant->cached_reads.clear();++state().faults;});}continue;}
         try{
-            auto variant=prepare_variant(job);std::vector<std::shared_ptr<GpuControl>> controls;std::shared_ptr<SpatialProbeGpu> probe_pool;
+            check_job(job);auto variant=prepare_variant(job);check_job(job);std::vector<std::shared_ptr<GpuControl>> controls;std::shared_ptr<SpatialProbeGpu> probe_pool;
             bool needs_pool=false;{std::lock_guard lock(state().mutex);needs_pool=std::none_of(state().controls.begin(),state().controls.end(),[&](const auto& c){return c->device()==job->device.Get();});}
             if(needs_pool){if(state().controls.size()+8>8)throw std::runtime_error("spatial_control_budget_256MiB_multiple_device_declined");mirror::InternalCall internal;for(unsigned i=0;i<8;++i)controls.push_back(std::make_shared<GpuControl>(job->device.Get(),state().measure_control,true));probe_pool=std::make_shared<SpatialProbeGpu>(job->device.Get(),8ull*1024*1024);}
-            std::lock_guard lock(state().mutex);job->variant=std::move(variant);job->reason="prepared_neutral";state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().prepared;state().controls.insert(state().controls.end(),controls.begin(),controls.end());if(probe_pool)state().probe_pools[job->device.Get()]=std::move(probe_pool);
+            std::lock_guard lock(state().mutex);check_job(job);publish_contract(*variant);job->variant=std::move(variant);job->reason="prepared_neutral";state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().prepared;state().controls.insert(state().controls.end(),controls.begin(),controls.end());if(probe_pool)state().probe_pools[job->device.Get()]=std::move(probe_pool);
             if(!state().controls.empty())state().controls_available.store(true,std::memory_order_release);
-        }catch(const std::exception& error){event({{"phase","analysis_declined"},{"pipeline",job->id},{"reason",error.what()}});std::lock_guard lock(state().mutex);job->reason=error.what();state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().declined;}
+        }catch(const std::exception& error){event({{"phase","analysis_declined"},{"pipeline",job->id},{"reason",error.what()}});std::lock_guard lock(state().mutex);job->reason=error.what();if(!job->retired&&(job->reason=="discovery_cancelled"||job->reason.find("budget")!=std::string::npos||job->reason.find("capacity")!=std::string::npos)){job->queued=false;++state().cancelled_jobs;}else{state().queued_code_bytes-=job->code.size();job->code.clear();job->code.shrink_to_fit();++state().declined;}}
+        {std::lock_guard lock(state().mutex);job->reservation.reset();retry_deferred_jobs();}
     }
 }
 }
+void set_discovery_enabled(bool enabled)noexcept{safe([&]{auto& s=state();if(s.discovery_enabled==enabled)return;s.discovery_enabled=enabled;if(!enabled){for(auto& p:s.jobs){p->queued=false;p->reason="discovery_cancelled";p->reservation.reset();++s.cancelled_jobs;}s.jobs.clear();for(auto& j:s.uniform_jobs)j.variant->proof_pending=false;s.uniform_jobs.clear();for(auto& [native,p]:s.pipelines){(void)native;if(p->variant&&p->variant->publication)p->variant->publication->invalidate(arc::CandidateReason::UserStopped);}}else{for(auto& [native,p]:s.pipelines){(void)native;if(p->variant&&(!p->variant->publication||p->variant->publication->lifecycle()!=arc::CandidateLifecycle::Active))publish_contract(*p->variant);}retry_deferred_jobs();}s.changed.notify_all();});}
+void observation_gap()noexcept{std::lock_guard descriptors(state().descriptor_mutex);safe([&]{auto& s=state();++s.correctness_epoch;s.descriptors.forget_all();s.approved_policy=0;for(auto& [native,c]:s.commands){(void)native;c.valid=false;}for(auto& [native,p]:s.pipelines){(void)native;if(p->variant&&p->variant->publication)p->variant->publication->event_loss(1,true);}});}
 bool enabled()noexcept{return state().enabled.load(std::memory_order_relaxed);}
 std::vector<std::string> drain_events()noexcept{std::vector<std::string> result;try{auto& s=state();std::lock_guard lock(s.mutex);result.reserve(s.events.size());while(!s.events.empty()){result.push_back(std::move(s.events.front()));s.events.pop_front();}}catch(...){}return result;}
 namespace {
@@ -512,7 +544,7 @@ std::vector<WorkCandidate> candidate_catalog()noexcept{
             for(const auto& cost:costs){const auto found=s.pipelines.find(cost.pipeline);if(found==s.pipelines.end()||found->second->profile_id!=cost.pipeline_identity)continue;auto& p=*found->second;
                 if(p.variant){if(++scheduled==arc::PolicyBundle::capacity)break;continue;}
                 if(p.code.empty())continue;
-                if(!p.queued&&s.jobs.size()<64){s.jobs.push_back(found->second);p.queued=true;p.reason="queued_by_measured_cost";s.changed.notify_one();}
+                if(!p.queued&&s.jobs.size()<64&&reserve_job(found->second)){s.jobs.push_back(found->second);p.queued=true;p.reason="queued_by_measured_cost";s.changed.notify_one();}
                 if(++scheduled==arc::PolicyBundle::capacity)break;
             }
         }
@@ -651,7 +683,7 @@ void compute_created(ID3D12PipelineState* native,const D3D12_COMPUTE_PIPELINE_ST
     auto p=std::make_shared<Pipeline>();p->id=s.next++;p->profile_id=profile_id;p->root=root->second;check(native->GetDevice(IID_PPV_ARGS(&p->device)));if(p->device->GetNodeCount()!=1)return;
     const auto* bytes=static_cast<const std::byte*>(desc->CS.pShaderBytecode);p->code.assign(bytes,bytes+desc->CS.BytecodeLength);if(!track(native,2))return;s.pipelines[native]=p;s.queued_code_bytes+=desc->CS.BytecodeLength;
     if(s.compile_on_demand)p->reason="awaiting_measured_cost";
-    else{s.jobs.push_back(p);p->queued=true;s.changed.notify_one();}
+    else if(reserve_job(p)){s.jobs.push_back(p);p->queued=true;s.changed.notify_one();}
 });}
 void heap_created(ID3D12DescriptorHeap* native)noexcept{if(!enabled()||!native)return;safe([&]{auto& s=state();if(s.heaps.contains(native)||s.heaps.size()>=4096)return;mirror::InternalCall guard;const auto desc=native->GetDesc();Ptr<ID3D12Device> device;check(native->GetDevice(IID_PPV_ARGS(&device)));
     binding::DescriptorHeap h{s.next++,native->GetCPUDescriptorHandleForHeapStart().ptr,0,device->GetDescriptorHandleIncrementSize(desc.Type),desc.NumDescriptors,desc.Type};if(desc.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)h.gpu=native->GetGPUDescriptorHandleForHeapStart().ptr;
@@ -760,7 +792,7 @@ bool dispatch(ID3D12GraphicsCommandList* native,UINT x,UINT y,UINT z)noexcept{if
     // needed to preserve its state has been observed again, even in neutral mode.
     if(c->arguments_uncertain){const auto layout=c->arguments.layout();bool known=layout&&layout->complete;if(known)for(UINT i=0;i<layout->parameters.size();++i){const auto a=c->arguments.raw_argument(i);if(!a||(!a->initialized&&!(a->observed&&(a->type==D3D12_ROOT_PARAMETER_TYPE_CBV||a->type==D3D12_ROOT_PARAMETER_TYPE_SRV||a->type==D3D12_ROOT_PARAMETER_TYPE_UAV)))){known=false;break;}}
         if(!known){++s.dispatch_declines[11];return;}c->arguments_uncertain=false;}
-    const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}
+    const auto p=s.pipelines.find(c->pipeline);if(p==s.pipelines.end()){++s.dispatch_declines[6];return;}if(!p->second->variant){++s.dispatch_declines[7];return;}if(p->second->root!=c->root){++s.dispatch_declines[8];return;}const auto live_root=s.roots.find(c->root->native);if(live_root==s.roots.end()||live_root->second!=c->root){++s.dispatch_declines[4];return;}
     if(!s.instrumentation){++s.dispatch_declines[9];return;}if((s.heaviest_only&&p->second->id!=s.selected_pipeline)||(s.bundle_mode&&std::find(s.record_targets.begin(),s.record_targets.end(),p->second->id)==s.record_targets.end())){++s.dispatch_declines[10];return;}
     const auto variant=p->second->variant;
     const bool spatial_prepass=variant->contract.execution_marker&&variant->contract.edge_input_mask;
@@ -848,6 +880,8 @@ bool execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*const* lists
                 if(!needs_proof&&!admitted.admitted&&admitted.reason=="unknown_descriptor"&&admitted.binding_class==0&&use.variant->access){
                     usage=prove();if(usage.complete)admitted=binding::admit_compute(use.arguments,use.variant->contract,s.descriptors,heaps,s.allocations,use.x,use.y,use.z,&usage,&s.buffers);
                 }
+                arc::CandidateLease candidate_lease;
+                if(admitted.admitted){auto current=use.variant->fingerprint;current.dependency_epoch=s.correctness_epoch;if(use.variant->publication)candidate_lease=use.variant->publication->try_acquire(current,1);if(!candidate_lease){admitted.admitted=false;admitted.reason="candidate_invalidated_or_unknown_guard";++s.candidate_guard_declines;}else ++s.candidate_guard_passes;}
                 if(admitted.admitted&&s.bundle_mode&&(s.bundle.id||s.learning_bundle.id)&&requested){
                     std::vector<arc::DescriptorValue> views;
                     for(const auto& input:admitted.inputs)if(input.allocation.description.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D)views.push_back(input.view);
@@ -968,5 +1002,5 @@ void collect()noexcept{
         s.selected_pipeline=selected;s.selected_cost=best;s.cost_session=costs.front().session;s.cost_prepared=s.prepared;
     });
 }
-void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();out<<"{\"enabled\":"<<(s.enabled?"true":"false")<<",\"automatic_quality_admission\":false,\"selected_pipeline\":"<<s.selected_pipeline<<",\"selected_profile_cost_ms\":"<<s.selected_cost<<",\"prepared\":"<<s.prepared<<",\"declined\":"<<s.declined<<",\"pending\":"<<s.jobs.size()<<",\"modified_dispatches\":"<<s.modified_dispatches<<",\"coarse_submissions\":"<<s.coarse_submissions<<",\"neutral_submissions\":"<<s.neutral_submissions<<",\"pool_misses\":"<<s.pool_misses<<",\"faults\":"<<s.faults<<",\"last_error\":"<<std::quoted(s.last_error)<<",\"admission\":{";bool first=true;for(const auto& [reason,count]:s.admission_reasons){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}out<<"},\"variants\":[";first=true;for(const auto& [id,v]:s.history){(void)id;if(!first)out<<',';first=false;out<<"{\"id\":"<<v.id<<",\"attempts\":"<<v.attempts<<",\"admitted\":"<<v.admitted<<",\"uniform_attempts\":"<<v.uniform_attempts<<",\"uniform_proven\":"<<v.uniform_proven<<",\"uniform_steps\":"<<v.uniform_steps<<",\"uniform_cpu_ms\":"<<v.uniform_cpu_ms<<",\"uniform_known_reads\":"<<v.uniform_known_reads<<",\"uniform_unknown_reads\":"<<v.uniform_unknown_reads<<",\"uniform_reason\":"<<std::quoted(v.uniform_reason)<<",\"last_reason\":"<<std::quoted(v.last_reason)<<",\"binding\":["<<v.binding_class<<','<<v.binding_register<<','<<v.binding_space<<"]}";}out<<"]}";}
+void snapshot(std::ostream& out){std::lock_guard lock(state().mutex);const auto& s=state();out<<"{\"candidate_guard_passes\":"<<s.candidate_guard_passes<<",\"candidate_guard_declines\":"<<s.candidate_guard_declines<<",\"discovery_enabled\":"<<(s.discovery_enabled?"true":"false")<<",\"cancelled_jobs\":"<<s.cancelled_jobs<<",\"correctness_epoch\":"<<s.correctness_epoch<<",\"enabled\":"<<(s.enabled?"true":"false")<<",\"automatic_quality_admission\":false,\"selected_pipeline\":"<<s.selected_pipeline<<",\"selected_profile_cost_ms\":"<<s.selected_cost<<",\"prepared\":"<<s.prepared<<",\"declined\":"<<s.declined<<",\"pending\":"<<s.jobs.size()<<",\"modified_dispatches\":"<<s.modified_dispatches<<",\"coarse_submissions\":"<<s.coarse_submissions<<",\"neutral_submissions\":"<<s.neutral_submissions<<",\"pool_misses\":"<<s.pool_misses<<",\"faults\":"<<s.faults<<",\"last_error\":"<<std::quoted(s.last_error)<<",\"admission\":{";bool first=true;for(const auto& [reason,count]:s.admission_reasons){if(!first)out<<',';first=false;out<<std::quoted(reason)<<':'<<count;}out<<"},\"variants\":[";first=true;for(const auto& [id,v]:s.history){(void)id;if(!first)out<<',';first=false;out<<"{\"id\":"<<v.id<<",\"attempts\":"<<v.attempts<<",\"admitted\":"<<v.admitted<<",\"uniform_attempts\":"<<v.uniform_attempts<<",\"uniform_proven\":"<<v.uniform_proven<<",\"uniform_steps\":"<<v.uniform_steps<<",\"uniform_cpu_ms\":"<<v.uniform_cpu_ms<<",\"uniform_known_reads\":"<<v.uniform_known_reads<<",\"uniform_unknown_reads\":"<<v.uniform_unknown_reads<<",\"uniform_reason\":"<<std::quoted(v.uniform_reason)<<",\"last_reason\":"<<std::quoted(v.last_reason)<<",\"binding\":["<<v.binding_class<<','<<v.binding_register<<','<<v.binding_space<<"]}";}out<<"]}";}
 }

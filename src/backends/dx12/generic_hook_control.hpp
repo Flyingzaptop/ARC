@@ -5,4 +5,5 @@ namespace arc::dx12::hooks {
 bool begin_raster_observation() noexcept;
 void end_raster_observation() noexcept;
 void request_passive_when_idle() noexcept;
+bool idle_observation(bool) noexcept;
 }

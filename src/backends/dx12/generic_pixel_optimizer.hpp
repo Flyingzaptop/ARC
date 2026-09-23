@@ -25,6 +25,7 @@ unsigned requested_steps() noexcept;
 std::array<unsigned,3> requested_budget() noexcept;
 bool active() noexcept;
 bool configure(unsigned half_steps,unsigned comparison_taps=0,unsigned sample_percent=100) noexcept;
+void set_discovery_enabled(bool enabled) noexcept;
 bool available() noexcept;
 bool ready() noexcept;
 bool restoration_ready() noexcept;
