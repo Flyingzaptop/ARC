@@ -1,0 +1,258 @@
+{
+  "schema": 1,
+  "scope": "M2-M4 CPU register-only supported-domain implementation; no commercial games",
+  "source_base": "02c42a8",
+  "source_sha256": {
+    "include/arc/cpu/publication.hpp": "19678c66a4a38058bee047ab6f6818758ff1b9352e2b81a363e357486b17320c",
+    "include/arc/cpu/region_model.hpp": "5dae54b6c89a8fcdb821a631333305d8a7c525beb52ade72728738328f939dcf",
+    "src/backends/cpu/capture.hpp": "09bedfcbb8b0dd4f9aeb267820018690ac491732c6eb75ddbe3489cd8c0fdcca",
+    "src/backends/cpu/client.cpp": "89079cf9a20399da032d71cf4b5460ed469681954a2e180d25826e10597782c3",
+    "src/backends/cpu/CMakeLists.txt": "7de85603f85f26bf4691d8c77bbe441e64739c6f18ba1a67d9ebe99790eeea2a",
+    "src/backends/cpu/decoder.hpp": "0cb541cc684ae1ab0c0309aa199cd9adc21f5c8c2055d47b9668198c556e6c8e",
+    "include/arc/candidate_contract.hpp": "74b41a2f7801f9015ac82bafafdc403ff6012f586571cc83e85cb71e25bdaf4d",
+    "include/arc/discovery_budget.hpp": "1e2b47d7c89a2bc3a6113630ef04906a89d234bffe846a370f5a3fcb9e47092a",
+    "tests/cpu_region_tests.cpp": "407aad61e4b9c671ec38968b9dad6bd20d1ae912a841afd76a5824ec57499c66",
+    "tests/cpu_native_fixture.cpp": "82fd3bc9ee591672c2d576b094345131b54adc80e178c44ff4d44042e171fe21",
+    "tests/cpu_native_regions.asm": "f068c06ecb5ffa8a7a5a8015fa244c73703744948caad050cc69089c2d8c9d82",
+    "tests/cpu_native_smoke.ps1": "92ca852df2c7d594b86b53a30fca2217685fe5c3c87d0f1e7ba0ca7fff43debc",
+    "tests/analyze_cpu_regions_test.py": "fccde4bfd66f605fbce920fe9ed6e50f5fbbfeeb70bad500f3f579b3d6d84692",
+    "tests/test_cpu_session.py": "780a60c89e1bd89883fa07f8757f6dd52e10f3e6e543008f3cb243b02fbe35cc",
+    "scripts/arc-cpu-session.ps1": "8332201c52959928b2b23efab689387cd116cf919e8809e1910a67110faecc45",
+    "scripts/analyze-cpu-regions.py": "7a8f218e350d178b038e729d590a2ae94ca10d5373e2211ff2a4e6e5a924b6c6",
+    "scripts/analyze-cpu-session.py": "003fe0ef4cf040b482627b591f355b84921e52f60aafc5bd207b319d411678c4",
+    "scripts/capture-cpu-work.ps1": "262d0bb07c202caff7a8050bf03bf085e01ee27bddb0a6b9d1ab0651e09e1167",
+    "scripts/arc-cpu.wprp": "20d8f13a60cc36d722189a4501ee2d67e5c9c7ee01d097b659499025f72d1713",
+    "scripts/package-cpu.py": "143f34dc927dee1b5592f6c3c6f6ea538fe22c38060893795ee2c33dd6b39f21"
+  },
+  "dependency": {
+    "name": "DynamoRIO",
+    "version": "11.3.0",
+    "release_tag": "release_11.3.0-1",
+    "url": "https://github.com/DynamoRIO/dynamorio/releases/download/release_11.3.0-1/DynamoRIO-Windows-11.3.0.zip",
+    "archive_sha256": "5516B8B4C929885DC4172E088ED11EA5DB967F80ED739A3E7925FE2CDD798C6D",
+    "license_file": "License.txt",
+    "license": "BSD-style; retain the shipped License.txt and acknowledgements with redistributed binaries",
+    "architecture": "Windows x64",
+    "build_root_hint": "deps/DynamoRIO-Windows-11.3.0-1",
+    "runtime_sha256": {
+      "bin64/drrun.exe": "2db0fe2a7868ecebce10eb5b02a5672d85cbfbc78b98d0f0b24a36b568b644f1",
+      "bin64/drinjectlib.dll": "2a67eb37977c442184ad7aa5b28626cb1551bea9d707a25f766a3a21f4bd8d13",
+      "bin64/drconfiglib.dll": "c5ed8fd3a7bb515906d6f6e02eccfa7992c2a89cb5119e24ddefb841bef43bf6",
+      "lib64/release/dynamorio.dll": "3d965a59504cf090cd56f5adebcff423d0342bc3a117a44a751de805248c6e88",
+      "lib64/debug/dynamorio.dll": "f8f277ed94877a3b233b9872f47ece2545bdd7f5000f3edd98cc53490535dffd",
+      "ext/lib64/release/drmgr.dll": "ce085a28854294a5a67e02476e15e93cca48a2661932f5bf98ae95b4a61102f0",
+      "ext/lib64/debug/drmgr.dll": "ff202e2b7d75e9ae567563e71f6793f950305a8324ec868dac839c3337cb2ca9"
+    }
+  },
+  "native": {
+    "utc": "2026-09-23T08:03:02.7395831Z",
+    "dynamorio": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1",
+    "dynamorio_zip_sha256": "5516B8B4C929885DC4172E088ED11EA5DB967F80ED739A3E7925FE2CDD798C6D",
+    "client_sha256": "5877C3569A7AB7E12F7C8609C5BAA76311A1F7AED40C0B4B647450ADE8CF9542",
+    "fixture_sha256": "0CD271243F091719029D2EEE04530005FA12BC1ED7CE79D49269666E193894AC",
+    "runs": [
+      {
+        "case": "original",
+        "exit_code": 0,
+        "wall_ms": 37.1937,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\original.stdout.txt",
+        "command": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "neutral",
+        "exit_code": 0,
+        "wall_ms": 184.2747,
+        "pid": 27344,
+        "calls": 2049,
+        "executions": 0,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\neutral.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\neutral.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode neutral -actuator auto -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\neutral.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "study",
+        "exit_code": 0,
+        "wall_ms": 186.036,
+        "pid": 13028,
+        "calls": 2049,
+        "executions": 0,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\study.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\study.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode study -actuator auto -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\study.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "auto",
+        "exit_code": 0,
+        "wall_ms": 189.4642,
+        "pid": 37128,
+        "calls": 2049,
+        "executions": 0,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\auto.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\auto.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode apply -actuator auto -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\auto.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "specialize",
+        "exit_code": 0,
+        "wall_ms": 242.6457,
+        "pid": 28344,
+        "calls": 2049,
+        "executions": 1748,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\specialize.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\specialize.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode apply -actuator specialize -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\specialize.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "memo",
+        "exit_code": 0,
+        "wall_ms": 236.0977,
+        "pid": 35844,
+        "calls": 2049,
+        "executions": 1981,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\memo.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\memo.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode apply -actuator memo -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\memo.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "incremental",
+        "exit_code": 0,
+        "wall_ms": 217.3337,
+        "pid": 36408,
+        "calls": 2049,
+        "executions": 1952,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\incremental.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\incremental.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode apply -actuator incremental -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\incremental.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe"
+      },
+      {
+        "case": "protect",
+        "exit_code": 0,
+        "wall_ms": 227.1272,
+        "pid": 26176,
+        "calls": 2049,
+        "executions": 944,
+        "stopped": false,
+        "stop_control_available": false,
+        "protection_events": 19,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\protect.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\protect.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode apply -actuator incremental -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\protect.json -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe --protect"
+      },
+      {
+        "case": "stop",
+        "exit_code": 0,
+        "wall_ms": 187.08,
+        "pid": 28620,
+        "calls": 2049,
+        "executions": 944,
+        "stopped": true,
+        "stop_control_available": true,
+        "protection_events": 17,
+        "stdout": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\stop.stdout.txt",
+        "json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\stop.json",
+        "command": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\deps\\DynamoRIO-Windows-11.3.0-1\\bin64\\drrun.exe -msgbox_mask 0 -stderr_mask 15 -no_follow_children -c C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\arc_cpu_client.dll -mode apply -actuator incremental -out C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\stop.json -stop C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\stop.control -- C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\Release\\cpu_native_fixture.exe --stop C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu_backend\\evidence-final\\stop.control"
+      }
+    ]
+  },
+  "checks": [
+    {
+      "name": "cpu-region-state-and-allocation-oracle",
+      "result": "pass",
+      "risk": "exact live-ins/guards, memo collision resolution, generation reset, incremental dependencies, zero CRT heap allocation at admission",
+      "command": "MSVC cl /std:c++20 /W4 /EHsc /Iinclude tests/cpu_region_tests.cpp; build/cpu_region_tests.exe",
+      "executable_sha256": "a4447e7cb56cad5ed1d0f28131134237083f1b5ef62374369699ff12a7922b2a"
+    },
+    {
+      "name": "ETW parser",
+      "result": "pass",
+      "risk": "PID/lifetime/module offsets/loss and missing clock evidence",
+      "command": "python -m unittest tests/analyze_cpu_regions_test.py -v",
+      "native_capture": "new provider profile not recorded; old CPU ETL evidence used for parser, not synchronized frame claim"
+    },
+    {
+      "name": "WPR profile schema",
+      "result": "pass",
+      "command": "wpr -profiles scripts/arc-cpu.wprp",
+      "actual_recording": "pending user elevated capture"
+    },
+    {
+      "name": "launcher contracts",
+      "result": "pass",
+      "risk": "literal argument quoting, dependency failure, generated mapped-control writer; PowerShell null map-name regression fixed",
+      "command": "python -m unittest tests/test_cpu_session.py -v"
+    },
+    {
+      "name": "capped launcher stop integration",
+      "result": "pass",
+      "evidence": "C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/m234-launcher-capped-stop",
+      "executions": 957,
+      "stopped": true,
+      "identity_consistent": true,
+      "risk": "actual PID binding, code-cache quota arguments, shared control map, stderr capture"
+    },
+    {
+      "name": "native baseline launcher identity",
+      "result": "pass",
+      "evidence": "C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/m234-launcher-native-baseline-identity",
+      "risk": "retain actual creation time of short process through owned process handle"
+    },
+    {
+      "name": "saved native actuator assertions",
+      "result": "pass",
+      "risk": "a passing output oracle with zero transformed work must not count as actuator verification",
+      "scope": "assertions tightened in runner and checked against final raw JSON; executable not rerun"
+    }
+  ],
+  "regressions_fixed": [
+    {
+      "symptom": "user-visible AV in native memo test and neutral",
+      "cause": "CandidateRecord descriptive std::string allocation called private CRT heap before usable initialization",
+      "evidence": "build/cpu_backend/debug-exceptions.json; ntdll RtlAllocateHeap+0x2e",
+      "fix": "allocation-free shared admission; tested zero operator new calls"
+    },
+    {
+      "symptom": "missing callbacks after hot trace construction",
+      "cause": "for_trace early return omitted instrumentation in trace copies",
+      "fix": "instrument trace copies too; final fixture observes 2049 candidate calls"
+    },
+    {
+      "symptom": "client-thread stop crash",
+      "cause": "DR our_create_thread_wrapper custom-stack metadata access before client callback; exact upstream compatibility cause unresolved",
+      "fix": "remove client-thread dependency; shared mapped DWORD stop"
+    },
+    {
+      "symptom": "x87 1.0 changed to qNaN during redirect",
+      "cause": "clean-call FP reset plus bypassed normal clean-call restoration on dr_redirect_execution",
+      "fix": "false save_fpstate plus explicit aligned scope snapshot/restore on returns and before nonreturn redirect; expanded x87 oracle passed"
+    }
+  ],
+  "limitations": [
+    "main executable, first64 supported MOV/LEA prefixes only",
+    "no memory-backed reuse, arbitrary loops, floating-point transforms, CPU geometry/LOD semantics",
+    "auto application disabled until measured net benefit; explicit actions diagnostic",
+    "process wall timing includes startup, not frametime; local overhead-negative result, no game speedup",
+    "DR total memory and steady-state hook cost unknown; launcher caps code caches but metadata is additional",
+    "new ETW presentation event layout/overhead pending native elevated capture",
+    "no combined CPU/DX12 hook ownership; CPU launch is separate",
+    "no arbitrary remote code patch safety guarantee"
+  ],
+  "rerun_policy": "Repeated native checks only after decoded/execution/state/stop changes or observed regressions; unrelated GPU suites not repeated."
+}
