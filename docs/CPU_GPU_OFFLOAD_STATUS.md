@@ -170,3 +170,17 @@ was inconclusive against changing GPU clocks/temperature. Do not claim universal
 CPU extraction, universal GPU optimization, or a finished general-game product.
 
 [Report, plots, raw measurements and reproduction](reports/2026-09-24-full-arc-comparison.md).
+
+
+## 2026-09-24 — automatic CPU discovery gate
+
+From `1c8a51e`, added a bounded external activity/context observer and name-blind
+machine-code backedge/memory/recurrence screen. Final capture: 376 contexts,
+19 main-image function regions, 12 overlapping candidate spans, **zero admitted tasks**.
+A conditional 16-byte-record exchange was recognized structurally, but invocation
+bounds, alias/dependency closure, ownership and first consumers remain unknown.
+No GPU replacement, eliminated CPU invocation or transfer occurred. The automatic
+profitable-offload objective remains unfulfilled; the specified discovery stop gate
+was reached. No additional engine adapter or broad scheduler was substituted.
+
+[Exact candidate, raw data, timing and missing mechanism](reports/2026-09-24-automatic-cpu-discovery.md).

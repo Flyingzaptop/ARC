@@ -1,0 +1,56 @@
+{
+  "original": {
+    "CPU processing through submission ms": {
+      "count": 557,
+      "mean": 21.522444703770198,
+      "median": 21.0582,
+      "p95": 25.5093,
+      "p99": 28.2072,
+      "max": 31.0133
+    },
+    "Controlled Present interval": {
+      "count": 557,
+      "mean": 21.531868402154398,
+      "median": 21.0654,
+      "p95": 25.5288,
+      "p99": 28.2521,
+      "max": 31.0806
+    },
+    "Retired GPU frame span ms": {
+      "count": 556,
+      "mean": 6.3403520010071945,
+      "median": 6.31091213,
+      "p95": 6.69286394,
+      "p99": 7.75270414,
+      "max": 12.8880644
+    },
+    "present_hz": 46.44278802576853
+  },
+  "discovery": {
+    "CPU processing through submission ms": {
+      "count": 560,
+      "mean": 21.39786625,
+      "median": 20.992649999999998,
+      "p95": 24.7314,
+      "p99": 26.5688,
+      "max": 29.089
+    },
+    "Controlled Present interval": {
+      "count": 560,
+      "mean": 21.407518928571427,
+      "median": 21.0084,
+      "p95": 24.79,
+      "p99": 26.6111,
+      "max": 29.1118
+    },
+    "Retired GPU frame span ms": {
+      "count": 559,
+      "mean": 6.28423121332737,
+      "median": 6.28838396,
+      "p95": 6.59558392,
+      "p99": 7.00723219,
+      "max": 8.12543964
+    },
+    "present_hz": 46.71255942066951
+  }
+}

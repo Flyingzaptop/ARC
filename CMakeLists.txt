@@ -65,6 +65,8 @@ if(WIN32)
     add_executable(arc-dynamic-city samples/dynamic_city.cpp)
     target_compile_definitions(arc-dynamic-city PRIVATE UNICODE _UNICODE NOMINMAX)
     target_link_libraries(arc-dynamic-city PRIVATE d3d12 dxgi d3dcompiler user32 ole32 windowscodecs)
+    add_executable(arc-cpu-task-probe src/tools/cpu_task_probe.cpp)
+    target_compile_definitions(arc-cpu-task-probe PRIVATE UNICODE _UNICODE NOMINMAX)
     add_executable(arc-process-sample src/tools/process_sample.cpp)
     target_compile_definitions(arc-process-sample PRIVATE UNICODE _UNICODE NOMINMAX)
     add_library(arc-dx12-observer STATIC

@@ -1,0 +1,1 @@
+{"schema":1,"pid":23072,"seconds":10.0065,"context_probes":376,"failed":0,"slow_suspensions":0,"suspension_us":48602.8,"thread_limit":256,"context_threads_per_tick":4,"sampling_period_ms":100,"window_thread_hint":2080,"window_thread_is_critical_path_proof":false,"instruction_trace":false,"memory_dependencies_proven":false,"replacement_enabled":false}
