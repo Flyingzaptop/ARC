@@ -1,0 +1,25 @@
+{
+  "Resident completed exact records": {
+    "count": 517,
+    "total": 33782848.0,
+    "min": 65344.0
+  },
+  "Resident completed pixel errors": {
+    "count": 517,
+    "total": 0.0,
+    "min": 0.0
+  },
+  "Resident completed nonzero pixels": {
+    "count": 517,
+    "total": 915899203.0,
+    "min": 1770699.0
+  },
+  "after_stop": {
+    "Resident permission": [
+      0.0
+    ],
+    "Resident previous pack items skipped": [
+      0.0
+    ]
+  }
+}

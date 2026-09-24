@@ -1,0 +1,1103 @@
+{
+  "source_base": "63b0379",
+  "archive_sha256": "bad1a9cade48123e52cdfe747bdc48af097587dedb881bef79ca881688345b27",
+  "archive_bytes": 30999015,
+  "members": {
+    "analyze-full-arc-comparison.py": {
+      "bytes": 6742,
+      "sha256": "99409deb9d9bdc6a1aa77b2ce65b2c7e134fe40ccd5fad471ed19e2d13270622"
+    },
+    "cauldron/A1/joined-frames.csv": {
+      "bytes": 259322,
+      "sha256": "acce26ba2450fa7d8a634b296bc4420df5d4d3adbfb9c49b135dd0f97609a16e"
+    },
+    "cauldron/A1/session/Cauldron.log": {
+      "bytes": 2863,
+      "sha256": "f248d6c6e079d21de4b63a7e4f2b392d351859c23bd9a5de3bda63e12652b9d2"
+    },
+    "cauldron/A1/session/FFX_BRIXELIZER_GI_DX12.exe_NVIDIA GeForce RTX 3060 Laptop GPU_1920x1055_2026-09-24-12-36-21.png": {
+      "bytes": 2004457,
+      "sha256": "ddc1531ad342a4424de770daf78b06bbabb89818613e7f50dfac137f99e79a43"
+    },
+    "cauldron/A1/session/FidelityFX Brixelizer GI v1.0-perf-2026-09-24T12-36-22.json": {
+      "bytes": 4562,
+      "sha256": "fea4d3c9d24b4a94dacd9e918b748fee516650b70ea92569abeb72158f390488"
+    },
+    "cauldron/A1/session/frames.jsonl": {
+      "bytes": 4227506,
+      "sha256": "3651f12ac461583b887bd1b273107d1e509542328b0729efa6d37930e5082e24"
+    },
+    "cauldron/A1/session/gpu-samples.json": {
+      "bytes": 51483,
+      "sha256": "6e47ac15ed38cfbfe3622d97133e359bbac3535ca2f2b61db84d48cef40fdfdc"
+    },
+    "cauldron/A1/session/gpu-samples.jsonl": {
+      "bytes": 48120,
+      "sha256": "b5172f2ea95ca7bdf0bc7838cf86e21911c35c36d6912eaadf69d29139076908"
+    },
+    "cauldron/A1/session/initialization-frames.jsonl": {
+      "bytes": 22341659,
+      "sha256": "df23899062f7f256570de8167d1d917f55645633dcb119af2f7ac23307db1b07"
+    },
+    "cauldron/A1/session/manifest.json": {
+      "bytes": 2029,
+      "sha256": "d0bb7c97042f844de11a391cb6cf67c17b2f5e2a699dfaea0f81a4c3a5b3fa5d"
+    },
+    "cauldron/A1/session/measurement-phase.json": {
+      "bytes": 90,
+      "sha256": "386b617ddc91b71e94a65f464d156ed3f33abfaf8f43974cd32215d30e9c9feb"
+    },
+    "cauldron/A1/session/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cauldron/A1/session/stdout.txt": {
+      "bytes": 370,
+      "sha256": "e35bb8c4260b809c0e04408429d412f0ac1380090e351bcf1818560c7296c776"
+    },
+    "cauldron/A2/joined-frames.csv": {
+      "bytes": 241434,
+      "sha256": "5368904ab92f1c4f919595a2e50aa849b8e7617219c080e7d1687a8abc4eef5c"
+    },
+    "cauldron/A2/session/Cauldron.log": {
+      "bytes": 2863,
+      "sha256": "118516bb8eb39c2ed3ed314101db5a9dde8378b25d7159dbd6c717cd64a83096"
+    },
+    "cauldron/A2/session/FFX_BRIXELIZER_GI_DX12.exe_NVIDIA GeForce RTX 3060 Laptop GPU_1920x1055_2026-09-24-12-42-45.png": {
+      "bytes": 2174309,
+      "sha256": "f7f522c558024f08a3c5333c735277111aedb9e8d34f4c65a06bac6581b4da49"
+    },
+    "cauldron/A2/session/FidelityFX Brixelizer GI v1.0-perf-2026-09-24T12-42-46.json": {
+      "bytes": 4569,
+      "sha256": "8eb44ac04c30c87b09b7727578666572e86b7baf1620824a56e09ba703ea3e22"
+    },
+    "cauldron/A2/session/frames.jsonl": {
+      "bytes": 3939731,
+      "sha256": "650b9d76d4eed5c59f1be7ff1549bb8a1a965124ae443f5592da586db080cbcc"
+    },
+    "cauldron/A2/session/gpu-samples.json": {
+      "bytes": 50629,
+      "sha256": "8889a36fbbbab888180514fd4dda077b230201319cb2b63f52ea58c867c26a3c"
+    },
+    "cauldron/A2/session/gpu-samples.jsonl": {
+      "bytes": 47322,
+      "sha256": "be94ebd38138f4ab200ab49fcb808a8ad18e9ee94d58a04bfe631be48b5c3571"
+    },
+    "cauldron/A2/session/initialization-frames.jsonl": {
+      "bytes": 20751814,
+      "sha256": "74ecf56c3294192610e9bbbb2bd6c0a2699bd9363f319b77a2c57ab4ce71b006"
+    },
+    "cauldron/A2/session/manifest.json": {
+      "bytes": 2028,
+      "sha256": "58d63f24d270562f4a0a0d76b8ec9694ef898e2e19660502552e3b8318df0e33"
+    },
+    "cauldron/A2/session/measurement-phase.json": {
+      "bytes": 89,
+      "sha256": "7facdd24248a94edac551e1d916b680be9cdc4338044764b8efad7e132ba6abd"
+    },
+    "cauldron/A2/session/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cauldron/A2/session/stdout.txt": {
+      "bytes": 370,
+      "sha256": "e35bb8c4260b809c0e04408429d412f0ac1380090e351bcf1818560c7296c776"
+    },
+    "cauldron/B1/joined-frames.csv": {
+      "bytes": 244830,
+      "sha256": "a7943272a3681ba0e224485ff0acbd11a8fd58e25c67be291bd30743d4c78b82"
+    },
+    "cauldron/B1/session/arc.json": {
+      "bytes": 6558,
+      "sha256": "5699d52f0647d38e6a74867833fd01d4cb76b4e9ad7e440d1f9797ce2e2fc618"
+    },
+    "cauldron/B1/session/automatic/events.jsonl": {
+      "bytes": 490568,
+      "sha256": "357fdc2add624cc95af9f53d1882b01563db1a036ef128021d447982f6b2fa0e"
+    },
+    "cauldron/B1/session/automatic/pid-profile-5.json": {
+      "bytes": 463815,
+      "sha256": "71a9cec19ed4ff49b2cb183849778992798a8676188e719ceb41df4fa52df272"
+    },
+    "cauldron/B1/session/automatic/pid-profile-6.json": {
+      "bytes": 463816,
+      "sha256": "b54c320d5d095748e29868cb86b889d2028f7c37c6059fecaf9b34ed09bc9bb9"
+    },
+    "cauldron/B1/session/automatic/pid-profile-7.json": {
+      "bytes": 463811,
+      "sha256": "fc58b2cb0cba1619c99822a1457f316fd5d5daf02e79540b2fd147953ed2adef"
+    },
+    "cauldron/B1/session/automatic/status.json": {
+      "bytes": 527,
+      "sha256": "fe0b98f60840131359ca2cb0ddd6a070cb2ed0f5e95a25ab8f49f20aef9bb097"
+    },
+    "cauldron/B1/session/automatic-config.json": {
+      "bytes": 429,
+      "sha256": "578d1ff4ee0abdb9a315236fa6b2cb7355c0f93eafe0f57c5fe538034a1de1c2"
+    },
+    "cauldron/B1/session/Cauldron.log": {
+      "bytes": 2863,
+      "sha256": "8aa1418f598926abec719388b9417c66277ea0c2a0a0ff8c6e9bd3a9c833d248"
+    },
+    "cauldron/B1/session/FFX_BRIXELIZER_GI_DX12.exe_NVIDIA GeForce RTX 3060 Laptop GPU_1920x1055_2026-09-24-12-38-28.png": {
+      "bytes": 2097306,
+      "sha256": "156cd60f86abe760adce18b0622f17e610c709e12888c952bfd089324bf1eb0e"
+    },
+    "cauldron/B1/session/FidelityFX Brixelizer GI v1.0-perf-2026-09-24T12-38-29.json": {
+      "bytes": 4559,
+      "sha256": "8a55c47acca5dc9288fdf3ab4820398e6c5ad38123a8da39106a7a1d0dff4bf1"
+    },
+    "cauldron/B1/session/frames.jsonl": {
+      "bytes": 3990523,
+      "sha256": "8005b101459d18e20d263912de34dc8f9b7e642866caa9f23bcff20fad757b22"
+    },
+    "cauldron/B1/session/gpu-samples.json": {
+      "bytes": 49766,
+      "sha256": "dbdf061393e5d3697e7693165dea5d250e3e26a82ab6baab491c945ef813bb40"
+    },
+    "cauldron/B1/session/gpu-samples.jsonl": {
+      "bytes": 46515,
+      "sha256": "9cf5b538248d884336a144cc8f41a0cf73f2ec819a74cb9a3a2b9a5782a031e9"
+    },
+    "cauldron/B1/session/initialization-frames.jsonl": {
+      "bytes": 20747003,
+      "sha256": "a73f32934f6eeb13a0887e93d01306d226a747f602e76c124a77cae98cc0cbdd"
+    },
+    "cauldron/B1/session/manifest.json": {
+      "bytes": 2235,
+      "sha256": "404df0e843a13e2a808fe9b1535e24b00bd6b397f210f4399d843c64a924a09b"
+    },
+    "cauldron/B1/session/measurement-phase.json": {
+      "bytes": 90,
+      "sha256": "7c6d71375252f8b076087211877a3ad94121381183124c67ba974a6e9d0dc632"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/06ca31d05ce7bdd322497cd5139fd4526f7e59162af419ffc86dea56b7dfcb9e.json": {
+      "bytes": 233,
+      "sha256": "35c49229bc6bd5ee9926563a36c3adc48771a407b244615c21974d0a0d7afb54"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/0c4cfb43d5e10bc9e50b898fe5ebffb0190e01ab61f30222987feb5026b7acb6.json": {
+      "bytes": 218,
+      "sha256": "9c3308548d197155d7ec5ecb6bf45065e51876e40d53c5092e8e6549d838e2c6"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/1aa52f5bce4330b5b7bc93e6c46f53c622dabecafe3631a84e8c44d771ca7c84.json": {
+      "bytes": 220,
+      "sha256": "59b476b2ff61e14f702dd1423724ff30e281b0c4450d97f4fbfa29919c718322"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/39a4ea04d9b879e33c3fe3759a4b03984380819ea320439228749c330c45289f.json": {
+      "bytes": 233,
+      "sha256": "bfdf82e284218146eebcf0ca8a9060b58d9a233df05003ab18f86ce474c41945"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/3fca1a90b3eae854176a3463dabf5e1e458aa2f83f1c80c9c064efa8d661ae69.json": {
+      "bytes": 472,
+      "sha256": "18585ad205ec0e6c7871d70d65facb05e4a095faadfacd1b785561c5176362dc"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/4b68960f24d7d246fcd84fa4ad354fd257617f54294844441772c74ddbd05237.json": {
+      "bytes": 218,
+      "sha256": "bc9f4fb219617bb307e9d8c2d3dbb3d2e9805a3f1326ccc9da0dc31b7de63289"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/4e47417f6dba3fe9e1c1bfc90fd6047aaf843440851193bb1f34fcaade8912f6.json": {
+      "bytes": 226,
+      "sha256": "99e8658e1dc8f9076a1ac90d9d999cd877558a2a9846ba0ea1a13fe703817a7d"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/597e6b6436a5069a2d0af770dd9a8b5004cccaee17baa7688aab4c202d240131.json": {
+      "bytes": 233,
+      "sha256": "5a4f10e3e5b1d1d30adb12818eadbdeb765fbc610005bb81c58e09c8142d9254"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/628f7c6f3c98d09838cf250bcfe7a0bd15488e0f8c0690fe1f132fff12027eb9.json": {
+      "bytes": 472,
+      "sha256": "1e2ad7525b476794c204c73601b6e06896ba5239934e5a176812adc577be44f9"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/62f7143fe0a6d8a6276cb5ef5b533fce59c04bf5d0a8903e4d69e8d49fe53943.json": {
+      "bytes": 390,
+      "sha256": "8cca4b11306bd8b0d7e8e168e1b6ce049eb69e9a7ac078a1c6eb6adc3f4ac7e2"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/6c4bba8ef558e9fca68aaa5ef0cc39a2b8003d7a488d41c02c6962ac5d43b14b.json": {
+      "bytes": 311,
+      "sha256": "76241cb2b027053478c81f2b947de9a91535ec2114ca347f2cdaa1fa61128f53"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/6cf734ffd1e788d08c50f15a675b887be6728927ce6a2c1981f1cb2d87410656.json": {
+      "bytes": 220,
+      "sha256": "f56e5140678d2310a09eb0e33ed2bde85560803988150d96b1f1df6ee639a303"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/9592e78cd243a9e6b1842541a9e91e80fb11aa0532a3a84ecca5512d2ace574d.json": {
+      "bytes": 472,
+      "sha256": "65ddb130bfd024912ca6104c98f2ab570eedc38bf5ac55eb840dbd9677a5d54d"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/9894ab056db5a9f1f4125318a3cbdabd6484e9d99ff08095eed64244eb5e86a7.json": {
+      "bytes": 220,
+      "sha256": "72b829b359a5e7f04a423d8fa96e5814203403bfc22bd9738ae3746c473cc9ee"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/9f2ed8fa34c83c06c5d148720b051d1263a8ee7e442e9fd7bf055e7284f858a7.json": {
+      "bytes": 472,
+      "sha256": "b9802e044fff39a7a51550004037c18ec21f09dbf0799c6ecb6569884f32282a"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/ad2822292ced589299d0844444fa7dbd415100d5131b5cfc4a5a01bdc9d780ad.json": {
+      "bytes": 233,
+      "sha256": "a06cb505a0806df09b7284b35b9fb193a552a09b32e5715aaee48ba332297f35"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/ad301c7c3cca8fbd28706c71d87ae7d8dfae2d807926c623a8bf2e2bb49d3e9f.json": {
+      "bytes": 220,
+      "sha256": "b1b77a7c2cf7f64bf187091858b9c7d564b978a3e69bd72e1db118227aa3dbf6"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/b20aee3b8536d66f075bc5d4c5dfa0e242af9278d42ae6c54eea912b83675dcd.json": {
+      "bytes": 226,
+      "sha256": "a966a018a4c7a8bea9c80f56f5be812eddeb851b21b6858aba9a810403368d7e"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/b2272fe4c80563534537804ab141725004afe6b977a438cfb3dc42e7b6b15c0d.json": {
+      "bytes": 233,
+      "sha256": "b567906519b916aa3ef6558cdb47b1a3528f9799d9e76beb748dbc60956a2124"
+    },
+    "cauldron/B1/session/shader-cache/analyzed-v1/facb9cc1d75d733c3ea6bf2597140d78984816039f33325fec1dbef728f033ca.json": {
+      "bytes": 472,
+      "sha256": "a77c4c40899adcc72b7c5b1714d5f661e28aec26c5bebacbc023af24970f256c"
+    },
+    "cauldron/B1/session/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cauldron/B1/session/stdout.txt": {
+      "bytes": 370,
+      "sha256": "e35bb8c4260b809c0e04408429d412f0ac1380090e351bcf1818560c7296c776"
+    },
+    "cauldron/B2/joined-frames.csv": {
+      "bytes": 245930,
+      "sha256": "6b8307fc1498805829c05a4750910f65fdfa5a513d5f041b0de2f70b1c9562b7"
+    },
+    "cauldron/B2/session/arc.json": {
+      "bytes": 8524,
+      "sha256": "a29400c3f078d7b68b7877a3df5008dcbd9a65fd784aa01fe0441e8cfbac8ded"
+    },
+    "cauldron/B2/session/automatic/events.jsonl": {
+      "bytes": 490900,
+      "sha256": "8cf42a71290ba38ab1ebc56c5508fcec38d761a46f8607fd5038bee677b30e7c"
+    },
+    "cauldron/B2/session/automatic/pid-profile-5.json": {
+      "bytes": 463779,
+      "sha256": "e6661ef20029e7dfdd39de4e531524e352952b48f51e23f841790ce8433586e6"
+    },
+    "cauldron/B2/session/automatic/pid-profile-6.json": {
+      "bytes": 463821,
+      "sha256": "96573c82c7616f3de78e74a2d4f1be371c9d5ce5db1f91b0921f0a23955dd1bf"
+    },
+    "cauldron/B2/session/automatic/pid-profile-7.json": {
+      "bytes": 463816,
+      "sha256": "20a5dd6d54622b81d4732c5f4577d20b3bb509dc7ff1638a8ffe731ada40b298"
+    },
+    "cauldron/B2/session/automatic/status.json": {
+      "bytes": 527,
+      "sha256": "d47eefde8c9779ea9ff1af72b834ccbc1118ef6b76bb7f91819c5d35d4595254"
+    },
+    "cauldron/B2/session/automatic-config.json": {
+      "bytes": 429,
+      "sha256": "e83cd1e6198037c112cef26611cd86080219e6a72aaef59ae447e147852abe80"
+    },
+    "cauldron/B2/session/Cauldron.log": {
+      "bytes": 2863,
+      "sha256": "4b1722dc29991cccc0ad2b72c96963902ea38e930b32ca357cb247239891e6a8"
+    },
+    "cauldron/B2/session/FFX_BRIXELIZER_GI_DX12.exe_NVIDIA GeForce RTX 3060 Laptop GPU_1920x1055_2026-09-24-12-40-37.png": {
+      "bytes": 2061728,
+      "sha256": "e635fec94f95e3faa8049ed70c45eaa383bf5ca3304362bcb744e7f90e9d4f98"
+    },
+    "cauldron/B2/session/FidelityFX Brixelizer GI v1.0-perf-2026-09-24T12-40-38.json": {
+      "bytes": 4556,
+      "sha256": "afc4a4dbd1d825fe3ffd2f6775586c8ad5c01bd15d47e1ad83be013259c4bb4e"
+    },
+    "cauldron/B2/session/frames.jsonl": {
+      "bytes": 4011259,
+      "sha256": "ff628198bec5257b109e3028afcfb41c232af6047068f24ad86a77aa9999a514"
+    },
+    "cauldron/B2/session/gpu-samples.json": {
+      "bytes": 50636,
+      "sha256": "04542eea33fbb83852dea84f9391345451b79c972be4775bdc9ca9e76c103ceb"
+    },
+    "cauldron/B2/session/gpu-samples.jsonl": {
+      "bytes": 47329,
+      "sha256": "8cc2a4e348fbb0cc47798517aa148dafb9c22ad6975cf0010f697f58c68f5626"
+    },
+    "cauldron/B2/session/initialization-frames.jsonl": {
+      "bytes": 20752382,
+      "sha256": "4739cf36db9587347535a4012b8d0d7d2d5bf81e8f11deb4470ba7628a723ee9"
+    },
+    "cauldron/B2/session/manifest.json": {
+      "bytes": 2234,
+      "sha256": "ae10a76d60abcd18adc4a915f0b42b0b1752d60fb9b88f99d5afafba78a8c277"
+    },
+    "cauldron/B2/session/measurement-phase.json": {
+      "bytes": 90,
+      "sha256": "5548bf34c2c145eabf547151541a2a75eb9651728c8af440e3d8d8ad8c9ebae9"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/06ca31d05ce7bdd322497cd5139fd4526f7e59162af419ffc86dea56b7dfcb9e.json": {
+      "bytes": 233,
+      "sha256": "35c49229bc6bd5ee9926563a36c3adc48771a407b244615c21974d0a0d7afb54"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/0c4cfb43d5e10bc9e50b898fe5ebffb0190e01ab61f30222987feb5026b7acb6.json": {
+      "bytes": 218,
+      "sha256": "9c3308548d197155d7ec5ecb6bf45065e51876e40d53c5092e8e6549d838e2c6"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/1aa52f5bce4330b5b7bc93e6c46f53c622dabecafe3631a84e8c44d771ca7c84.json": {
+      "bytes": 220,
+      "sha256": "59b476b2ff61e14f702dd1423724ff30e281b0c4450d97f4fbfa29919c718322"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/39a4ea04d9b879e33c3fe3759a4b03984380819ea320439228749c330c45289f.json": {
+      "bytes": 233,
+      "sha256": "bfdf82e284218146eebcf0ca8a9060b58d9a233df05003ab18f86ce474c41945"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/3fca1a90b3eae854176a3463dabf5e1e458aa2f83f1c80c9c064efa8d661ae69.json": {
+      "bytes": 472,
+      "sha256": "18585ad205ec0e6c7871d70d65facb05e4a095faadfacd1b785561c5176362dc"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/4b68960f24d7d246fcd84fa4ad354fd257617f54294844441772c74ddbd05237.json": {
+      "bytes": 218,
+      "sha256": "bc9f4fb219617bb307e9d8c2d3dbb3d2e9805a3f1326ccc9da0dc31b7de63289"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/4e47417f6dba3fe9e1c1bfc90fd6047aaf843440851193bb1f34fcaade8912f6.json": {
+      "bytes": 226,
+      "sha256": "99e8658e1dc8f9076a1ac90d9d999cd877558a2a9846ba0ea1a13fe703817a7d"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/597e6b6436a5069a2d0af770dd9a8b5004cccaee17baa7688aab4c202d240131.json": {
+      "bytes": 233,
+      "sha256": "5a4f10e3e5b1d1d30adb12818eadbdeb765fbc610005bb81c58e09c8142d9254"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/628f7c6f3c98d09838cf250bcfe7a0bd15488e0f8c0690fe1f132fff12027eb9.json": {
+      "bytes": 472,
+      "sha256": "1e2ad7525b476794c204c73601b6e06896ba5239934e5a176812adc577be44f9"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/62f7143fe0a6d8a6276cb5ef5b533fce59c04bf5d0a8903e4d69e8d49fe53943.json": {
+      "bytes": 390,
+      "sha256": "8cca4b11306bd8b0d7e8e168e1b6ce049eb69e9a7ac078a1c6eb6adc3f4ac7e2"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/6c4bba8ef558e9fca68aaa5ef0cc39a2b8003d7a488d41c02c6962ac5d43b14b.json": {
+      "bytes": 311,
+      "sha256": "76241cb2b027053478c81f2b947de9a91535ec2114ca347f2cdaa1fa61128f53"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/9592e78cd243a9e6b1842541a9e91e80fb11aa0532a3a84ecca5512d2ace574d.json": {
+      "bytes": 472,
+      "sha256": "65ddb130bfd024912ca6104c98f2ab570eedc38bf5ac55eb840dbd9677a5d54d"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/9894ab056db5a9f1f4125318a3cbdabd6484e9d99ff08095eed64244eb5e86a7.json": {
+      "bytes": 220,
+      "sha256": "72b829b359a5e7f04a423d8fa96e5814203403bfc22bd9738ae3746c473cc9ee"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/9f2ed8fa34c83c06c5d148720b051d1263a8ee7e442e9fd7bf055e7284f858a7.json": {
+      "bytes": 472,
+      "sha256": "b9802e044fff39a7a51550004037c18ec21f09dbf0799c6ecb6569884f32282a"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/ad2822292ced589299d0844444fa7dbd415100d5131b5cfc4a5a01bdc9d780ad.json": {
+      "bytes": 233,
+      "sha256": "a06cb505a0806df09b7284b35b9fb193a552a09b32e5715aaee48ba332297f35"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/ad301c7c3cca8fbd28706c71d87ae7d8dfae2d807926c623a8bf2e2bb49d3e9f.json": {
+      "bytes": 220,
+      "sha256": "b1b77a7c2cf7f64bf187091858b9c7d564b978a3e69bd72e1db118227aa3dbf6"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/b20aee3b8536d66f075bc5d4c5dfa0e242af9278d42ae6c54eea912b83675dcd.json": {
+      "bytes": 226,
+      "sha256": "a966a018a4c7a8bea9c80f56f5be812eddeb851b21b6858aba9a810403368d7e"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/b2272fe4c80563534537804ab141725004afe6b977a438cfb3dc42e7b6b15c0d.json": {
+      "bytes": 233,
+      "sha256": "b567906519b916aa3ef6558cdb47b1a3528f9799d9e76beb748dbc60956a2124"
+    },
+    "cauldron/B2/session/shader-cache/analyzed-v1/facb9cc1d75d733c3ea6bf2597140d78984816039f33325fec1dbef728f033ca.json": {
+      "bytes": 472,
+      "sha256": "a77c4c40899adcc72b7c5b1714d5f661e28aec26c5bebacbc023af24970f256c"
+    },
+    "cauldron/B2/session/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cauldron/B2/session/stdout.txt": {
+      "bytes": 370,
+      "sha256": "e35bb8c4260b809c0e04408429d412f0ac1380090e351bcf1818560c7296c776"
+    },
+    "cauldron/comparison.json": {
+      "bytes": 9289,
+      "sha256": "69dace1cc66b1cee11c41ae6426ed21f8efbb21805be7522ada693079d62490a"
+    },
+    "cauldron/cpu_ms.svg": {
+      "bytes": 86967,
+      "sha256": "e2ccdcc157f1fbed95a89c19e0fb75de7abdf592bdfc46beea232eb27e4ceee1"
+    },
+    "cauldron/gpu_ms.svg": {
+      "bytes": 86763,
+      "sha256": "6533214dba9b0ab5b792560acc414c3eef06eab9bf46a0247376710ad2ef6fd1"
+    },
+    "cauldron/N1/comparison.json": {
+      "bytes": 1198,
+      "sha256": "4d43c6c3afa51512600c6b0aa4c47f1640704341e2d83c9b05ab9dd9e123d053"
+    },
+    "cauldron/N1/joined-frames.csv": {
+      "bytes": 124006,
+      "sha256": "138311ef83d8fc96dd0c274d036b9032bcf4fa99ce84439978ed21fddb5bfe26"
+    },
+    "cauldron/N1/session/arc.json": {
+      "bytes": 6027,
+      "sha256": "5f99e3f1c09fda9b295f17f1cdb3f81e6440d4c0a931036392ae0793cd6c2721"
+    },
+    "cauldron/N1/session/Cauldron.log": {
+      "bytes": 2863,
+      "sha256": "e2a17e3339e41cc4e100e9276bdd99867a102be9dda378c15aea0dacd154a7ca"
+    },
+    "cauldron/N1/session/FFX_BRIXELIZER_GI_DX12.exe_NVIDIA GeForce RTX 3060 Laptop GPU_1920x1055_2026-09-24-12-45-55.png": {
+      "bytes": 2035496,
+      "sha256": "186b05dc1374f0d3116644f257279f75461157b4ef0dc2c3a470bcbfcfcb5891"
+    },
+    "cauldron/N1/session/FidelityFX Brixelizer GI v1.0-perf-2026-09-24T12-45-55.json": {
+      "bytes": 4548,
+      "sha256": "fa363a2fd315bb358bad759df0e6b8ab6e8683de6eede01b348ebcca28b9d8d1"
+    },
+    "cauldron/N1/session/frames.jsonl": {
+      "bytes": 4053640,
+      "sha256": "733ea656584f4e08fd1f362428408653f098795f1d96c602fa5b29a73d2a0bce"
+    },
+    "cauldron/N1/session/gpu-samples.json": {
+      "bytes": 51053,
+      "sha256": "8aa50195687564af4e9feea6973c33967134e65aae902e0edb4fd0273604eec8"
+    },
+    "cauldron/N1/session/gpu-samples.jsonl": {
+      "bytes": 47718,
+      "sha256": "2626dd5fc1150d0e0563c75e33aea4e5c6eb3f2b936d17a56264529d591b88df"
+    },
+    "cauldron/N1/session/initialization-frames.jsonl": {
+      "bytes": 22337387,
+      "sha256": "de3c59952d791d4cb182e2151adccaceb724b0da4cfaf325345ea1591da583e4"
+    },
+    "cauldron/N1/session/manifest.json": {
+      "bytes": 2209,
+      "sha256": "966bf1b6f8efe47f794748ed507a07e393f2a3793315b2a6755375b5a28cca95"
+    },
+    "cauldron/N1/session/measurement-phase.json": {
+      "bytes": 90,
+      "sha256": "dc589e2c2cca3e9c6f2938ef8cdff63eff371f382d88a18d085db295970414b5"
+    },
+    "cauldron/N1/session/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cauldron/N1/session/stdout.txt": {
+      "bytes": 370,
+      "sha256": "e35bb8c4260b809c0e04408429d412f0ac1380090e351bcf1818560c7296c776"
+    },
+    "cauldron/present_rate_hz.svg": {
+      "bytes": 86992,
+      "sha256": "e1860783a5c78b1ff63eed3788392c8dbba779b54fc8160cd8cf8f49e2ae50ea"
+    },
+    "cauldron-build.log": {
+      "bytes": 10986,
+      "sha256": "f92fc3142b0c440649b7e917c89f506c7677eed5e33daabb4174fe3338bf6585"
+    },
+    "compare-full-arc.ps1": {
+      "bytes": 2201,
+      "sha256": "e51ac250d4e66cd4f347b81c508ef63639c787d87965693735d42229f9f79c7d"
+    },
+    "dll-build.log": {
+      "bytes": 1073,
+      "sha256": "fc3f04d6d4c906d56106527bd7f8a711b534cf60376fa791b4b31bc777513aab"
+    },
+    "hardware-summary.json": {
+      "bytes": 6182,
+      "sha256": "3fae6731dac3af93f3d4267f947ed56ffba44fc8628442c454c345f2a5e2c3d1"
+    },
+    "oracle/B1/arc.json": {
+      "bytes": 27175,
+      "sha256": "671a0b1285b9a4385fe3bb44f1521afb791f8469238d66cdc4e97633754ca86d"
+    },
+    "oracle/B1/automatic/events.jsonl": {
+      "bytes": 12709,
+      "sha256": "3bef4fd5a79f6e15f70a233134a240ee033ea4da40bae6dd3fb9cd8a5d4159de"
+    },
+    "oracle/B1/automatic/pid-profile-1.json": {
+      "bytes": 605,
+      "sha256": "f18a2b7674faf7106f074b5abca82b5d434fa06492772c042e5bef506e797cf2"
+    },
+    "oracle/B1/automatic/pid-profile-2.json": {
+      "bytes": 563,
+      "sha256": "a189e7cd62bf4fd603164a2775fe19fb17ad9fb8ca42487854662ba0aa7aef9e"
+    },
+    "oracle/B1/automatic/status.json": {
+      "bytes": 523,
+      "sha256": "bb75adebac8278e3fded13ba0d148e20d0b9bbecf6f38e616b7a2b15b8e5769c"
+    },
+    "oracle/B1/automatic-config.json": {
+      "bytes": 411,
+      "sha256": "8c8be5d68a8ebbea485c8bf6d66fb46a9a27999d0407c66fac5ec285c9831da0"
+    },
+    "oracle/B1/cpu.csv": {
+      "bytes": 872,
+      "sha256": "3125adc9dc723607262e78d64b61aeb8fe8fe30967d3bd68eec3f13ab7f012b5"
+    },
+    "oracle/B1/cpu.csv.capabilities.json": {
+      "bytes": 74,
+      "sha256": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f"
+    },
+    "oracle/B1/hardware.csv": {
+      "bytes": 966,
+      "sha256": "9ad99b926bd4d1a826b5fcbee086b81a61ef43aa2336a6d24345442f25a19422"
+    },
+    "oracle/B1/manifest.json": {
+      "bytes": 1806,
+      "sha256": "49d6699f59899087e7d218d99654cc71e8544179dc83c644b87b7720308d2820"
+    },
+    "oracle/B1/motion.jsonl": {
+      "bytes": 73,
+      "sha256": "38c30f7cbbedf7db9f2fbef5b366bbb6017270e18126cc6617ac1027ec70f881"
+    },
+    "oracle/B1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle/B1/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-active/B1/arc.json": {
+      "bytes": 27225,
+      "sha256": "49546f2ff74fd2a4774fdd52e6a68ee5fc72554b3389d5bb6c3b438b9a57f497"
+    },
+    "oracle-active/B1/automatic/events.jsonl": {
+      "bytes": 9869,
+      "sha256": "1ba7dc1754836842b15e23d56a4bd5a98c5561b957c8807973fdab2d0862e4ad"
+    },
+    "oracle-active/B1/automatic/status.json": {
+      "bytes": 2907,
+      "sha256": "49a3ce844eec9974b2ebe30508945e7898fb22b7a8625254ffd0f4f7bbd81928"
+    },
+    "oracle-active/B1/automatic-config.json": {
+      "bytes": 418,
+      "sha256": "7d2bb51ce9bfb77e6c8c643eeafe0ce7a5172c793a77ce7deba1e625576c9013"
+    },
+    "oracle-active/B1/cpu.csv": {
+      "bytes": 8356,
+      "sha256": "05fe7d5bcdfb697e6a3a98520ae3f4eedb8a8664ed0911421c78491cb517a439"
+    },
+    "oracle-active/B1/cpu.csv.capabilities.json": {
+      "bytes": 74,
+      "sha256": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f"
+    },
+    "oracle-active/B1/cpu.csv.resident-error.txt": {
+      "bytes": 25,
+      "sha256": "b3822b804db8d1b671c5666cba4898abda116bee092c89118065284930eb7827"
+    },
+    "oracle-active/B1/hardware.csv": {
+      "bytes": 833,
+      "sha256": "093765529722efdbece2cbc057776397d48dbd2f47154004c1335bdf40ef964c"
+    },
+    "oracle-active/B1/manifest.json": {
+      "bytes": 1838,
+      "sha256": "c7b9ee9bd367aa84de660cb0764a2c4f5d2c9787e6c78c0d692e8fb5d6e464e9"
+    },
+    "oracle-active/B1/motion.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-active/B1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-active/B1/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-camera-control/B1/arc.json": {
+      "bytes": 27523,
+      "sha256": "d4eaad843987c9b888de9ab38658dd48fac2620ab1f3316ffa6d28136f643eaf"
+    },
+    "oracle-camera-control/B1/automatic/events.jsonl": {
+      "bytes": 108779,
+      "sha256": "791d5b6ae093ff922a509b164bc21ebeadccb1edb99c796655995f0fea5776a2"
+    },
+    "oracle-camera-control/B1/automatic/pid-profile-2.json": {
+      "bytes": 245062,
+      "sha256": "425513d6a7782c04eddf8cbe99f9ef73a1027a09c2f8ca57338bd59098b8f93a"
+    },
+    "oracle-camera-control/B1/automatic/pid-profile-3.json": {
+      "bytes": 232765,
+      "sha256": "86b88100691eaccdc6cb3ce197191ce55f1af86e859c8cc57cd445873372e7a2"
+    },
+    "oracle-camera-control/B1/automatic/pid-profile-4.json": {
+      "bytes": 235173,
+      "sha256": "1fe0724f067bda72b6f1b51eed4aded12e59f3017850938d107e4148ace89de7"
+    },
+    "oracle-camera-control/B1/automatic/status.json": {
+      "bytes": 525,
+      "sha256": "1393ac1cb3b5b1b6c9fef40127323ab721ab24648b4b0d9c4a6d29c7890b2160"
+    },
+    "oracle-camera-control/B1/automatic-config.json": {
+      "bytes": 426,
+      "sha256": "2490db86ec8611783b02b222ccbce184fe96ecaf4e8af63b34a242965dd18564"
+    },
+    "oracle-camera-control/B1/cpu.csv": {
+      "bytes": 445601,
+      "sha256": "c5480888ba6096da1e9f2554b0d9c1603cb7fb3e252abae9ec18f93ba0a06403"
+    },
+    "oracle-camera-control/B1/cpu.csv.capabilities.json": {
+      "bytes": 74,
+      "sha256": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f"
+    },
+    "oracle-camera-control/B1/hardware.csv": {
+      "bytes": 1855,
+      "sha256": "b950ed05badf62b194a24a0491c18b31f1e8efe182b2837b9194889b3bf373d7"
+    },
+    "oracle-camera-control/B1/manifest.json": {
+      "bytes": 1869,
+      "sha256": "d0993b95c0835a931d67874888b45202b5c68509ea893712c67950ae3291d609"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/06cf533231288b635e88c5ce774482db125ff0c96cda077115ee1f7974295947.json": {
+      "bytes": 225,
+      "sha256": "16fff030184cbcefa44bf8d4a2ff143cd8871a80b1673f6c84f8641853cef7a9"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/0ead214df784652a6f41c206a8aaca9d957b73db17236657ca63e19ef9f5844a.json": {
+      "bytes": 208,
+      "sha256": "9d8ced1c82505cb63cac73bbf46b142edc3b773f37b622fa59a8139145b5e2b0"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/2009c61fdcb62979e3baa939071fabb42f52bfbc37e2ef97cae35cd506479201.json": {
+      "bytes": 225,
+      "sha256": "8a0696bc740bd7652ad0a2566bc992514d90b9fdd0de45f4416a26483fafa4ae"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/3748dbac2706d65de83a651c2656cc1855529fa5beda045b71a520d611d7c0bd.json": {
+      "bytes": 225,
+      "sha256": "b7a8cf0370610f57858824dd7300cba7390e5069f36c5e435d0d70077cdf3caf"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/440053dce6496db726f346f37d2c4b83ad9d317ffc5d2686eb926067103d0e83.json": {
+      "bytes": 220,
+      "sha256": "8bf7dbb0caeec9f6852b19f427014c91d72f060f09ed3fbb542f2f0000804bfe"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/5d484ed02a00e417d28670cd4b5607b5535b361923ce3db7556f7f32b6b7ae7b.json": {
+      "bytes": 233,
+      "sha256": "a4d0528684e21c26bf14b86a0a88e877bf3afd5ba7e7315ca8fd092082bd2a67"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/6a954cc17ca516ea0b2d10f331a0bb0b05d213ed4ebc4be189a486228b70f4e1.json": {
+      "bytes": 220,
+      "sha256": "70d8347cec98e6be3d2e4048c097248579972c7b26d40385d70de58792472f74"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/c0e788b5ebb88528d35b819b781eb129e6c0c58a27cc770fcc6e18cbc1233b2d.json": {
+      "bytes": 390,
+      "sha256": "325ac06fc56dab1d3bb65418cf7bd3fba6158b8646488eaf8c92698dc4c8d2f0"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/c43d7a083af4e7e895852277524ba8f6b3d293b181ee49a17386c2f44c532197.json": {
+      "bytes": 220,
+      "sha256": "962a20264696953376457f3900aaa24eec87607ac8f84608889b7f447f69bccc"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/d7ff4f498e06df3f977590c190a41b1b5c43041e9faa7a55bca4471b8f0f8012.json": {
+      "bytes": 216,
+      "sha256": "32787715cc6033f873a78f6705269c09e75ea533fd90536d78b46f7e95495c57"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/f24e43edcd76a610586e8ca51344389de80a4438d440c2d11573591aed1d8597.json": {
+      "bytes": 233,
+      "sha256": "48767d350f64c093161178d4b2330ad961c99a540fd106302191597aa92b0e10"
+    },
+    "oracle-camera-control/B1/shader-cache/analyzed-v1/fe715b6bd825527abf5d06d9015955091a8e56964f9d0d15fe5d265c733b2d41.json": {
+      "bytes": 220,
+      "sha256": "be3d62385399ad787ff901eea0f30ba3886fbb0bb4394fb09b62b11a337f4fb5"
+    },
+    "oracle-camera-control/B1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-camera-control/B1/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-final/B1/arc.json": {
+      "bytes": 25536,
+      "sha256": "ef94334f51b5ae767979128c0f4b193eeb10a3243e106a664bacd4fe0de89ae1"
+    },
+    "oracle-final/B1/automatic/events.jsonl": {
+      "bytes": 120964,
+      "sha256": "5f479f734f19bae6738dc28fa12a965a403272a574761c21dec655097e85d242"
+    },
+    "oracle-final/B1/automatic/pid-profile-1.json": {
+      "bytes": 42773,
+      "sha256": "119949e773294732f647440c4ee3244f1c9f6a527e64c51ed9b79f3e472ba19e"
+    },
+    "oracle-final/B1/automatic/pid-profile-2.json": {
+      "bytes": 232964,
+      "sha256": "d6a4c315105344e6459b64b832bdbf17737de1c79e3f4b8f5cd7169145226163"
+    },
+    "oracle-final/B1/automatic/pid-profile-3.json": {
+      "bytes": 233128,
+      "sha256": "eaf5492e968d2ce91333ef79145024a332a0417a1a03f2bee45df9de297f8970"
+    },
+    "oracle-final/B1/automatic/status.json": {
+      "bytes": 525,
+      "sha256": "f2a349a3d9c9d0a95aaa29fbdd6cc215e3a3ea0d05a37f0b8bb0ceb3ca1baad5"
+    },
+    "oracle-final/B1/automatic-config.json": {
+      "bytes": 417,
+      "sha256": "99f4f4171aafc3a160980ed0124af6aef940f46a41885cfdf82eed54fc617666"
+    },
+    "oracle-final/B1/cpu.csv": {
+      "bytes": 1428276,
+      "sha256": "2b20f449dd3dc0bfd06f74135b1f94bfd064da0d1a32bc896a2350d637990e0d"
+    },
+    "oracle-final/B1/cpu.csv.capabilities.json": {
+      "bytes": 74,
+      "sha256": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f"
+    },
+    "oracle-final/B1/hardware.csv": {
+      "bytes": 2089,
+      "sha256": "80afa4259ac914faddece62e5a474bed2b1be40489cd6ee5030e3328474f1936"
+    },
+    "oracle-final/B1/manifest.json": {
+      "bytes": 1903,
+      "sha256": "f7f34a8f35c0d6d5a8d799fe64abc624e00284340113f947046169c59cdb1ce7"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/19386b7dcdecdc77432628e912866ea642855598e0896c9f44d29e0643dcf21e.json": {
+      "bytes": 220,
+      "sha256": "0fc0b4f706aad687b5a776c1419b77d5a9dc97df3368af10bfaa8cbf9c260bd2"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/29ff01addfaa87f348c28357a28ed0a91521fc1a008e876b06381dd15735f779.json": {
+      "bytes": 225,
+      "sha256": "22a5ee9b702c33c33cda1f52b9176dbaf7304be7f3ceb6919d35136531804ef4"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/2bc3f0a7a339287d5c4de2d1a2a6b5a1a2e89b0c58ee48bb51946882e3905424.json": {
+      "bytes": 233,
+      "sha256": "eca07da2000b5223f22fe090ebb1e855291151143d92bc926d342c3a865ce3df"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/36719ed8b0d052b348d66670c78bccae7b35e66775f6435e9fb966c52e7b16de.json": {
+      "bytes": 220,
+      "sha256": "a1406231c0994e5f44d87df81c2a6d4a5a65fa6833554751bb5847ceedf50f57"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/3cfb071f2ad84e53b95b73ac971432e554e73fa3edd64778095355a24205b407.json": {
+      "bytes": 208,
+      "sha256": "f6662b3665c9348087cee0f32734615787990fb9552bf034590fd895e674c2dc"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/4881437386b5a71a30a56bf61fd4b8a21567f5ba9025d97c5b66a6a1e0785a9f.json": {
+      "bytes": 225,
+      "sha256": "8c7093b1c3f42a5270d20f615a402dc86dc4e7ca64789d9a715c91a67b7dae1a"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/4a0c5d29805d65d643b7899540551de4cd6a4a189de2eb6f9fb1a07521535989.json": {
+      "bytes": 225,
+      "sha256": "f05bf184f70e29e4d13314ecea0a4021f2edfc7a8c5a2a028a4f9c02386d164a"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/4c9ef2c869ec951a00a62c067a318acbd651f5f76529e8d34500337726691904.json": {
+      "bytes": 233,
+      "sha256": "f200059c75035cdf10a6a73da62acbcd67eea674e7db5894d77f6a44cb748326"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/6f759faa53b915aa97b1e7d96a4df6e72eeb93ebcd866bdf59395b3df4b3fad5.json": {
+      "bytes": 220,
+      "sha256": "db48c5a4fc251a9cdb1d3e082ced456ec2da7015f203577f5192f812bbb15996"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/9f9caf47582b9d7da912b49d90e7309800dc0a20d00f1ce5b55192ca576e3441.json": {
+      "bytes": 216,
+      "sha256": "338ed54573365b177b027dc5fc491175f9acb449b2152df63997380d8db76d86"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/d5e8686fecffc8a29358906050405a3a187038a5dab4a4e8df775488b4d3de66.json": {
+      "bytes": 220,
+      "sha256": "5b0e464631229f917dc9ea4cef57c575ac16d8fca9125e3ad0d2114e00c2360d"
+    },
+    "oracle-final/B1/shader-cache/analyzed-v1/e6a195b91966add30fb78808be0912aa396da9f5d0a1dee024249797b084ec7e.json": {
+      "bytes": 390,
+      "sha256": "d53605852a931f860ebe4ef655170a5bf3596534789eb9d96ac99af368f54746"
+    },
+    "oracle-final/B1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-final/B1/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "oracle-final/B1/verification.json": {
+      "bytes": 470,
+      "sha256": "2e281c6792272bc724e8c37cd8d4b863cdcb9fa3e9c66cc227ed5825e5d36eee"
+    },
+    "power-context.txt": {
+      "bytes": 318,
+      "sha256": "6494d0b2f9d15264376bfeac5dd5c8572b845f8d9b6b7efe1ee0c0bbced67d54"
+    },
+    "run-full-arc-comparison.py": {
+      "bytes": 4882,
+      "sha256": "ac85612f986e232b16e27b1cccfb9ad5e269f988888b50cedf99653f55b4aeab"
+    },
+    "verification-summary.json": {
+      "bytes": 7425,
+      "sha256": "4b94441fe423b042eb35eea6e9a9b4977c3bce32526e8c3e399adc25478d6cf6"
+    },
+    "wicked/A1/automatic-config.json": {
+      "bytes": 411,
+      "sha256": "b92344f969f46a166597c5fe529c9f18c128b144633a697526eeae4edfcc5971"
+    },
+    "wicked/A1/cpu.csv": {
+      "bytes": 1749173,
+      "sha256": "5e2a5af5d125af7559e5d4d7ba6de3cf73ed7ceb3c11bd0f24768ed2dec0968b"
+    },
+    "wicked/A1/hardware.csv": {
+      "bytes": 2734,
+      "sha256": "70ca9e2eb1cdd4aa13ea8a0156e0d0bd679cb2df1c7422aa6a8aaa57df6edf52"
+    },
+    "wicked/A1/joined-frames.csv": {
+      "bytes": 129545,
+      "sha256": "de8a7cf048512889def3aa7544a4d719dce9b7e3a648f8716916d96c2cdaf22a"
+    },
+    "wicked/A1/manifest.json": {
+      "bytes": 1101,
+      "sha256": "fc725946f4347813296837f52839925df8888822eb77dd3a5c7737521079e96d"
+    },
+    "wicked/A1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/A1/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/A2/automatic-config.json": {
+      "bytes": 411,
+      "sha256": "dc3a13e99dee3b3b380d0f25c813a85aacc7ae25c7982568be48128324ee686d"
+    },
+    "wicked/A2/cpu.csv": {
+      "bytes": 2031012,
+      "sha256": "6681bc5dec518d6a0c427fc5a6c84b85f3a581e85437581635b02efcf9a0bbea"
+    },
+    "wicked/A2/hardware.csv": {
+      "bytes": 2741,
+      "sha256": "01a6415152940c49c4959507289a5fe9e99f6cc27da1445b4768ef046d178dc1"
+    },
+    "wicked/A2/joined-frames.csv": {
+      "bytes": 144916,
+      "sha256": "fd27293074c7dd7e70866ff6a86978a0b2491402a3744408b014b5b6b179a8b4"
+    },
+    "wicked/A2/manifest.json": {
+      "bytes": 1101,
+      "sha256": "27492789c59cf4692abae965b01b3fc4cdf60c223cfe408823b359ec92e7de0b"
+    },
+    "wicked/A2/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/A2/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/B1/arc.json": {
+      "bytes": 25539,
+      "sha256": "efcd68179664a4dd23b295b609dc747edb5ff6de7c2ba7ca8af86edd99fa9b4c"
+    },
+    "wicked/B1/automatic/events.jsonl": {
+      "bytes": 173102,
+      "sha256": "3da067343960eebe1bc2f18320949e380ef436955adaed0660401c16d37bcd52"
+    },
+    "wicked/B1/automatic/pid-profile-2.json": {
+      "bytes": 240128,
+      "sha256": "447360e71fed0c880c0821d26abf856d7c493ecbf172e8a63f18c2b56c7e00a0"
+    },
+    "wicked/B1/automatic/pid-profile-3.json": {
+      "bytes": 313549,
+      "sha256": "34b972e9d0f895a127c6b632e90f0bbfe6938f8feba6323b0c394d58f66b1da3"
+    },
+    "wicked/B1/automatic/pid-profile-4.json": {
+      "bytes": 357182,
+      "sha256": "1bccc075fc543e664db53a38b7ff92c4b4d5be58539f29fc4b62e33aab3b1bf1"
+    },
+    "wicked/B1/automatic/status.json": {
+      "bytes": 526,
+      "sha256": "45cd2e1014dc05875ed69e9af6d29ef74a6da0423a8f6e88dd6af3d3f04c94a4"
+    },
+    "wicked/B1/automatic-config.json": {
+      "bytes": 411,
+      "sha256": "e9638d6ffc4745f6aa96dffef036b9b8c9c6d39dd113ec882f8927e0424bdc97"
+    },
+    "wicked/B1/cpu.csv": {
+      "bytes": 4745563,
+      "sha256": "afbc6a5ab2a8754ee9a8da3cbecec47642f81c8d3c5459f16aab2df17c0f345c"
+    },
+    "wicked/B1/cpu.csv.capabilities.json": {
+      "bytes": 74,
+      "sha256": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f"
+    },
+    "wicked/B1/hardware.csv": {
+      "bytes": 2743,
+      "sha256": "af8ae20c171be88f7da1fbc3cdd31ad9038119a5b55ac69f42025fe3622c3591"
+    },
+    "wicked/B1/joined-frames.csv": {
+      "bytes": 321295,
+      "sha256": "82875a829b1453599cd73c560352218f95181f0031d5769a27e58df65d44b80a"
+    },
+    "wicked/B1/manifest.json": {
+      "bytes": 1840,
+      "sha256": "c138abaff70ad96894463c16387aa089b296de1a18a201dc5bd80f92cdfb7e15"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/1296528ca68698b166f7e6e2b669d6c1459869ab3935d99913d1beb137fa074a.json": {
+      "bytes": 220,
+      "sha256": "3f45e4edbe32ac88c55dd23dc399a260dee45fa2fc5d61efaada7a18fba948e4"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/1339e2432df0976ad846976c3603f43aaf0d30721dd173dd8b4d99e677f9b176.json": {
+      "bytes": 208,
+      "sha256": "c3a3ac14701944dff35e4c07a8668b1991a369cc91092fef67b13ce509535186"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/1fcea8d3c3cf68f0c4d33e7ed3dfbf5d0844a9e9ca5b4794b3315f08b65edae3.json": {
+      "bytes": 233,
+      "sha256": "bab2c635cdcce85e69d7cc3454b0164932994ecf613aaf0c81d7a65a33a37cdd"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/388f286810224e31357f049a9bfb6377c165d14624bd0b46585b2ae9443a2eb2.json": {
+      "bytes": 220,
+      "sha256": "138e86260db1753db9c77e2e73c49d84b20c0489ba256305e6fafacaccdebacb"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/3ded62535f28f39065bddec44b1184f86db9ae9e3dce5ed83e718bb3e17d65db.json": {
+      "bytes": 225,
+      "sha256": "9c8f84587697ed65dfd76b1dbd2d878db7ea21680b53039d660dfbf3bcb643c6"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/42aa8e09ccb3a112d645ce80a86e8af98f92343e352772d3ba6abffb2bf531ed.json": {
+      "bytes": 390,
+      "sha256": "c68419936c4a5a33c7160e79112fb284df76a7ee527519502ea5549971160a64"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/6c75de64fa4dc6d22643c7fc864d807cc1ec60258185a123d5cff164f9b97fb2.json": {
+      "bytes": 225,
+      "sha256": "977fac3091f89dcff19b88895e85348d972889c6fedb9181a87279b20d855fbd"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/72e04c3e67873cb1b77fb073773b9a65355c42d19ca681043a0c3f30f831e731.json": {
+      "bytes": 220,
+      "sha256": "3076ee42a95d7c4aeb2953b398345eb283cdaac4130e2c85fdbb567119c580a5"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/9bbcd50bd0995ff4bb7c5c6450e3622acc4f0809f8fbdf5b7d5bae5cd6679545.json": {
+      "bytes": 225,
+      "sha256": "45ecdedd5a88d3bfd2bb496028fbb7bf0b985f110ad74f9df269656ac986aad5"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/af4918957bd1b6176f37426bdff4cfa7bc8bb90aeb21b19f059660ea44c88da5.json": {
+      "bytes": 220,
+      "sha256": "668ca545cd22095dea798952926fd7c30bc3fc35bda8519a0f8f4cd3d8444e05"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/cfdf035941e3632d99a197de5c51dee9e5e21de420f652ae55bbf5b1aa60a28e.json": {
+      "bytes": 216,
+      "sha256": "761f99cecf60eeeb43eb309f598831be966ff07341de132ea31195dba40d39ae"
+    },
+    "wicked/B1/shader-cache/analyzed-v1/def6d7312a46a04a950f28218501a7055ecf616dce91b877707b0ccabb998a76.json": {
+      "bytes": 233,
+      "sha256": "8e593df265d288d3b596d2963ecbf692c31fafa02fedcf5475b31662bffe5e28"
+    },
+    "wicked/B1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/B1/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/B2/arc.json": {
+      "bytes": 27485,
+      "sha256": "6c3e31c9528d265b2671a2a98eeefbb2ca83620a60bdb9a189c5e0afcf2b5d0e"
+    },
+    "wicked/B2/automatic/events.jsonl": {
+      "bytes": 179017,
+      "sha256": "87b98f4910f8458512937011707e655a4479357158a13d57207986cd43083822"
+    },
+    "wicked/B2/automatic/pid-profile-2.json": {
+      "bytes": 240309,
+      "sha256": "cc9556359cafd44669b4e34fd140d531ad5ecd21d15a69c15ff17abb4a793b24"
+    },
+    "wicked/B2/automatic/pid-profile-3.json": {
+      "bytes": 342349,
+      "sha256": "e29726dc42373c85f3dbb201e7de24585c7452c15b38ac50f8e1bf7391bb717f"
+    },
+    "wicked/B2/automatic/pid-profile-4.json": {
+      "bytes": 342995,
+      "sha256": "aca43974437e4f72e4ebbd0c2c8cbae5cd991c14d5c4f5290c35d98c1039fae1"
+    },
+    "wicked/B2/automatic/status.json": {
+      "bytes": 526,
+      "sha256": "27e310acdf1412a2c2fa904dc0958a460dedd9faa4f93a45aa9aab247744b73a"
+    },
+    "wicked/B2/automatic-config.json": {
+      "bytes": 411,
+      "sha256": "d8dec1c7f6fdcbf8328f4e612f3bf85cca4b6fb4c4733fbae5deea804137c6d1"
+    },
+    "wicked/B2/cpu.csv": {
+      "bytes": 4622554,
+      "sha256": "153e1d9512ef7d35fb191a8651039c9bcbad62501b70378b3822fa20ef9b4bb5"
+    },
+    "wicked/B2/cpu.csv.capabilities.json": {
+      "bytes": 74,
+      "sha256": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f"
+    },
+    "wicked/B2/hardware.csv": {
+      "bytes": 2807,
+      "sha256": "76c0b2dceb3eb48baf14da8604ec144a1a9d941277fa1f3d4df9e2b5f3f4bbe1"
+    },
+    "wicked/B2/joined-frames.csv": {
+      "bytes": 309236,
+      "sha256": "cd6c50402f1a9219f5d091b40b2f53fab7a4fc345b8763ae517d736c009b7cff"
+    },
+    "wicked/B2/manifest.json": {
+      "bytes": 1840,
+      "sha256": "b574a842e7a2d13c054d12b9303d07d43a54ec753e863f871f0743d651317854"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/1296528ca68698b166f7e6e2b669d6c1459869ab3935d99913d1beb137fa074a.json": {
+      "bytes": 220,
+      "sha256": "3f45e4edbe32ac88c55dd23dc399a260dee45fa2fc5d61efaada7a18fba948e4"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/1339e2432df0976ad846976c3603f43aaf0d30721dd173dd8b4d99e677f9b176.json": {
+      "bytes": 208,
+      "sha256": "c3a3ac14701944dff35e4c07a8668b1991a369cc91092fef67b13ce509535186"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/1fcea8d3c3cf68f0c4d33e7ed3dfbf5d0844a9e9ca5b4794b3315f08b65edae3.json": {
+      "bytes": 233,
+      "sha256": "bab2c635cdcce85e69d7cc3454b0164932994ecf613aaf0c81d7a65a33a37cdd"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/388f286810224e31357f049a9bfb6377c165d14624bd0b46585b2ae9443a2eb2.json": {
+      "bytes": 220,
+      "sha256": "138e86260db1753db9c77e2e73c49d84b20c0489ba256305e6fafacaccdebacb"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/3ded62535f28f39065bddec44b1184f86db9ae9e3dce5ed83e718bb3e17d65db.json": {
+      "bytes": 225,
+      "sha256": "9c8f84587697ed65dfd76b1dbd2d878db7ea21680b53039d660dfbf3bcb643c6"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/42aa8e09ccb3a112d645ce80a86e8af98f92343e352772d3ba6abffb2bf531ed.json": {
+      "bytes": 390,
+      "sha256": "c68419936c4a5a33c7160e79112fb284df76a7ee527519502ea5549971160a64"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/6c75de64fa4dc6d22643c7fc864d807cc1ec60258185a123d5cff164f9b97fb2.json": {
+      "bytes": 225,
+      "sha256": "977fac3091f89dcff19b88895e85348d972889c6fedb9181a87279b20d855fbd"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/72e04c3e67873cb1b77fb073773b9a65355c42d19ca681043a0c3f30f831e731.json": {
+      "bytes": 220,
+      "sha256": "3076ee42a95d7c4aeb2953b398345eb283cdaac4130e2c85fdbb567119c580a5"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/9bbcd50bd0995ff4bb7c5c6450e3622acc4f0809f8fbdf5b7d5bae5cd6679545.json": {
+      "bytes": 225,
+      "sha256": "45ecdedd5a88d3bfd2bb496028fbb7bf0b985f110ad74f9df269656ac986aad5"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/af4918957bd1b6176f37426bdff4cfa7bc8bb90aeb21b19f059660ea44c88da5.json": {
+      "bytes": 220,
+      "sha256": "668ca545cd22095dea798952926fd7c30bc3fc35bda8519a0f8f4cd3d8444e05"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/cfdf035941e3632d99a197de5c51dee9e5e21de420f652ae55bbf5b1aa60a28e.json": {
+      "bytes": 216,
+      "sha256": "761f99cecf60eeeb43eb309f598831be966ff07341de132ea31195dba40d39ae"
+    },
+    "wicked/B2/shader-cache/analyzed-v1/def6d7312a46a04a950f28218501a7055ecf616dce91b877707b0ccabb998a76.json": {
+      "bytes": 233,
+      "sha256": "8e593df265d288d3b596d2963ecbf692c31fafa02fedcf5475b31662bffe5e28"
+    },
+    "wicked/B2/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/B2/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "wicked/comparison.json": {
+      "bytes": 9028,
+      "sha256": "58dfcac18c62fad0730b56a9ccd100809788bc25bf16b89b3d8cc8fce0c3f10a"
+    },
+    "wicked/cpu_ms.svg": {
+      "bytes": 68063,
+      "sha256": "f44a45c0badaa2d2c1fbe0c270e443393968675b54d35ddf23ffd1cf8f85f71d"
+    },
+    "wicked/gpu_ms.svg": {
+      "bytes": 67999,
+      "sha256": "b71377633fb6f8ccd672f4ac2c962ff04bccb445a8702ae3ed2b2cbec75805de"
+    },
+    "wicked/present_rate_hz.svg": {
+      "bytes": 67430,
+      "sha256": "e5ce69526deff3150aa83c3357598f2ecd298ebc8aa88bb5a3f1397621aaed25"
+    },
+    "wicked-build.log": {
+      "bytes": 309,
+      "sha256": "3608d50687245e58225257672ebf725ab8569e01659fe7f6936487f1dcbb0b80"
+    }
+  }
+}

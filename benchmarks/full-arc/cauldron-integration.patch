@@ -1,0 +1,96 @@
+--- a/inc/arc_benchmark.h
++++ b/inc/arc_benchmark.h
+@@ -24,7 +24,8 @@
+     std::ofstream rows,initialization_rows;
+     std::unique_ptr<AsyncWriter> writer;
+     Clock::time_point frame_start,previous_start,previous_end,ready_start;
+-    double period_ms{},present_ms{},submit_ms{},wait_ms{},allocator_ms{};
++    double period_ms{},present_ms{},submit_ms{},wait_ms{},allocator_ms{},cpu_submit_ms{},present_interval_ms{};
++    Clock::time_point last_present{};
+     Api mode{},snapshot{},profile{},stop_profile{},stop_optimizer{};bool profile_requested{};
+ };
+ inline State& state(){static State s;return s;}
+--- a/inc/render/profiler.h
++++ b/inc/render/profiler.h
+@@ -118,6 +118,7 @@
+          * @brief   Returns the vector of GPU timing information.
+          */
+         const std::vector<TimingInfo>& GetGPUTimings() const;
++        uint64_t GetGPUOriginFrame() const { return m_ArcCollectedFrame; }
+ 
+         /**
+          * @brief   Returns the CPU tick count for the frame.
+@@ -198,6 +199,8 @@
+         bool     m_CPUProfilingEnabled = true;
+         bool     m_GPUProfilingEnabled = true;
+         uint32_t m_CurrentFrame        = 0;
++        std::vector<uint64_t> m_ArcFrameTags;
++        uint64_t m_ArcCollectedFrame=~0ull;
+         uint32_t m_TimeStampCount      = 0;
+ 
+         // Timing information for GPU/CPU frames
+--- a/src/core/framework.cpp
++++ b/src/core/framework.cpp
+@@ -1721,7 +1721,7 @@
+                 row["measurement_elapsed_ms"]=(bench.timed&&bench.measuring)?arc_bench::ms(frame_end-bench.measurement_start):0;
+                 DWORD foreground_pid{};GetWindowThreadProcessId(GetForegroundWindow(),&foreground_pid);row["foreground"]=foreground_pid==GetCurrentProcessId();
+                 row["frame_ms"]=arc_bench::ms(frame_end-(bench.tick?bench.previous_end:bench.frame_start));row["loop_ms"]=arc_bench::ms(arc_bench::Clock::now()-bench.frame_start);
+-                row["present_ms"]=bench.present_ms;row["submit_ms"]=bench.submit_ms;
++                row["cpu_through_submission_ms"]=bench.cpu_submit_ms;row["present_interval_ms"]=bench.present_interval_ms;row["gpu_source_frame"]=m_pProfiler->GetGPUOriginFrame();row["present_ms"]=bench.present_ms;row["submit_ms"]=bench.submit_ms;
+                 row["swapchain_wait_ms"]=bench.wait_ms;row["allocator_wait_ms"]=bench.allocator_ms;
+                 for(const auto& timing:m_pProfiler->GetCPUTimings())row["cpu_ms"][WStringToString(timing.Label)]=double(timing.GetDuration().count())/1000000.;
+                 for(const auto& timing:m_pProfiler->GetGPUTimings()){
+@@ -1934,9 +1934,12 @@
+         // Closes all command lists
+         m_pDevice->EndFrame();
+ 
++        arc_bench::state().cpu_submit_ms=arc_bench::ms(arc_bench::Clock::now()-arc_bench::state().frame_start);
+         // Present
+         const auto present_start=arc_bench::Clock::now();
+         m_pSwapChain->Present();
++        const auto present_end=arc_bench::Clock::now();auto& pb=arc_bench::state();
++        pb.present_interval_ms=pb.last_present.time_since_epoch().count()?arc_bench::ms(present_end-pb.last_present):0;pb.last_present=present_end;
+         arc_bench::state().present_ms=arc_bench::ms(arc_bench::Clock::now()-present_start);
+ 
+         // If we are doing GPU Validation, flush every frame
+--- a/src/render/profiler.cpp
++++ b/src/render/profiler.cpp
+@@ -1,3 +1,4 @@
++#include "arc_benchmark.h"
+ // This file is part of the FidelityFX SDK.
+ //
+ // Copyright (C) 2024 Advanced Micro Devices, Inc.
+@@ -39,6 +40,7 @@
+ 
+         m_CPUTimings.resize(backBufferCount);
+         m_GPUTimings.resize(backBufferCount);
++        m_ArcFrameTags.resize(backBufferCount,~0ull);
+ 
+         if (m_GPUProfilingEnabled)
+         {
+@@ -58,7 +60,7 @@
+     {
+         // When fetching timings, we always want those from the last frame (current frame timings incomplete)
+         uint32_t frameID = (m_CurrentFrame == 0) ? GetConfig()->BackBufferCount - 1 : m_CurrentFrame - 1;
+-        return m_GPUTimings[frameID];
++        return m_GPUTimings[m_CurrentFrame];
+     }
+ 
+     ProfileCapture Profiler::Begin(CommandList* pCmdList, const wchar_t* label)
+@@ -142,7 +144,7 @@
+     {
+         // Save the GPU timing of the previous frame using the same command list
+         if (m_GPUProfilingEnabled)
+-            CollectGPUTimings(pCmdList);
++            { CollectGPUTimings(pCmdList); m_ArcFrameTags[m_CurrentFrame]=arc_bench::state().tick; }
+     }
+ 
+     void Profiler::EndFrame(CommandList* pCmdList)
+@@ -186,6 +188,7 @@
+         // have to be synchronized with the GPU queue. At this point, we should have waited for the swapchain
+         // to be available, which means the timings are resolved for the frame that last used this frame ID.
+         uint32_t frameID = m_CurrentFrame;
++        m_ArcCollectedFrame=m_ArcFrameTags[frameID];
+ 
+         std::vector<TimingInfo>& latestGPUTimings = m_GPUTimings[frameID];
+ 

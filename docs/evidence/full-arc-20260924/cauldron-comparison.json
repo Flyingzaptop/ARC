@@ -1,0 +1,364 @@
+{
+  "renderer": "cauldron",
+  "displayed_fps_measured": false,
+  "outliers_removed": false,
+  "gpu_join": "source frame ID; missing retired tail remains missing",
+  "runs": {
+    "A1": {
+      "cpu_ms": {
+        "count": 1587,
+        "mean": 12.256211216131065,
+        "median": 12.2396,
+        "p95": 14.261479999999997,
+        "p99": 16.028479999999995,
+        "max": 18.7537
+      },
+      "gpu_ms": {
+        "count": 1584,
+        "mean": 12.591308282828283,
+        "median": 12.573696,
+        "p95": 13.1040768,
+        "p99": 13.628887040000004,
+        "max": 14.682112
+      },
+      "present_ms": {
+        "count": 1587,
+        "mean": 12.60571165721487,
+        "median": 12.5613,
+        "p95": 14.681489999999998,
+        "p99": 16.696421999999995,
+        "max": 20.4173
+      },
+      "present_rate_hz": {
+        "count": 1587,
+        "mean": 80.20691989760671,
+        "median": 79.60959454833497,
+        "p95": 94.31346654507352,
+        "p99": 108.85405688039161,
+        "max": 156.20118712902217
+      },
+      "offload_gpu_ms": null,
+      "build_items": {
+        "count": 1587,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "sort_items": {
+        "count": 1587,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "pack_items": {
+        "count": 1587,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "application_update_ms": null,
+      "application_render_ms": null,
+      "offload_prepare_ms": null,
+      "offload_record_ms": null,
+      "swapchain_wait_ms": {
+        "count": 1587,
+        "mean": 6.925191052299937,
+        "median": 7.5286,
+        "p95": 8.9785,
+        "p99": 9.409227999999999,
+        "max": 11.051
+      },
+      "allocator_wait_ms": {
+        "count": 1587,
+        "mean": 0.0805810333963453,
+        "median": 0.059,
+        "p95": 0.17020999999999994,
+        "p99": 0.4180419999999993,
+        "max": 0.8352
+      },
+      "submit_ms": {
+        "count": 1587,
+        "mean": 0.15295406427221173,
+        "median": 0.128,
+        "p95": 0.26991,
+        "p99": 0.6792999999999956,
+        "max": 1.3517
+      },
+      "aggregate_present_rate_hz": 79.32911898929964,
+      "gpu_missing_frames": 3
+    },
+    "B1": {
+      "cpu_ms": {
+        "count": 1497,
+        "mean": 13.011219305277221,
+        "median": 12.994,
+        "p95": 15.283380000000001,
+        "p99": 17.107124,
+        "max": 29.1726
+      },
+      "gpu_ms": {
+        "count": 1494,
+        "mean": 13.348933911646586,
+        "median": 13.348352,
+        "p95": 13.86496,
+        "p99": 14.247065599999997,
+        "max": 15.722496
+      },
+      "present_ms": {
+        "count": 1497,
+        "mean": 13.368354976619907,
+        "median": 13.2964,
+        "p95": 15.8696,
+        "p99": 17.553023999999997,
+        "max": 29.9075
+      },
+      "present_rate_hz": {
+        "count": 1497,
+        "mean": 75.70085855643659,
+        "median": 75.20832706597274,
+        "p95": 89.41328884957207,
+        "p99": 107.08476469242538,
+        "max": 178.31351081471442
+      },
+      "offload_gpu_ms": null,
+      "build_items": {
+        "count": 1497,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "sort_items": {
+        "count": 1497,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "pack_items": {
+        "count": 1497,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "application_update_ms": null,
+      "application_render_ms": null,
+      "offload_prepare_ms": null,
+      "offload_record_ms": null,
+      "swapchain_wait_ms": {
+        "count": 1497,
+        "mean": 8.006735671342685,
+        "median": 8.7218,
+        "p95": 10.090040000000002,
+        "p99": 10.488083999999999,
+        "max": 17.5363
+      },
+      "allocator_wait_ms": {
+        "count": 1497,
+        "mean": 0.11440420841683367,
+        "median": 0.0671,
+        "p95": 0.4349000000000002,
+        "p99": 0.6162999999999998,
+        "max": 2.7627
+      },
+      "submit_ms": {
+        "count": 1497,
+        "mean": 0.16516960587842353,
+        "median": 0.1295,
+        "p95": 0.3575400000000001,
+        "p99": 0.6713679999999999,
+        "max": 1.2439
+      },
+      "aggregate_present_rate_hz": 74.80351933718944,
+      "gpu_missing_frames": 3
+    },
+    "B2": {
+      "cpu_ms": {
+        "count": 1505,
+        "mean": 12.973766976744185,
+        "median": 12.9342,
+        "p95": 14.868079999999999,
+        "p99": 16.846812,
+        "max": 22.1265
+      },
+      "gpu_ms": {
+        "count": 1502,
+        "mean": 13.270572996005326,
+        "median": 13.2608,
+        "p95": 13.878272,
+        "p99": 14.31857152,
+        "max": 15.881216
+      },
+      "present_ms": {
+        "count": 1505,
+        "mean": 13.289296146179401,
+        "median": 13.2292,
+        "p95": 15.26792,
+        "p99": 17.346400000000003,
+        "max": 23.1256
+      },
+      "present_rate_hz": {
+        "count": 1505,
+        "mean": 75.89405605235604,
+        "median": 75.59036071720134,
+        "p95": 86.41160278362207,
+        "p99": 99.31224434778193,
+        "max": 134.61849119595067
+      },
+      "offload_gpu_ms": null,
+      "build_items": {
+        "count": 1505,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "sort_items": {
+        "count": 1505,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "pack_items": {
+        "count": 1505,
+        "mean": 0,
+        "median": 0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "application_update_ms": null,
+      "application_render_ms": null,
+      "offload_prepare_ms": null,
+      "offload_record_ms": null,
+      "swapchain_wait_ms": {
+        "count": 1505,
+        "mean": 8.477995747508306,
+        "median": 8.9614,
+        "p95": 9.95986,
+        "p99": 10.499144000000001,
+        "max": 12.4159
+      },
+      "allocator_wait_ms": {
+        "count": 1505,
+        "mean": 0.10933255813953488,
+        "median": 0.0984,
+        "p95": 0.24509999999999973,
+        "p99": 0.6062120000000004,
+        "max": 0.7975
+      },
+      "submit_ms": {
+        "count": 1505,
+        "mean": 0.14979674418604652,
+        "median": 0.1273,
+        "p95": 0.26883999999999997,
+        "p99": 0.650324,
+        "max": 0.9499
+      },
+      "aggregate_present_rate_hz": 75.24853001996607,
+      "gpu_missing_frames": 3
+    },
+    "A2": {
+      "cpu_ms": {
+        "count": 1478,
+        "mean": 13.122935723951285,
+        "median": 13.117750000000001,
+        "p95": 15.347915,
+        "p99": 17.059517000000003,
+        "max": 19.9888
+      },
+      "gpu_ms": {
+        "count": 1475,
+        "mean": 13.511241936271187,
+        "median": 13.488128,
+        "p95": 14.0920832,
+        "p99": 14.59181568,
+        "max": 15.905792
+      },
+      "present_ms": {
+        "count": 1478,
+        "mean": 13.533170230040595,
+        "median": 13.46885,
+        "p95": 15.869335,
+        "p99": 17.571254,
+        "max": 20.4573
+      },
+      "present_rate_hz": {
+        "count": 1478,
+        "mean": 74.68243096536702,
+        "median": 74.2453884343341,
+        "p95": 87.81682163388264,
+        "p99": 102.17855142061246,
+        "max": 144.75341256170114
+      },
+      "offload_gpu_ms": null,
+      "build_items": {
+        "count": 1478,
+        "mean": 0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "sort_items": {
+        "count": 1478,
+        "mean": 0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "pack_items": {
+        "count": 1478,
+        "mean": 0,
+        "median": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0
+      },
+      "application_update_ms": null,
+      "application_render_ms": null,
+      "offload_prepare_ms": null,
+      "offload_record_ms": null,
+      "swapchain_wait_ms": {
+        "count": 1478,
+        "mean": 7.645175913396482,
+        "median": 7.68735,
+        "p95": 9.680969999999999,
+        "p99": 10.141352000000001,
+        "max": 11.5272
+      },
+      "allocator_wait_ms": {
+        "count": 1478,
+        "mean": 0.17076075778078484,
+        "median": 0.10815,
+        "p95": 0.51172,
+        "p99": 0.6505720000000002,
+        "max": 0.9968
+      },
+      "submit_ms": {
+        "count": 1478,
+        "mean": 0.1860290257104195,
+        "median": 0.14085,
+        "p95": 0.3948549999999998,
+        "p99": 0.6721130000000001,
+        "max": 0.84
+      },
+      "aggregate_present_rate_hz": 73.89251616596272,
+      "gpu_missing_frames": 3
+    }
+  }
+}

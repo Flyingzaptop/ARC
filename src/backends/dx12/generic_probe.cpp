@@ -245,6 +245,7 @@ using ResourceFn=decltype(ID3D12DeviceVtbl::CreateCommittedResource);
 PresentFn original_present{};Present1Fn original_present1{};ExecuteFn original_execute{};
 DrawFn original_draw{};IndexedFn original_indexed{};DispatchFn original_dispatch{};ResourceFn original_resource{};
 thread_local bool inside_present{};
+thread_local bool host_owned_work{};
 bool observe_api() noexcept {return recording.load(std::memory_order_relaxed)&&!inside_present&&!mirror::internal();}
 void observe_present(IDXGISwapChain* self,UINT sync,UINT flags,HRESULT result){
     if(!recording.load(std::memory_order_relaxed)||(flags&DXGI_PRESENT_TEST))return;
@@ -283,7 +284,7 @@ void STDMETHODCALLTYPE draw_indexed(ID3D12GraphicsCommandList* self,UINT indices
     {mirror::InternalCall native_call;arc::original_cpu_call([&]{return original_indexed(self,indices,instances,start,base,instance);});}if(pixel_changed)pixel::after_draw(self);if(changed)mirror::after_draw(lease);if(observe_api()){indexed.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,1,UINT64(indices)*instances);}
 }
 void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* self,UINT x,UINT y,UINT z){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
-    const bool observed=observe_api();if(observed)profile::work(self,true,x,y,z);if(!observed||!optimizer::dispatch(self,x,y,z)){mirror::InternalCall native_call;arc::original_cpu_call([&]{return original_dispatch(self,x,y,z);});}if(observed)mirror::record(original_dispatch,self,x,y,z);if(observed){dispatches.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,2,UINT64(x)*y*z);}
+    const bool observed=observe_api();if(observed&&!host_owned_work)profile::work(self,true,x,y,z);if(!observed||!optimizer::dispatch(self,x,y,z)){mirror::InternalCall native_call;arc::original_cpu_call([&]{return original_dispatch(self,x,y,z);});}if(observed)mirror::record(original_dispatch,self,x,y,z);if(observed){dispatches.fetch_add(1,std::memory_order_relaxed);if(detailed_tracking.load(std::memory_order_relaxed))runtime::work(self,2,UINT64(x)*y*z);}
 }
 HRESULT STDMETHODCALLTYPE resource(ID3D12Device* self,const D3D12_HEAP_PROPERTIES* heap,D3D12_HEAP_FLAGS flags,const D3D12_RESOURCE_DESC* desc,D3D12_RESOURCE_STATES state,const D3D12_CLEAR_VALUE* clear,REFIID iid,void** out){static const auto cpu_site=arc::InterceptCpuMeter::register_site(__FUNCSIG__);arc::InterceptCpuMeter::Scope cpu_hook(!mirror::internal()&&!arc::dx12::cpu_cost::on_worker_thread(),cpu_site);
     const HRESULT result=arc::original_cpu_call([&]{return original_resource(self,heap,flags,desc,state,clear,iid,out);});
@@ -795,3 +796,19 @@ extern "C" __declspec(dllexport) DWORD WINAPI ArcExperimentalCpuState(void* mode
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI ArcWorkerPlacement(void* mode){if(autotune::active())return 10;return mode&&arc::dx12::placement::configure(static_cast<const wchar_t*>(mode))?0:1;}
+
+// Cooperative host capability: permission only. Engine adapter proves applicability,
+// owns device resources, and retires them on the existing device fences.
+extern "C" __declspec(dllexport) DWORD WINAPI ArcHostOffloadEnabled(void*) {
+    return autotune::host_offload_enabled()?1:0;
+}
+// Exclude ARC-owned shader creation from game shader discovery. Never wrap game
+// command recording: its binding state must remain observable by the optimizer.
+extern "C" __declspec(dllexport) DWORD WINAPI ArcHostShaderScope(void* enter) {
+    static thread_local std::unique_ptr<mirror::InternalCall> scope;
+    if(enter){if(scope)return 2;scope=std::make_unique<mirror::InternalCall>();}
+    else scope.reset();
+    return 0;
+}
+
+extern "C" __declspec(dllexport) DWORD WINAPI ArcHostWorkScope(void* enter){host_owned_work=enter!=nullptr;return 0;}

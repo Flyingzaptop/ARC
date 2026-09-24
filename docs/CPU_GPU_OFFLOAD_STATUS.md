@@ -153,3 +153,20 @@ negative result of the earlier bounds/readback chain and is not universal ARC.
 Pixel/depth/record oracles passed. Actual active power was ~62-65 W, not verified 30 W;
 display FPS is unmeasured. Original EXE restored, default off.
 [Current report](reports/2026-09-24-resident-draw-consumer.md).
+
+
+## 2026-09-24 — full ARC integration comparison
+
+Session-bound Wicked resident adapter and generic GPU optimizer were run together.
+Wicked A-B-B-A: 40.83/45.82 Present Hz without DLL versus 76.30/73.38 with full ARC;
+CPU through submission averaged 23.14 versus 13.36 ms. These are Present-call rates,
+not display FPS. Native oracle: 517 frames / 33,782,848 records, zero ID/depth errors;
+stop restored the CPU branch.
+
+Cauldron CPU offload remains unsupported. A-B-B-A did not prove repeatable improvement;
+GPU candidate selection is blocked by capture capacity declines on both hosts. No
+nonzero GPU simplification policy was applied. The one Cauldron controller-off ablation
+was inconclusive against changing GPU clocks/temperature. Do not claim universal
+CPU extraction, universal GPU optimization, or a finished general-game product.
+
+[Report, plots, raw measurements and reproduction](reports/2026-09-24-full-arc-comparison.md).

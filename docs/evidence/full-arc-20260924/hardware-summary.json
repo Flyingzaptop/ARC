@@ -1,0 +1,254 @@
+{
+  "wicked": {
+    "A1": {
+      "scope": "last 20 telemetry samples; approximate measurement window",
+      "samples": 20,
+      "values": {
+        "power.draw [W]": {
+          "mean": 26.14,
+          "min": 20.54,
+          "max": 33.42
+        },
+        "temperature.gpu": {
+          "mean": 55.9,
+          "min": 55.0,
+          "max": 57.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1208.75,
+          "min": 967.0,
+          "max": 1567.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 5991.45,
+          "min": 810.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 31.7,
+          "min": 16.0,
+          "max": 57.0
+        }
+      }
+    },
+    "B1": {
+      "scope": "last 20 telemetry samples; approximate measurement window",
+      "samples": 20,
+      "values": {
+        "power.draw [W]": {
+          "mean": 63.1385,
+          "min": 59.98,
+          "max": 64.57
+        },
+        "temperature.gpu": {
+          "mean": 64.85,
+          "min": 63.0,
+          "max": 66.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1995.0,
+          "min": 1995.0,
+          "max": 1995.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 7001.0,
+          "min": 7001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 47.65,
+          "min": 33.0,
+          "max": 52.0
+        }
+      }
+    },
+    "B2": {
+      "scope": "last 20 telemetry samples; approximate measurement window",
+      "samples": 20,
+      "values": {
+        "power.draw [W]": {
+          "mean": 66.8175,
+          "min": 60.29,
+          "max": 68.84
+        },
+        "temperature.gpu": {
+          "mean": 68.3,
+          "min": 67.0,
+          "max": 69.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1987.0,
+          "min": 1987.0,
+          "max": 1987.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 6951.0,
+          "min": 6001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 45.8,
+          "min": 23.0,
+          "max": 56.0
+        }
+      }
+    },
+    "A2": {
+      "scope": "last 20 telemetry samples; approximate measurement window",
+      "samples": 20,
+      "values": {
+        "power.draw [W]": {
+          "mean": 25.9895,
+          "min": 24.03,
+          "max": 35.22
+        },
+        "temperature.gpu": {
+          "mean": 60.75,
+          "min": 60.0,
+          "max": 61.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1165.75,
+          "min": 1020.0,
+          "max": 1650.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 6151.0,
+          "min": 6001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 37.9,
+          "min": 30.0,
+          "max": 45.0
+        }
+      }
+    }
+  },
+  "cauldron": {
+    "A1": {
+      "scope": "runner measured_phase samples",
+      "samples": 19,
+      "values": {
+        "power.draw [W]": {
+          "mean": 124.87947368421052,
+          "min": 46.53,
+          "max": 137.06
+        },
+        "temperature.gpu": {
+          "mean": 85.84210526315789,
+          "min": 81.0,
+          "max": 87.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1838.7894736842106,
+          "min": 1800.0,
+          "max": 1942.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 7001.0,
+          "min": 7001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 94.73684210526316,
+          "min": 0.0,
+          "max": 100.0
+        }
+      }
+    },
+    "B1": {
+      "scope": "runner measured_phase samples",
+      "samples": 20,
+      "values": {
+        "power.draw [W]": {
+          "mean": 107.092,
+          "min": 45.71,
+          "max": 112.53
+        },
+        "temperature.gpu": {
+          "mean": 86.35,
+          "min": 79.0,
+          "max": 87.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1741.15,
+          "min": 1702.0,
+          "max": 1950.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 7001.0,
+          "min": 7001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 95.0,
+          "min": 0.0,
+          "max": 100.0
+        }
+      }
+    },
+    "B2": {
+      "scope": "runner measured_phase samples",
+      "samples": 19,
+      "values": {
+        "power.draw [W]": {
+          "mean": 109.72526315789474,
+          "min": 102.29,
+          "max": 114.54
+        },
+        "temperature.gpu": {
+          "mean": 86.42105263157895,
+          "min": 85.0,
+          "max": 87.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1720.6842105263158,
+          "min": 1680.0,
+          "max": 1747.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 7001.0,
+          "min": 7001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 100.0,
+          "min": 100.0,
+          "max": 100.0
+        }
+      }
+    },
+    "A2": {
+      "scope": "runner measured_phase samples",
+      "samples": 19,
+      "values": {
+        "power.draw [W]": {
+          "mean": 103.98473684210526,
+          "min": 46.94,
+          "max": 110.3
+        },
+        "temperature.gpu": {
+          "mean": 86.05263157894737,
+          "min": 81.0,
+          "max": 87.0
+        },
+        "clocks.current.graphics [MHz]": {
+          "mean": 1718.3157894736842,
+          "min": 1665.0,
+          "max": 1942.0
+        },
+        "clocks.current.memory [MHz]": {
+          "mean": 7001.0,
+          "min": 7001.0,
+          "max": 7001.0
+        },
+        "utilization.gpu [%]": {
+          "mean": 94.73684210526316,
+          "min": 0.0,
+          "max": 100.0
+        }
+      }
+    }
+  }
+}

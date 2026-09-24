@@ -1,0 +1,238 @@
+--- a/Samples/Tests/arc_generic_probe.h
++++ b/Samples/Tests/arc_generic_probe.h
+@@ -4,9 +4,10 @@
+ #include <windows.h>
+ #include <string>
+ #include <stdexcept>
++#include "ArcResidentQueue.h"
+ namespace arc_generic_benchmark {
+ using Api=DWORD(WINAPI*)(void*);
+-inline Api snapshot{},profile{},stop{};
++inline Api snapshot{},profile{},stop{};inline bool stopped_for_test{};
+ inline ULONGLONG started{},last_attempt{};inline bool requested{},automatic{};
+ inline std::wstring output;
+ inline std::wstring environment(const wchar_t* key){wchar_t value[32768]{};const auto n=GetEnvironmentVariableW(key,value,32768);if(n>=32768)throw std::runtime_error("Benchmark environment capacity");return {value,n};}
+@@ -22,8 +23,9 @@
+     snapshot=reinterpret_cast<Api>(GetProcAddress(module,"ArcSnapshot"));profile=reinterpret_cast<Api>(GetProcAddress(module,"ArcRequestGpuProfile"));stop=reinterpret_cast<Api>(GetProcAddress(module,"ArcStopOptimizer"));
+     auto path=output+L"/arc.json";auto mode=environment(L"ARC_BENCH_COMPUTE");if(mode.empty())mode=L"neutral|heaviest";
+     if(!init||!lean||!compute||!snapshot||!profile||init(path.data())||lean(nullptr)||(!automatic&&compute(mode.data())))throw std::runtime_error("Generic benchmark initialization");
++    arc_resident_queue::bind_session(reinterpret_cast<Api>(GetProcAddress(module,"ArcHostOffloadEnabled")),reinterpret_cast<Api>(GetProcAddress(module,"ArcHostShaderScope")),reinterpret_cast<Api>(GetProcAddress(module,"ArcHostWorkScope")));
+     started=GetTickCount64();
+ }
+-inline void tick(){const auto now=GetTickCount64();if(profile&&!automatic&&!requested&&now-started>=8000&&now-last_attempt>=1000){last_attempt=now;auto path=L"16|"+output+L"/gpu-profile.json";requested=profile(path.data())==0;}}
+-inline void finish(){if(stop)stop(nullptr);if(snapshot)snapshot(nullptr);}
++inline void tick(){const auto now=GetTickCount64();static auto stop_after=environment(L"ARC_FULL_STOP_AFTER_MS");if(stop&&!stopped_for_test&&!stop_after.empty()&&now-started>=std::stoull(stop_after)){stop(nullptr);stopped_for_test=true;}if(profile&&!automatic&&!requested&&now-started>=8000&&now-last_attempt>=1000){last_attempt=now;auto path=L"16|"+output+L"/gpu-profile.json";requested=profile(path.data())==0;}}
++inline void finish(){arc_resident_queue::unbind_session();if(stop)stop(nullptr);if(snapshot)snapshot(nullptr);}
+ }
+--- a/Samples/Tests/ArcWickedBridge.cpp
++++ b/Samples/Tests/ArcWickedBridge.cpp
+@@ -335,7 +335,7 @@
+             if (!cpu_profile_) { phase_ = Phase::Done; PostQuitMessage(2); return; }
+             cpu_profile_ << "elapsed_ms,frame,scene,event,ms\n";
+             cpu_profile_scene_ = EnvInt(L"ARC_WICKED_CPU_SCENE", 1, 0, 18);
+-            cpu_profile_seconds_ = EnvInt(L"ARC_WICKED_CPU_SECONDS", 8, 2, 15);
++            cpu_profile_seconds_ = EnvInt(L"ARC_WICKED_CPU_SECONDS", 8, 2, 120);
+             cpu_profile_start_ = std::chrono::steady_clock::now();
+         }
+         if (!experiment_mode_.empty() && experiment_mode_ != "off" &&
+@@ -648,7 +648,7 @@
+         if (phase_ == Phase::Done) return;
+         if (cpu_profile_.is_open()) {
+             arc_resident_probe::report();
+-            ++cpu_profile_frame_;
++            cpu_profile_frame_=wi::graphics::GetDevice()->GetFrameCount();
+             g_arc_last_scene.store(cpu_profile_scene_, std::memory_order_relaxed);
+             if (!cpu_profile_selected_) {
+                 ForceFullQuality();
+@@ -801,15 +801,17 @@
+ 
+     bool Finished() const noexcept { return phase_ == Phase::Done; }
+ 
+-    void CpuSample(const char* name, double milliseconds) noexcept {
+-        if (!cpu_profile_.is_open() || cpu_profile_rows_ >= 100000 || !std::isfinite(milliseconds)) return;
++    void CpuSample(const char* name, double milliseconds, uint64_t frame=~0ull) noexcept {
++        if (!cpu_profile_.is_open() || cpu_profile_rows_ >= 1000000 || !std::isfinite(milliseconds)) return;
+         const auto elapsed = std::chrono::duration<double, std::milli>(
+             std::chrono::steady_clock::now() - cpu_profile_start_).count();
+-        cpu_profile_ << std::setprecision(9) << elapsed << ',' << cpu_profile_frame_ << ',' << cpu_profile_scene_ << ",\"";
++        cpu_profile_ << std::setprecision(9) << elapsed << ',' << (frame==~0ull?wi::graphics::GetDevice()->GetFrameCount():frame) << ',' << cpu_profile_scene_ << ",\"";
+         for (const char* p = name; *p; ++p) { if (*p == '"') cpu_profile_ << '"'; cpu_profile_ << *p; }
+         cpu_profile_ << "\"," << milliseconds << '\n';
+         ++cpu_profile_rows_;
+     }
++
++    double BenchmarkTime() noexcept { if(!cpu_profile_.is_open())return -1; const auto elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-cpu_profile_start_).count(); static const double warmup=EnvInt(L"ARC_FULL_WARMUP",20,0,120); return std::max(0.,elapsed-warmup); }
+ 
+     void PollCpuProfile() noexcept {
+         if (!cpu_profile_.is_open()) return;
+@@ -1981,3 +1983,7 @@
+ }
+ 
+ } // namespace arc_wicked
++
++extern "C" void ARCWickedFrameSample(const char* name,double ms,uint64_t frame) noexcept {if(auto* b=GetBridge())b->CpuSample(name,ms,frame);}
++
++extern "C" double ARCWickedBenchmarkTime() noexcept {if(auto* b=GetBridge())return b->BenchmarkTime();return -1;}
+--- a/Samples/Tests/Tests.cpp
++++ b/Samples/Tests/Tests.cpp
+@@ -1,4 +1,5 @@
+ #include "stdafx.h"
++extern "C" double ARCWickedBenchmarkTime() noexcept;
+ #include "ArcWickedBridge.h"
+ #include "ArcWickedHooks.h"
+ #include "arc_dynamic_scene.h"
+@@ -609,7 +610,8 @@
+ 	case INSTANCESTEST:
+ 	{
+ 		static wi::Timer timer;
+-		float sec = (float)timer.elapsed_seconds();
++		const double benchmark_time=ARCWickedBenchmarkTime();
++        float sec = benchmark_time>=0?float(benchmark_time):(float)timer.elapsed_seconds();
+ 		wi::jobsystem::context ctx;
+ 		wi::jobsystem::Dispatch(ctx, (uint32_t)scene->transforms.GetCount(), 1024, [&](wi::jobsystem::JobArgs args) {
+ 			TransformComponent& transform = scene->transforms[args.jobIndex];
+--- a/WickedEngine/ArcResidentQueue.h
++++ b/WickedEngine/ArcResidentQueue.h
+@@ -15,10 +15,22 @@
+ #include <vector>
+ #include <algorithm>
+ extern "C" void ARCWickedCpuSample(const char*,double) noexcept;
++extern "C" void ARCWickedFrameSample(const char*,double,uint64_t) noexcept;
+ namespace arc_resident_queue {
+ using namespace wi::graphics;
+ using Clock=std::chrono::steady_clock;
+-inline int mode(){static int m=[] {auto p=std::getenv("ARC_RESIDENT_QUEUE");return p?std::atoi(p):0;}();return m;}
++using Api=DWORD(WINAPI*)(void*);
++inline std::atomic<Api> session_enabled{nullptr},shader_scope{nullptr},work_scope{nullptr};
++inline std::atomic<bool> session_bound{false};
++inline int mode(){
++    static const int requested=[] {auto p=std::getenv("ARC_RESIDENT_QUEUE");return p?std::atoi(p):0;}();
++    auto query=session_enabled.load(std::memory_order_acquire);
++    return session_bound.load(std::memory_order_acquire)&&query&&query(nullptr)==1?requested:0;
++}
++inline void bind_session(Api enabled,Api scope,Api work){work_scope.store(work);shader_scope.store(scope);session_enabled.store(enabled);session_bound.store(enabled&&scope&&work);}
++inline void unbind_session(){session_bound=false;session_enabled=nullptr;shader_scope=nullptr;}
++struct ShaderScope{Api scope=shader_scope.load();ShaderScope(){if(scope&&scope(reinterpret_cast<void*>(1)))fail_scope();}~ShaderScope(){if(scope)scope(nullptr);}static void fail_scope(){ExitProcess(97);}};
++struct WorkScope{Api api=work_scope.load();WorkScope(){if(api)api(reinterpret_cast<void*>(1));}~WorkScope(){if(api)api(nullptr);}};
+ inline thread_local bool force_cpu=false;
+ inline void fail(const char* why,uint64_t a=0,uint64_t b=0){
+     if(auto p=std::getenv("ARC_WICKED_CPU_PROFILE")){auto name=std::string(p)+".resident-error.txt";FILE* f{};fopen_s(&f,name.c_str(),"w");if(f){std::fprintf(f,"%s: %llu %llu\n",why,a,b);std::fclose(f);}}
+@@ -45,17 +57,21 @@
+ inline std::atomic<uint64_t> skipped_build{0},skipped_sort{0},skipped_pack{0},prepare_ns{0},record_ns{0},upload_bytes{0};
+ inline double milliseconds(Clock::time_point t){return std::chrono::duration<double,std::milli>(Clock::now()-t).count();}
+ inline void report(){
+-    if(!mode())return;
+-    ARCWickedCpuSample("Resident previous build items skipped",double(skipped_build.exchange(0)));
+-    ARCWickedCpuSample("Resident previous sort items skipped",double(skipped_sort.exchange(0)));
+-    ARCWickedCpuSample("Resident previous pack items skipped",double(skipped_pack.exchange(0)));
+-    ARCWickedCpuSample("Resident previous prepare ms",double(prepare_ns.exchange(0))/1e6);
+-    ARCWickedCpuSample("Resident previous GPU record ms",double(record_ns.exchange(0))/1e6);
+-    ARCWickedCpuSample("Resident previous upload bytes",double(upload_bytes.exchange(0)));
++    if(!session_bound.load())return;
++    const auto frame=certificate.frame;
++    auto sample=[&](const char* name,double value){ARCWickedFrameSample(name,value,frame);};
++    sample("Resident permission",mode()?1:0);
++    sample("Resident certificate valid",certificate.valid?1:0);
++    sample("Resident previous build items skipped",double(skipped_build.exchange(0)));
++    sample("Resident previous sort items skipped",double(skipped_sort.exchange(0)));
++    sample("Resident previous pack items skipped",double(skipped_pack.exchange(0)));
++    sample("Resident previous prepare ms",double(prepare_ns.exchange(0))/1e6);
++    sample("Resident previous GPU record ms",double(record_ns.exchange(0))/1e6);
++    sample("Resident previous upload bytes",double(upload_bytes.exchange(0)));
+ }
+ inline Certificate* begin_certificate(wi::scene::Scene* scene){
+-    if(!mode()||scene!=&wi::scene::GetScene())return nullptr;
+-    report();certificate.scene=scene;certificate.frame=GetDevice()->GetFrameCount();certificate.eye=scene->camera.Eye;
++    if(scene!=&wi::scene::GetScene())return nullptr;
++    report();if(!mode()){certificate.frame=GetDevice()->GetFrameCount();return nullptr;}certificate.scene=scene;certificate.frame=GetDevice()->GetFrameCount();certificate.eye=scene->camera.Eye;
+     bool ok=scene->objects.GetCount()>0 && scene->objects.GetCount()<(1u<<24) && scene->hairs.GetCount()==0 && scene->emitters.GetCount()==0 && scene->impostors.GetCount()==0;
+     if(ok){auto& o=scene->objects[0];certificate.mesh=o.mesh_index;certificate.lod=o.lod;certificate.stencil=o.userStencilRef;ok=certificate.mesh<scene->meshes.GetCount();}
+     certificate.valid.store(ok);return &certificate;
+@@ -73,7 +89,7 @@
+     if(!ok)c->valid.store(false,std::memory_order_relaxed);
+ }
+ inline void load_shader(Shader& shader,const char* name){
+-    wi::vector<uint8_t> code;if(!wi::helper::FileRead(wi::renderer::GetShaderPath()+name,code)||!GetDevice()->CreateShader(ShaderStage::CS,code.data(),code.size(),&shader))fail("shader load");
++    ShaderScope own_shader;wi::vector<uint8_t> code;if(!wi::helper::FileRead(wi::renderer::GetShaderPath()+name,code)||!GetDevice()->CreateShader(ShaderStage::CS,code.data(),code.size(),&shader))fail("shader load");
+ }
+ inline GPUBuffer readback(uint64_t bytes){GPUBuffer result;GPUBufferDesc d;d.usage=Usage::READBACK;d.size=bytes;if(!GetDevice()->CreateBuffer(&d,nullptr,&result))fail("readback allocation");return result;}
+ inline void verify(Slot& s){
+@@ -119,7 +135,7 @@
+     upload_bytes.fetch_add(n*8);prepare_ns.fetch_add(uint64_t(milliseconds(start)*1e6));return &s;
+ }
+ inline void record(Slot* s,CommandList cmd){
+-    if(!s)return;auto start=Clock::now();auto* device=GetDevice();
++    if(!s)return;WorkScope own_work;auto start=Clock::now();auto* device=GetDevice();
+     auto gpu_range=wi::profiler::BeginRangeGPU("ResidentQueue GPU",cmd);
+     if(s->pointer_srv){auto b=GPUBarrier::Buffer(&s->pointers,ResourceState::SHADER_RESOURCE,ResourceState::UNORDERED_ACCESS);device->Barrier(&b,1,cmd);}
+     struct Params {DirectX::XMFLOAT3 eye;uint32_t count,offset,padded,j,k;} p{s->visibility->camera->Eye,s->count,uint32_t(s->input.offset),s->padded,0,0};static_assert(sizeof(p)==32);
+@@ -158,5 +174,5 @@
+     auto copy=GPUBarrier::Buffer(&s->pixel_counts,ResourceState::UNORDERED_ACCESS,ResourceState::COPY_SRC);device->Barrier(&copy,1,cmd);device->CopyBuffer(&s->pixel_readback,0,&s->pixel_counts,0,16,cmd);copy=GPUBarrier::Buffer(&s->pixel_counts,ResourceState::COPY_SRC,ResourceState::UNORDERED_ACCESS);device->Barrier(&copy,1,cmd);
+     b[0]=GPUBarrier::Image(&s->reference_depth,ResourceState::SHADER_RESOURCE_COMPUTE,ResourceState::DEPTHSTENCIL);device->Barrier(b,1,cmd);s->pixels_pending=true;
+ }
+-inline void shutdown(){slots.clear();queue_shader={};pixel_shader={};}
++inline void shutdown(){unbind_session();slots.clear();queue_shader={};pixel_shader={};}
+ }
+--- a/WickedEngine/wiApplication.cpp
++++ b/WickedEngine/wiApplication.cpp
+@@ -1,4 +1,5 @@
+ #include "wiApplication.h"
++extern "C" void ARCWickedFrameSample(const char*,double,uint64_t) noexcept;
+ #include "ArcWickedHooks.h"
+ #include "wiRenderPath.h"
+ #include "wiRenderer.h"
+@@ -89,6 +90,7 @@
+ 
+ 	void Application::Run()
+ 	{
++        wi::Timer arcFullCpu;
+ 		if (!initialized)
+ 		{
+ 			// Initialize in a lazy way, so the user application doesn't have to call this explicitly
+@@ -386,7 +388,9 @@
+ 
+ 		wi::input::ClearForNextFrame();
+ 		wi::profiler::EndFrame(cmd);
++		const auto arcSourceFrame=graphicsDevice->GetFrameCount();
+ 		wi::Timer arcSubmit; graphicsDevice->SubmitCommandLists(); ARCWickedCpuSample("SubmitCommandLists", arcSubmit.elapsed_milliseconds());
++        ARCWickedFrameSample("CPU processing through submission ms",arcFullCpu.elapsed_milliseconds(),arcSourceFrame);
+ 		wi::renderer::UpdateGPUSuballocator();
+ 	}
+ 
+--- a/WickedEngine/wiProfiler.cpp
++++ b/WickedEngine/wiProfiler.cpp
+@@ -1,4 +1,5 @@
+ #include "wiProfiler.h"
++extern "C" void ARCWickedFrameSample(const char*,double,uint64_t) noexcept;
+ #include "ArcWickedHooks.h"
+ #include "wiGraphicsDevice.h"
+ #include "wiFont.h"
+@@ -37,6 +38,7 @@
+ 	std::atomic<uint32_t> nextQuery{ 0 };
+ 	std::atomic<float> arc_last_gpu_frame_time_ms{ 0.0f };
+ 	uint32_t queryheap_idx = 0;
++    uint64_t arc_query_frame[GraphicsDevice::GetBufferCount()]{};
+ 	bool drawn_this_frame = false;
+ 	wi::Color background_color = wi::Color(20, 20, 20, 230);
+ 	wi::Color text_color = wi::Color::White();
+@@ -139,8 +141,8 @@
+ 						range.time = 0;
+ 					}
+ 					if (range.name == "GPU Frame") arc_last_gpu_frame_time_ms.store(range.time, std::memory_order_relaxed);
+-                    if(range.name=="ResidentQueue GPU") ARCWickedCpuSample("Resident retired GPU work ms",range.time);
+-                    if(range.name=="GPU Frame") ARCWickedCpuSample("Retired GPU frame span ms",range.time);
++                    if(range.name=="ResidentQueue GPU") ARCWickedFrameSample("Resident retired GPU work ms",range.time,arc_query_frame[queryheap_idx]);
++                    if(range.name=="GPU Frame") ARCWickedFrameSample("Retired GPU frame span ms",range.time,arc_query_frame[queryheap_idx]);
+ 				}
+ 				range.gpuBegin[queryheap_idx] = -1;
+ 				range.gpuEnd[queryheap_idx] = -1;
+@@ -161,7 +163,8 @@
+ 			range.in_use = false;
+ 		}
+ 
+-		device->QueryReset(
++		arc_query_frame[queryheap_idx]=device->GetFrameCount();
++        device->QueryReset(
+ 			&queryHeap,
+ 			0,
+ 			queryHeap.desc.query_count,

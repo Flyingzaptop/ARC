@@ -1,0 +1,236 @@
+{
+  "wicked": {
+    "A1": {
+      "exit_code": 0,
+      "exe_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+      "dll_sha256": null
+    },
+    "B1": {
+      "exit_code": 0,
+      "exe_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+      "dll_sha256": "993ec2821f9bcfcaf147a0e0998ff07955fb55b52f8741ad8d486b1bb61f9fbd",
+      "compute_ready": 1,
+      "root_signatures": 5,
+      "compute_pipelines": 250,
+      "nonzero_policy_events": 0,
+      "max_policy_submission_frames": 0,
+      "profiles": {
+        "pid-profile-2.json": {
+          "present_windows": 17,
+          "present_windows_requested": 17,
+          "observed_events": 1280,
+          "capacity_declines": 16,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-3.json": {
+          "present_windows": 22,
+          "present_windows_requested": 22,
+          "observed_events": 1680,
+          "capacity_declines": 21,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-4.json": {
+          "present_windows": 24,
+          "present_windows_requested": 24,
+          "observed_events": 1919,
+          "capacity_declines": 24,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        }
+      }
+    },
+    "B2": {
+      "exit_code": 0,
+      "exe_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+      "dll_sha256": "993ec2821f9bcfcaf147a0e0998ff07955fb55b52f8741ad8d486b1bb61f9fbd",
+      "compute_ready": 1,
+      "root_signatures": 4,
+      "compute_pipelines": 250,
+      "nonzero_policy_events": 0,
+      "max_policy_submission_frames": 0,
+      "profiles": {
+        "pid-profile-2.json": {
+          "present_windows": 16,
+          "present_windows_requested": 16,
+          "observed_events": 1280,
+          "capacity_declines": 17,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-3.json": {
+          "present_windows": 23,
+          "present_windows_requested": 23,
+          "observed_events": 1839,
+          "capacity_declines": 23,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-4.json": {
+          "present_windows": 24,
+          "present_windows_requested": 24,
+          "observed_events": 1840,
+          "capacity_declines": 23,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        }
+      }
+    },
+    "A2": {
+      "exit_code": 0,
+      "exe_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+      "dll_sha256": null
+    }
+  },
+  "cauldron": {
+    "A1": {
+      "exit_code": 0,
+      "exe_sha256": "e9c036e32119dcf617de6b81e481096db22ce92eb9297c6167e5a3e8c0224da4",
+      "dll_sha256": null,
+      "phase": {
+        "comparable": true,
+        "initialization_seconds": 105.531,
+        "first_tick": 8400,
+        "route": "primary"
+      },
+      "cpu_offload": "unsupported"
+    },
+    "B1": {
+      "exit_code": 0,
+      "exe_sha256": "e9c036e32119dcf617de6b81e481096db22ce92eb9297c6167e5a3e8c0224da4",
+      "dll_sha256": "993ec2821f9bcfcaf147a0e0998ff07955fb55b52f8741ad8d486b1bb61f9fbd",
+      "phase": {
+        "comparable": true,
+        "initialization_seconds": 102.268,
+        "first_tick": 7800,
+        "route": "primary"
+      },
+      "cpu_offload": "unsupported",
+      "compute_ready": 0,
+      "root_signatures": 7,
+      "compute_pipelines": 1,
+      "nonzero_policy_events": 0,
+      "max_policy_submission_frames": 0,
+      "profiles": {
+        "pid-profile-5.json": {
+          "present_windows": 19,
+          "present_windows_requested": 23,
+          "observed_events": 100000,
+          "capacity_declines": 1,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-6.json": {
+          "present_windows": 19,
+          "present_windows_requested": 23,
+          "observed_events": 100000,
+          "capacity_declines": 1,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-7.json": {
+          "present_windows": 19,
+          "present_windows_requested": 22,
+          "observed_events": 100000,
+          "capacity_declines": 1,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        }
+      }
+    },
+    "B2": {
+      "exit_code": 0,
+      "exe_sha256": "e9c036e32119dcf617de6b81e481096db22ce92eb9297c6167e5a3e8c0224da4",
+      "dll_sha256": "993ec2821f9bcfcaf147a0e0998ff07955fb55b52f8741ad8d486b1bb61f9fbd",
+      "phase": {
+        "comparable": true,
+        "initialization_seconds": 104.128,
+        "first_tick": 7800,
+        "route": "primary"
+      },
+      "cpu_offload": "unsupported",
+      "compute_ready": 0,
+      "root_signatures": 7,
+      "compute_pipelines": 1,
+      "nonzero_policy_events": 0,
+      "max_policy_submission_frames": 0,
+      "profiles": {
+        "pid-profile-5.json": {
+          "present_windows": 19,
+          "present_windows_requested": 24,
+          "observed_events": 100000,
+          "capacity_declines": 1,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-6.json": {
+          "present_windows": 19,
+          "present_windows_requested": 22,
+          "observed_events": 100000,
+          "capacity_declines": 1,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        },
+        "pid-profile-7.json": {
+          "present_windows": 19,
+          "present_windows_requested": 23,
+          "observed_events": 100000,
+          "capacity_declines": 1,
+          "timed_out": false,
+          "faults": 0,
+          "pending_gpu_jobs": 0
+        }
+      }
+    },
+    "A2": {
+      "exit_code": 0,
+      "exe_sha256": "e9c036e32119dcf617de6b81e481096db22ce92eb9297c6167e5a3e8c0224da4",
+      "dll_sha256": null,
+      "phase": {
+        "comparable": true,
+        "initialization_seconds": 104.05,
+        "first_tick": 7800,
+        "route": "primary"
+      },
+      "cpu_offload": "unsupported"
+    }
+  },
+  "package": {
+    "Tests.exe": {
+      "sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+      "bytes": 9587200
+    },
+    "FFX_BRIXELIZER_GI_DX12.exe": {
+      "sha256": "e9c036e32119dcf617de6b81e481096db22ce92eb9297c6167e5a3e8c0224da4",
+      "bytes": 4580864
+    },
+    "arc-dx12-probe.dll": {
+      "sha256": "993ec2821f9bcfcaf147a0e0998ff07955fb55b52f8741ad8d486b1bb61f9fbd",
+      "bytes": 1532928
+    },
+    "arc-shader-tool.exe": {
+      "sha256": "0d577ead6497a710a2ec00545a6b4de0ee56222588d82ae7bc88b21d813212bb",
+      "bytes": 594944
+    },
+    "arcResidentQueueCS.cso": {
+      "sha256": "05e3017899376ba386ed50ef3c6d5ece3b7605358079088b848e08dba0e87c24",
+      "bytes": 7240
+    },
+    "arcResidentPixelsCS.cso": {
+      "sha256": "bf8ea9afd3a4f04a28bcf353e804f18ebdcecca836d304a795f15afc1c37ffe8",
+      "bytes": 4580
+    }
+  }
+}

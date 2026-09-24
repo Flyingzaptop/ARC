@@ -53,6 +53,7 @@ struct State {
     std::unique_ptr<QualityWorker> quality_worker;
     double target{};unsigned maximum_seconds{0};
     std::atomic<double> requested_target{};
+    std::atomic<bool> host_offload{false};
     bool capture_active{};unsigned capture_stage{};arc::PolicyBundle capture_bundle;
     std::array<optimizer::PolicyStamp,5> capture_stamps{};std::array<std::uint64_t,2> candidate_epochs{};std::uint64_t capture_evidence_frame{};double captured_work_fraction{1};
     std::array<optimizer::FrameStateSample,5> frame_states;
@@ -529,7 +530,7 @@ DWORD WINAPI run(void*){
 }
 bool start(const wchar_t* config_path)noexcept{
     if(!config_path||!optimizer::enabled()||mirror::requested_rate()||gpu_profile::busy()||!generic::gpu_helpers_idle())return false;auto& s=state();bool expected=false;if(!s.running.compare_exchange_strong(expected,true))return false;
-    try{const auto config=read_json(config_path);s.quality_profile=config.value("quality_profile",std::string("balanced"));arc::optimizer_quality_limits(s.quality_profile);s.diagnostics_enabled=config.value("diagnostics_overlay",false);const auto control_mode=config.value("control_mode",std::string("validated"));if(control_mode!="validated"&&control_mode!="target_feedback")throw std::runtime_error("Unknown control mode");s.feedback_only=control_mode=="target_feedback";s.maximize=s.feedback_only?false:config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
+    try{const auto config=read_json(config_path);s.quality_profile=config.value("quality_profile",std::string("balanced"));arc::optimizer_quality_limits(s.quality_profile);s.diagnostics_enabled=config.value("diagnostics_overlay",false);const auto control_mode=config.value("control_mode",std::string("validated"));if(control_mode!="validated"&&control_mode!="target_feedback")throw std::runtime_error("Unknown control mode");s.host_offload=config.value("host_cpu_offload",false);s.feedback_only=control_mode=="target_feedback";s.maximize=s.feedback_only?false:config.value("maximize_fps",true);s.target=config.at("target_fps");if(!std::isfinite(s.target)||s.target<=0||s.target>1000)throw std::runtime_error("Target FPS");
         s.python=std::filesystem::u8path(config.value("python",std::string{}));s.critic=std::filesystem::u8path(config.value("critic",std::string{}));s.directory=std::filesystem::u8path(config.at("output").get<std::string>());s.maximum_seconds=config.value("maximum_seconds",0u);
         if((!s.feedback_only&&(!s.python.is_absolute()||!s.critic.is_absolute()||!std::filesystem::is_regular_file(s.python)||!std::filesystem::is_regular_file(s.critic)))||!s.directory.is_absolute()||std::filesystem::exists(s.directory))throw std::runtime_error("Session paths");
         std::filesystem::create_directories(s.directory);{std::lock_guard lock(s.mutex);s.started=Clock::now();s.event_sequence=s.journal_failures=0;s.telemetry_device.Reset();s.swapchain=nullptr;s.window=nullptr;s.width=s.height=0;s.fullscreen=false;s.swapchain_identity=0;s.surface_revision=0;s.transaction_revision=0;s.retained_action=s.retained_until=0;s.capture_invalid=false;s.last_qpc=s.frames=0;s.count=s.cursor=0;s.cancel=false;s.requested_target=0;s.capture_active=false;s.capture_stage=0;s.capture_bundle={};LARGE_INTEGER f{};QueryPerformanceFrequency(&f);s.frequency=double(f.QuadPart);}
@@ -540,6 +541,7 @@ bool start(const wchar_t* config_path)noexcept{
 void stop()noexcept{background_discovery_budget().cancel();optimizer::set_discovery_enabled(false);pixel::set_discovery_enabled(false);auto& s=state();std::lock_guard lock(s.policy_mutex);s.cancel=true;s.changed.notify_all();pixel::configure(0);mirror::configure(0);optimizer::approve_policy(0,0);optimizer::pause_spatial_probes(true);optimizer::configure(L"off");optimizer::cpu_configure(false);optimizer::sample_frame_state(false);placement::configure(L"normal");}
 bool target(double fps)noexcept{auto& s=state();if(!std::isfinite(fps)||fps<=0||fps>1000||!s.running||s.cancel)return false;s.requested_target=fps;return true;}
 bool active()noexcept{return state().running.load();}
+bool host_offload_enabled()noexcept{auto& s=state();return s.running.load()&&!s.cancel.load()&&s.host_offload.load();}
 void diagnostics(bool enabled)noexcept{state().diagnostics_enabled=enabled;}
 void surface_changed(void* swap)noexcept{auto& s=state();if(!s.observing)return;std::lock_guard lock(s.mutex);if(s.swapchain==swap)invalidate_surface_locked();}
 bool configure_runtime(const wchar_t* path)noexcept{

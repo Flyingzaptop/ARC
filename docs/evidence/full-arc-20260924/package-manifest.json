@@ -1,0 +1,26 @@
+{
+  "Tests.exe": {
+    "sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+    "bytes": 9587200
+  },
+  "FFX_BRIXELIZER_GI_DX12.exe": {
+    "sha256": "e9c036e32119dcf617de6b81e481096db22ce92eb9297c6167e5a3e8c0224da4",
+    "bytes": 4580864
+  },
+  "arc-dx12-probe.dll": {
+    "sha256": "993ec2821f9bcfcaf147a0e0998ff07955fb55b52f8741ad8d486b1bb61f9fbd",
+    "bytes": 1532928
+  },
+  "arc-shader-tool.exe": {
+    "sha256": "0d577ead6497a710a2ec00545a6b4de0ee56222588d82ae7bc88b21d813212bb",
+    "bytes": 594944
+  },
+  "arcResidentQueueCS.cso": {
+    "sha256": "05e3017899376ba386ed50ef3c6d5ece3b7605358079088b848e08dba0e87c24",
+    "bytes": 7240
+  },
+  "arcResidentPixelsCS.cso": {
+    "sha256": "bf8ea9afd3a4f04a28bcf353e804f18ebdcecca836d304a795f15afc1c37ffe8",
+    "bytes": 4580
+  }
+}

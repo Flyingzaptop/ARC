@@ -119,7 +119,7 @@ manifest={"host_sha256":hashfile(exe),"dll_sha256":hashfile(args.dll.resolve()) 
           "worker_placement":args.worker_placement,
           "compiler_sha256":hashfile(compiler) if args.dll and args.mode.startswith("compute-") else None,
           "worker_sha256":hashfile(worker) if args.dll and args.mode.startswith("compute-") else None,
-          "route":args.route,"requested_gpu_power_limit_w":30,"animation_clock":"periodic_native_clip_segment_600_frames","taa_jitter":"native_callback_restored","simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
+          "route":args.route,"requested_gpu_power_limit_w":None,"animation_clock":"periodic_native_clip_segment_600_frames","taa_jitter":"native_callback_restored","simulation_dt":1/60,"camera_period_frames":600,"vsync":False,
           "fps_limiter":False,"upscaling":False,"frame_generation":False}
 if shutil.which('nvidia-smi'):
     hardware=subprocess.run(['nvidia-smi','--query-gpu=name,uuid,pci.device_id,driver_version,enforced.power.limit','--format=csv'],capture_output=True,text=True,timeout=5,creationflags=subprocess.CREATE_NO_WINDOW)
