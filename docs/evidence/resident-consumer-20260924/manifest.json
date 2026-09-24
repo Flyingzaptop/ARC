@@ -1,0 +1,214 @@
+{
+  "base": "c7711e9",
+  "result": "positive CPU submission cadence on source-assisted Wicked; display FPS not proven",
+  "scene": 18,
+  "objects": 65536,
+  "main_view_visible": 65344,
+  "quality": "original fixture full-quality CPU-profile configuration, TAA off; no scene size/camera/quality changes",
+  "resolution_oracle": [
+    1920,
+    1080
+  ],
+  "order": [
+    "A1",
+    "B1",
+    "C1",
+    "C2",
+    "B2",
+    "A2"
+  ],
+  "process_seconds": 15,
+  "window_seconds": [
+    6,
+    15
+  ],
+  "scope": "closed suffix from existing CPU visibility plus resident GPU instance data to distance keys, sort, packed instance pointers, unchanged GPU draw consumer; world matrices/AABBs/visibility/ECS remain CPU",
+  "semantic_checks": "exact float32 distance bits, exact half keys, exact per-key index membership/pointer words; exact same-frame primitive-ID and depth pixels against original CPU rendering. Ordering within equal sort keys canonicalized; full pixel comparison is required to establish that tie-order differences are unobservable on this scene.",
+  "admission": "single global scene, homogeneous mesh/LOD/stencil, opaque/renderable/nonforeground/main-visible, alpha=1, fade=FLT_MAX, rigid nondynamic meshes, no soft bodies; no hair/emitters/impostors; center/eye components <10000; camera eye unchanged since certificate; nonzero distance has a component >=2^-12; CPU render thread round-to-nearest; shader int64 required. Guards are necessary conditions, not a universal equivalence proof for untested scenes.",
+  "synchronization": "bounded two device-frame slots reuse existing frame retirement. CPU prepare precedes render-job dispatch. GPU record appended to existing prepareframe command list after instance uploads; consumers use existing command order/dependencies. No added frames-in-flight or algorithm CPU fence wait.",
+  "transfers": {
+    "algorithm_input_bytes_per_frame": 522752,
+    "algorithm_readback_bytes_performance": 0,
+    "old_two_pointer_uploads_bytes": 522752,
+    "other_existing_scene_uploads": "unchanged and still required",
+    "telemetry": "two GPU timestamp queries added in active mode; existing profiler readback charged to active result"
+  },
+  "resources": {
+    "steady_default_buffers_bytes": 2621440,
+    "scope": "key/pointer buffers only; excludes borrowed upload-ring capacity, descriptors/PSOs, renderer resources and oracle-only images/readbacks"
+  },
+  "oracle": {
+    "Resident completed exact records": {
+      "samples": 418,
+      "sum": 27313792.0,
+      "min": 65344.0,
+      "max": 65344.0
+    },
+    "Resident completed pixel errors": {
+      "samples": 418,
+      "sum": 0.0,
+      "min": 0.0,
+      "max": 0.0
+    },
+    "Resident completed nonzero pixels": {
+      "samples": 418,
+      "sum": 740635211.0,
+      "min": 1770689.0,
+      "max": 1773522.0
+    },
+    "Resident oracle width": {
+      "samples": 418,
+      "sum": 802560.0,
+      "min": 1920.0,
+      "max": 1920.0
+    },
+    "Resident oracle height": {
+      "samples": 418,
+      "sum": 451440.0,
+      "min": 1080.0,
+      "max": 1080.0
+    }
+  },
+  "costs_not_isolated": [
+    "guard checks integrated in existing object update",
+    "thread running/ready/wait split",
+    "full GPU/display-completed cadence for original saved A"
+  ],
+  "hardware_note": "GPU power limit query N/A. Observed active GPU power ~62-65 W, not a verified 30 W cap; clocks changed with load. No power/clock settings were changed by the agent. Results cannot be advertised as fixed-30W results.",
+  "rejected_candidate": "Occlusion-box consumer was disabled by Tests.cpp:77; never enabled to manufacture work.",
+  "failures": [
+    "initial oracle read main depth as SRV despite DENY_SHADER_RESOURCE; fixed with oracle-only readable copy",
+    "MSVC incremental LTCG C1001; full optimized LTCG link succeeded",
+    "legacy f32tof16 rounding differed; implemented pinned CPU conversion",
+    "GPU sqrt differed by one ULP; exact integer midpoint correction passed strict oracle"
+  ],
+  "binary_sha256": {
+    "A1": "E9E637C582E43DDE2A98943BADFAFC1ABEF7E8BB3C5B7DE3DDF4D313C8E94CBF",
+    "B1": "60D6C4CDDC291B9748B8F6FBA5615B679229B411F437DA157ABF22CCD2206C58",
+    "C1": "60D6C4CDDC291B9748B8F6FBA5615B679229B411F437DA157ABF22CCD2206C58",
+    "C2": "60D6C4CDDC291B9748B8F6FBA5615B679229B411F437DA157ABF22CCD2206C58",
+    "B2": "60D6C4CDDC291B9748B8F6FBA5615B679229B411F437DA157ABF22CCD2206C58",
+    "A2": "E9E637C582E43DDE2A98943BADFAFC1ABEF7E8BB3C5B7DE3DDF4D313C8E94CBF"
+  },
+  "source_normalized_lf_sha256": {
+    "analyze.py": "6dfeed87afdd64d13ee3e8fdef0d04404303552001655ed1a14db85cf66e9892",
+    "ArcResidentDebug.h": "2f63d234eb55cace1fcfe63b118150bfcd077328111bde0252cc98a0cb399d46",
+    "arcResidentPixelsCS.hlsl": "f41a241179ac887838169cf071485093b57d9cd725f880647eecf007caf328b8",
+    "ArcResidentProbe.h": "b05f0447e9afbb445847b486aab29003977017898e5c44ce80fc6bb0a087993a",
+    "ArcResidentQueue.h": "bea7cf6151bd256d0defb2e9073a77e24197129cbd2e2b15e8ef27ae82991405",
+    "arcResidentQueueCS.hlsl": "b66a171ade99f08bbf10ed8e1d90b75d4cabdc5b4bf46cbcebb7f7638e4585eb",
+    "README.md": "9c28f267324c8da7dd86adb06cdb152d50c1e55120c933183b3b97b843df2b8c",
+    "resident.patch": "7beb6be4d01112475815316fbd6dba8de602fa2a1bad2c17036f4b36123f4899",
+    "run-matrix.ps1": "c459006f95050b9048ca155a883282a56fa16579c96a868ee652d39475ce914e",
+    "task-contract.txt": "1091eb510225a3879500681175a7bd01d8281eec86d248277570d37e0354cde1",
+    "test_exact_sqrt.py": "62ad0dd3a29a17fc836426ee5c309fbd7e97ccc2ed47509e110d8928f60d4cbf",
+    "THIRD_PARTY_NOTICES.md": "87024d3197299e6efecfb013a393d0e46fcbf22ebca631ade0aa7af3cea5b97e"
+  },
+  "external_sources": {
+    "WickedEngine/wiRenderer.cpp": {
+      "before_sha256": "bc322efe347956bbc67f254896b3b2101cc69b685e06b06817f2248fdcbbb655",
+      "after_normalized_lf_sha256": "76b4aad81c7b9895de1c5106b4dcea8b6d470523932faa7c7f7249d642b8f5a7"
+    },
+    "WickedEngine/wiScene.cpp": {
+      "before_sha256": "ff354a8d6ca7eb4ba3a2d7277fcd71a4f5da5c6ebb13f2827c3869fa11e4776b",
+      "after_normalized_lf_sha256": "07b1d7b99610479f660c35ffc8fbbad936b35f59c22653f74085498e0e1e2f8f"
+    },
+    "WickedEngine/wiRenderPath3D.cpp": {
+      "before_sha256": "5890286fe08b95d614838e2b5fcd085bec6d0276a109c1009e37ef7eaea79382",
+      "after_normalized_lf_sha256": "a5cb4007c2995ca48daf7977d807462f1351ec4f0bf8b78359a7d9f0f8edf4e0"
+    },
+    "WickedEngine/wiProfiler.cpp": {
+      "before_sha256": "90a2316ef102ce04d7f5fad7d2d91f9293b38bbf21afa0a053da696ced174aa8",
+      "after_normalized_lf_sha256": "4eab49234cd49677fd1734caf44d4509a2bb8a191dfe7500a9be82b1b98e8d87"
+    },
+    "Samples/Tests/ArcWickedBridge.cpp": {
+      "before_sha256": "c55f98270f68566fc5d8c636c89232587250e268283f648525da86e9dae0fe5a",
+      "after_normalized_lf_sha256": "e71118a0987eb4543f56f6bdce90c024cbd60f0f7c3ad95435422a08a954b39c"
+    }
+  },
+  "archive": {
+    "path": "raw-measurements.zip",
+    "sha256": "1e20f5451a4e0ff5b16f29f2b9eea52e40dd05ee78d04adb1ad581e0caecf5b4"
+  },
+  "raw_members": {
+    "A1-hardware.csv": "ef3e52addaea1c8c44d330fdf72e47c19d294ae64cfa34850bbceb614d111b57",
+    "A1-launch.json": "5eb0edefcbe4f7d67159d73f54237e3e43ab8541d3a9fe82641b0bc7b0ba05c5",
+    "A1.csv": "d5445f7f438ed24c55b454385c6455f6bf2dd1b22fc1409910c18ebbce11cb1d",
+    "A1.csv.json": "78f98a62a030296aa46b0423d4b173d3a000949e9ba5957fad8c5b77bd42eee1",
+    "A2-hardware.csv": "d83e55d2182cc190f54b63fa5eaa5bb813b0def77cfefaafc7d2b0fccbda3dc9",
+    "A2-launch.json": "82b1effb2fa4dac95b1f328aaea30a49d383f376fe0ba0497f5dc955304c72e2",
+    "A2.csv": "9b9cb45ff8e8c611c181dbedd5536f1cb1202f10030d32a95f78b13d31fe992a",
+    "A2.csv.json": "c415237619dc14538aaa9ac32d94c6578504614b7242f8cec7261a64e50b13f3",
+    "admission-build.log": "4fceb1f4e722f7a427f4b3649f5bf3086ce067a5be8e4e522c139ee0ed8fd2fa",
+    "arcResidentPixelsCS.cso": "bf8ea9afd3a4f04a28bcf353e804f18ebdcecca836d304a795f15afc1c37ffe8",
+    "arcResidentQueueCS.cso": "05e3017899376ba386ed50ef3c6d5ece3b7605358079088b848e08dba0e87c24",
+    "B1-hardware.csv": "1a3847b1858fc443ff86baf8a601fb0662bccf441fed97e8b5ef943b802a40b3",
+    "B1-launch.json": "0ab57232cd56b01e65277e8d4a01b065a3470df15d5c5bd70a6c4bb5ceb9ccd7",
+    "B1.csv": "e4ac771c73cbbf91f839bc826b50edcc5222b4c845b56be4e8b462ab5fc6ce96",
+    "B1.csv.json": "b348084d06dcde6a0d851c368e7083b793cfb5c46a289dcd21cd308133afe442",
+    "B2-hardware.csv": "e6121f8637c62c3bac571307e6f764539e070564d965ac94c01ece6b8f70ef3d",
+    "B2-launch.json": "8f2070fa290df4bba66ad28d55fff57adaf9c51d8a1b79f4dae609ee2b57a6ac",
+    "B2.csv": "3e012a1f9cf2655fd45dc57052d19ece9b26439f361728853e8aeca389726b89",
+    "B2.csv.json": "f0645d39a94db5c5a059d4c268dea359a9707f9e4e735b88ebd9a647cc1282f6",
+    "C1-hardware.csv": "6883b3f99773adbfbef6870d5f1ae1942e4cd888dcac115ba006b4071064a3b9",
+    "C1-launch.json": "85f2bd9011eec4d000cc00f058d114ecaa09d609c83090af9bfe4b5acd2ea0d4",
+    "C1.csv": "f0bba11cb0905c91cb0c7db46498fb52c30621aa1cf0579fef8f1f6d15d875f7",
+    "C1.csv.capabilities.json": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f",
+    "C1.csv.json": "212dcb9abe8a33698b60f2f92bdd11b799560cd38e114f02a02a55ed058ea3f8",
+    "C2-hardware.csv": "05a428170156c485f0132215cb637983bba45dc3407ab054ed7770237db6dd9d",
+    "C2-launch.json": "c4aa5ef8d6e1adccfea1304e67b61f58140c013e938dea41ed85bddaabfbe4e3",
+    "C2.csv": "0a9387fd08cdff457bdc5c74b2d521fef41d8087bd09f459dfc155377da7d85a",
+    "C2.csv.capabilities.json": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f",
+    "C2.csv.json": "76a8388727886a01a30a73d960ba5aa866e9b157373a0db4e8fe923a18b2f468",
+    "comparison.json": "45c12aa2a344846be89fb981eea486a554bee24558705ffc7ec7ed0b35f251f0",
+    "debug-build.log": "1ff82cc5d2cfe910e1b88a6e2050dc8b81b29bc5090d94a00f5716589a957adc",
+    "debug.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "debug.csv.crash.txt": "ea8f2b4b45344b4b0929db2916af694c0ee41a65cbe6f4afb0b9f3921ca41cd1",
+    "debug.csv.d3d12.txt": "142b49f94226dd9a9ebe11dcb13ffa03a64059097b7f955c5b3ecf3d4a5fff39",
+    "debug2.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "debug2.csv.d3d12.txt": "ce414cf10e447f968add24b1f1a28e45dbc9b21bf663b43c8dbb42122119898b",
+    "debug2.csv.json": "d887b9eed7819ebf38d5dc2ed8276b846c920f7d15474e4c8f1bcef72c6116b6",
+    "debug2.csv.resident-error.txt": "9769cb45014fa79d3bd29a2acb42344e32c47d4624cd0e7059530fd0f23ce4ec",
+    "depth-fix-build.log": "87d230ae9d755748209b1fd7265a2d6786f81172c8db95038df7a43f44c39911",
+    "diff-build.log": "c74a669d9990271b70597be56a0837d3bf4d31975c7671729936498ef44fe085",
+    "final-build.log": "a487cc7824db990407024351504be96b39a4c8563e0c644fc80eb2546bfc37d2",
+    "float-diff-build.log": "5f21d1a5dc6a871fb375294e60fa93c746a7c50eeccb12a24fe433fadab9ef48",
+    "full-link.log": "3608d50687245e58225257672ebf725ab8569e01659fe7f6936487f1dcbb0b80",
+    "hardware.txt": "0f505e9af10e3e2faf5ba42e6593077e753353ad77fd03f06d83368147223d94",
+    "oracle-final.csv": "a869919465103598b43873eaec9ec9884d718ee54cca6ae54a6e6ee6be1ea1e0",
+    "oracle-final.csv.capabilities.json": "3c813e82d0326bab697290f4fd53c37966b754b365d19ae0a8f78017e46abd1f",
+    "oracle-final.csv.json": "c9cdca25919345270fcec57ac1101a8857050b1f7a16c89b0d09143b01270266",
+    "oracle.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle.csv.crash.txt": "77ec80781673cb2fdc1dda83cec31da212c97e94ad82c22078b5a7f2a223f321",
+    "oracle.csv.json": "7355b4f34fa408e0408af811a101defce2204b661814f89b963eb9b420a7c6c3",
+    "oracle2.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle2.csv.json": "a30196f5bf8c8a4e7c78413cf11ef7669f1c0daa8188fb2ec4610d1d22eb2d9d",
+    "oracle2.csv.queue-diff.csv": "c0a49a8ea2bc0cd05a3722ee46a5c629b712c52cae8d7da138cc211775d74391",
+    "oracle2.csv.resident-error.txt": "ae7cf0bb292257e84f26fb138dbb754e35afef9594643eb040f018088d1d6b47",
+    "oracle3.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle3.csv.json": "8e244a364579ddbb2b1f07e6f39e3e9e10e9f719dff9ae02c9b7dc1ad940dba4",
+    "oracle3.csv.queue-diff.csv": "7080f85be017b715ec18b7947eacb481b53098e010a5a40cfdf25a43d4b0034a",
+    "oracle3.csv.resident-error.txt": "7716e134ab432ce185c2bf952f496021b15c56245a21c6335da284b0f94e9a68",
+    "oracle4.csv": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "oracle4.csv.json": "b5282f3bd0278677090b09dfa2f0180466aa524fed6feb9b62058b9b7daa5a53",
+    "oracle4.csv.queue-diff.csv": "7fc939528384f6940c4518f45b61b65bd848c2097b2b22e37ba69c62c0123db0",
+    "oracle4.csv.resident-error.txt": "cfa12016b23c68e8a8f2a332dba3f31ea1cd7fad3e475429f0d48b329e4a0b4d",
+    "oracle5.csv": "11796cd74b8cbd9ad5e4d3a96c5c1198b454b61f7fbad67e88cfbfb98744e10e",
+    "oracle5.csv.json": "052bf8ff67db6a06e648fe4f3b3a9cadb39900f5dbec0f3a43ae3f8e9ec00f25",
+    "pixel-shader.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "queue-build.log": "a898534936780ae4b0173adedbc4139eeb93a5c4e13a43fb16a2d575213ff602",
+    "queue-shader.log": "fd0579307a9af19af17b61f1eb86852d4e34052c33119f9593855bbd3480fdb3",
+    "rounding-shader.log": "fd0579307a9af19af17b61f1eb86852d4e34052c33119f9593855bbd3480fdb3",
+    "screen-build.log": "9172cf13d24819b2c3ef68454669f437ce602830c6ef15c736393c594865b370",
+    "screen.csv": "dcc2c673455c0ab7f3b4a7edb31aaf07305dfaedd81c7c0007c09d12965c2a67",
+    "screen.csv.json": "555c3c61a12aa7406d39465e898e7832b1c03417aa6e8d1b014212e118947e14",
+    "sqrt-shader.log": "fd0579307a9af19af17b61f1eb86852d4e34052c33119f9593855bbd3480fdb3",
+    "timing-build.log": "94bc1f5e0c6c3d525fac6c9a42fafd058804bace38ee02e7541efebf152c8041"
+  },
+  "verification": {
+    "published_patch": "plain git apply to captured c7711e9 harness base matched all five compiled source files (normalized line endings)",
+    "lifetime_fixes": "replaced and result/certificate pointers captured by value; post-join final list checker preserved",
+    "numeric_property_test": "10,005 normal inputs x 7 neighboring sqrt seeds passed independent host oracle",
+    "raw_replay": "All archive/member SHA-256 verified; analysis reproduced published comparison JSON exactly from unpacked archive."
+  }
+}

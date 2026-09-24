@@ -1,0 +1,2 @@
+name, driver_version, power.limit [W]
+NVIDIA GeForce RTX 3060 Laptop GPU, 616.64, [N/A]

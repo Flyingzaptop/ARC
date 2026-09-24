@@ -1,0 +1,728 @@
+{
+  "scope": "A-B-C/C-B-A analysis. CPU submission cadence is not display FPS.",
+  "window_seconds": [
+    6,
+    15
+  ],
+  "gpu_timing_scope": "retired GPU ranges, not matched to same-row CPU frame; unavailable for original A",
+  "runs": {
+    "A1": {
+      "cadence_ms": {
+        "count": 465,
+        "mean": 19.31737827956989,
+        "p50": 18.88969999999972,
+        "p95": 22.495699999999488,
+        "p99": 25.345299999999042,
+        "maximum": 29.501800000000003,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Compose": {
+          "count": 466,
+          "mean": 0.4133682403433476,
+          "p50": 0.4027,
+          "p95": 0.4614,
+          "p99": 0.5801,
+          "maximum": 0.6396,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Render": {
+          "count": 466,
+          "mean": 10.367823819742489,
+          "p50": 10.0298,
+          "p95": 12.9167,
+          "p99": 14.3019,
+          "maximum": 16.1806,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 466,
+          "mean": 7.175718669527897,
+          "p50": 6.95045,
+          "p95": 8.477,
+          "p99": 9.8443,
+          "maximum": 17.1544,
+          "above50": 0,
+          "above100": 0
+        },
+        "RenderPath3D Update": {
+          "count": 466,
+          "mean": 6.006761373390558,
+          "p50": 5.80855,
+          "p95": 7.1271,
+          "p99": 8.6537,
+          "maximum": 16.1218,
+          "above50": 0,
+          "above100": 0
+        },
+        "SubmitCommandLists": {
+          "count": 466,
+          "mean": 0.9581791845493562,
+          "p50": 0.9290499999999999,
+          "p95": 1.2389,
+          "p99": 1.448,
+          "maximum": 1.5474,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "hardware_approx_launch_window": {
+        "temperature.gpu": {
+          "min": 38.0,
+          "max": 39.0,
+          "mean": 38.44444444444444
+        },
+        "power.draw [W]": {
+          "min": 29.75,
+          "max": 37.02,
+          "mean": 33.49
+        },
+        "clocks.current.graphics [MHz]": {
+          "min": 1387.0,
+          "max": 1747.0,
+          "mean": 1548.888888888889
+        },
+        "utilization.gpu [%]": {
+          "min": 32.0,
+          "max": 51.0,
+          "mean": 37.666666666666664
+        }
+      },
+      "raw_sha256": "d5445f7f438ed24c55b454385c6455f6bf2dd1b22fc1409910c18ebbce11cb1d",
+      "exit_code": 0
+    },
+    "B1": {
+      "cadence_ms": {
+        "count": 460,
+        "mean": 19.51871608695652,
+        "p50": 19.09310000000005,
+        "p95": 22.706899999999223,
+        "p99": 25.15139999999883,
+        "maximum": 28.018699999999626,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Compose": {
+          "count": 461,
+          "mean": 0.40213796095444687,
+          "p50": 0.3911,
+          "p95": 0.4557,
+          "p99": 0.5254,
+          "maximum": 0.6615,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Render": {
+          "count": 461,
+          "mean": 10.719486334056398,
+          "p50": 10.3938,
+          "p95": 13.4475,
+          "p99": 14.9445,
+          "maximum": 16.2986,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 461,
+          "mean": 7.034380260303688,
+          "p50": 6.8732,
+          "p95": 8.066,
+          "p99": 9.5197,
+          "maximum": 16.8337,
+          "above50": 0,
+          "above100": 0
+        },
+        "RenderPath3D Update": {
+          "count": 461,
+          "mean": 5.8956906724511935,
+          "p50": 5.7468,
+          "p95": 6.786,
+          "p99": 8.0791,
+          "maximum": 15.6235,
+          "above50": 0,
+          "above100": 0
+        },
+        "Retired GPU frame span ms": {
+          "count": 461,
+          "mean": 5.547998673535791,
+          "p50": 5.50809622,
+          "p95": 6.20134401,
+          "p99": 6.92633581,
+          "maximum": 7.58374405,
+          "above50": 0,
+          "above100": 0
+        },
+        "SubmitCommandLists": {
+          "count": 461,
+          "mean": 0.9783375271149675,
+          "p50": 0.9357,
+          "p95": 1.275,
+          "p99": 1.5843,
+          "maximum": 2.6288,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "hardware_approx_launch_window": {
+        "temperature.gpu": {
+          "min": 41.0,
+          "max": 41.0,
+          "mean": 41.0
+        },
+        "power.draw [W]": {
+          "min": 24.94,
+          "max": 33.66,
+          "mean": 28.435555555555556
+        },
+        "clocks.current.graphics [MHz]": {
+          "min": 1207.0,
+          "max": 1702.0,
+          "mean": 1401.4444444444443
+        },
+        "utilization.gpu [%]": {
+          "min": 29.0,
+          "max": 45.0,
+          "mean": 34.55555555555556
+        }
+      },
+      "raw_sha256": "e4ac771c73cbbf91f839bc826b50edcc5222b4c845b56be4e8b462ab5fc6ce96",
+      "exit_code": 0
+    },
+    "C1": {
+      "cadence_ms": {
+        "count": 798,
+        "mean": 11.263178571428572,
+        "p50": 10.887649999999667,
+        "p95": 13.681499999998778,
+        "p99": 17.147800000000643,
+        "maximum": 27.809299999999894,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Compose": {
+          "count": 799,
+          "mean": 0.4365864831038799,
+          "p50": 0.4285,
+          "p95": 0.4847,
+          "p99": 0.5921,
+          "maximum": 0.9843,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Render": {
+          "count": 799,
+          "mean": 2.8528481852315393,
+          "p50": 2.6797,
+          "p95": 3.7693,
+          "p99": 4.838,
+          "maximum": 18.1385,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 799,
+          "mean": 6.731437296620776,
+          "p50": 6.5149,
+          "p95": 7.933,
+          "p99": 9.2987,
+          "maximum": 23.4541,
+          "above50": 0,
+          "above100": 0
+        },
+        "RenderPath3D Update": {
+          "count": 799,
+          "mean": 5.726676846057572,
+          "p50": 5.5316,
+          "p95": 6.765,
+          "p99": 8.2663,
+          "maximum": 22.5339,
+          "above50": 0,
+          "above100": 0
+        },
+        "Resident previous GPU record ms": {
+          "count": 800,
+          "mean": 0.11715961875,
+          "p50": 0.11815,
+          "p95": 0.1664,
+          "p99": 0.1986,
+          "maximum": 0.4304,
+          "above50": 0,
+          "above100": 0
+        },
+        "Resident previous build items skipped": {
+          "count": 800,
+          "mean": 130688.0,
+          "p50": 130688.0,
+          "p95": 130688.0,
+          "p99": 130688.0,
+          "maximum": 130688.0,
+          "above50": 800,
+          "above100": 800
+        },
+        "Resident previous pack items skipped": {
+          "count": 800,
+          "mean": 130688.0,
+          "p50": 130688.0,
+          "p95": 130688.0,
+          "p99": 130688.0,
+          "maximum": 130688.0,
+          "above50": 800,
+          "above100": 800
+        },
+        "Resident previous prepare ms": {
+          "count": 800,
+          "mean": 0.4530558675,
+          "p50": 0.4295,
+          "p95": 0.648,
+          "p99": 0.8268,
+          "maximum": 1.2975,
+          "above50": 0,
+          "above100": 0
+        },
+        "Resident previous sort items skipped": {
+          "count": 800,
+          "mean": 130688.0,
+          "p50": 130688.0,
+          "p95": 130688.0,
+          "p99": 130688.0,
+          "maximum": 130688.0,
+          "above50": 800,
+          "above100": 800
+        },
+        "Resident previous upload bytes": {
+          "count": 800,
+          "mean": 522752.0,
+          "p50": 522752.0,
+          "p95": 522752.0,
+          "p99": 522752.0,
+          "maximum": 522752.0,
+          "above50": 800,
+          "above100": 800
+        },
+        "Resident retired GPU work ms": {
+          "count": 799,
+          "mean": 0.519785731767209,
+          "p50": 0.521215975,
+          "p95": 0.590848029,
+          "p99": 0.610303998,
+          "maximum": 0.628736019,
+          "above50": 0,
+          "above100": 0
+        },
+        "Retired GPU frame span ms": {
+          "count": 799,
+          "mean": 5.082144033667084,
+          "p50": 5.07494402,
+          "p95": 5.30124807,
+          "p99": 6.106112,
+          "maximum": 7.6533761,
+          "above50": 0,
+          "above100": 0
+        },
+        "SubmitCommandLists": {
+          "count": 799,
+          "mean": 0.8568063829787234,
+          "p50": 0.8142,
+          "p95": 1.0758,
+          "p99": 1.4268,
+          "maximum": 3.9064,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "hardware_approx_launch_window": {
+        "temperature.gpu": {
+          "min": 47.0,
+          "max": 50.0,
+          "mean": 48.666666666666664
+        },
+        "power.draw [W]": {
+          "min": 61.9,
+          "max": 64.2,
+          "mean": 63.592222222222226
+        },
+        "clocks.current.graphics [MHz]": {
+          "min": 2002.0,
+          "max": 2002.0,
+          "mean": 2002.0
+        },
+        "utilization.gpu [%]": {
+          "min": 47.0,
+          "max": 65.0,
+          "mean": 58.44444444444444
+        }
+      },
+      "raw_sha256": "f0bba11cb0905c91cb0c7db46498fb52c30621aa1cf0579fef8f1f6d15d875f7",
+      "exit_code": 0
+    },
+    "C2": {
+      "cadence_ms": {
+        "count": 792,
+        "mean": 11.338943434343435,
+        "p50": 11.083950000000186,
+        "p95": 13.07470000000012,
+        "p99": 16.75510000000031,
+        "maximum": 26.819100000000617,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Compose": {
+          "count": 793,
+          "mean": 0.43073013871374527,
+          "p50": 0.4219,
+          "p95": 0.4897,
+          "p99": 0.559,
+          "maximum": 0.8367,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Render": {
+          "count": 793,
+          "mean": 2.985209079445145,
+          "p50": 2.8714,
+          "p95": 3.9352,
+          "p99": 4.7578,
+          "maximum": 5.5961,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 794,
+          "mean": 6.678190050377834,
+          "p50": 6.5150500000000005,
+          "p95": 7.6331,
+          "p99": 9.0922,
+          "maximum": 22.317,
+          "above50": 0,
+          "above100": 0
+        },
+        "RenderPath3D Update": {
+          "count": 794,
+          "mean": 5.7807245591939544,
+          "p50": 5.63025,
+          "p95": 6.654,
+          "p99": 8.0131,
+          "maximum": 21.4209,
+          "above50": 0,
+          "above100": 0
+        },
+        "Resident previous GPU record ms": {
+          "count": 794,
+          "mean": 0.12446359319899244,
+          "p50": 0.13505,
+          "p95": 0.1756,
+          "p99": 0.2109,
+          "maximum": 0.8703,
+          "above50": 0,
+          "above100": 0
+        },
+        "Resident previous build items skipped": {
+          "count": 794,
+          "mean": 130688.0,
+          "p50": 130688.0,
+          "p95": 130688.0,
+          "p99": 130688.0,
+          "maximum": 130688.0,
+          "above50": 794,
+          "above100": 794
+        },
+        "Resident previous pack items skipped": {
+          "count": 794,
+          "mean": 130688.0,
+          "p50": 130688.0,
+          "p95": 130688.0,
+          "p99": 130688.0,
+          "maximum": 130688.0,
+          "above50": 794,
+          "above100": 794
+        },
+        "Resident previous prepare ms": {
+          "count": 794,
+          "mean": 0.468452,
+          "p50": 0.4365,
+          "p95": 0.6838,
+          "p99": 0.8288,
+          "maximum": 1.4202,
+          "above50": 0,
+          "above100": 0
+        },
+        "Resident previous sort items skipped": {
+          "count": 794,
+          "mean": 130688.0,
+          "p50": 130688.0,
+          "p95": 130688.0,
+          "p99": 130688.0,
+          "maximum": 130688.0,
+          "above50": 794,
+          "above100": 794
+        },
+        "Resident previous upload bytes": {
+          "count": 794,
+          "mean": 522752.0,
+          "p50": 522752.0,
+          "p95": 522752.0,
+          "p99": 522752.0,
+          "maximum": 522752.0,
+          "above50": 794,
+          "above100": 794
+        },
+        "Resident retired GPU work ms": {
+          "count": 793,
+          "mean": 0.5079840601248423,
+          "p50": 0.500735998,
+          "p95": 0.581632018,
+          "p99": 0.587776005,
+          "maximum": 0.593919992,
+          "above50": 0,
+          "above100": 0
+        },
+        "Retired GPU frame span ms": {
+          "count": 793,
+          "mean": 4.921396943921816,
+          "p50": 4.9111042,
+          "p95": 5.16812801,
+          "p99": 5.78662395,
+          "maximum": 7.75782394,
+          "above50": 0,
+          "above100": 0
+        },
+        "SubmitCommandLists": {
+          "count": 793,
+          "mean": 0.8601838587641867,
+          "p50": 0.8227,
+          "p95": 1.0699,
+          "p99": 1.3731,
+          "maximum": 2.4107,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "hardware_approx_launch_window": {
+        "temperature.gpu": {
+          "min": 50.0,
+          "max": 53.0,
+          "mean": 51.77777777777778
+        },
+        "power.draw [W]": {
+          "min": 58.25,
+          "max": 63.63,
+          "mean": 61.77777777777778
+        },
+        "clocks.current.graphics [MHz]": {
+          "min": 2002.0,
+          "max": 2025.0,
+          "mean": 2017.3333333333333
+        },
+        "utilization.gpu [%]": {
+          "min": 49.0,
+          "max": 61.0,
+          "mean": 53.44444444444444
+        }
+      },
+      "raw_sha256": "0a9387fd08cdff457bdc5c74b2d521fef41d8087bd09f459dfc155377da7d85a",
+      "exit_code": 0
+    },
+    "B2": {
+      "cadence_ms": {
+        "count": 450,
+        "mean": 19.959944666666665,
+        "p50": 19.486900000000333,
+        "p95": 23.373900000000503,
+        "p99": 25.595100000000457,
+        "maximum": 28.25340000000051,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Compose": {
+          "count": 451,
+          "mean": 0.3987740576496674,
+          "p50": 0.3896,
+          "p95": 0.4536,
+          "p99": 0.5091,
+          "maximum": 0.6755,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Render": {
+          "count": 451,
+          "mean": 10.95579689578714,
+          "p50": 10.5044,
+          "p95": 13.8544,
+          "p99": 14.9841,
+          "maximum": 19.2753,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 451,
+          "mean": 7.210436141906873,
+          "p50": 7.0836,
+          "p95": 8.0647,
+          "p99": 8.907,
+          "maximum": 10.4557,
+          "above50": 0,
+          "above100": 0
+        },
+        "RenderPath3D Update": {
+          "count": 451,
+          "mean": 6.0206215077605325,
+          "p50": 5.8921,
+          "p95": 6.79,
+          "p99": 7.7098,
+          "maximum": 9.3485,
+          "above50": 0,
+          "above100": 0
+        },
+        "Retired GPU frame span ms": {
+          "count": 451,
+          "mean": 5.463679502039911,
+          "p50": 5.46303988,
+          "p95": 5.84601593,
+          "p99": 6.36313581,
+          "maximum": 7.63903999,
+          "above50": 0,
+          "above100": 0
+        },
+        "SubmitCommandLists": {
+          "count": 451,
+          "mean": 0.9633997782705099,
+          "p50": 0.9335,
+          "p95": 1.2374,
+          "p99": 1.4066,
+          "maximum": 2.5578,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "hardware_approx_launch_window": {
+        "temperature.gpu": {
+          "min": 49.0,
+          "max": 50.0,
+          "mean": 49.333333333333336
+        },
+        "power.draw [W]": {
+          "min": 28.9,
+          "max": 36.65,
+          "mean": 32.22
+        },
+        "clocks.current.graphics [MHz]": {
+          "min": 1260.0,
+          "max": 1680.0,
+          "mean": 1465.7777777777778
+        },
+        "utilization.gpu [%]": {
+          "min": 32.0,
+          "max": 36.0,
+          "mean": 34.44444444444444
+        }
+      },
+      "raw_sha256": "3e012a1f9cf2655fd45dc57052d19ece9b26439f361728853e8aeca389726b89",
+      "exit_code": 0
+    },
+    "A2": {
+      "cadence_ms": {
+        "count": 461,
+        "mean": 19.475863557483734,
+        "p50": 19.121900000000096,
+        "p95": 22.30919999999969,
+        "p99": 26.177999999999884,
+        "maximum": 29.903699999998935,
+        "above50": 0,
+        "above100": 0
+      },
+      "events": {
+        "Application Compose": {
+          "count": 462,
+          "mean": 0.408758658008658,
+          "p50": 0.39805,
+          "p95": 0.464,
+          "p99": 0.522,
+          "maximum": 0.7874,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Render": {
+          "count": 462,
+          "mean": 10.544764718614719,
+          "p50": 10.22055,
+          "p95": 13.0712,
+          "p99": 14.1876,
+          "maximum": 19.1026,
+          "above50": 0,
+          "above100": 0
+        },
+        "Application Update": {
+          "count": 463,
+          "mean": 7.15348596112311,
+          "p50": 7.0107,
+          "p95": 7.9939,
+          "p99": 9.0088,
+          "maximum": 16.1424,
+          "above50": 0,
+          "above100": 0
+        },
+        "RenderPath3D Update": {
+          "count": 463,
+          "mean": 5.952771706263499,
+          "p50": 5.8175,
+          "p95": 6.7477,
+          "p99": 7.4056,
+          "maximum": 15.0178,
+          "above50": 0,
+          "above100": 0
+        },
+        "SubmitCommandLists": {
+          "count": 462,
+          "mean": 0.9403614718614719,
+          "p50": 0.90525,
+          "p95": 1.2003,
+          "p99": 1.4316,
+          "maximum": 2.1071,
+          "above50": 0,
+          "above100": 0
+        }
+      },
+      "hardware_approx_launch_window": {
+        "temperature.gpu": {
+          "min": 50.0,
+          "max": 51.0,
+          "mean": 50.22222222222222
+        },
+        "power.draw [W]": {
+          "min": 31.37,
+          "max": 41.95,
+          "mean": 35.22555555555556
+        },
+        "clocks.current.graphics [MHz]": {
+          "min": 1372.0,
+          "max": 1837.0,
+          "mean": 1587.111111111111
+        },
+        "utilization.gpu [%]": {
+          "min": 28.0,
+          "max": 38.0,
+          "mean": 33.22222222222222
+        }
+      },
+      "raw_sha256": "9b9cb45ff8e8c611c181dbedd5536f1cb1202f10030d32a95f78b13d31fe992a",
+      "exit_code": 0
+    }
+  },
+  "comparison": {
+    "A_mean_ms": 19.396620918526814,
+    "B_mean_ms": 19.739330376811594,
+    "C_mean_ms": 11.301061002886003,
+    "interval_reduction_percent": 41.736960007855195,
+    "cadence_rate_ratio": 1.7163539700894819,
+    "required_gain_ms": 0.9698310459263407,
+    "conservative_gain_ms": 7.978434845226456,
+    "display_FPS_proven": false
+  }
+}

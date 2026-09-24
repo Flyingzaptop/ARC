@@ -144,3 +144,12 @@ Three native post-join checks and checker/publication regressions passed. Histor
 performance captures remain historical, not correctness evidence for the fixed code.
 Raw CSV ZIPs are committed for both old series and the new targeted verification.
 See [correction report](reports/2026-09-24-replaced-lifetime-fix.md).
+
+## Resident draw-consumer follow-up — 2026-09-24
+
+A different closed suffix (draw preparation -> GPU draw consumer) produced a positive
+CPU submission-cadence result on Wicked: 19.40 -> 11.30 ms. This does not reverse the
+negative result of the earlier bounds/readback chain and is not universal ARC.
+Pixel/depth/record oracles passed. Actual active power was ~62-65 W, not verified 30 W;
+display FPS is unmeasured. Original EXE restored, default off.
+[Current report](reports/2026-09-24-resident-draw-consumer.md).

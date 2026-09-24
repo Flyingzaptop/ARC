@@ -1,0 +1,238 @@
+--- a/WickedEngine/wiRenderer.cpp
++++ b/WickedEngine/wiRenderer.cpp
+@@ -38,6 +38,8 @@
+ #include <limits>
+ #include <mutex>
+ #include <cstdlib>
++#include "ArcResidentProbe.h"
++#include "ArcResidentQueue.h"
+ extern "C" int ARCControlledCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
+ extern "C" void ARCControlledFinalList(const void*,uint32_t,const void*,uint32_t,const uint32_t*,size_t);
+ extern "C" int ARCChainCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
+@@ -3151,12 +3153,14 @@
+ 	uint32_t filterMask,
+ 	CommandList cmd,
+ 	uint32_t flags = 0,
+-	uint32_t camera_count = 1
++	uint32_t camera_count = 1,
++    arc_resident_queue::Slot* resident = nullptr
+ )
+ {
+ 	if (renderQueue.empty())
+ 		return;
+ 
++	arc_resident_probe::Scope arc_mesh_scope(arc_resident_probe::consume);
+ 	device->EventBegin("RenderMeshes", cmd);
+ 
+ 	RenderPassInfo renderpass_info = device->GetRenderPassInfo(cmd);
+@@ -3184,8 +3188,8 @@
+ 
+ 	// Pre-allocate space for all the instances in GPU-buffer:
+ 	const size_t alloc_size = renderQueue.size() * camera_count * sizeof(ShaderMeshInstancePointer);
+-	const GraphicsDevice::GPUAllocation instances = device->AllocateGPU(alloc_size, cmd);
+-	const int instanceBufferDescriptorIndex = device->GetDescriptorIndex(&instances.buffer, SubresourceType::SRV);
++	const GraphicsDevice::GPUAllocation instances = resident ? GraphicsDevice::GPUAllocation{} : device->AllocateGPU(alloc_size, cmd);
++	const int instanceBufferDescriptorIndex = device->GetDescriptorIndex(resident ? &resident->pointers : &instances.buffer, SubresourceType::SRV);
+ 
+ 	// This will correspond to a single draw call
+ 	//	It's used to render multiple instances of a single mesh
+@@ -3439,6 +3443,13 @@
+ 		}
+ 	};
+ 
++    if(resident){
++        instancedBatch.meshIndex=resident->mesh;instancedBatch.instanceCount=resident->count;
++        instancedBatch.dataOffset=0;instancedBatch.userStencilRefOverride=uint8_t(resident->stencil);
++        instancedBatch.lod=uint8_t(resident->lod);batch_flush();
++        arc_resident_queue::skipped_pack.fetch_add(resident->count);
++        device->EventEnd(cmd);return;
++    }
+ 	// The following loop is writing the instancing batches to a GPUBuffer:
+ 	//	RenderQueue is sorted based on mesh index, so when a new mesh or stencil request is encountered, we need to flush the batch
+ 	uint32_t instanceCount = 0;
+@@ -7335,7 +7346,15 @@
+ 
+ 	if (opaque || transparent)
+ 	{
+-		renderQueue.init();
++        auto* resident=arc_resident_queue::lookup(vis,renderPass,flags);
++        if(resident && arc_resident_queue::mode()==1){
++            renderQueue.init();renderQueue.add(resident->mesh,resident->representative,0,0);
++            arc_resident_queue::skipped_build.fetch_add(resident->count);
++            arc_resident_queue::skipped_sort.fetch_add(resident->count);resident->uses.fetch_add(1);
++            RenderMeshes(vis,renderQueue,renderPass,filterMask,cmd,flags,1,resident);
++        }else{
++        renderQueue.init();
++		{ arc_resident_probe::Scope arc_build_scope(arc_resident_probe::build);
+ 		for (uint32_t instanceIndex : vis.visibleObjects)
+ 		{
+ 			const ObjectComponent& object = vis.scene->objects[instanceIndex];
+@@ -7358,8 +7377,10 @@
+ 
+ 			renderQueue.add(object.mesh_index, instanceIndex, distance, object.sort_bits);
+ 		}
++		}
+ 		if (!renderQueue.empty())
+ 		{
++			{ arc_resident_probe::Scope arc_sort_scope(arc_resident_probe::sort);
+ 			if (transparent)
+ 			{
+ 				renderQueue.sort_transparent();
+@@ -7368,8 +7389,18 @@
+ 			{
+ 				renderQueue.sort_opaque();
+ 			}
+-			RenderMeshes(vis, renderQueue, renderPass, filterMask, cmd, flags);
+-		}
++			}
++            if(resident){
++                if(!resident->expected_claimed.exchange(true)){
++                    if(renderQueue.size()!=resident->count)arc_resident_queue::fail("CPU filtering/admission",renderQueue.size(),resident->count);
++                    for(auto& batch:renderQueue.batches){float distance=wi::math::Distance(vis.camera->Eye,vis.scene->objects[batch.instanceIndex].center);uint32_t raw{};std::memcpy(&raw,&distance,4);resident->expected.push_back({uint32_t(batch.sort_bits),uint32_t(batch.distance),batch.instanceIndex,raw});}
++                    std::sort(resident->expected.begin(),resident->expected.end(),arc_resident_queue::less);
++                }
++                resident->uses.fetch_add(1);
++            }
++            RenderMeshes(vis,renderQueue,renderPass,filterMask,cmd,flags,1,resident);
++		}
++        }
+ 	}
+ 
+ 	if (impostor)
+--- a/WickedEngine/wiScene.cpp
++++ b/WickedEngine/wiScene.cpp
+@@ -15,6 +15,7 @@
+ extern "C" bool ARCChainBegin(void*);
+ extern "C" const void* ARCChainFinish(void*);
+ #include "ArcChainContract.h"
++#include "ArcResidentQueue.h"
+ 
+ #include "shaders/ShaderInterop_SurfelGI.h"
+ #include "shaders/ShaderInterop_DDGI.h"
+@@ -4440,6 +4441,7 @@
+ 	void Scene::RunObjectUpdateSystem(wi::jobsystem::context& ctx)
+ 	{
+         const auto* arc_chain_results = static_cast<const ArcChainResult*>(ARCChainFinish(this));
++        auto* resident_certificate=arc_resident_queue::begin_certificate(this);
+ 		aabb_objects.resize(objects.GetCount());
+ 		matrix_objects.resize(objects.GetCount());
+ 		matrix_objects_prev.resize(objects.GetCount());
+@@ -4449,7 +4451,7 @@
+ 		parallel_bounds.clear();
+ 		parallel_bounds.resize((size_t)wi::jobsystem::DispatchGroupCount((uint32_t)objects.GetCount(), small_subtask_groupsize));
+ 		
+-		wi::jobsystem::Dispatch(ctx, (uint32_t)objects.GetCount(), small_subtask_groupsize, [&, arc_chain_results](wi::jobsystem::JobArgs args) {
++		wi::jobsystem::Dispatch(ctx, (uint32_t)objects.GetCount(), small_subtask_groupsize, [&, arc_chain_results, resident_certificate](wi::jobsystem::JobArgs args) {
+ 
+ 			Entity entity = objects.GetEntity(args.jobIndex);
+ 			ObjectComponent& object = objects[args.jobIndex];
+@@ -4609,6 +4611,7 @@
+ 				}
+ 
+ 				object.sort_bits = sort_bits.value;
++                arc_resident_queue::observe(resident_certificate,object,mesh,softbody!=nullptr);
+ 
+ 				//// Correction matrix for mesh normals with non-uniform object scaling:
+ 				//XMMATRIX worldMatrixInverseTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, W));
+--- a/WickedEngine/wiRenderPath3D.cpp
++++ b/WickedEngine/wiRenderPath3D.cpp
+@@ -1,3 +1,4 @@
++#include "ArcResidentQueue.h"
+ #include "wiRenderPath3D.h"
+ #include "wiRenderer.h"
+ #include "wiImage.h"
+@@ -829,7 +830,8 @@
+ 		CommandList cmd = device->BeginCommandList();
+ 		wi::renderer::ProcessDeferredTextureRequests(cmd); // Execute it first thing in the frame here, on main thread, to not allow other thread steal it and execute on different command list!
+ 		CommandList cmd_prepareframe = cmd;
+-		wi::jobsystem::Execute(ctx, [this, cmd](wi::jobsystem::JobArgs args) {
++        auto* arc_resident_slot=arc_resident_queue::prepare(visibility_main,cmd);
++		wi::jobsystem::Execute(ctx, [this, cmd, arc_resident_slot](wi::jobsystem::JobArgs args) {
+ 			GraphicsDevice* device = wi::graphics::GetDevice();
+ 
+ 			wi::renderer::BindCameraCB(
+@@ -839,6 +841,7 @@
+ 				cmd
+ 			);
+ 			wi::renderer::UpdateRenderData(visibility_main, frameCB, cmd);
++            arc_resident_queue::record(arc_resident_slot,cmd);
+ 
+ 			GPUBarrier barriers[] = {
+ 				GPUBarrier::Image(&debugUAV, debugUAV.desc.layout, ResourceState::UNORDERED_ACCESS),
+@@ -907,7 +910,7 @@
+ 		// Main camera depth prepass:
+ 		cmd = device->BeginCommandList();
+ 		CommandList cmd_maincamera_prepass = cmd;
+-		wi::jobsystem::Execute(ctx, [this, cmd](wi::jobsystem::JobArgs args) {
++		wi::jobsystem::Execute(ctx, [this, cmd, arc_resident_slot](wi::jobsystem::JobArgs args) {
+ 
+ 			GraphicsDevice* device = wi::graphics::GetDevice();
+ 
+@@ -987,6 +990,7 @@
+ 			device->EventEnd(cmd);
+ 
+ 			device->RenderPassEnd(cmd);
++            arc_resident_queue::pixels(arc_resident_slot,rtPrimitiveID_render,depthBuffer_Main,visibility_main,drawscene_flags,cmd);
+ 
+ 		});
+ 
+--- a/WickedEngine/wiProfiler.cpp
++++ b/WickedEngine/wiProfiler.cpp
+@@ -139,6 +139,8 @@
+ 						range.time = 0;
+ 					}
+ 					if (range.name == "GPU Frame") arc_last_gpu_frame_time_ms.store(range.time, std::memory_order_relaxed);
++                    if(range.name=="ResidentQueue GPU") ARCWickedCpuSample("Resident retired GPU work ms",range.time);
++                    if(range.name=="GPU Frame") ARCWickedCpuSample("Retired GPU frame span ms",range.time);
+ 				}
+ 				range.gpuBegin[queryheap_idx] = -1;
+ 				range.gpuEnd[queryheap_idx] = -1;
+--- a/Samples/Tests/ArcWickedBridge.cpp
++++ b/Samples/Tests/ArcWickedBridge.cpp
+@@ -1,6 +1,9 @@
+ #include "stdafx.h"
+ #include "ArcWickedBridge.h"
+ #include "ArcWickedHooks.h"
++#include "ArcResidentProbe.h"
++#include "ArcResidentQueue.h"
++#include "ArcResidentDebug.h"
+ #include "ArcWickedTelemetry.h"
+ #include "ArcWickedSemanticAudit.h"
+ #include "ArcWickedAttribution.h"
+@@ -644,6 +647,7 @@
+     {
+         if (phase_ == Phase::Done) return;
+         if (cpu_profile_.is_open()) {
++            arc_resident_probe::report();
+             ++cpu_profile_frame_;
+             g_arc_last_scene.store(cpu_profile_scene_, std::memory_order_relaxed);
+             if (!cpu_profile_selected_) {
+@@ -1736,6 +1740,12 @@
+                 DWORD written = 0;
+                 WriteFile(file, buffer, static_cast<DWORD>(n), &written, nullptr);
+             }
++            HMODULE module{};
++            if(address && GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,reinterpret_cast<LPCWSTR>(address),&module)){
++                char name[1024]{};GetModuleFileNameA(module,name,1024);
++                char line[1200]{};int count=sprintf_s(line,"module=%s base=%p offset=%llx\r\n",name,module,(unsigned long long)((uintptr_t)address-(uintptr_t)module));
++                DWORD written{};if(count>0)WriteFile(file,line,DWORD(count),&written,nullptr);
++            }
+             CloseHandle(file);
+         }
+     }
+@@ -1755,6 +1765,7 @@
+     ID3D12DescriptorHeap* sampler_heap) noexcept
+ {
+     if (!device) return;
++    ArcResidentDebugInstall(device);
+     arc_controlled::state.attach(device);
+     arc_chain::chain.attach(device);
+     std::scoped_lock lock(g_bridge_mutex);
+@@ -1773,6 +1784,7 @@
+ extern "C" void ARCWickedDeviceDestroyed() noexcept {
+     // Device owner has stopped recording and waited for GPU completion.
+     // No cross-TU global mutex here: this also runs during static shutdown.
++    arc_resident_queue::shutdown();
+     auto* retired=g_bridge; g_bridge=nullptr; delete retired;
+ }
+ 
