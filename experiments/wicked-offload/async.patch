@@ -1,14 +1,14 @@
 --- a/WickedEngine/wiRenderer.cpp
 +++ b/WickedEngine/wiRenderer.cpp
-@@ -39,6 +39,7 @@
- #include <mutex>
+@@ -40,6 +40,7 @@
  #include <cstdlib>
  extern "C" int ARCControlledCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
+ extern "C" void ARCControlledFinalList(const void*,uint32_t,const void*,uint32_t,const uint32_t*,size_t);
 +extern "C" int ARCChainCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
  
  using namespace wi::primitive;
  using namespace wi::graphics;
-@@ -3749,11 +3750,11 @@
+@@ -3750,11 +3751,11 @@
  		const uint32_t object_loop = (uint32_t)std::min(vis.scene->aabb_objects.size(), vis.scene->objects.GetCount());
  		vis.visibleObjects.resize(object_loop);
          // Explicit source-assisted experiment. All original CPU effects remain.

@@ -8,6 +8,7 @@
 #include <mutex>
 #include <cstdlib>
 #include <cstring>
+#include "FinalListCheck.h"
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib,"d3d12.lib")
 
@@ -136,3 +137,17 @@ if(li<localCount)result[count+base+li]=ids[li];
 inline State state;
 }
 extern "C" int ARCControlledCull(const void* boxes,uint32_t n,const void* frustum,uint32_t mask,uint32_t* result){return arc_controlled::state.run(static_cast<const wi::primitive::AABB*>(boxes),n,*static_cast<const wi::primitive::Frustum*>(frustum),mask,result);}
+extern "C" void ARCControlledFinalList(const void* data,uint32_t n,const void* planes,uint32_t mask,const uint32_t* indices,size_t count){
+    static const bool enabled=[] {char v[16]{};GetEnvironmentVariableA("ARC_VERIFY_FINAL_LIST",v,16);return std::atoi(v)==1;}();
+    if(!enabled)return;
+    auto* boxes=static_cast<const wi::primitive::AABB*>(data);
+    auto& frustum=*static_cast<const wi::primitive::Frustum*>(planes);
+    std::vector<uint8_t> expected(n);
+    for(uint32_t i=0;i<n;++i)expected[i]=bool(boxes[i].layerMask&mask)&&frustum.CheckBoxFast(boxes[i]);
+    // Guard before constructing/reading the actual range or resizing the consumer list.
+    const bool valid=count<=n && ArcFinalListMatches(expected,std::span(indices,count));
+    ARCWickedCpuSample("Final CPU list errors",valid?0:1);
+    ARCWickedCpuSample("Final CPU list universe",n);
+    ARCWickedCpuSample("Final CPU list count",double(count));
+    if(!valid)ExitProcess(96);
+}

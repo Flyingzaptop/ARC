@@ -80,3 +80,21 @@ Device recreation and production stop/recovery are not provided by this experime
 The measured result is negative; no automatic placement/fraction controller was
 added. The original Tests.exe has been restored. The source-assisted binaries and
 raw captures remain local at the paths in the async manifest.
+
+## 2026-09-24 correction
+
+The object-job lambda must capture the block-local `replaced` BY VALUE:
+`[&, replaced](wi::jobsystem::JobArgs args)`. Its type being int did not fix its
+lifetime. The block ends before the enclosing UpdateVisibility Wait(ctx).
+
+The published foundational patch now includes that fix. Reapply the NEW
+wicked.patch and then the NEW async.patch to their documented bases. Copy
+FinalListCheck.h alongside ArcControlledVisibility.h into Samples/Tests.
+`ARC_VERIFY_FINAL_LIST=1` checks the actual consumer indices AFTER Wait(ctx),
+before resizing, against independent current AABB/frustum/layer CPU membership.
+It detects count errors, missing/foreign/duplicate/out-of-range indices. Keep it
+off in timing runs. The portable final_list_tests.cpp tests the checker itself.
+
+Historical raw CSV archives are now committed under both 20260923 evidence folders.
+Their bytes match the original archive hashes. Historical timings predate the
+lifetime correction and are retained for audit, not as validation of corrected code.

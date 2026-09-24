@@ -1,0 +1,26 @@
+
+  wiRenderer.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\wiRenderer.cpp(3754,62): warning C4996: 'getenv': This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\WickedEngine\WickedEngine_Windows.vcxproj]
+  WickedEngine_Windows.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\WickedEngine_Windows.lib
+  ArcWickedBridge.cpp
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\ArcAsyncObjectChain.h(9,120): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\Tests.vcxproj]
+  (compiling source file '/ArcWickedBridge.cpp')
+  
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\ArcAsyncObjectChain.h(92,171): warning C4244: аргумент: преобразование "uint64_t" в "double", возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\Tests.vcxproj]
+  (compiling source file '/ArcWickedBridge.cpp')
+  
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\ArcAsyncObjectChain.h(92,237): warning C4244: аргумент: преобразование "uint64_t" в "double", возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\Tests.vcxproj]
+  (compiling source file '/ArcWickedBridge.cpp')
+  
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\ArcAsyncObjectChain.h(102,56): warning C4244: аргумент: преобразование "SIZE_T" в "double", возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\Tests.vcxproj]
+  (compiling source file '/ArcWickedBridge.cpp')
+  
+C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\ArcAsyncObjectChain.h(139,78): warning C4244: аргумент: преобразование "unsigned __int64" в "double", возможна потеря данных [C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\Samples\Tests\Tests.vcxproj]
+  (compiling source file '/ArcWickedBridge.cpp')
+  
+  Создание кода
+  1429 of 75324 functions ( 1.9%) were compiled, the rest were copied from previous compilation.
+    19 functions were new in current compilation
+    834 functions had inline decision re-evaluated but remain unchanged
+  Создание кода завершено
+  Tests.vcxproj -> C:\Users\r3d_flzp\ARC-Hardening-GPU\WickedEngine\BUILD\x64\Release\Tests\Tests.exe

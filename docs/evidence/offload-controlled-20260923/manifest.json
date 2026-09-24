@@ -214,5 +214,7 @@
     "experiments\\wicked-offload\\ArcControlledVisibility.h": "be934d2a504de949c8e23e74227cb8771c1c1276716680d6071c5ad4026f7e14",
     "experiments\\wicked-offload\\README.md": "b16182a53dbee88452469c789f93359591569373e1b5d1c0334a376c76ece983",
     "experiments\\wicked-offload\\wicked.patch": "3b151569a1ce9b87a56518e0d7e8b2b7aab613049d2533223cc475516c51acb0"
-  }
+  },
+  "published_raw_archive": "raw-measurements.zip",
+  "review_correction": "Historical code captured block-local replaced by reference. Performance and GPU-only oracle results do not certify the final CPU list. See 2026-09-24 correction evidence."
 }

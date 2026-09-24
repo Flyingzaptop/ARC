@@ -1,0 +1,204 @@
+{
+  "scope": "replaced block lifetime correction; final consumer-list verification after CPU jobs join",
+  "prior_commit": "70d6f1d",
+  "fix": "object lambda [&, replaced], not type conversion",
+  "post_join_oracle": "current AABB/frustum/layer CPU expected membership; validates actual visibleObjects with actual atomic count after Wait(ctx), before resize; rejects duplicate/missing/foreign/out-of-range indices",
+  "tests": {
+    "cpp_checker": "compiled and passed on MSVC Release; valid unordered, duplicate, missing, foreign, out-of-range, empty",
+    "published_patch_test": "passed",
+    "layered_patches": "applied to saved base files and exactly matched compiled local source; capture and Wait->oracle->resize placement asserted"
+  },
+  "results": {
+    "async-oracle": {
+      "post_join_checks": 384,
+      "post_join_errors": 0.0,
+      "object_memberships_checked": 25165824.0,
+      "actual_indices_checked": 25092288.0,
+      "cadence": {
+        "count": 300,
+        "mean": 29.851879666666665,
+        "p50": 29.318249999999352,
+        "p95": 33.272500000000036,
+        "p99": 34.67199999999866,
+        "maximum": 36.04279999999926,
+        "above50": 0,
+        "above100": 0
+      },
+      "execution": {
+        "schema": 1,
+        "diagnostic_only": true,
+        "executable_sha256": "A2611CE9C85F4D3E7FD01F92FA3CA83E7CC83A91A476250D4DED024CEB9F02A1",
+        "scene": 18,
+        "seconds": 15,
+        "mode": "off",
+        "always_active": true,
+        "started": "2026-09-24T07:35:11.0638226+02:00",
+        "exit_code": 0
+      },
+      "launch_environment": {
+        "ARC_VERIFY_FINAL_LIST": 1,
+        "ARC_CONTROLLED_CULL": 0,
+        "ARC_ASYNC_CHAIN": 2,
+        "ARC_CHAIN_CHUNKS": 2
+      }
+    },
+    "compact-oracle": {
+      "post_join_checks": 452,
+      "post_join_errors": 0.0,
+      "object_memberships_checked": 29622272.0,
+      "actual_indices_checked": 29535680.0,
+      "cadence": {
+        "count": 349,
+        "mean": 25.688181661891115,
+        "p50": 25.511999999999716,
+        "p95": 28.55789999999979,
+        "p99": 33.731000000001586,
+        "maximum": 42.86650000000009,
+        "above50": 0,
+        "above100": 0
+      },
+      "execution": {
+        "schema": 1,
+        "diagnostic_only": true,
+        "executable_sha256": "A2611CE9C85F4D3E7FD01F92FA3CA83E7CC83A91A476250D4DED024CEB9F02A1",
+        "scene": 18,
+        "seconds": 15,
+        "mode": "off",
+        "always_active": true,
+        "started": "2026-09-24T07:34:02.6921664+02:00",
+        "exit_code": 0
+      },
+      "launch_environment": {
+        "ARC_VERIFY_FINAL_LIST": 1,
+        "ARC_CONTROLLED_CULL": 5,
+        "ARC_ASYNC_CHAIN": 0,
+        "ARC_CHAIN_CHUNKS": null
+      }
+    },
+    "fixed-active": {
+      "post_join_checks": 0,
+      "post_join_errors": 0,
+      "object_memberships_checked": 0,
+      "actual_indices_checked": 0,
+      "cadence": {
+        "count": 332,
+        "mean": 26.976518373493974,
+        "p50": 26.670349999999416,
+        "p95": 30.002799999998388,
+        "p99": 31.853900000000067,
+        "maximum": 33.77689999999984,
+        "above50": 0,
+        "above100": 0
+      },
+      "execution": {
+        "schema": 1,
+        "diagnostic_only": true,
+        "executable_sha256": "A2611CE9C85F4D3E7FD01F92FA3CA83E7CC83A91A476250D4DED024CEB9F02A1",
+        "scene": 18,
+        "seconds": 15,
+        "mode": "off",
+        "always_active": true,
+        "started": "2026-09-24T07:36:35.7690348+02:00",
+        "exit_code": 0
+      },
+      "launch_environment": {
+        "ARC_VERIFY_FINAL_LIST": 0,
+        "ARC_CONTROLLED_CULL": 0,
+        "ARC_ASYNC_CHAIN": 1,
+        "ARC_CHAIN_CHUNKS": 2
+      }
+    },
+    "mask-oracle": {
+      "post_join_checks": 462,
+      "post_join_errors": 0.0,
+      "object_memberships_checked": 30277632.0,
+      "actual_indices_checked": 30189120.0,
+      "cadence": {
+        "count": 359,
+        "mean": 24.97493008356546,
+        "p50": 24.555500000000393,
+        "p95": 29.258099999999104,
+        "p99": 33.954899999999725,
+        "maximum": 35.72569999999905,
+        "above50": 0,
+        "above100": 0
+      },
+      "execution": {
+        "schema": 1,
+        "diagnostic_only": true,
+        "executable_sha256": "A2611CE9C85F4D3E7FD01F92FA3CA83E7CC83A91A476250D4DED024CEB9F02A1",
+        "scene": 18,
+        "seconds": 15,
+        "mode": "off",
+        "always_active": true,
+        "started": "2026-09-24T07:32:50.8202005+02:00",
+        "exit_code": 0
+      },
+      "launch_environment": {
+        "ARC_VERIFY_FINAL_LIST": 1,
+        "ARC_CONTROLLED_CULL": 3,
+        "ARC_ASYNC_CHAIN": 0,
+        "ARC_CHAIN_CHUNKS": null
+      }
+    },
+    "original": {
+      "post_join_checks": 0,
+      "post_join_errors": 0,
+      "object_memberships_checked": 0,
+      "actual_indices_checked": 0,
+      "cadence": {
+        "count": 398,
+        "mean": 22.518626633165827,
+        "p50": 22.091199999999844,
+        "p95": 25.69380000000092,
+        "p99": 28.936999999999898,
+        "maximum": 33.51209999999992,
+        "above50": 0,
+        "above100": 0
+      },
+      "execution": {
+        "schema": 1,
+        "diagnostic_only": true,
+        "executable_sha256": "E9E637C582E43DDE2A98943BADFAFC1ABEF7E8BB3C5B7DE3DDF4D313C8E94CBF",
+        "scene": 18,
+        "seconds": 15,
+        "mode": "off",
+        "always_active": true,
+        "started": "2026-09-24T07:38:12.2579007+02:00",
+        "exit_code": 0
+      },
+      "launch_environment": {
+        "ARC_VERIFY_FINAL_LIST": 0,
+        "ARC_CONTROLLED_CULL": 0,
+        "ARC_ASYNC_CHAIN": 0,
+        "ARC_CHAIN_CHUNKS": null
+      }
+    }
+  },
+  "timing_scope": "single corrected active/original pair, 6-15 seconds; checks disabled; CPU submission cadence, not GPU/display-completed frame time; no full performance acceptance",
+  "raw_archive": {
+    "path": "raw-measurements.zip",
+    "sha256": "2b1167b3c3b9209ca3a32f1ff661cf2ea43f5e850ec2d7721d7810ef0fdae226"
+  },
+  "files": {
+    "async-oracle.csv": "9d1bac5d282efbc0eb2f4fea8e23e5060e87d285187fe827be6256579f2a5fcc",
+    "async-oracle.csv.json": "0a9fb36b0a979237d3b4a691c192d4d3f893d7e1691cd98259ac72c31528337d",
+    "compact-oracle.csv": "5a3bf495ba5530ae68eb9b733aa6cb9190a44b8093f328d64119c10efae3bb1f",
+    "compact-oracle.csv.json": "b819175630a75b52ba8670c039463197f9d60e9b6a67fb929f04555d72583154",
+    "fixed-active.csv": "0b9cb44d2f869f72a0523c879a94536970a5b089eaef03a22e578ea8acd20536",
+    "fixed-active.csv.json": "f99658b769f99ab2849bd9baef58b582517dec2641aa1328782526240239d0a5",
+    "mask-oracle.csv": "7f3ff1d04e89c46b841d22789b7a8c005a95bdf67bd810793176eb916c06b72b",
+    "mask-oracle.csv.json": "c9cd35734933317c8bf18f31903a3b07400828ae439c88dc186732daec38f0fa",
+    "original.csv": "3679ecdc3f81bfb1591d45fc5b32f062f453bc0bd24ce567f796e168ec85b0c4",
+    "original.csv.json": "0eb34f8eb055e221c99861493179f1f3b2cff13afcb81b7d27fb57ab448ac627"
+  },
+  "source_normalized_lf_sha256": {
+    "wicked.patch": "7114452b786eb7d9a4c67083bb34095f9c0ae8d11d2efa6f7bc7b8b652277083",
+    "async.patch": "054c2a09cee5c15c1c1b13b5398340a0f622c5032cce498b4204b58d622b40c3",
+    "ArcControlledVisibility.h": "71cad68ea90be9abe422a13e4184476ddcbf4a4be1c7f62abb491931fd14a6e7",
+    "FinalListCheck.h": "81421f045974fd5510dda842935a5145c247732a6940124c1a2bc577c1170685",
+    "final_list_tests.cpp": "c65379ecb83e266f2a19b2ac6d3f9aa30ba0144bad14eaa25f6b54aae1da1bbb",
+    "test_published_patch.py": "e306347174b5eaa36335d4bdd4b42901260d609fd2abea828eb6ced17cf4e68f"
+  },
+  "fixed_executable_sha256": "a2611ce9c85f4d3e7fd01f92fa3ca83e7cc83a91a476250d4ded024ceb9f02a1"
+}

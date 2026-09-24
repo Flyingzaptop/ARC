@@ -133,3 +133,14 @@ CPU submission cadence. Full GPU-completed-frame gate remains unavailable.
 Terminal result: negative on this measured workload, original EXE restored, default
 off. No universal extractor or automatic fraction controller added after failure.
 [Async chain report](reports/2026-09-23-async-object-chain.md).
+
+## Review correction — 2026-09-24
+
+Confirmed a separate block-lifetime defect: replaced left ALLOW_OBJECTS scope
+before the enclosing Wait(ctx), despite being int. Published wicked.patch now uses
+[&, replaced]; async.patch is regenerated on that corrected base. The actual final
+CPU consumer list is checked after Wait and before resize in diagnostic runs.
+Three native post-join checks and checker/publication regressions passed. Historical
+performance captures remain historical, not correctness evidence for the fixed code.
+Raw CSV ZIPs are committed for both old series and the new targeted verification.
+See [correction report](reports/2026-09-24-replaced-lifetime-fix.md).

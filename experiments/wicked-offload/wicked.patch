@@ -1,18 +1,20 @@
 --- a/WickedEngine/wiRenderer.cpp
 +++ b/WickedEngine/wiRenderer.cpp
-@@ -37,6 +37,8 @@
+@@ -37,6 +37,9 @@
  #include <atomic>
  #include <limits>
  #include <mutex>
 +#include <cstdlib>
 +extern "C" int ARCControlledCull(const void*,uint32_t,const void*,uint32_t,uint32_t*);
++extern "C" void ARCControlledFinalList(const void*,uint32_t,const void*,uint32_t,const uint32_t*,size_t);
  
  using namespace wi::primitive;
  using namespace wi::graphics;
-@@ -3746,6 +3748,15 @@
+@@ -3746,7 +3749,16 @@
  		// Cull objects:
  		const uint32_t object_loop = (uint32_t)std::min(vis.scene->aabb_objects.size(), vis.scene->objects.GetCount());
  		vis.visibleObjects.resize(object_loop);
+-		wi::jobsystem::Dispatch(ctx, object_loop, groupSize, [&](wi::jobsystem::JobArgs args) {
 +        // Explicit source-assisted experiment. All original CPU effects remain.
 +        static const bool controlled = []{const char* p=std::getenv("ARC_CONTROLLED_CULL");return p && std::atoi(p)!=0;}();
 +        thread_local std::vector<uint32_t> controlled_results;
@@ -22,10 +24,11 @@
 +
 +        if(replaced==2){auto count=cull_results[object_loop*2];vis.object_counter.store(count);std::copy_n(cull_results.data()+object_loop,count,vis.visibleObjects.data());}
 +
- 		wi::jobsystem::Dispatch(ctx, object_loop, groupSize, [&](wi::jobsystem::JobArgs args) {
++		wi::jobsystem::Dispatch(ctx, object_loop, groupSize, [&, replaced](wi::jobsystem::JobArgs args) {
  
  			// Setup stream compaction:
-@@ -3757,10 +3768,10 @@
+ 			StreamCompaction& stream_compaction = *(StreamCompaction*)args.sharedmemory;
+@@ -3757,10 +3769,10 @@
  
  			const AABB& aabb = vis.scene->aabb_objects[args.jobIndex];
  
@@ -38,7 +41,7 @@
  
  				const ObjectComponent& object = vis.scene->objects[args.jobIndex];
  				bool occluded = false;
-@@ -3817,7 +3828,7 @@
+@@ -3817,7 +3829,7 @@
  			}
  
  			// Global stream compaction:
@@ -47,6 +50,17 @@
  			{
  				uint32_t prev_count = vis.object_counter.fetch_add(stream_compaction.count);
  				uint32_t groupOffset = args.groupID * groupSize;
+@@ -4008,6 +4020,10 @@
+ 
+ 	wi::jobsystem::Wait(ctx);
+ 
++    // Verify the actual consumer result AFTER all deferred CPU jobs have completed.
++    if(vis.flags & Visibility::ALLOW_OBJECTS) ARCControlledFinalList(
++        vis.scene->aabb_objects.data(),uint32_t(std::min(vis.scene->aabb_objects.size(),vis.scene->objects.GetCount())),
++        &vis.frustum,vis.layerMask,vis.visibleObjects.data(),size_t(vis.object_counter.load()));
+ 	// finalize stream compaction:
+ 	vis.visibleObjects.resize((size_t)vis.object_counter.load());
+ 	vis.visibleLights.resize((size_t)vis.light_counter.load());
 --- a/Samples/Tests/ArcWickedBridge.cpp
 +++ b/Samples/Tests/ArcWickedBridge.cpp
 @@ -4,6 +4,7 @@
