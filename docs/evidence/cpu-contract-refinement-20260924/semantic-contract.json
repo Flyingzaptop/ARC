@@ -1,0 +1,98 @@
+{
+  "schema": 2,
+  "operation": "automatically selected 16-byte-record ordering call",
+  "entry_rva": 2241872,
+  "selection_origin": "4017d03 existing detector; no new function-name/RVA selection",
+  "admitted": false,
+  "replacement_enabled": false,
+  "comparison": {
+    "status": "local instruction projection plus must-constant CFG audit",
+    "expression": "load_u16_le(record+8) | (uint64(record[12]) << 16) | (uint64(load_u16_le(record+0)) << 24) | (uint64(load_u24_le(record+13)) << 40)",
+    "order": "unsigned ascending; not a floating-point distance comparison",
+    "all_comparator_sites_proven": false,
+    "equal_key_stability_required": "unknown for general consumers",
+    "required_next_proof": "Close remaining key-building paths and prove movement/termination of the complete sort, or restrict to a verified call-free path."
+  },
+  "consumer": {
+    "status": "same-thread read observed, source reference inspected separately",
+    "first_observed_read_rva": 1875604,
+    "record_offset": 4,
+    "order_reaches": [
+      "instance pointer sequence",
+      "batch boundaries through mesh/LOD/stencil",
+      "GPU primitive/depth ordering"
+    ],
+    "equal_key_permutation_visual_difference": null,
+    "required_next_proof": "Either preserve exact original permutation, prove downstream operations invariant for an admitted render state, or require byte-identical ties. Pixel equality in one scene is not general proof."
+  },
+  "ownership": {
+    "status": "unknown for binary replacement",
+    "source_reference": "thread-local vector is filled, sorted, synchronously consumed into a separate GPU upload buffer, then reused",
+    "not_sufficient": [
+      "TLS does not prove pointers never escape",
+      "disjoint concurrently observed spans",
+      "MEM_PRIVATE",
+      "a successful no-conflict trace"
+    ],
+    "required_next_proof": "Recover allocation-generation provenance from TLS vector begin/end/capacity through all aliases/callees, including publication, allocator/free, and asynchronous writers; check that generation and ownership epoch before snapshot and commit. Keep return blocked until commit. Alternatively enforce a complete lease, not a before/after hash."
+  },
+  "restricted_path": {
+    "status": "proposal with executable snapshot guards and native oracle; not live admission",
+    "guards": [
+      "code hash matches pinned generation",
+      "aligned nonwrapping array span, 16-byte stride",
+      "2 <= record count <= 32",
+      "first unsigned key is minimum",
+      "each equal-key group contains identical full records"
+    ],
+    "purpose": "entry selects insertion path; first-minimum guard excludes external memmove call; equal-key byte invariance removes consumer tie obligation",
+    "remaining": [
+      "prove all path state transitions and live-outs",
+      "establish exclusive allocation lifetime",
+      "implement live certified dispatcher and measure total transfer costs"
+    ],
+    "real_65344_record_capture_passes": false,
+    "test_report": "bounded-native-oracle.json"
+  },
+  "atomic_inner_tasks": [
+    {
+      "parent_entry_rva": 1929296,
+      "begin_rva": 1929808,
+      "backedge_rva": 1929902,
+      "status": "candidate, not admitted",
+      "operation": "nested unsigned integer grid-index generation",
+      "computation": "for x=0..S-2, y=0..H-2: emit [(y+1)*S+x, y*S+x, y*S+x+1, (y+1)*S+x, y*S+x+1, (y+1)*S+x+1] modulo 2^32",
+      "memory": "6*(S-1)*(H-1) uint32 writes to newly obtained buffer; no input array reads inside slice",
+      "guards_needed": [
+        "S,H >= 2",
+        "bounded products and destination capacity",
+        "allocation exclusive through buffer-creation consumer",
+        "reconstruct live-out registers/flags"
+      ],
+      "surrounding_effects": "leave allocator, zero initialization, virtual buffer-creation callback and publication on CPU",
+      "obstacle": "destination allocator contract and virtual callback retention/consumption are unresolved; this size-change branch is not demonstrated hot by stopped trace"
+    },
+    {
+      "parent_entry_rva": 1874240,
+      "begin_rva": 1876272,
+      "backedge_rva": 1876315,
+      "status": "candidate, not admitted",
+      "operation": "ordered bitmask expansion to packed uint32 records",
+      "computation": "for b in ascending set bits of nonzero 16-bit mask: output[count++] = uint32(((b | r9d) << 24) | esi); increment stack batch count once per write; consume mask to zero",
+      "guards_needed": [
+        "nonzero 16-bit mask (at most 16 iterations)",
+        "destination capacity including current count",
+        "output-pointer and stack-counter nonaliasing",
+        "preserve live-out and CPU batch-count effects"
+      ],
+      "surrounding_effects": "leave allocation and batching/draw submission on CPU; commit before next outer consumer",
+      "obstacle": "tiny inner invocation; useful batch requires closing outer dependencies and mapped GPU-buffer lifetime. Parent atomics alone are not rejection."
+    }
+  ],
+  "next_capture": "No full trace: allocation/TLS provenance and escaping-pointer destinations, synchronization/publication epochs, targeted live-in/live-out at selected pure slice and its first consumer.",
+  "performance_result": {
+    "automatic_gpu_replacement": false,
+    "net_gain_ms": null,
+    "reason": "no live admission, no substitute benchmark counted"
+  }
+}

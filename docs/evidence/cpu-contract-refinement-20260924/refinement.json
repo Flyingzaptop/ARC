@@ -1,0 +1,2384 @@
+{
+  "schema": 2,
+  "base_commit": "4017d03",
+  "new_trace_collected": false,
+  "replacement_enabled": false,
+  "key_projection": [
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127
+  ],
+  "key_comparison": "unsigned 64-bit; recorded local hypothesis, not complete algorithm proof",
+  "snapshot_equivalence": {
+    "same_multiset": true,
+    "nondecreasing_unsigned_keys": true,
+    "stable_sort_position_mismatches": 53871,
+    "differences_only_within_equal_key_groups": true,
+    "byte_result_equal": false,
+    "observable_result_equal": null,
+    "observable_scope": "output array only; caller state and external effects separate"
+  },
+  "restricted_input_preflight": {
+    "records": 65344,
+    "distinct_keys": 11405,
+    "ambiguous_tie_groups": 8536,
+    "differing_record_bits_within_ties": [
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ],
+    "tie_permutation_byte_invariant": false,
+    "bounded_insertion_size": false,
+    "first_key_minimum": false,
+    "input_guards_pass": false,
+    "replacement_admitted": false,
+    "remaining_obligations": [
+      "all_path_machine_semantics",
+      "exclusive_ownership_until_commit",
+      "continuation_state_and_external_effects"
+    ]
+  },
+  "comparison_constant_audit": [
+    {
+      "rva": 2242382,
+      "function_rva": 2241872,
+      "function_sha256": "4e76216e6202ba5f56139379244833faa9a594f256129d2ea4eca07e251fad8a",
+      "unique_literal_assumptions": {
+        "r14": "0xffffff000000ffff",
+        "r15": "0xffffff0000000000"
+      },
+      "must_constants_at_comparison": {
+        "r14": "0xffffff000000ffff",
+        "r15": "0xffffff0000000000"
+      },
+      "unproved_assumptions": [],
+      "unclosed_cfg_edges": [],
+      "flag_consumers": [
+        "jb",
+        "ja"
+      ],
+      "comparison_interpretation": "unsigned",
+      "scope": "must-constants only; assumes Win64 callee preservation; does not certify key memory provenance or whole sort"
+    },
+    {
+      "rva": 2242512,
+      "function_rva": 2241872,
+      "function_sha256": "4e76216e6202ba5f56139379244833faa9a594f256129d2ea4eca07e251fad8a",
+      "unique_literal_assumptions": {
+        "r14": "0xffffff000000ffff",
+        "r15": "0xffffff0000000000"
+      },
+      "must_constants_at_comparison": {
+        "r14": "0xffffff000000ffff",
+        "r15": "0xffffff0000000000"
+      },
+      "unproved_assumptions": [],
+      "unclosed_cfg_edges": [],
+      "flag_consumers": [
+        "jb",
+        "ja"
+      ],
+      "comparison_interpretation": "unsigned",
+      "scope": "must-constants only; assumes Win64 callee preservation; does not certify key memory provenance or whole sort"
+    },
+    {
+      "rva": 2268376,
+      "function_rva": 2268128,
+      "function_sha256": "2d2313553e57a647734d3f507cec514bde8a75931c9caa9824e0055f0bc5f468",
+      "unique_literal_assumptions": {
+        "rsi": "0xffffff000000ffff",
+        "rbp": "0xffffff0000000000"
+      },
+      "must_constants_at_comparison": {
+        "rsi": "0xffffff000000ffff",
+        "rbp": "0xffffff0000000000"
+      },
+      "unproved_assumptions": [],
+      "unclosed_cfg_edges": [],
+      "flag_consumers": [
+        "jae"
+      ],
+      "comparison_interpretation": "unsigned",
+      "scope": "must-constants only; assumes Win64 callee preservation; does not certify key memory provenance or whole sort"
+    },
+    {
+      "rva": 2268498,
+      "function_rva": 2268128,
+      "function_sha256": "2d2313553e57a647734d3f507cec514bde8a75931c9caa9824e0055f0bc5f468",
+      "unique_literal_assumptions": {
+        "rsi": "0xffffff000000ffff",
+        "rbp": "0xffffff0000000000"
+      },
+      "must_constants_at_comparison": {
+        "rsi": "0xffffff000000ffff",
+        "rbp": "0xffffff0000000000"
+      },
+      "unproved_assumptions": [],
+      "unclosed_cfg_edges": [],
+      "flag_consumers": [
+        "jae"
+      ],
+      "comparison_interpretation": "unsigned",
+      "scope": "must-constants only; assumes Win64 callee preservation; does not certify key memory provenance or whole sort"
+    }
+  ],
+  "ownership": {
+    "status": "unknown",
+    "reason": "allocation escape and synchronization are not tracked across all threads",
+    "insufficient_evidence": [
+      "private committed memory",
+      "TLS origin",
+      "disjoint entry spans",
+      "no observed conflict"
+    ],
+    "required_method": "Track allocation identity and generation, pointer escape, publication and acquire/release across all relevant paths; alternatively enforce an exclusive lease covering input snapshot through result commit. A lease must also cover free/remap and asynchronous writers."
+  },
+  "continuation": {
+    "status": "observed_path_only",
+    "required_method": "Close caller live-out analysis over admitted continuations and preserve ABI/XSTATE/exception side effects."
+  },
+  "candidates": {
+    "candidate-00": {
+      "entry_rva": 2241872,
+      "observed_atomic": null,
+      "inner_loop_inventory": [
+        {
+          "start_rva": 2242160,
+          "backedge_rva": 2242276,
+          "instructions": 36,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2242336,
+          "backedge_rva": 2242396,
+          "instructions": 20,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2242416,
+          "backedge_rva": 2242551,
+          "instructions": 41,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2242576,
+          "backedge_rva": 2242718,
+          "instructions": 42,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2242404,
+          "backedge_rva": 2242787,
+          "instructions": 107,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2242404,
+          "backedge_rva": 2242849,
+          "instructions": 123,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2242404,
+          "backedge_rva": 2242876,
+          "instructions": 129,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2241952,
+          "backedge_rva": 2242980,
+          "instructions": 284,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2242030,
+            2242048,
+            2242069,
+            2242083,
+            2242114,
+            2242940,
+            2242956
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2243216,
+          "backedge_rva": 2243263,
+          "instructions": 13,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2243255
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2243280,
+          "backedge_rva": 2243363,
+          "instructions": 23,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2243341
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2243474,
+          "backedge_rva": 2243543,
+          "instructions": 19,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2243024,
+          "backedge_rva": 2243577,
+          "instructions": 146,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2243165,
+            2243255,
+            2243341
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        }
+      ],
+      "entire_function_rejected_because_of_atomic": false
+    },
+    "candidate-01": {
+      "entry_rva": 1929296,
+      "observed_atomic": {
+        "rva": 3344213,
+        "instruction": "lock xadd dword ptr [rdx + 0x1f8], eax",
+        "classification": "retain original ordered CPU effect; not a rejection of surrounding computation"
+      },
+      "inner_loop_inventory": [
+        {
+          "start_rva": 1929824,
+          "backedge_rva": 1929891,
+          "instructions": 18,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1929808,
+          "backedge_rva": 1929902,
+          "instructions": 25,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1931472,
+          "backedge_rva": 1931815,
+          "instructions": 69,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1931734,
+            1931798
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1931925,
+          "backedge_rva": 1931936,
+          "instructions": 4,
+          "direct_atomic_sites": [
+            1931930
+          ],
+          "call_sites": [],
+          "investigate_inner_computation": false,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1932210,
+          "backedge_rva": 1932221,
+          "instructions": 4,
+          "direct_atomic_sites": [
+            1932215
+          ],
+          "call_sites": [],
+          "investigate_inner_computation": false,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1932400,
+          "backedge_rva": 1932927,
+          "instructions": 118,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1932660,
+            1932758,
+            1932783,
+            1932853
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1931146,
+          "backedge_rva": 1933051,
+          "instructions": 397,
+          "direct_atomic_sites": [
+            1931911,
+            1931915,
+            1931930,
+            1932196,
+            1932200,
+            1932215,
+            1932237,
+            1932979
+          ],
+          "call_sites": [
+            1931175,
+            1931261,
+            1931321,
+            1931350,
+            1931734,
+            1931798,
+            1931900,
+            1931961,
+            1932002,
+            1932026,
+            1932064,
+            1932109,
+            1932122,
+            1932167,
+            1932185,
+            1932275,
+            1932332,
+            1932660,
+            1932758,
+            1932783,
+            1932853,
+            1932974,
+            1933010
+          ],
+          "investigate_inner_computation": false,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1933616,
+          "backedge_rva": 1933711,
+          "instructions": 25,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1933656,
+            1933699
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        }
+      ],
+      "entire_function_rejected_because_of_atomic": false
+    },
+    "candidate-02": {
+      "entry_rva": 1874240,
+      "observed_atomic": {
+        "rva": 3345381,
+        "instruction": "lock xadd dword ptr [rdx + 0x4b0], eax",
+        "classification": "retain original ordered CPU effect; not a rejection of surrounding computation"
+      },
+      "inner_loop_inventory": [
+        {
+          "start_rva": 1876272,
+          "backedge_rva": 1876315,
+          "instructions": 15,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1875600,
+          "backedge_rva": 1876360,
+          "instructions": 166,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1875717
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1876594,
+          "backedge_rva": 1876605,
+          "instructions": 4,
+          "direct_atomic_sites": [
+            1876599
+          ],
+          "call_sites": [],
+          "investigate_inner_computation": false,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        }
+      ],
+      "entire_function_rejected_because_of_atomic": false
+    },
+    "candidate-03": {
+      "entry_rva": 1904736,
+      "observed_atomic": {
+        "rva": 3344213,
+        "instruction": "lock xadd dword ptr [rdx + 0x1f8], eax",
+        "classification": "retain original ordered CPU effect; not a rejection of surrounding computation"
+      },
+      "inner_loop_inventory": [
+        {
+          "start_rva": 1904898,
+          "backedge_rva": 1904957,
+          "instructions": 14,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1904919
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1905024,
+          "backedge_rva": 1905197,
+          "instructions": 39,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1905096,
+            1905156
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 1907008,
+          "backedge_rva": 1907164,
+          "instructions": 35,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            1907047,
+            1907151
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        }
+      ],
+      "entire_function_rejected_because_of_atomic": false
+    },
+    "candidate-04": {
+      "entry_rva": 2296848,
+      "observed_atomic": null,
+      "inner_loop_inventory": [
+        {
+          "start_rva": 2297392,
+          "backedge_rva": 2297410,
+          "instructions": 6,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2297558,
+          "backedge_rva": 2297578,
+          "instructions": 6,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2297218,
+          "backedge_rva": 2297644,
+          "instructions": 99,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2297419,
+            2297602,
+            2297614
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2297412,
+          "backedge_rva": 2297674,
+          "instructions": 54,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2297419,
+            2297602,
+            2297614
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2297824,
+          "backedge_rva": 2297953,
+          "instructions": 29,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2297842,
+            2297907
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2298240,
+          "backedge_rva": 2298254,
+          "instructions": 6,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2299488,
+          "backedge_rva": 2299559,
+          "instructions": 23,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2299599,
+          "backedge_rva": 2299897,
+          "instructions": 77,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2299856,
+          "backedge_rva": 2299910,
+          "instructions": 16,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2299776,
+          "backedge_rva": 2299923,
+          "instructions": 42,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2299376,
+          "backedge_rva": 2299940,
+          "instructions": 149,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2299280,
+          "backedge_rva": 2299971,
+          "instructions": 177,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2300400,
+          "backedge_rva": 2300472,
+          "instructions": 23,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2297619,
+          "backedge_rva": 2300571,
+          "instructions": 695,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2297763,
+            2297842,
+            2297907,
+            2298073,
+            2298103,
+            2298403,
+            2298432,
+            2298607,
+            2298685,
+            2298758,
+            2298837,
+            2298898,
+            2299126,
+            2299140,
+            2300108,
+            2300136
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2300476,
+          "backedge_rva": 2300599,
+          "instructions": 25,
+          "direct_atomic_sites": [],
+          "call_sites": [],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        },
+        {
+          "start_rva": 2297607,
+          "backedge_rva": 2300611,
+          "instructions": 707,
+          "direct_atomic_sites": [],
+          "call_sites": [
+            2297614,
+            2297763,
+            2297842,
+            2297907,
+            2298073,
+            2298103,
+            2298403,
+            2298432,
+            2298607,
+            2298685,
+            2298758,
+            2298837,
+            2298898,
+            2299126,
+            2299140,
+            2300108,
+            2300136
+          ],
+          "investigate_inner_computation": true,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        }
+      ],
+      "entire_function_rejected_because_of_atomic": false
+    },
+    "candidate-05": {
+      "entry_rva": 2377808,
+      "observed_atomic": {
+        "rva": 2377886,
+        "instruction": "lock add dword ptr [rcx], r13d",
+        "classification": "retain original ordered CPU effect; not a rejection of surrounding computation"
+      },
+      "inner_loop_inventory": [
+        {
+          "start_rva": 2377968,
+          "backedge_rva": 2378251,
+          "instructions": 77,
+          "direct_atomic_sites": [
+            2378018,
+            2378080
+          ],
+          "call_sites": [
+            2378003,
+            2378052,
+            2378103,
+            2378173,
+            2378199,
+            2378241
+          ],
+          "investigate_inner_computation": false,
+          "admitted": false,
+          "required_proof": [
+            "closed CFG and callee effects",
+            "memory ownership/aliasing",
+            "publication before original synchronization and first consumer",
+            "live-in/live-out state"
+          ],
+          "scope": "backedge interval inventory, not a single-entry extraction certificate"
+        }
+      ],
+      "entire_function_rejected_because_of_atomic": false
+    }
+  },
+  "timing": {
+    "candidate-00": {
+      "Controlled Present interval": {
+        "samples": 493,
+        "maximum_ms": 57608.3335,
+        "maximum_frame": 392,
+        "p99_nearest_rank_ms": 47.8414,
+        "over_50ms": 2,
+        "over_100ms": 2
+      },
+      "Scene switch": {
+        "samples": 1,
+        "maximum_ms": 2222.6526,
+        "maximum_frame": 350,
+        "p99_nearest_rank_ms": 2222.6526,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "RenderPath3D Update": {
+        "samples": 145,
+        "maximum_ms": 15.3352,
+        "maximum_frame": 350,
+        "p99_nearest_rank_ms": 6.8243,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Update": {
+        "samples": 145,
+        "maximum_ms": 2238.9672,
+        "maximum_frame": 350,
+        "p99_nearest_rank_ms": 7.9745,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Render": {
+        "samples": 145,
+        "maximum_ms": 57599.6785,
+        "maximum_frame": 392,
+        "p99_nearest_rank_ms": 22.1046,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Compose": {
+        "samples": 145,
+        "maximum_ms": 0.5976,
+        "maximum_frame": 450,
+        "p99_nearest_rank_ms": 0.5687,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "SubmitCommandLists": {
+        "samples": 145,
+        "maximum_ms": 33.2776,
+        "maximum_frame": 396,
+        "p99_nearest_rank_ms": 32.193,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "CPU processing through submission ms": {
+        "samples": 145,
+        "maximum_ms": 57608.1851,
+        "maximum_frame": 392,
+        "p99_nearest_rank_ms": 2266.4776,
+        "over_50ms": 4,
+        "over_100ms": 2
+      },
+      "CPU Frame": {
+        "samples": 144,
+        "maximum_ms": 57606.5508,
+        "maximum_frame": 393,
+        "p99_nearest_rank_ms": 29.3848991,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Shadowmap packing": {
+        "samples": 143,
+        "maximum_ms": 0.0113000004,
+        "maximum_frame": 404,
+        "p99_nearest_rank_ms": 0.00200000009,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Render": {
+        "samples": 143,
+        "maximum_ms": 57599.6758,
+        "maximum_frame": 393,
+        "p99_nearest_rank_ms": 22.1037998,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Procedural Animations": {
+        "samples": 143,
+        "maximum_ms": 0.0116999997,
+        "maximum_frame": 357,
+        "p99_nearest_rank_ms": 0.0110999998,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Script Components": {
+        "samples": 143,
+        "maximum_ms": 0.0109999999,
+        "maximum_frame": 406,
+        "p99_nearest_rank_ms": 0.00100000005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Input": {
+        "samples": 143,
+        "maximum_ms": 1.77960002,
+        "maximum_frame": 383,
+        "p99_nearest_rank_ms": 0.807500005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Update": {
+        "samples": 143,
+        "maximum_ms": 0.1052,
+        "maximum_frame": 439,
+        "p99_nearest_rank_ms": 0.0896999985,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Frustum Culling": {
+        "samples": 143,
+        "maximum_ms": 2.4151001,
+        "maximum_frame": 487,
+        "p99_nearest_rank_ms": 2.00079989,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Animations": {
+        "samples": 143,
+        "maximum_ms": 0.00100000005,
+        "maximum_frame": 472,
+        "p99_nearest_rank_ms": 0.000899999985,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spring Dependencies": {
+        "samples": 143,
+        "maximum_ms": 0.0190999992,
+        "maximum_frame": 405,
+        "p99_nearest_rank_ms": 0.0177999996,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Render": {
+        "samples": 143,
+        "maximum_ms": 0.335700005,
+        "maximum_frame": 397,
+        "p99_nearest_rank_ms": 0.295100003,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Physics": {
+        "samples": 143,
+        "maximum_ms": 0.0271000005,
+        "maximum_frame": 492,
+        "p99_nearest_rank_ms": 0.0267999992,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Retired GPU frame span ms": {
+        "samples": 143,
+        "maximum_ms": 50.6245117,
+        "maximum_frame": 393,
+        "p99_nearest_rank_ms": 50.1094398,
+        "over_50ms": 2,
+        "over_100ms": 0
+      },
+      "Update": {
+        "samples": 143,
+        "maximum_ms": 7.97410011,
+        "maximum_frame": 435,
+        "p99_nearest_rank_ms": 7.89589977,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Fixed Update": {
+        "samples": 143,
+        "maximum_ms": 0.0252999999,
+        "maximum_frame": 466,
+        "p99_nearest_rank_ms": 0.0157999992,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spline Update": {
+        "samples": 143,
+        "maximum_ms": 0.0107000005,
+        "maximum_frame": 373,
+        "p99_nearest_rank_ms": 0.00100000005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Compose": {
+        "samples": 143,
+        "maximum_ms": 0.596499979,
+        "maximum_frame": 451,
+        "p99_nearest_rank_ms": 0.567600012,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update Buffers (CPU)": {
+        "samples": 143,
+        "maximum_ms": 0.26820001,
+        "maximum_frame": 440,
+        "p99_nearest_rank_ms": 0.209999993,
+        "over_50ms": 0,
+        "over_100ms": 0
+      }
+    },
+    "candidate-01": {
+      "Controlled Present interval": {
+        "samples": 516,
+        "maximum_ms": 2338.134,
+        "maximum_frame": 359,
+        "p99_nearest_rank_ms": 24.1114,
+        "over_50ms": 2,
+        "over_100ms": 1
+      },
+      "Scene switch": {
+        "samples": 1,
+        "maximum_ms": 2289.7574,
+        "maximum_frame": 359,
+        "p99_nearest_rank_ms": 2289.7574,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "RenderPath3D Update": {
+        "samples": 159,
+        "maximum_ms": 15.834,
+        "maximum_frame": 359,
+        "p99_nearest_rank_ms": 7.1247,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Update": {
+        "samples": 159,
+        "maximum_ms": 2306.5604,
+        "maximum_frame": 359,
+        "p99_nearest_rank_ms": 8.4162,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Render": {
+        "samples": 159,
+        "maximum_ms": 71.5284,
+        "maximum_frame": 401,
+        "p99_nearest_rank_ms": 22.3195,
+        "over_50ms": 1,
+        "over_100ms": 0
+      },
+      "Application Compose": {
+        "samples": 159,
+        "maximum_ms": 0.5374,
+        "maximum_frame": 401,
+        "p99_nearest_rank_ms": 0.5226,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "SubmitCommandLists": {
+        "samples": 159,
+        "maximum_ms": 10.2501,
+        "maximum_frame": 361,
+        "p99_nearest_rank_ms": 9.4059,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "CPU processing through submission ms": {
+        "samples": 159,
+        "maximum_ms": 2338.1041,
+        "maximum_frame": 359,
+        "p99_nearest_rank_ms": 80.0862,
+        "over_50ms": 2,
+        "over_100ms": 1
+      },
+      "CPU Frame": {
+        "samples": 158,
+        "maximum_ms": 78.8238983,
+        "maximum_frame": 402,
+        "p99_nearest_rank_ms": 29.5613995,
+        "over_50ms": 1,
+        "over_100ms": 0
+      },
+      "Shadowmap packing": {
+        "samples": 157,
+        "maximum_ms": 0.00970000029,
+        "maximum_frame": 467,
+        "p99_nearest_rank_ms": 0.00179999997,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Render": {
+        "samples": 157,
+        "maximum_ms": 71.5273972,
+        "maximum_frame": 402,
+        "p99_nearest_rank_ms": 22.3185997,
+        "over_50ms": 1,
+        "over_100ms": 0
+      },
+      "Procedural Animations": {
+        "samples": 157,
+        "maximum_ms": 0.0186999999,
+        "maximum_frame": 473,
+        "p99_nearest_rank_ms": 0.0140000004,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Script Components": {
+        "samples": 157,
+        "maximum_ms": 0.00139999995,
+        "maximum_frame": 497,
+        "p99_nearest_rank_ms": 0.00120000006,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Input": {
+        "samples": 157,
+        "maximum_ms": 1.67540002,
+        "maximum_frame": 477,
+        "p99_nearest_rank_ms": 0.267500013,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Update": {
+        "samples": 157,
+        "maximum_ms": 0.120999999,
+        "maximum_frame": 438,
+        "p99_nearest_rank_ms": 0.120300002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Frustum Culling": {
+        "samples": 157,
+        "maximum_ms": 1.87,
+        "maximum_frame": 361,
+        "p99_nearest_rank_ms": 1.69270003,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Animations": {
+        "samples": 157,
+        "maximum_ms": 0.000899999985,
+        "maximum_frame": 516,
+        "p99_nearest_rank_ms": 0.000899999985,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spring Dependencies": {
+        "samples": 157,
+        "maximum_ms": 0.0197999999,
+        "maximum_frame": 394,
+        "p99_nearest_rank_ms": 0.0174000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Render": {
+        "samples": 157,
+        "maximum_ms": 0.208000004,
+        "maximum_frame": 502,
+        "p99_nearest_rank_ms": 0.200100005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Physics": {
+        "samples": 157,
+        "maximum_ms": 0.0243999995,
+        "maximum_frame": 512,
+        "p99_nearest_rank_ms": 0.0233999994,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Retired GPU frame span ms": {
+        "samples": 157,
+        "maximum_ms": 18.3848953,
+        "maximum_frame": 365,
+        "p99_nearest_rank_ms": 17.8943996,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update": {
+        "samples": 157,
+        "maximum_ms": 8.41590023,
+        "maximum_frame": 399,
+        "p99_nearest_rank_ms": 7.91620016,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Fixed Update": {
+        "samples": 157,
+        "maximum_ms": 0.0228000004,
+        "maximum_frame": 400,
+        "p99_nearest_rank_ms": 0.0124000004,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spline Update": {
+        "samples": 157,
+        "maximum_ms": 0.00079999998,
+        "maximum_frame": 390,
+        "p99_nearest_rank_ms": 0.000699999975,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Compose": {
+        "samples": 157,
+        "maximum_ms": 0.535899997,
+        "maximum_frame": 402,
+        "p99_nearest_rank_ms": 0.521600008,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update Buffers (CPU)": {
+        "samples": 157,
+        "maximum_ms": 0.270399988,
+        "maximum_frame": 510,
+        "p99_nearest_rank_ms": 0.262800008,
+        "over_50ms": 0,
+        "over_100ms": 0
+      }
+    },
+    "candidate-02": {
+      "Controlled Present interval": {
+        "samples": 522,
+        "maximum_ms": 3119.9307,
+        "maximum_frame": 416,
+        "p99_nearest_rank_ms": 39.3573,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Scene switch": {
+        "samples": 1,
+        "maximum_ms": 3066.6433,
+        "maximum_frame": 416,
+        "p99_nearest_rank_ms": 3066.6433,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "RenderPath3D Update": {
+        "samples": 108,
+        "maximum_ms": 13.4526,
+        "maximum_frame": 416,
+        "p99_nearest_rank_ms": 12.8201,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Update": {
+        "samples": 108,
+        "maximum_ms": 3081.0503,
+        "maximum_frame": 416,
+        "p99_nearest_rank_ms": 13.7532,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Render": {
+        "samples": 108,
+        "maximum_ms": 22.1744,
+        "maximum_frame": 416,
+        "p99_nearest_rank_ms": 19.8159,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Compose": {
+        "samples": 108,
+        "maximum_ms": 0.5845,
+        "maximum_frame": 494,
+        "p99_nearest_rank_ms": 0.5801,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "SubmitCommandLists": {
+        "samples": 108,
+        "maximum_ms": 26.2755,
+        "maximum_frame": 422,
+        "p99_nearest_rank_ms": 23.6393,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "CPU processing through submission ms": {
+        "samples": 108,
+        "maximum_ms": 3119.8995,
+        "maximum_frame": 416,
+        "p99_nearest_rank_ms": 44.406,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "CPU Frame": {
+        "samples": 107,
+        "maximum_ms": 31.3985996,
+        "maximum_frame": 496,
+        "p99_nearest_rank_ms": 26.2162991,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Shadowmap packing": {
+        "samples": 106,
+        "maximum_ms": 0.00410000002,
+        "maximum_frame": 496,
+        "p99_nearest_rank_ms": 0.00270000007,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Render": {
+        "samples": 106,
+        "maximum_ms": 19.8148994,
+        "maximum_frame": 419,
+        "p99_nearest_rank_ms": 15.7047005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Procedural Animations": {
+        "samples": 106,
+        "maximum_ms": 0.0119000003,
+        "maximum_frame": 464,
+        "p99_nearest_rank_ms": 0.0118000004,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Script Components": {
+        "samples": 106,
+        "maximum_ms": 0.0193000007,
+        "maximum_frame": 516,
+        "p99_nearest_rank_ms": 0.0114000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Input": {
+        "samples": 106,
+        "maximum_ms": 7.87860012,
+        "maximum_frame": 496,
+        "p99_nearest_rank_ms": 0.636200011,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Update": {
+        "samples": 106,
+        "maximum_ms": 0.198899999,
+        "maximum_frame": 430,
+        "p99_nearest_rank_ms": 0.150199994,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Frustum Culling": {
+        "samples": 106,
+        "maximum_ms": 2.43440008,
+        "maximum_frame": 426,
+        "p99_nearest_rank_ms": 1.78600001,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Animations": {
+        "samples": 106,
+        "maximum_ms": 0.00150000001,
+        "maximum_frame": 462,
+        "p99_nearest_rank_ms": 0.00109999999,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spring Dependencies": {
+        "samples": 106,
+        "maximum_ms": 0.0175999999,
+        "maximum_frame": 470,
+        "p99_nearest_rank_ms": 0.0104999999,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Render": {
+        "samples": 106,
+        "maximum_ms": 0.191599995,
+        "maximum_frame": 420,
+        "p99_nearest_rank_ms": 0.183400005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Physics": {
+        "samples": 106,
+        "maximum_ms": 0.0115,
+        "maximum_frame": 423,
+        "p99_nearest_rank_ms": 0.0110999998,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Retired GPU frame span ms": {
+        "samples": 106,
+        "maximum_ms": 44.3566093,
+        "maximum_frame": 420,
+        "p99_nearest_rank_ms": 42.7714577,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update": {
+        "samples": 106,
+        "maximum_ms": 13.7529001,
+        "maximum_frame": 460,
+        "p99_nearest_rank_ms": 7.41179991,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Fixed Update": {
+        "samples": 106,
+        "maximum_ms": 0.023,
+        "maximum_frame": 424,
+        "p99_nearest_rank_ms": 0.0174000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spline Update": {
+        "samples": 106,
+        "maximum_ms": 0.000699999975,
+        "maximum_frame": 453,
+        "p99_nearest_rank_ms": 0.000600000028,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Compose": {
+        "samples": 106,
+        "maximum_ms": 0.583199978,
+        "maximum_frame": 495,
+        "p99_nearest_rank_ms": 0.578999996,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update Buffers (CPU)": {
+        "samples": 106,
+        "maximum_ms": 0.2755,
+        "maximum_frame": 496,
+        "p99_nearest_rank_ms": 0.216900006,
+        "over_50ms": 0,
+        "over_100ms": 0
+      }
+    },
+    "candidate-03": {
+      "Controlled Present interval": {
+        "samples": 537,
+        "maximum_ms": 2347.27,
+        "maximum_frame": 387,
+        "p99_nearest_rank_ms": 26.014,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Scene switch": {
+        "samples": 1,
+        "maximum_ms": 2309.7051,
+        "maximum_frame": 387,
+        "p99_nearest_rank_ms": 2309.7051,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "RenderPath3D Update": {
+        "samples": 152,
+        "maximum_ms": 14.0276,
+        "maximum_frame": 477,
+        "p99_nearest_rank_ms": 12.1044,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Update": {
+        "samples": 152,
+        "maximum_ms": 2322.7471,
+        "maximum_frame": 387,
+        "p99_nearest_rank_ms": 14.9739,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Render": {
+        "samples": 152,
+        "maximum_ms": 25.051,
+        "maximum_frame": 496,
+        "p99_nearest_rank_ms": 18.5321,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Compose": {
+        "samples": 152,
+        "maximum_ms": 0.5841,
+        "maximum_frame": 423,
+        "p99_nearest_rank_ms": 0.561,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "SubmitCommandLists": {
+        "samples": 152,
+        "maximum_ms": 8.7565,
+        "maximum_frame": 389,
+        "p99_nearest_rank_ms": 8.1494,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "CPU processing through submission ms": {
+        "samples": 152,
+        "maximum_ms": 2347.2503,
+        "maximum_frame": 387,
+        "p99_nearest_rank_ms": 37.1096,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "CPU Frame": {
+        "samples": 151,
+        "maximum_ms": 31.5930004,
+        "maximum_frame": 497,
+        "p99_nearest_rank_ms": 26.2963009,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Shadowmap packing": {
+        "samples": 150,
+        "maximum_ms": 0.0129000004,
+        "maximum_frame": 397,
+        "p99_nearest_rank_ms": 0.00240000011,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Render": {
+        "samples": 150,
+        "maximum_ms": 25.0498009,
+        "maximum_frame": 497,
+        "p99_nearest_rank_ms": 18.530899,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Procedural Animations": {
+        "samples": 150,
+        "maximum_ms": 0.0141000003,
+        "maximum_frame": 462,
+        "p99_nearest_rank_ms": 0.0141000003,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Script Components": {
+        "samples": 150,
+        "maximum_ms": 0.00120000006,
+        "maximum_frame": 503,
+        "p99_nearest_rank_ms": 0.000899999985,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Input": {
+        "samples": 150,
+        "maximum_ms": 5.95149994,
+        "maximum_frame": 402,
+        "p99_nearest_rank_ms": 0.279399991,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Update": {
+        "samples": 150,
+        "maximum_ms": 0.114699997,
+        "maximum_frame": 504,
+        "p99_nearest_rank_ms": 0.0996999964,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Frustum Culling": {
+        "samples": 150,
+        "maximum_ms": 15.2602997,
+        "maximum_frame": 497,
+        "p99_nearest_rank_ms": 2.94689989,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Animations": {
+        "samples": 150,
+        "maximum_ms": 0.00100000005,
+        "maximum_frame": 483,
+        "p99_nearest_rank_ms": 0.00100000005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spring Dependencies": {
+        "samples": 150,
+        "maximum_ms": 0.00200000009,
+        "maximum_frame": 496,
+        "p99_nearest_rank_ms": 0.00170000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Render": {
+        "samples": 150,
+        "maximum_ms": 0.273400009,
+        "maximum_frame": 402,
+        "p99_nearest_rank_ms": 0.229900002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Physics": {
+        "samples": 150,
+        "maximum_ms": 0.0283000004,
+        "maximum_frame": 472,
+        "p99_nearest_rank_ms": 0.0258000009,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Retired GPU frame span ms": {
+        "samples": 150,
+        "maximum_ms": 21.3913593,
+        "maximum_frame": 391,
+        "p99_nearest_rank_ms": 21.3647366,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update": {
+        "samples": 150,
+        "maximum_ms": 14.9736004,
+        "maximum_frame": 478,
+        "p99_nearest_rank_ms": 8.65810013,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Fixed Update": {
+        "samples": 150,
+        "maximum_ms": 0.0207000002,
+        "maximum_frame": 431,
+        "p99_nearest_rank_ms": 0.0153000001,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spline Update": {
+        "samples": 150,
+        "maximum_ms": 0.0186000001,
+        "maximum_frame": 514,
+        "p99_nearest_rank_ms": 0.0113000004,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Compose": {
+        "samples": 150,
+        "maximum_ms": 0.582899988,
+        "maximum_frame": 424,
+        "p99_nearest_rank_ms": 0.559899986,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update Buffers (CPU)": {
+        "samples": 150,
+        "maximum_ms": 0.262400001,
+        "maximum_frame": 482,
+        "p99_nearest_rank_ms": 0.254799992,
+        "over_50ms": 0,
+        "over_100ms": 0
+      }
+    },
+    "candidate-04": {
+      "Controlled Present interval": {
+        "samples": 564,
+        "maximum_ms": 2294.1097,
+        "maximum_frame": 403,
+        "p99_nearest_rank_ms": 22.9592,
+        "over_50ms": 2,
+        "over_100ms": 2
+      },
+      "Scene switch": {
+        "samples": 1,
+        "maximum_ms": 2255.239,
+        "maximum_frame": 403,
+        "p99_nearest_rank_ms": 2255.239,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "RenderPath3D Update": {
+        "samples": 163,
+        "maximum_ms": 126.5226,
+        "maximum_frame": 448,
+        "p99_nearest_rank_ms": 12.5056,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Update": {
+        "samples": 163,
+        "maximum_ms": 2268.7047,
+        "maximum_frame": 403,
+        "p99_nearest_rank_ms": 127.7705,
+        "over_50ms": 2,
+        "over_100ms": 2
+      },
+      "Application Render": {
+        "samples": 163,
+        "maximum_ms": 16.1236,
+        "maximum_frame": 405,
+        "p99_nearest_rank_ms": 15.2182,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Compose": {
+        "samples": 163,
+        "maximum_ms": 0.6317,
+        "maximum_frame": 473,
+        "p99_nearest_rank_ms": 0.5766,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "SubmitCommandLists": {
+        "samples": 163,
+        "maximum_ms": 9.0977,
+        "maximum_frame": 404,
+        "p99_nearest_rank_ms": 7.9658,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "CPU processing through submission ms": {
+        "samples": 163,
+        "maximum_ms": 2294.1017,
+        "maximum_frame": 403,
+        "p99_nearest_rank_ms": 139.4871,
+        "over_50ms": 2,
+        "over_100ms": 2
+      },
+      "CPU Frame": {
+        "samples": 162,
+        "maximum_ms": 138.469604,
+        "maximum_frame": 449,
+        "p99_nearest_rank_ms": 23.1620998,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Shadowmap packing": {
+        "samples": 161,
+        "maximum_ms": 0.00350000011,
+        "maximum_frame": 516,
+        "p99_nearest_rank_ms": 0.00170000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Render": {
+        "samples": 161,
+        "maximum_ms": 16.1226006,
+        "maximum_frame": 406,
+        "p99_nearest_rank_ms": 15.2167997,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Procedural Animations": {
+        "samples": 161,
+        "maximum_ms": 0.0137999998,
+        "maximum_frame": 527,
+        "p99_nearest_rank_ms": 0.00260000001,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Script Components": {
+        "samples": 161,
+        "maximum_ms": 0.00079999998,
+        "maximum_frame": 558,
+        "p99_nearest_rank_ms": 0.00079999998,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Input": {
+        "samples": 161,
+        "maximum_ms": 4.88399982,
+        "maximum_frame": 484,
+        "p99_nearest_rank_ms": 2.18510008,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Update": {
+        "samples": 161,
+        "maximum_ms": 121.968803,
+        "maximum_frame": 449,
+        "p99_nearest_rank_ms": 0.117799997,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Frustum Culling": {
+        "samples": 161,
+        "maximum_ms": 1.79349995,
+        "maximum_frame": 459,
+        "p99_nearest_rank_ms": 1.73699999,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Animations": {
+        "samples": 161,
+        "maximum_ms": 0.00109999999,
+        "maximum_frame": 408,
+        "p99_nearest_rank_ms": 0.00100000005,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spring Dependencies": {
+        "samples": 161,
+        "maximum_ms": 0.0197000001,
+        "maximum_frame": 480,
+        "p99_nearest_rank_ms": 0.0194000006,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Render": {
+        "samples": 161,
+        "maximum_ms": 0.261099994,
+        "maximum_frame": 407,
+        "p99_nearest_rank_ms": 0.183799997,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Physics": {
+        "samples": 161,
+        "maximum_ms": 0.0313999988,
+        "maximum_frame": 483,
+        "p99_nearest_rank_ms": 0.0153999999,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Retired GPU frame span ms": {
+        "samples": 161,
+        "maximum_ms": 19.0003204,
+        "maximum_frame": 409,
+        "p99_nearest_rank_ms": 18.9767685,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update": {
+        "samples": 161,
+        "maximum_ms": 127.770103,
+        "maximum_frame": 449,
+        "p99_nearest_rank_ms": 7.29650021,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Fixed Update": {
+        "samples": 161,
+        "maximum_ms": 0.0127999997,
+        "maximum_frame": 491,
+        "p99_nearest_rank_ms": 0.0125000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spline Update": {
+        "samples": 161,
+        "maximum_ms": 0.00079999998,
+        "maximum_frame": 533,
+        "p99_nearest_rank_ms": 0.00079999998,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Compose": {
+        "samples": 161,
+        "maximum_ms": 0.627799988,
+        "maximum_frame": 474,
+        "p99_nearest_rank_ms": 0.575699985,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update Buffers (CPU)": {
+        "samples": 161,
+        "maximum_ms": 0.345200002,
+        "maximum_frame": 501,
+        "p99_nearest_rank_ms": 0.239899993,
+        "over_50ms": 0,
+        "over_100ms": 0
+      }
+    },
+    "candidate-05": {
+      "Controlled Present interval": {
+        "samples": 478,
+        "maximum_ms": 3403.5402,
+        "maximum_frame": 375,
+        "p99_nearest_rank_ms": 37.3228,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Scene switch": {
+        "samples": 1,
+        "maximum_ms": 3358.8625,
+        "maximum_frame": 375,
+        "p99_nearest_rank_ms": 3358.8625,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "RenderPath3D Update": {
+        "samples": 105,
+        "maximum_ms": 12.6793,
+        "maximum_frame": 375,
+        "p99_nearest_rank_ms": 7.1679,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Update": {
+        "samples": 105,
+        "maximum_ms": 3372.6483,
+        "maximum_frame": 375,
+        "p99_nearest_rank_ms": 8.2469,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "Application Render": {
+        "samples": 105,
+        "maximum_ms": 16.7312,
+        "maximum_frame": 427,
+        "p99_nearest_rank_ms": 16.1747,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Application Compose": {
+        "samples": 105,
+        "maximum_ms": 0.6135,
+        "maximum_frame": 429,
+        "p99_nearest_rank_ms": 0.5397,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "SubmitCommandLists": {
+        "samples": 105,
+        "maximum_ms": 24.0029,
+        "maximum_frame": 380,
+        "p99_nearest_rank_ms": 22.9013,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "CPU processing through submission ms": {
+        "samples": 105,
+        "maximum_ms": 3403.5442,
+        "maximum_frame": 375,
+        "p99_nearest_rank_ms": 41.2841,
+        "over_50ms": 1,
+        "over_100ms": 1
+      },
+      "CPU Frame": {
+        "samples": 104,
+        "maximum_ms": 24.3474007,
+        "maximum_frame": 428,
+        "p99_nearest_rank_ms": 22.9778004,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Shadowmap packing": {
+        "samples": 103,
+        "maximum_ms": 0.00219999999,
+        "maximum_frame": 476,
+        "p99_nearest_rank_ms": 0.00170000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Render": {
+        "samples": 103,
+        "maximum_ms": 16.7301998,
+        "maximum_frame": 428,
+        "p99_nearest_rank_ms": 16.1739006,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Procedural Animations": {
+        "samples": 103,
+        "maximum_ms": 0.00300000003,
+        "maximum_frame": 476,
+        "p99_nearest_rank_ms": 0.00240000011,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Script Components": {
+        "samples": 103,
+        "maximum_ms": 0.0013,
+        "maximum_frame": 421,
+        "p99_nearest_rank_ms": 0.000699999975,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Input": {
+        "samples": 103,
+        "maximum_ms": 3.71790004,
+        "maximum_frame": 391,
+        "p99_nearest_rank_ms": 2.79399991,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Update": {
+        "samples": 103,
+        "maximum_ms": 0.0952999964,
+        "maximum_frame": 428,
+        "p99_nearest_rank_ms": 0.0895000026,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Frustum Culling": {
+        "samples": 103,
+        "maximum_ms": 2.12739992,
+        "maximum_frame": 474,
+        "p99_nearest_rank_ms": 2.11249995,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Animations": {
+        "samples": 103,
+        "maximum_ms": 0.0013,
+        "maximum_frame": 380,
+        "p99_nearest_rank_ms": 0.000899999985,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spring Dependencies": {
+        "samples": 103,
+        "maximum_ms": 0.0115,
+        "maximum_frame": 476,
+        "p99_nearest_rank_ms": 0.00170000002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "GUI Render": {
+        "samples": 103,
+        "maximum_ms": 0.171900004,
+        "maximum_frame": 449,
+        "p99_nearest_rank_ms": 0.169200003,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Physics": {
+        "samples": 103,
+        "maximum_ms": 0.0275999997,
+        "maximum_frame": 406,
+        "p99_nearest_rank_ms": 0.0255999994,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Retired GPU frame span ms": {
+        "samples": 103,
+        "maximum_ms": 41.055233,
+        "maximum_frame": 378,
+        "p99_nearest_rank_ms": 40.6927376,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update": {
+        "samples": 103,
+        "maximum_ms": 8.24650002,
+        "maximum_frame": 383,
+        "p99_nearest_rank_ms": 7.7420001,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Fixed Update": {
+        "samples": 103,
+        "maximum_ms": 0.0241999999,
+        "maximum_frame": 476,
+        "p99_nearest_rank_ms": 0.0100999996,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Spline Update": {
+        "samples": 103,
+        "maximum_ms": 0.000500000024,
+        "maximum_frame": 432,
+        "p99_nearest_rank_ms": 0.000500000024,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Compose": {
+        "samples": 103,
+        "maximum_ms": 0.612399995,
+        "maximum_frame": 430,
+        "p99_nearest_rank_ms": 0.538399994,
+        "over_50ms": 0,
+        "over_100ms": 0
+      },
+      "Update Buffers (CPU)": {
+        "samples": 103,
+        "maximum_ms": 0.281300008,
+        "maximum_frame": 406,
+        "p99_nearest_rank_ms": 0.265100002,
+        "over_50ms": 0,
+        "over_100ms": 0
+      }
+    }
+  },
+  "inputs": {
+    "final-training\\candidate-00\\capture.json": "ee7792e6086d580d18a62b7d3ccd3233729d7cc055e85bc88583dbd551586f00",
+    "final-training\\candidate-00\\cpu.csv": "e60f9640e8aa876a555e25a0358e86e221ef09330c28991299e0f343046bfd1a",
+    "final-training\\candidate-00\\checked-functions.bin": "f4c0bafa6bb4a4f7d4d5becc3b1fdf8778eece56373caeabc8d2e945bd324e1a",
+    "final-training\\candidate-00\\input-span.bin": "e6d993ca98ad3d0dc9fa9c52a43d5276959788002570d8d1ba9de06f8ab18464",
+    "final-training\\candidate-00\\output-span.bin": "ca7db0fc2ab9e0ea86eb3dcc9ef9d9b291b83191f39da7e8ba7dfca1b8a2d4f1",
+    "logical-plan\\candidate-00\\checked-functions.bin": "d40e3fa146ee51711c31d7b87b12e9e42f8a862bc063314e1e30257c4d07fe1a",
+    "final-training\\candidate-01\\capture.json": "8809f629addad02c1197533775c9ad8572e24cbb83990a0f38902b65566651ae",
+    "final-training\\candidate-01\\cpu.csv": "f0a67062154157faee65c9064cfdf2e46a949b90504238d37d6b6f494d9cc8a3",
+    "final-training\\candidate-01\\checked-functions.bin": "67766e78073c9347f7511f18b0d31e65d71d9107444f213b658d6bee36b301d8",
+    "logical-plan\\candidate-01\\checked-functions.bin": "f6d8a3be35852773c1c186843f79fc8d2a850c3524fc2cda3846d4b0b9824e14",
+    "final-training\\candidate-02\\capture.json": "4eee38d3493e8d3fa7ab9f3bf38d8c7760385ea15074fd1873296b5bdfb54cec",
+    "final-training\\candidate-02\\cpu.csv": "0b2a1d300b58e31f4683a0ccbe07cae1c4d77a3036558745a8eb4ccd503b3fd7",
+    "final-training\\candidate-02\\checked-functions.bin": "1995980d6eb17062845948ac04f1cbafd88262fdf064ce7b2395e89ad691973e",
+    "logical-plan\\candidate-02\\checked-functions.bin": "5da1e33d19b1b4f4f2d087dc804dde3d366ac4dabc622c0c47e9c0e7a5e42029",
+    "final-training\\candidate-03\\capture.json": "93371ee9fe05e7c44da3bc01d0d02e9f4e5323167a5a1ca786e36e3797efa1cf",
+    "final-training\\candidate-03\\cpu.csv": "0133e1804cbcee958c58ed4c24f70a3e5150c97e5aa6ae53d30878899f7faefd",
+    "final-training\\candidate-03\\checked-functions.bin": "bea2145ff7bfcdbbff8f9e05966f9880916fddce0af16cfdfdc52a8338fba51d",
+    "logical-plan\\candidate-03\\checked-functions.bin": "dba67b660a23090cb838d0847080dc5a5ea4d73f74af4e66c60f958afdd44d70",
+    "final-training\\candidate-04\\capture.json": "485d786718b5fb16eb50d1eae8f4e34d2a258193b9220e090ade15df81ba4756",
+    "final-training\\candidate-04\\cpu.csv": "1320ba340f0c77d6c1c3820fad6dfe0082a98df3b8b4947311b0b0be33caf485",
+    "final-training\\candidate-04\\checked-functions.bin": "aafd4952e0fb2cf893a793545aeb5500e1649549375336543a52d9cbc963fc30",
+    "logical-plan\\candidate-04\\checked-functions.bin": "8fd24ac490fcdc543cc4fa00c3d4f9cf5898c2230960ed0b06f60282ba458cfe",
+    "final-training\\candidate-05\\capture.json": "bb1cde1cda059aec7e1d2ce0c262e703936f0f70160534b7c49a9c35d3e10a57",
+    "final-training\\candidate-05\\cpu.csv": "a69e12cfe19a7a43efd92992d82102c3f93e8de85a914a352aebdd993730b774",
+    "final-training\\candidate-05\\checked-functions.bin": "edfac209f920582bb2509bca84eef0356c72a68888f2a70aef6c5b1400ca66ea",
+    "logical-plan\\candidate-05\\checked-functions.bin": "6dc6812f392830823707fb9c3a71437844ca7745c67feeb2951b899de80cbd1f"
+  }
+}

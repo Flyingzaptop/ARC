@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "original_code_sha256": "4e76216e6202ba5f56139379244833faa9a594f256129d2ea4eca07e251fad8a",
+  "native_cases": 744,
+  "minimum_records": 2,
+  "maximum_records": 32,
+  "seed": 4017,
+  "elapsed_ms": 577.9690999770537,
+  "byte_output_mismatches": 0,
+  "canary_failures": 0,
+  "gpu_replacement": false,
+  "scope": "Isolated original binary path oracle; no application ownership, full ABI or all-input proof; not a speed benchmark"
+}

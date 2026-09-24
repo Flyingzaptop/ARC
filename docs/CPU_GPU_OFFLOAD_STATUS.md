@@ -203,3 +203,19 @@ is not included. This is completion of the capture/evidence pass, not acceptance
 safe automatically transferable task.
 
 [Report and machine-readable contracts](reports/2026-09-24-cpu-whole-task-contracts.md).
+
+## 2026-09-24 — contract refinement without another full trace
+
+Reused `4017d03` evidence. All 53,871 stable-sort differences are within equal-key
+groups; observable output equivalence remains unknown, not failed. Added CFG
+must-constant checks for the four inferred comparison sites, bounded snapshot
+preflight and 744 isolated original-binary insertion-path cases (zero mismatches).
+The real 65,344-record input does not pass the restricted path guards.
+
+Atomic-containing parents now have a separate inner-loop inventory: index generation
+and bitmask packing can be investigated while retaining surrounding CPU effects.
+Allocation ownership/publication and complete live-out semantics remain open;
+no live dispatcher or automatic GPU replacement is enabled. Maximum recorded
+training Present interval is 57.61 seconds, so the full tracer stays diagnostic.
+
+[Refinement, remaining proof obligations and reproduction](reports/2026-09-24-cpu-contract-refinement.md).

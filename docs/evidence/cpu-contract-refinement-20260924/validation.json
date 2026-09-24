@@ -1,0 +1,14 @@
+{
+  "python_tests": {
+    "cpu_sort_contract_tests": 7,
+    "cpu_cfg_constants_tests": 6,
+    "cpu_contract_tests": 5,
+    "cpu_task_discovery_tests": 9
+  },
+  "python_total": 27,
+  "native_cases": 744,
+  "failed_tests": 0,
+  "commercial_games_started": 0,
+  "new_training_traces": 0,
+  "automatic_gpu_replacement": false
+}

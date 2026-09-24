@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "representation": "Git blob bytes (before working-tree line-ending conversion)",
+  "files": {
+    "docs/evidence/cpu-contract-refinement-20260924/bounded-native-oracle.json": {
+      "sha256": "a04867e3ee59965cf1b20557ec65618f0f98e2293211aa36c92bbf0a9cc3b7de",
+      "bytes": 447
+    },
+    "docs/evidence/cpu-contract-refinement-20260924/consumer-reference.json": {
+      "sha256": "9c22a2d8b8816f3a259f6942e8461a9afc46cfbe98ac4992a728722996f51aa7",
+      "bytes": 8909
+    },
+    "docs/evidence/cpu-contract-refinement-20260924/refinement.json": {
+      "sha256": "415115ae3d14b1dce961852e64d3325ac2cdddc75d27a1e630296f3d9954adda",
+      "bytes": 72427
+    },
+    "docs/evidence/cpu-contract-refinement-20260924/semantic-contract.json": {
+      "sha256": "08234ac93b8c351fd22f99e4e88f995b2a00a0c855bd7da401b5e30eb7b19362",
+      "bytes": 5375
+    },
+    "docs/evidence/cpu-contract-refinement-20260924/validation.json": {
+      "sha256": "eec89d572bd02caf13ff5a9b343460aa00c6e8b7582f70111d2f6c3141a2f2ee",
+      "bytes": 324
+    },
+    "docs/reports/2026-09-24-cpu-contract-refinement.md": {
+      "sha256": "43456b6e4edad7140d5eef6a5f6c2a19d0c43759e65e9fce3af9d98e73da0b89",
+      "bytes": 10482
+    },
+    "scripts/check-cpu-bounded-sort-native.py": {
+      "sha256": "c9adcb48c4be06bebbdeced352c37d4db21db0eea4d80f8921cd14955ea3fd9a",
+      "bytes": 4655
+    },
+    "scripts/check-cpu-sort-observation.py": {
+      "sha256": "cbcf040428057f45a52895f95effe749341adfdc57de5ccabe89826507150678",
+      "bytes": 1466
+    },
+    "scripts/cpu_cfg_constants.py": {
+      "sha256": "c1c4c4b35d0d2792b3c0734cc0d172d4d0b9f078dc6f1cbf7cdff3e43074bd8a",
+      "bytes": 3873
+    },
+    "scripts/cpu_sort_contract.py": {
+      "sha256": "8276fa0f40038eef10e0920f2255c04a8cc5bd148c0c3888b4d6d3c820f837a4",
+      "bytes": 4206
+    },
+    "scripts/refine-cpu-task-contract.py": {
+      "sha256": "6635829195c842ff8adf60bc99f8ea45affccddc4f2551ed2965c70b29f8cd7c",
+      "bytes": 8298
+    },
+    "tests/cpu_cfg_constants_tests.py": {
+      "sha256": "fa5d11a64793bc2e648e3722655a76a00b148a99b58db3175151542319ccd608",
+      "bytes": 1762
+    },
+    "tests/cpu_sort_contract_tests.py": {
+      "sha256": "930e29ba36886275df4d5d6ad638417227237c1d8ffd75984429050bd237d360",
+      "bytes": 2109
+    }
+  }
+}
