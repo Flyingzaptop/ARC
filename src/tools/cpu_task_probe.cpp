@@ -1,5 +1,6 @@
 // Bounded external CPU observation. No injection, replacement or symbol-based selection.
 #include <windows.h>
+#include "arc/cpu/context_attempt_budget.hpp"
 #include <tlhelp32.h>
 #include <algorithm>
 #include <array>
@@ -48,7 +49,7 @@ int wmain(int argc,wchar_t** argv){
  std::map<DWORD,Thread> threads;std::ofstream samples(output/L"samples.csv"),activity(output/L"thread-activity.csv");
  samples<<"elapsed_ms,tid,interval_cycles,interval_cpu_100ns,suspend_us,rip,rax,rcx,rdx,rbx,rsp,rbp,rsi,rdi,r8,r9,r10,r11,r12,r13,r14,r15,eflags\n";activity<<"elapsed_ms,tid,cycles,cpu_100ns\n";
  WindowThread window_thread{pid};EnumWindows(find_window,reinterpret_cast<LPARAM>(&window_thread));
- unsigned probes{},failed{},refreshes{},slow{};double suspension_us{};const auto started=Clock::now();bool context_enabled=true;
+ unsigned probes{},failed{},refreshes{},slow{};double suspension_us{};const auto started=Clock::now();bool context_enabled=true;arc::cpu::ContextAttemptBudget attempt_budget;
  while(std::chrono::duration<double>(Clock::now()-started).count()<seconds&&WaitForSingleObject(process.h,0)==WAIT_TIMEOUT){
   const auto cycle=Clock::now();double elapsed=std::chrono::duration<double,std::milli>(cycle-started).count();
   if(refreshes++%10==0){Handle snap(CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD,0));THREADENTRY32 e{};e.dwSize=sizeof(e);if(Thread32First(snap.h,&e))do{if(e.th32OwnerProcessID!=pid||threads.count(e.th32ThreadID)||threads.size()>=256)continue;HANDLE h=OpenThread(THREAD_SUSPEND_RESUME|THREAD_GET_CONTEXT|THREAD_QUERY_INFORMATION,FALSE,e.th32ThreadID);if(h){ULONG64 c{};QueryThreadCycleTime(h,&c);threads.emplace(e.th32ThreadID,Thread{e.th32ThreadID,h,c,cpu(h)});}}while(Thread32Next(snap.h,&e));}
@@ -58,11 +59,14 @@ int wmain(int argc,wchar_t** argv){
   // Window owner is a candidate critical-path thread, not a proof. Include it
   // independently of worker spin activity; do not use any game symbol or address.
   auto ui=std::find_if(ranked.begin(),ranked.end(),[&](auto& x){return x.t->id==window_thread.tid;});if(ui!=ranked.end())std::rotate(ranked.begin(),ui,ui+1);
-  if(context_enabled)for(unsigned i=0;i<std::min<size_t>(4,ranked.size());++i){auto& a=ranked[i];CONTEXT c{};c.ContextFlags=CONTEXT_CONTROL|CONTEXT_INTEGER;bool ok=false;auto before=Clock::now();{Suspension pause(a.t->h);if(pause.valid)ok=GetThreadContext(a.t->h,&c)!=FALSE;}const double us=std::chrono::duration<double,std::micro>(Clock::now()-before).count();suspension_us+=us;++probes;if(!ok){++failed;continue;}
+  if(context_enabled)for(unsigned i=0;i<std::min<size_t>(4,ranked.size());++i){auto& a=ranked[i];CONTEXT c{};c.ContextFlags=CONTEXT_CONTROL|CONTEXT_INTEGER;bool ok=false;auto before=Clock::now();{Suspension pause(a.t->h);if(pause.valid)ok=GetThreadContext(a.t->h,&c)!=FALSE;}const double us=std::chrono::duration<double,std::micro>(Clock::now()-before).count();suspension_us+=us;++probes;
+   // Account every attempt, after RAII has resumed our suspension, even on failure.
+   if(!attempt_budget.account(us)){++slow;context_enabled=false;}
+   if(!ok){++failed;if(!context_enabled)break;continue;}
    samples<<std::setprecision(12)<<elapsed<<','<<a.t->id<<','<<a.cycles<<','<<a.time<<','<<us<<std::hex<<','<<c.Rip;
    for(auto v:std::array<DWORD64,16>{c.Rax,c.Rcx,c.Rdx,c.Rbx,c.Rsp,c.Rbp,c.Rsi,c.Rdi,c.R8,c.R9,c.R10,c.R11,c.R12,c.R13,c.R14,c.R15})samples<<','<<v;samples<<','<<c.EFlags<<std::dec<<'\n';
    // Budget backstop: no continued context capture after a slow suspension.
-   if(us>5000||suspension_us>50000){++slow;context_enabled=false;break;}
+   if(!context_enabled)break;
   }
   auto spent=std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now()-cycle).count();if(spent<100)Sleep(DWORD(100-spent));
  }
