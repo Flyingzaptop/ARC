@@ -1,0 +1,9 @@
+{
+  "records": 65344,
+  "record_bytes_hypothesis": 16,
+  "distinct_keys": 11405,
+  "stable_key_sort_differs_at_positions": 53871,
+  "same_record_multiset": true,
+  "first_difference": 2,
+  "scope": "Counterexample for stable key-sort substitution on this exact input; not a general algorithm proof or permission to reorder ties."
+}

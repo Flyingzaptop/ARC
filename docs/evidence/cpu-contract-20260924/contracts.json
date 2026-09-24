@@ -1,0 +1,137 @@
+{
+  "schema": 1,
+  "base_commit": "b810191",
+  "goal": "whole CPU task contract for safe replacement",
+  "status": "observed_whole_task_contract_not_admitted",
+  "candidates": [
+    {
+      "candidate": "candidate-00",
+      "entry_rva": 2241872,
+      "complete_return_observed": true,
+      "body_trace_complete": true,
+      "events": 10812118,
+      "memory_events": 7632582,
+      "atomic_stop": false,
+      "static_unclosed_calls": 0,
+      "static_indirect_jumps": 4,
+      "admitted": false,
+      "rejection": "exact_tie_order_and_global_ownership_not_proven"
+    },
+    {
+      "candidate": "candidate-01",
+      "entry_rva": 1929296,
+      "complete_return_observed": true,
+      "body_trace_complete": false,
+      "events": 26504,
+      "memory_events": 4171,
+      "atomic_stop": true,
+      "static_unclosed_calls": 217,
+      "static_indirect_jumps": 12,
+      "admitted": false,
+      "rejection": "atomic_synchronization_outside_pure_transform_class"
+    },
+    {
+      "candidate": "candidate-02",
+      "entry_rva": 1874240,
+      "complete_return_observed": true,
+      "body_trace_complete": false,
+      "events": 827,
+      "memory_events": 365,
+      "atomic_stop": true,
+      "static_unclosed_calls": 128,
+      "static_indirect_jumps": 13,
+      "admitted": false,
+      "rejection": "atomic_synchronization_outside_pure_transform_class"
+    },
+    {
+      "candidate": "candidate-03",
+      "entry_rva": 1904736,
+      "complete_return_observed": true,
+      "body_trace_complete": false,
+      "events": 706,
+      "memory_events": 194,
+      "atomic_stop": true,
+      "static_unclosed_calls": 516,
+      "static_indirect_jumps": 18,
+      "admitted": false,
+      "rejection": "atomic_synchronization_outside_pure_transform_class"
+    },
+    {
+      "candidate": "candidate-04",
+      "entry_rva": 2296848,
+      "complete_return_observed": true,
+      "body_trace_complete": true,
+      "events": 52016,
+      "memory_events": 16654,
+      "atomic_stop": false,
+      "static_unclosed_calls": 91,
+      "static_indirect_jumps": 13,
+      "admitted": false,
+      "rejection": "unclosed_external_effects_and_memory_contract"
+    },
+    {
+      "candidate": "candidate-05",
+      "entry_rva": 2377808,
+      "complete_return_observed": true,
+      "body_trace_complete": false,
+      "events": 14,
+      "memory_events": 10,
+      "atomic_stop": true,
+      "static_unclosed_calls": 75,
+      "static_indirect_jumps": 10,
+      "admitted": false,
+      "rejection": "atomic_synchronization_outside_pure_transform_class"
+    }
+  ],
+  "selected_operation": {
+    "image_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+    "entry_rva": 2241872,
+    "shape": "in-place ordering of opaque 16-byte records",
+    "records_observed": 65344,
+    "input_bytes": 1045504,
+    "key_projection": "candidate-00/key-hypotheses.json",
+    "tie_counterexample": "candidate-00/tie-order-counterexample.json",
+    "first_observed_consumer": {
+      "index": 865,
+      "pc": 140700727287444,
+      "address": 2333741822052,
+      "size": 4,
+      "read": true,
+      "write": false,
+      "kind": "explicit",
+      "in_call": false,
+      "module_rva": 1875604,
+      "offset_in_argument_span": 4
+    },
+    "consumer_scope": "same thread; not proof of first access by every thread",
+    "concurrent_entries": [
+      {
+        "tid": 24524,
+        "qpc": 5270706582394,
+        "rcx": 2333654007904,
+        "rdx": 2333655053408,
+        "r8": 65344,
+        "rsp": 420231509064
+      }
+    ],
+    "required_unknowns": [
+      "all-path semantics of indirect branches and unmatched comparisons",
+      "exclusive memory ownership or enforceable isolation",
+      "exact equal-key ordering or proof consumers cannot observe it",
+      "unobserved caller paths and lifetime/synchronization contract"
+    ],
+    "replacement_enabled": false,
+    "gpu_work_submitted": false
+  },
+  "training_limits": {
+    "ring_and_encoder_and_snapshot_buffers_bytes": 58515456,
+    "max_stream_bytes": 2147483648,
+    "max_wall_ms": 60000,
+    "on_stop": "no further trace records; remove own debug registers; preserve pending handler until cleared"
+  },
+  "known_limits": [
+    "Trace observations do not prove absence of races on future invocations.",
+    "Boundary wall time includes scheduling and debug delivery; useful CPU time is not precisely isolated.",
+    "Static audit is structural, not a complete whole-program equivalence verifier."
+  ]
+}

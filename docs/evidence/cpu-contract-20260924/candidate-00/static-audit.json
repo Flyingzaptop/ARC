@@ -1,0 +1,131 @@
+{
+  "checked_functions": [
+    {
+      "rva": 2241872,
+      "bytes": 1728,
+      "sha256": "4e76216e6202ba5f56139379244833faa9a594f256129d2ea4eca07e251fad8a"
+    },
+    {
+      "rva": 2262096,
+      "bytes": 519,
+      "sha256": "e5c30d51f5394eb3d21132030ca348c7eb402f19fcff49dd924c30321d37aeee"
+    },
+    {
+      "rva": 6296864,
+      "bytes": 1661,
+      "sha256": "79e7ea778064fa6eef1f1045dbb3fb49b59d08b4cfc1e9e0949a48a1187f41cf"
+    },
+    {
+      "rva": 2268128,
+      "bytes": 394,
+      "sha256": "2d2313553e57a647734d3f507cec514bde8a75931c9caa9824e0055f0bc5f468"
+    }
+  ],
+  "direct_calls": [
+    {
+      "rva": 2242030,
+      "target": 2268128,
+      "instruction": "call 0x229be0"
+    },
+    {
+      "rva": 2242048,
+      "target": 2268128,
+      "instruction": "call 0x229be0"
+    },
+    {
+      "rva": 2242069,
+      "target": 2268128,
+      "instruction": "call 0x229be0"
+    },
+    {
+      "rva": 2242083,
+      "target": 2268128,
+      "instruction": "call 0x229be0"
+    },
+    {
+      "rva": 2242114,
+      "target": 2268128,
+      "instruction": "call 0x229be0"
+    },
+    {
+      "rva": 2242940,
+      "target": 2241872,
+      "instruction": "call 0x223550"
+    },
+    {
+      "rva": 2242956,
+      "target": 2241872,
+      "instruction": "call 0x223550"
+    },
+    {
+      "rva": 2243165,
+      "target": 6296864,
+      "instruction": "call 0x601520"
+    },
+    {
+      "rva": 2243255,
+      "target": 2262096,
+      "instruction": "call 0x228450"
+    },
+    {
+      "rva": 2243341,
+      "target": 2262096,
+      "instruction": "call 0x228450"
+    }
+  ],
+  "unclosed_calls": [],
+  "indirect_jumps": [
+    {
+      "rva": 6296907,
+      "instruction": "r9"
+    },
+    {
+      "rva": 6297506,
+      "instruction": "r11"
+    },
+    {
+      "rva": 6297810,
+      "instruction": "r11"
+    },
+    {
+      "rva": 6298182,
+      "instruction": "r11"
+    }
+  ],
+  "atomic_sites": [],
+  "system_or_clock_sites": [],
+  "rip_relative_store_sites": [],
+  "return_sites": [
+    2243599,
+    2262614,
+    6296910,
+    6296943,
+    6296967,
+    6296974,
+    6296999,
+    6297022,
+    6297038,
+    6297061,
+    6297076,
+    6297090,
+    6297103,
+    6297118,
+    6297132,
+    6297139,
+    6297145,
+    6297150,
+    6297180,
+    6297645,
+    6297952,
+    6298294,
+    6298524,
+    2268521
+  ],
+  "all_paths_closed": false,
+  "proof_limits": [
+    "Function byte coverage does not prove memory bounds or pointer ownership.",
+    "Indirect control-flow destinations require separate proof.",
+    "Key comparisons and observed sorted output do not prove whole-algorithm equivalence."
+  ],
+  "admitted": false
+}

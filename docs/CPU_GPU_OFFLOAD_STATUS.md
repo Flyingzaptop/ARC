@@ -184,3 +184,22 @@ profitable-offload objective remains unfulfilled; the specified discovery stop g
 was reached. No additional engine adapter or broad scheduler was substituted.
 
 [Exact candidate, raw data, timing and missing mechanism](reports/2026-09-24-automatic-cpu-discovery.md).
+
+
+## 2026-09-24 — whole-call contracts, training mode
+
+The context observer budget now accounts failed attempts (`a7e29cf`). Added bounded
+native entry/return/continuation instrumentation and lossless streamed training traces.
+Recovered one top-level 65,344-record ordering invocation with complete observed
+user-mode memory coverage and matching input/output record multiset. The stable-sort
+counterexample differs at 53,871 positions on the final input. A same-thread consumer
+was located at RVA 0x1c9e94, offset +4 in the output span; global ownership is not proved.
+All six candidate entry regions were investigated; four have observed atomic effects,
+and another has unresolved external effects. Chained unwind fragments are now grouped.
+
+No GPU work or replacement was enabled. Machine contracts deliberately retain unknown
+all-path, ownership/lifetime and exact tie-order conditions. The manual adapter's speedup
+is not included. This is completion of the capture/evidence pass, not acceptance of a
+safe automatically transferable task.
+
+[Report and machine-readable contracts](reports/2026-09-24-cpu-whole-task-contracts.md).

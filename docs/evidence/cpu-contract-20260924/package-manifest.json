@@ -1,0 +1,14 @@
+{
+  "arc-cpu-contract-capture.dll": {
+    "sha256": "d251543c6279187be52100d1727681946a796d03646ea196f12054881647181e",
+    "bytes": 87040
+  },
+  "arc-cpu-task-probe.exe": {
+    "sha256": "d5f7536da777e671b138f4beecfa8a4ccf940460532f8264ebbf259f5e90a884",
+    "bytes": 78848
+  },
+  "arc-dx12-probe-launch.exe": {
+    "sha256": "24b2a82fce13f9e3d7a2ea87444cd1150d5bc80b5b04a6fc61364bc1ba486798",
+    "bytes": 65024
+  }
+}

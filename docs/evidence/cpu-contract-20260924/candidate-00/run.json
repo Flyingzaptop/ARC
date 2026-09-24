@@ -1,0 +1,27 @@
+{
+  "selected": {
+    "directory": "candidate-00",
+    "entry_rva": 2241872,
+    "end_rva": 2243600,
+    "detector_function_rva": 2241872,
+    "unwind_chain": [],
+    "samples": 14,
+    "ids": [
+      "a0a0babad8bef48b:223764-2238e3",
+      "a0a0babad8bef48b:223764-223921",
+      "a0a0babad8bef48b:223764-22393c",
+      "a0a0babad8bef48b:2235a0-2239a4",
+      "a0a0babad8bef48b:223810-22389e",
+      "a0a0babad8bef48b:223770-2237f7"
+    ],
+    "exchange": true
+  },
+  "pid": 1504,
+  "exe_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+  "capture_dll_sha256": "7ab44bf236de305fdcd7dffb6e9de9da0bc83e0fc0c15d18165160741222528f",
+  "attach_code": 0,
+  "exit_code": 0,
+  "seconds": 64.06181749992538,
+  "observation_only": true,
+  "original_work_executed": true
+}

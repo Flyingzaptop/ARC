@@ -1,7 +1,7 @@
 """Instruction-derived candidates from bounded live CPU samples; never an admission by sample alone."""
 import argparse,bisect,csv,hashlib,json
 from collections import Counter,defaultdict
-from pathlib import Path
+from pathlib import Path,PureWindowsPath
 import capstone,pefile
 from capstone.x86 import X86_OP_MEM,X86_OP_REG,X86_OP_IMM
 md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_64);md.detail=True
@@ -93,7 +93,7 @@ def analyze(root):
   else:
    unresolved+=1
    for m in modules:
-    if int(m['base'],16)<=pc<int(m['base'],16)+int(m['size']):other[Path(m['path']).name]+=1;break
+    if int(m['base'],16)<=pc<int(m['base'],16)+int(m['size']):other[PureWindowsPath(m['path']).name]+=1;break
  candidates=[];functions=[]
  for (begin,end),hits in sorted(grouped.items(),key=lambda x:len(x[1]),reverse=True)[:32]:
   entry=dict(module_sha256=identity,rva=begin,end_rva=end,samples=len(hits),tids=sorted({int(x['tid']) for x in hits}),call_frequency=None,cpu_duration_ms=None,critical_path_saving_ms=None)

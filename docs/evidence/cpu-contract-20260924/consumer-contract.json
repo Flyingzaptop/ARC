@@ -1,0 +1,345 @@
+{
+  "schema": 1,
+  "observed_footprint_complete": false,
+  "argument_range_hypotheses": [],
+  "admitted": false,
+  "properties": {
+    "code_identity": {
+      "status": "checked_study_only",
+      "evidence": "PE timestamp/size and exact function bytes checked before arming"
+    },
+    "whole_call": {
+      "status": "observed",
+      "evidence": "entry RIP, saved return address and exact return RSP"
+    },
+    "all_paths_and_exits": {
+      "status": "unknown",
+      "evidence": "one dynamic path does not prove all exits/callee effects"
+    },
+    "memory_footprint": {
+      "status": "unknown",
+      "evidence": {
+        "memory_events": 30245,
+        "unresolved_effects": 0,
+        "flow_discontinuities": 0
+      }
+    },
+    "cross_iteration_dependencies": {
+      "status": "unknown",
+      "evidence": {
+        "observed_read_after_write_pairs": 0,
+        "not_absence_proof": true
+      }
+    },
+    "external_thread_ownership": {
+      "status": "unknown",
+      "evidence": {
+        "concurrent_function_entries": 1,
+        "other_thread_memory_observed": false
+      }
+    },
+    "first_global_consumer": {
+      "status": "unknown",
+      "evidence": {
+        "first_observed_same_thread_non_stack_read": {
+          "index": 865,
+          "pc": 140700727287444,
+          "address": 2333741822052,
+          "size": 4,
+          "read": true,
+          "write": false,
+          "kind": "explicit",
+          "in_call": false
+        },
+        "tail_instruction_budget": 65536
+      }
+    },
+    "exit_state_and_numeric_semantics": {
+      "status": "unknown",
+      "evidence": {
+        "changed_gprs": [
+          "rax",
+          "rcx",
+          "rdx",
+          "rsp",
+          "r8",
+          "r9",
+          "r10",
+          "r11"
+        ],
+        "observed_caller_required_output_masks": {
+          "rsi": "0xffffffffffffffff",
+          "r13": "0xffffffffffffffff",
+          "rsp": "0xffffffffffffffff",
+          "r12": "0xffffffffffffffff",
+          "r15": "0xffffffffffffffff",
+          "rdi": "0xffffffffffffffff",
+          "rbp": "0xffffffffffffffff",
+          "r14": "0xffffffffffffffff",
+          "rbx": "0xffffffffffffffff",
+          "vec6": "0xffffffffffffffffffffffffffffffff",
+          "vec7": "0xffffffffffffffffffffffffffffffff",
+          "vec8": "0xffffffffffffffffffffffffffffffff",
+          "vec9": "0xffffffffffffffffffffffffffffffff",
+          "vec10": "0xffffffffffffffffffffffffffffffff",
+          "vec11": "0xffffffffffffffffffffffffffffffff",
+          "vec12": "0xffffffffffffffffffffffffffffffff",
+          "vec13": "0xffffffffffffffffffffffffffffffff",
+          "vec14": "0xffffffffffffffffffffffffffffffff",
+          "vec15": "0xffffffffffffffffffffffffffffffff"
+        },
+        "flags_changed": false,
+        "mxcsr_entry": 8112,
+        "mxcsr_exit": 8112,
+        "reported_xstate_components_captured": true
+      }
+    },
+    "per_invocation_guards": {
+      "status": "unknown",
+      "evidence": "no executable memory/ownership guards have been established for replacement"
+    },
+    "profitable_replacement": {
+      "status": "unknown",
+      "evidence": "original computation still runs; no GPU trial authorized"
+    }
+  },
+  "boundary_only": true,
+  "entry": {
+    "index": 0,
+    "kind": 1,
+    "tid": 36860,
+    "qpc": 5270706585525,
+    "teb": 420203397120,
+    "rip": 140700727653712,
+    "eflags": 514,
+    "mxcsr": 8112,
+    "registers": [
+      2333048638544,
+      2333741822048,
+      2333742867552,
+      0,
+      420240944440,
+      420240945216,
+      0,
+      2333147068352,
+      65344,
+      61,
+      140715305698032,
+      420240944376,
+      440,
+      0,
+      0,
+      140700734458728
+    ],
+    "code": "4c8944241853555657415441554156",
+    "last_error": 0,
+    "last_status": 0,
+    "raw_context_hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005f001000b01f000033002b002b0053002b002b0002020000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000500c89341f0200006030da5d1f0200006024ea5d1f020000000000000000000038ed4fd86100000040f04fd8610000000000000000000000c0f7663a1f02000040ff0000000000003d00000000000000f082cfd5fa7f0000f8ec4fd861000000b80100000000000000000000000000000000000000000000680b4c71f77f00005035e470f77f00007f0200000000000000000000000000000000000000000000b01f0000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e8cd45410000000000000000000000002e4a0000000000000000000000000000e8cd4541e8cd4541e8cd4541e8cd45410000000000000040000090c00000000000007044000000000000000000000000ffffffff00000000400000004000000040000000000000000000000001000000020000002000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000803f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005a9f264fb7f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000fec0471f020000e0fec0471f02000080ba0ed41e0200004000ff09000000001048dbd91e02000040e54fd8610000009085f2e51e0200006a188f07fb7f00009085f2e51e02000080ba0ed41e020000040000000000000000000000000000000000000000000000000000000000000001000000000000008d1b9907fb7f0000400000000000000090003fe71e020000000000000000000044a2f264fb7f0000000000001e02000001000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "exit": {
+    "index": 1,
+    "kind": 2,
+    "tid": 36860,
+    "qpc": 5270706622916,
+    "teb": 420203397120,
+    "rip": 140700727344012,
+    "eflags": 514,
+    "mxcsr": 8112,
+    "registers": [
+      19648,
+      24575,
+      104453621370048,
+      0,
+      420240944448,
+      420240945216,
+      0,
+      2333147068352,
+      24575,
+      2333742698384,
+      18446742974197923840,
+      104453621370048,
+      440,
+      0,
+      0,
+      140700734458728
+    ],
+    "code": "4885f6742e488d8c2490000000e862",
+    "last_error": 0,
+    "last_status": 0,
+    "raw_context_hex": "2b002b0002020100000000000000000000000000000000000000000000000000000000000000000000000000000000005f001000b01f000033002b002b0053002b002b000202000000000000000000008c7bdf70f77f000000000000000000000000000000000000f20fffff000000000404000000000000c04c000000000000ff5f000000000000c04cff00005f0000000000000000000040ed4fd86100000040f04fd8610000000000000000000000c0f7663a1f020000ff5f000000000000908fe75d1f0200000000000000ffffffc04cff00005f0000b80100000000000000000000000000000000000000000000680b4c71f77f00008c7bdf70f77f00007f0200000000000000000000000000000000000000000000b01f0000ffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001e8d0000c14c0100ff5f0000000000001e9c0000c24c0100ff5f000000000000dde50000bf4c0100ff5f0000e8cd4541e8cd4541e8cd4541e8cd45410000000000000040000090c00000000000007044000000000000000000000000ffffffff00000000400000004000000040000000000000000000000001000000020000002000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000803f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005a9f264fb7f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000fec0471f020000e0fec0471f02000080ba0ed41e0200004000ff09000000001048dbd91e02000040e54fd8610000009085f2e51e0200006a188f07fb7f00009085f2e51e02000080ba0ed41e020000040000000000000000000000000000000000000000000000000000000000000001000000000000008d1b9907fb7f0000400000000000000090003fe71e020000000000000000000044a2f264fb7f0000000000001e0200000100000000000000000000000000000000000000000000000000000000000000000000000000000030fbffff780d000030fbffffd0040000f0000000b807000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "observed_input_ranges": [],
+  "observed_output_ranges": [],
+  "non_stack_output_candidates": [],
+  "dataset_size": null,
+  "read_after_write_pairs": [],
+  "calls": [
+    {
+      "index": 23,
+      "pc": 140700727343015,
+      "observed_target": 140700727286080
+    },
+    {
+      "index": 53,
+      "pc": 140700727286210,
+      "observed_target": 140700726223872
+    },
+    {
+      "index": 71,
+      "pc": 140700727286274,
+      "observed_target": 140700728733552
+    },
+    {
+      "index": 81,
+      "pc": 140700728733588,
+      "observed_target": 140700727124016
+    },
+    {
+      "index": 332,
+      "pc": 140700728733611,
+      "observed_target": 140700731547584
+    },
+    {
+      "index": 420,
+      "pc": 140700728733637,
+      "observed_target": 140715304997296
+    },
+    {
+      "index": 449,
+      "pc": 140715304997858,
+      "observed_target": 140715304206048
+    },
+    {
+      "index": 474,
+      "pc": 140700727286307,
+      "observed_target": 140700728528752
+    },
+    {
+      "index": 528,
+      "pc": 140700727286606,
+      "observed_target": 140700726332576
+    },
+    {
+      "index": 557,
+      "pc": 140700726332684,
+      "observed_target": 140700728528784
+    },
+    {
+      "index": 584,
+      "pc": 140700726332982,
+      "observed_target": 140700728756048
+    },
+    {
+      "index": 669,
+      "pc": 140700727286849,
+      "observed_target": 140700728677392
+    },
+    {
+      "index": 714,
+      "pc": 140700727287021,
+      "observed_target": 140700728720608
+    },
+    {
+      "index": 735,
+      "pc": 140715305039693,
+      "observed_target": 140716146495552
+    },
+    {
+      "index": 749,
+      "pc": 140716145406327,
+      "observed_target": 140716141637216
+    },
+    {
+      "index": 793,
+      "pc": 140716145406341,
+      "observed_target": 140716153648048
+    },
+    {
+      "index": 884,
+      "pc": 140700727287557,
+      "observed_target": 140700727288480
+    }
+  ],
+  "unsupported": [],
+  "flow_gaps": [],
+  "instruction_counts": {
+    "test": 1686,
+    "je": 3363,
+    "mov": 14385,
+    "cmp": 5888,
+    "jne": 4165,
+    "add": 855,
+    "jmp": 41,
+    "call": 17,
+    "push": 17,
+    "lea": 897,
+    "sub": 16,
+    "xor": 18,
+    "vmovaps": 22,
+    "jg": 1,
+    "movzx": 5837,
+    "ret": 16,
+    "nop": 833,
+    "jge": 12,
+    "jae": 12,
+    "ja": 841,
+    "movsxd": 15,
+    "jle": 1,
+    "jl": 1,
+    "and": 1664,
+    "cmovne": 829,
+    "shr": 2,
+    "sar": 3,
+    "vpxor": 1,
+    "vpcmpeqw": 1,
+    "vpmovmskb": 1,
+    "vzeroupper": 1,
+    "rol": 2,
+    "pop": 13,
+    "vmovups": 6,
+    "bt": 1,
+    "jb": 1,
+    "sete": 2,
+    "setbe": 1,
+    "imul": 1,
+    "shl": 2490,
+    "jbe": 2,
+    "lock xadd": 1,
+    "vmovsd": 4,
+    "div": 1,
+    "jns": 1,
+    "vmovss": 4991,
+    "dec": 1,
+    "or": 1658,
+    "vxorps": 1,
+    "vmovd": 829,
+    "vcvtph2ps": 829,
+    "vsubss": 1658,
+    "vmaxss": 1658,
+    "vdivss": 829,
+    "vcomiss": 2487,
+    "cmova": 1658,
+    "vmulss": 829,
+    "vcvttss2si": 829,
+    "bsf": 828,
+    "btc": 828,
+    "inc": 1656
+  },
+  "memory_events": 30245,
+  "analysis_tracking_truncated": false,
+  "analysis_budgets": {
+    "intervals": 8192,
+    "dependency_addresses": 262144,
+    "dependency_edges": 8192,
+    "cached_pcs": 4096
+  },
+  "cost": {
+    "entry_to_return_ms": 3.7548,
+    "handler_total_ms": 33.6837,
+    "pure_cpu_ms": null,
+    "wait_ms": null,
+    "note": "wall includes debug delivery; handler time excludes OS dispatch and may include caller tail; GetThreadTimes zero may be below timer resolution",
+    "instrumented_thread_cpu_100ns": 0
+  },
+  "trap_cleanup_pending": false
+}
