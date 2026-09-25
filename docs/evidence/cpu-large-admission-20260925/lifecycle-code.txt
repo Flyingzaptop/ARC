@@ -135,7 +135,7 @@ sort entry and enclosing counters
 001d7a87 lock add qword ptr [rsi], rcx
 001d7a8b lock inc qword ptr [rsi + 0x10]
 001d7a90 mov rax, qword ptr [rsi + 8]
-001d7a94 nop 
+001d7a94 nop
 001d7a95 cmp rax, rcx
 001d7a98 jae 0x1d7aa2
 001d7a9a lock cmpxchg qword ptr [rsi + 8], rcx
@@ -200,7 +200,7 @@ sort entry and enclosing counters
 001d7ba4 lock add qword ptr [rsi], rcx
 001d7ba8 lock inc qword ptr [rsi + 0x10]
 001d7bad mov rax, qword ptr [rsi + 8]
-001d7bb1 nop 
+001d7bb1 nop
 001d7bb2 cmp rax, rcx
 001d7bb5 jae 0x1d7bbf
 001d7bb7 lock cmpxchg qword ptr [rsi + 8], rcx
@@ -326,11 +326,11 @@ vector append and grow
 001c11af pop r12
 001c11b1 pop rdi
 001c11b2 pop rsi
-001c11b3 ret 
+001c11b3 ret
 001c11b4 call 0xaeea0
-001c11b9 int3 
+001c11b9 int3
 001c11ba call 0x1f620
-001c11bf int3 
+001c11bf int3
 
 allocator wrapper
 000aeec0 sub rsp, 0x28
@@ -338,7 +338,7 @@ allocator wrapper
 000aeec7 jne 0xaeed0
 000aeec9 xor eax, eax
 000aeecb add rsp, 0x28
-000aeecf ret 
+000aeecf ret
 000aeed0 cmp rcx, 0x1000
 000aeed7 jb 0xaef0a
 000aeed9 lea rax, [rcx + 0x27]
@@ -355,11 +355,11 @@ allocator wrapper
 000aeefd and rax, 0xffffffffffffffe0
 000aef01 mov qword ptr [rax - 8], rcx
 000aef05 add rsp, 0x28
-000aef09 ret 
+000aef09 ret
 000aef0a add rsp, 0x28
 000aef0e jmp 0x5bf220
 000aef13 call 0xaeea0
-000aef18 int3 
+000aef18 int3
 
 generation replacement and deallocation
 0002a070 push rbx
@@ -402,4 +402,4 @@ generation replacement and deallocation
 0002a0e5 pop rsi
 0002a0e6 pop rbp
 0002a0e7 pop rbx
-0002a0e8 ret 
+0002a0e8 ret
