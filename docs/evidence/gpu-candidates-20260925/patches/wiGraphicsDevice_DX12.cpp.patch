@@ -1,0 +1,70 @@
+--- WickedEngine/wiGraphicsDevice_DX12.cpp
++++ WickedEngine/wiGraphicsDevice_DX12.cpp
+@@ -1,5 +1,6 @@
+ #include "wiGraphicsDevice_DX12.h"
+ #include "ArcWickedHooks.h"
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/experiments/gpu-candidate-observer/observer.hpp"
+ 
+ #ifdef WICKEDENGINE_BUILD_DX12
+ #include "wiHelper.h"
+@@ -1391,6 +1392,7 @@
+ 
+ 		~Resource_DX12()
+ 		{
++            arc_gpu_candidates::destroyed(resource.Get());
+ 			std::scoped_lock lck(allocationhandler->destroylocker);
+ 			uint64_t framecount = allocationhandler->framecount;
+ 			if (allocation) allocationhandler->destroyer_allocations.push_back(std::make_pair(allocation, framecount));
+@@ -1606,6 +1608,7 @@
+ 			(UINT)submit_cmds.size(),
+ 			submit_cmds.data()
+ 		);
++		arc_gpu_candidates::submitted(queue.Get(),submit_cmds.data(),submit_cmds.size());
+ 		ARCWickedSubmit(queue.Get(), submit_cmds.data(), submit_cmds.size(), desc.Type);
+ 
+ 		submit_cmds.clear();
+@@ -3455,6 +3458,7 @@
+ 			internal_state->uav_raw.init(this, uav_desc, internal_state->resource.Get());
+ 		}
+ 
++		if(SUCCEEDED(hr))arc_gpu_candidates::created(internal_state->resource.Get(),buffer->mapped_data,desc->usage==Usage::UPLOAD);
+ 		return SUCCEEDED(hr);
+ 	}
+ 	bool GraphicsDevice_DX12::CreateTexture(const TextureDesc* desc, const SubresourceData* initial_data, Texture* texture, const GPUResource* alias, uint64_t alias_offset) const
+@@ -5367,10 +5371,12 @@
+ 			commandlist.GetGraphicsCommandList()->RSSetScissorRects(arraysize(pRects), pRects);
+ 		}
+ 
++		arc_gpu_candidates::begin(commandlist.GetCommandList());
+ 		ARCWickedCommandBegin(commandlist.GetCommandList(), queues[queue].desc.Type);
+ 		if (queue == QUEUE_GRAPHICS) ARCWickedAttributionRegion(commandlist.GetCommandList(), 1, 0, 0, 16384, 16384);
+ 		return cmd;
+ 	}
++	extern "C" uint64_t ARCAuditNativeResource(const GPUResource* r){return (uintptr_t)to_internal(r)->resource.Get();}
+ 	void GraphicsDevice_DX12::SubmitCommandLists()
+ 	{
+ #ifdef PLATFORM_XBOX
+@@ -6544,6 +6550,7 @@
+ 	{
+ 		assert(slot < DESCRIPTORBINDER_SRV_COUNT);
+ 		CommandList_DX12& commandlist = GetCommandList(cmd);
++		if(resource&&resource->IsValid())arc_gpu_candidates::used(to_internal(resource)->resource.Get());
+ 		if (resource != nullptr && resource->IsValid()) ARCWickedResourceUse(commandlist.GetCommandList(), to_internal(resource)->resource.Get(), false);
+ 		auto& binder = commandlist.binder;
+ 		if (binder.table.SRV[slot].internal_state != resource->internal_state || binder.table.SRV_index[slot] != subresource)
+@@ -7012,6 +7019,7 @@
+ 		ARCWickedCopy(commandlist.GetCommandList(), src_internal->resource.Get(), dst_internal->resource.Get(), size, 1);
+ 
+ 		commandlist.GetGraphicsCommandList()->CopyBufferRegion(dst_internal->resource.Get(), dst_offset, src_internal->resource.Get(), src_offset, size);
++        arc_gpu_candidates::copy(commandlist.GetGraphicsCommandList(),dst_internal->resource.Get(),dst_offset,src_internal->resource.Get(),src_offset,size);
+ 	}
+ 	void GraphicsDevice_DX12::CopyTexture(const Texture* dst, uint32_t dstX, uint32_t dstY, uint32_t dstZ, uint32_t dstMip, uint32_t dstSlice, const Texture* src, uint32_t srcMip, uint32_t srcSlice, CommandList cmd, const Box* srcbox, ImageAspect dst_aspect, ImageAspect src_aspect)
+ 	{
+@@ -7341,6 +7349,7 @@
+ 
+ 		if (!barrierdescs.empty())
+ 		{
++            arc_gpu_candidates::barriers(barrierdescs.data(),barrierdescs.size());
+ 			if (commandlist.queue == QUEUE_VIDEO_DECODE)
+ 			{
+ 				commandlist.GetVideoDecodeCommandList()->ResourceBarrier(

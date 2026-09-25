@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "purpose": "training-only automatic buffer candidate selection and observational CPU GPU correspondence",
+  "core_inputs": ["native buffer creation and mapped-upload metadata", "CopyBufferRegion", "ResourceBarrier transitions and aliasing", "explicit SRV binding", "command list recording incarnation", "ExecuteCommandLists", "resource destruction"],
+  "selection": {"warmup_seconds":5,"maximum_candidates":2,"minimum_recurring_upload_copies":3,"minimum_buffer_bytes":4096,"rank":"observed eligible upload bytes","read_evidence":"explicit binding OR shader-readable transition; transition alone does not prove a shader read"},
+  "capture": {"observations_per_candidate":3,"maximum_total_observations":6,"maximum_readback_bytes_per_observation":131072,"range":"prefix of the actually observed destination write range","moment":"immediately after CopyBufferRegion in the same native command list","completion":"observer fence signalled on the actual submission queue after ExecuteCommandLists","CPU_snapshot":"tagged with the same write operation; private RW windows, excluding registered mapped buffers"},
+  "identity": {"resource":"monotonic creation id, never a hard-coded pointer","generation":"incremented on alias/placement invalidation","range":"destination offset, write size, sampled size","operation":"unique write id plus source resource/generation/offset","command":"native list identity plus recording incarnation","GPU_completion":"queue id, required fence value, observed completed value"},
+  "confirmation": {"discovery_observations":[0,1],"unseen_observation":2,"relearn_on_holdout":false,"new_data_required":true,"unknown_or_ambiguous":"retained as hypotheses; never authorizes replacement"},
+  "invalidation": ["resource destruction/recreation", "aliasing involving a registered buffer", "unknown alias scope for selected buffers", "new generation or sampled range", "missing CPU region or changed holdout bytes", "repeated command execution", "invalid completion provenance"],
+  "budgets": {"resource_entries":8192,"command_recording_entries":4096,"CPU_windows_per_observation":64,"CPU_window_bytes":262144,"detector_seconds_per_candidate":60,"native_process_timeout_seconds":60,"ordinary_log_rows":20000,"critical_lifecycle_events":"retained for selected bindings during the bounded training session"},
+  "coverage_limits": ["mapped UPLOAD to buffer copy writes only, not arbitrary UAV or texture writes", "explicit bindings and state intent do not resolve bindless shader accesses", "CPU snapshots are observations, not allocation ownership or cross-thread synchronization proofs", "fixture routes native API events using temporary backend instrumentation; general game DLL deployment is not implemented here", "native alias/recreation stress was not added; lifecycle protocol tests cover rejection and native shutdown demonstrates destruction invalidation"],
+  "automatic_offload":false,
+  "replacement_allowed":false
+}

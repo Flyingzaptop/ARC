@@ -1,0 +1,24 @@
+{
+  "matches": [
+    {
+      "resource": 451,
+      "relation": {
+        "cpu_region": "2579187019776",
+        "cpu_offset": 608,
+        "cpu_stride": 576,
+        "gpu_offset": 80,
+        "gpu_stride": 256,
+        "width": 12,
+        "validated_records_per_frame": 64,
+        "changed_records": 64,
+        "seed_votes": 15,
+        "status": "observed_exact_affine_correspondence",
+        "replacement_allowed": false,
+        "subsample_of": null,
+        "confirmation": "confirmed_on_new_write"
+      },
+      "oracle_label": "center",
+      "selected_without_oracle": true
+    }
+  ]
+}

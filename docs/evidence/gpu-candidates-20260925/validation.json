@@ -1,0 +1,12 @@
+{
+  "archive_files_verified": 191,
+  "pipeline_reproduced_excluding_elapsed_time": true,
+  "native_exit_code": 0,
+  "protocol_tests": 13,
+  "detector_tests": 4,
+  "confirmed_bindings": 1,
+  "live_bindings_after_shutdown": 0,
+  "patches_reproduced": 2,
+  "restorations_verified": 3,
+  "automatic_offload": false
+}
