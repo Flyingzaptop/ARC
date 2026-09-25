@@ -1,0 +1,7 @@
+{
+  "wiGraphicsDevice_DX12.h": true,
+  "wiGraphicsDevice_DX12.cpp": true,
+  "wiScene.cpp": true,
+  "wiRenderPath3D.cpp": true,
+  "wiRenderer.cpp": true
+}

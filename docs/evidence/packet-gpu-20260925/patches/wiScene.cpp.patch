@@ -1,0 +1,32 @@
+--- WickedEngine/wiScene.cpp
++++ WickedEngine/wiScene.cpp
+@@ -1,3 +1,4 @@
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/experiments/record-pack-gpu/fixture.hpp"
+ #include "wiScene.h"
+ #include "wiTextureHelper.h"
+ #include "wiResourceManager.h"
+@@ -4442,6 +4443,7 @@
+ 	{
+         const auto* arc_chain_results = static_cast<const ArcChainResult*>(ARCChainFinish(this));
+         auto* resident_certificate=arc_resident_queue::begin_certificate(this);
++        auto* packet_side=arc_packet_fixture::producer(this,(uint32_t)objects.GetCount());
+ 		aabb_objects.resize(objects.GetCount());
+ 		matrix_objects.resize(objects.GetCount());
+ 		matrix_objects_prev.resize(objects.GetCount());
+@@ -4451,7 +4453,7 @@
+ 		parallel_bounds.clear();
+ 		parallel_bounds.resize((size_t)wi::jobsystem::DispatchGroupCount((uint32_t)objects.GetCount(), small_subtask_groupsize));
+ 		
+-		wi::jobsystem::Dispatch(ctx, (uint32_t)objects.GetCount(), small_subtask_groupsize, [&, arc_chain_results, resident_certificate](wi::jobsystem::JobArgs args) {
++		wi::jobsystem::Dispatch(ctx, (uint32_t)objects.GetCount(), small_subtask_groupsize, [&, arc_chain_results, resident_certificate, packet_side](wi::jobsystem::JobArgs args) {
+ 
+ 			Entity entity = objects.GetEntity(args.jobIndex);
+ 			ObjectComponent& object = objects[args.jobIndex];
+@@ -4660,6 +4662,7 @@
+ 				inst.vb_wetmap = device->GetDescriptorIndex(&object.wetmap, SubresourceType::SRV);
+ 				inst.alphaTest_size = wi::math::pack_half2(XMFLOAT2(1 - object.alphaRef, size));
+ 				inst.SetUserStencilRef(object.userStencilRef);
++                if(packet_side)packet_side[args.jobIndex]={object.GetTransparency(),object.lod,uint32_t(object.alphaRef<1)};
+ 				inst.rimHighlight = wi::math::pack_half4(XMFLOAT4(object.rimHighlightColor.x * object.rimHighlightColor.w, object.rimHighlightColor.y * object.rimHighlightColor.w, object.rimHighlightColor.z * object.rimHighlightColor.w, object.rimHighlightFalloff));
+ 
+ 				std::memcpy(instanceArrayMapped + args.jobIndex, &inst, sizeof(inst)); // memcpy whole structure into mapped pointer to avoid read from uncached memory

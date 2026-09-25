@@ -1,0 +1,32 @@
+[
+  {
+    "records": 1,
+    "code": 0,
+    "stdout": "exact_output_and_metadata=1 source_assisted_replay=1 frame_gain_measured=0\r\n",
+    "stderr": ""
+  },
+  {
+    "records": 255,
+    "code": 0,
+    "stdout": "exact_output_and_metadata=1 source_assisted_replay=1 frame_gain_measured=0\r\n",
+    "stderr": ""
+  },
+  {
+    "records": 256,
+    "code": 0,
+    "stdout": "exact_output_and_metadata=1 source_assisted_replay=1 frame_gain_measured=0\r\n",
+    "stderr": ""
+  },
+  {
+    "records": 257,
+    "code": 0,
+    "stdout": "exact_output_and_metadata=1 source_assisted_replay=1 frame_gain_measured=0\r\n",
+    "stderr": ""
+  },
+  {
+    "records": 65536,
+    "code": 0,
+    "stdout": "exact_output_and_metadata=1 source_assisted_replay=1 frame_gain_measured=0\r\n",
+    "stderr": ""
+  }
+]

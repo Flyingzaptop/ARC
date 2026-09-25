@@ -1,0 +1,367 @@
+{
+  "files": [
+    {
+      "path": "timed/restoration.json",
+      "bytes": 97,
+      "sha256": "de6487d20ee0814c00b2b70f2ccc09613fa1f7c6920bae251cf58371b3a1bb26"
+    },
+    {
+      "path": "timed/runs.json",
+      "bytes": 3559,
+      "sha256": "cc07cc5e751bb0f137bb33aed5aa460e8f7d419770ec55bad35555e0c554d347"
+    },
+    {
+      "path": "timed/oracle/frames.csv",
+      "bytes": 335292,
+      "sha256": "edacfe889abe3059338754d954776570b8aeda9561e5259fbcf6f3cb926f6352"
+    },
+    {
+      "path": "timed/oracle/gpu.csv",
+      "bytes": 1281,
+      "sha256": "9a33a19e5102eac225f66b473401fca7e775b67c732376cb92889d73579c5281"
+    },
+    {
+      "path": "timed/oracle/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/oracle/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/original-a/frames.csv",
+      "bytes": 1798233,
+      "sha256": "c79cc5a3e893493492ae7615c41438fc59ecca82d4b4eab6402c14e1b6097596"
+    },
+    {
+      "path": "timed/original-a/gpu.csv",
+      "bytes": 2784,
+      "sha256": "bdc65987f86b38040b6bdc2429c78975526a0bd36684734719f85a6ae532c88c"
+    },
+    {
+      "path": "timed/original-a/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/original-a/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/original-b/frames.csv",
+      "bytes": 1708094,
+      "sha256": "00205a6a9c3ca6c41ccf98b2de37f9cba1a51fa9305899825c967cd94396e94f"
+    },
+    {
+      "path": "timed/original-b/gpu.csv",
+      "bytes": 2784,
+      "sha256": "a27443f4e9120119a1dfaf88efab7aaad053fa9ce0320c23648b4c3751e5973f"
+    },
+    {
+      "path": "timed/original-b/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/original-b/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/replace-a/frames.csv",
+      "bytes": 1848655,
+      "sha256": "e020d9394bfda7e2db9c29e00512b6447671078954c355291de57bceda32a32f"
+    },
+    {
+      "path": "timed/replace-a/gpu.csv",
+      "bytes": 2781,
+      "sha256": "1c356092351103789a12931365724996c89870e42424970a72c6b77ad5403261"
+    },
+    {
+      "path": "timed/replace-a/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/replace-a/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/replace-b/frames.csv",
+      "bytes": 1859835,
+      "sha256": "9ffb9e26a187a01f9c6152a7c36b55f6d9b13279017fef00cbef1a5efe9663e4"
+    },
+    {
+      "path": "timed/replace-b/gpu.csv",
+      "bytes": 2780,
+      "sha256": "517255e87fd6cc1051fae581fb13fcc89a607949b785d9b6ea7d20f02056fe3f"
+    },
+    {
+      "path": "timed/replace-b/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/replace-b/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/sidecar-a/frames.csv",
+      "bytes": 1808409,
+      "sha256": "37b0dae53ae6be4ceca28eeb1e2f9068fb4c875a919193a0ab3e39e35474ce56"
+    },
+    {
+      "path": "timed/sidecar-a/gpu.csv",
+      "bytes": 2782,
+      "sha256": "3a4d226981f93b9d276088fd0b5b457875617bcb8b3120c25642cc425a2cac23"
+    },
+    {
+      "path": "timed/sidecar-a/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/sidecar-a/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/sidecar-b/frames.csv",
+      "bytes": 1762334,
+      "sha256": "7b1d79f28f5273a388a2ed6eb61a67d5453c38b3ff2382f8a1b245ad86266059"
+    },
+    {
+      "path": "timed/sidecar-b/gpu.csv",
+      "bytes": 2784,
+      "sha256": "1667fff48005de9c552db00cb1e1f0998bd7d30e1f16f570fd19475c1bddb57e"
+    },
+    {
+      "path": "timed/sidecar-b/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "timed/sidecar-b/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/restoration.json",
+      "bytes": 97,
+      "sha256": "de6487d20ee0814c00b2b70f2ccc09613fa1f7c6920bae251cf58371b3a1bb26"
+    },
+    {
+      "path": "preceding-clean/runs.json",
+      "bytes": 3561,
+      "sha256": "a35390b90520657464823a0320036c526289f8b315c633c5701420dff930c7fc"
+    },
+    {
+      "path": "preceding-clean/oracle/frames.csv",
+      "bytes": 327384,
+      "sha256": "bf87703c3006fd4c8a4683a6d00bf80ab1f64c5962f9b0894f0822f94bd6b315"
+    },
+    {
+      "path": "preceding-clean/oracle/gpu.csv",
+      "bytes": 1280,
+      "sha256": "ed04f2be36a92e5d4cfd10d547a80ef16f14529a32dc8afa21f7ae487d1a2734"
+    },
+    {
+      "path": "preceding-clean/oracle/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/oracle/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/original-a/frames.csv",
+      "bytes": 841126,
+      "sha256": "88dfc5d40e289a9d034ae1bf1e746dc514dbb8d77dea02c5aec43ec9c84c7463"
+    },
+    {
+      "path": "preceding-clean/original-a/gpu.csv",
+      "bytes": 2780,
+      "sha256": "d6a2e5c1f91b392472bf57b77e4570f1177c25a8c46f8195bee3b00dbb088294"
+    },
+    {
+      "path": "preceding-clean/original-a/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/original-a/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/original-b/frames.csv",
+      "bytes": 886456,
+      "sha256": "ffd75cd3d6fedc73a8705ac7451bf99a585b758da8b19dd6737cefbddd20384d"
+    },
+    {
+      "path": "preceding-clean/original-b/gpu.csv",
+      "bytes": 2784,
+      "sha256": "f36d516c4ed534c19cf10bd9184eb5058f5c6bd269bb7c5b01e4bd1fb63a8cc6"
+    },
+    {
+      "path": "preceding-clean/original-b/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/original-b/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/replace-a/frames.csv",
+      "bytes": 1754047,
+      "sha256": "59f0f4c5a2ceb7831b8d7d470dc6055d4c0c3dfcfaa16a0ecab71868c9f35e7f"
+    },
+    {
+      "path": "preceding-clean/replace-a/gpu.csv",
+      "bytes": 2781,
+      "sha256": "dea1f6ff019911a4848203bd5a39453d95e4f70d90359d4dd85ced9c212385eb"
+    },
+    {
+      "path": "preceding-clean/replace-a/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/replace-a/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/replace-b/frames.csv",
+      "bytes": 1734809,
+      "sha256": "0aa2802a2e7b08e6c327cc090aee315075208917a1d1d0b4c88bd8a158afe183"
+    },
+    {
+      "path": "preceding-clean/replace-b/gpu.csv",
+      "bytes": 2780,
+      "sha256": "abf3daa9f6357b5c15495f855eb7d1e99acf0851dabe5d03eccf025cd40912ae"
+    },
+    {
+      "path": "preceding-clean/replace-b/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/replace-b/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/sidecar-a/frames.csv",
+      "bytes": 870630,
+      "sha256": "e72d1ea763761a591b9eb67b0f1707d01156eb18221190115a5142f147c6e69e"
+    },
+    {
+      "path": "preceding-clean/sidecar-a/gpu.csv",
+      "bytes": 2782,
+      "sha256": "9c98d215e5db5dd16589e730e1af908e9f789aa40f9668b82bc9aa276f08416f"
+    },
+    {
+      "path": "preceding-clean/sidecar-a/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/sidecar-a/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/sidecar-b/frames.csv",
+      "bytes": 872629,
+      "sha256": "072248dec86df2806bb32d80f9c6f6eaf98d42dd57f1529a44f08e30b739cc06"
+    },
+    {
+      "path": "preceding-clean/sidecar-b/gpu.csv",
+      "bytes": 2782,
+      "sha256": "3d724b14cc5b827de6070b804389ea5daf3b413732855eb264782785508f3cef"
+    },
+    {
+      "path": "preceding-clean/sidecar-b/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "preceding-clean/sidecar-b/stdout.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/1.bin",
+      "bytes": 48,
+      "sha256": "094b333092815ed7f76a4e3dfa33511afaff4ad499bb07bf11e20c21926ab3c6"
+    },
+    {
+      "path": "tests/1.csv",
+      "bytes": 1819,
+      "sha256": "ecfe02b88ab6cc6ab8390460f4d93041c7c6fec261e5e74e0a871e018b3064c7"
+    },
+    {
+      "path": "tests/255.bin",
+      "bytes": 12240,
+      "sha256": "0e56a3ae0b40cd7f44c1385ae07db8a0d202790045463f3e3f8dc34dfb6caaea"
+    },
+    {
+      "path": "tests/255.csv",
+      "bytes": 1962,
+      "sha256": "72cbf8a78154635247452ad698845d4fc0fad430f646ce75a7e609b89c193d66"
+    },
+    {
+      "path": "tests/256.bin",
+      "bytes": 12288,
+      "sha256": "df09f65e911255925288d78afe1803387362132af735052638c30e5d8b4953da"
+    },
+    {
+      "path": "tests/256.csv",
+      "bytes": 1949,
+      "sha256": "3bb425fc4250a103318f8b011f1c4f32dc700214025558032b020b934f13535e"
+    },
+    {
+      "path": "tests/257.bin",
+      "bytes": 12336,
+      "sha256": "6ee8633a260c99c50fc61e5f24dc3539f3085606eb98a2b97cdbb97feb420620"
+    },
+    {
+      "path": "tests/257.csv",
+      "bytes": 1918,
+      "sha256": "405a0d0499b003a1b5b2875d7e66ae5a45fb60e0f184c7613abc852c6f6e07ca"
+    },
+    {
+      "path": "tests/65536.bin",
+      "bytes": 3145728,
+      "sha256": "b0c724769b08bd84a0d70d02ad28cbea1539edb6bc793455f3df6b60038fcee1"
+    },
+    {
+      "path": "tests/65536.csv",
+      "bytes": 2047,
+      "sha256": "f44c772d0165b0b03a6e1120ae87184620c25786fc5d85eaca655c3d8e7225dc"
+    },
+    {
+      "path": "tests/results.json",
+      "bytes": 820,
+      "sha256": "46ce3f696ed34465d14b6a56a8c06f5c2768a19b50e73ecc21f513c6bd919cf4"
+    },
+    {
+      "path": "real-input.bin",
+      "bytes": 3145728,
+      "sha256": "6084e121aa9de1dae8b094d688c0dbe73b147d250d08f0615f6421191cbc1c77"
+    }
+  ],
+  "archive_sha256": "e54ef959a354939864e0ac78f46fd2a8a1a22bd579bad7966897cd6c3392d197",
+  "tested_binary": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\packet-gpu-timed-20260925\\Tests.packet.exe",
+  "tested_binary_sha256": "d585d737492127dad0de0a434c70e5ec34a7be60350c6f71c153de3c15bc3234"
+}

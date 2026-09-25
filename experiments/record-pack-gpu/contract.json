@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "status": "source_assisted_economic_experiment_not_automatic_arc_offload",
+  "fixture": "Wicked DX12 scene 18, main and prepass, original CPU sort retained",
+  "records": {"stride": 16, "maximum": 65536, "order": "unchanged including equal sort keys"},
+  "objects": {"stride": 256, "fields": {"stencil_flags": 8, "fade": 44, "radius": 92}},
+  "sidecar": {"stride": 12, "fields": ["float32 transparency", "uint32 raw CPU LOD", "uint32 alphaRef_less_than_one"], "producer": "existing RunObjectUpdateSystem job, after final LOD and object inputs", "extra_object_traversal": false, "transport": "one CPU memcpy to persistent UPLOAD buffer; GPU reads it directly"},
+  "algorithm": ["evaluate records and per-block scan", "scan block totals", "publish ordered group starts", "stable pointer scatter and group flags", "finalize group metadata"],
+  "limits": {"cpu_visible_groups": 256, "camera_bits": 16, "sidecar_objects": 131072},
+  "fallbacks": ["record budget exceeded", "unsupported render pass", "second invocation of same pass in frame", "GPU invalid input flag", "more than 256 groups", "unprepared scene or frame"],
+  "unsupported": ["forward-light AABB merging passes", "other engines and graphics backends", "uncontrolled multi-scene scheduling", "automatic discovery of producer-field correspondence"],
+  "synchronization": {
+    "source_proof": "Scene update jobs complete before Render; experiment moves the existing instance upload to the same native graphics queue before render recording; later duplicate upload and its barriers are omitted",
+    "previous_frame": "native work appends after Wicked's previous end-of-frame cross-queue waits",
+    "metadata": "per-worker fence signals after packet execution and 8208-byte metadata copy; CPU waits for this fence before batch_flush",
+    "output": "separate main/prepass buffers in three frame slots, shader-resource state restored; same graphics queue orders reuse after prior draws",
+    "sidecar_reuse": "all preceding packet consumers complete before next Scene update; own upload fence protects allocator reuse",
+    "global_wait_for_gpu": false
+  },
+  "oracle": "Separate diagnostic run compares every packed uint32 and all group fields against source CPU loop; full pointer readback enabled only there",
+  "performance": "Production replacement disables original per-record packing, retains CPU sort and batch_flush; whole-frame cadence includes producer writes, upload, metadata waits, consumer work and telemetry",
+  "scope_warning": "Source-assisted fixture contract and tested cases, not proof of universal safe substitution"
+}

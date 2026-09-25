@@ -1,0 +1,15 @@
+--- WickedEngine/wiRenderPath3D.cpp
++++ WickedEngine/wiRenderPath3D.cpp
+@@ -1,3 +1,4 @@
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/experiments/record-pack-gpu/fixture.hpp"
+ #include "ArcResidentQueue.h"
+ #include "wiRenderPath3D.h"
+ #include "wiRenderer.h"
+@@ -810,6 +811,7 @@
+ 			const_cast<RenderPath3D*>(this)->PreRender();
+ 		}
+ 		prerender_happened = false;
++        arc_packet_fixture::prepare(scene);
+ 
+ 		GraphicsDevice* device = wi::graphics::GetDevice();
+ 		wi::jobsystem::context ctx;

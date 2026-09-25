@@ -1,0 +1,10 @@
+--- WickedEngine/wiGraphicsDevice_DX12.cpp
++++ WickedEngine/wiGraphicsDevice_DX12.cpp
+@@ -5371,6 +5371,7 @@
+ 		if (queue == QUEUE_GRAPHICS) ARCWickedAttributionRegion(commandlist.GetCommandList(), 1, 0, 0, 16384, 16384);
+ 		return cmd;
+ 	}
++	ID3D12Resource* GraphicsDevice_DX12::ArcPacketResource(const GPUBuffer* b){return to_internal(b)->resource.Get();}
+ 	void GraphicsDevice_DX12::SubmitCommandLists()
+ 	{
+ #ifdef PLATFORM_XBOX

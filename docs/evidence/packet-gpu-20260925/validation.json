@@ -1,0 +1,10 @@
+{
+  "archive_files_verified": 72,
+  "analyses_reproduced": 2,
+  "restorations_verified": 6,
+  "gpu_oracle_cases": 5,
+  "live_oracle_records": 15944320,
+  "production_replaced_records": 182441216,
+  "automatic_offload": false,
+  "repeatable_frame_gain_above_noise": false
+}

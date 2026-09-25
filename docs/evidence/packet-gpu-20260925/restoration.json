@@ -1,0 +1,8 @@
+{
+  "wiGraphicsDevice_DX12.h": "8df454addb2d39ac90c5f53ce28763ae266251346013f6ddeaef82f30fb8d9a0",
+  "wiGraphicsDevice_DX12.cpp": "e6fd473dcf023aa24fcc4519b567b181e1529fefcf2e78dd5760d0a2f403cd68",
+  "wiScene.cpp": "d89dc14341222b7ede80b0a0a742758bdefc16db10e94377ccdf1eac69cefe33",
+  "wiRenderPath3D.cpp": "744b1405d4ff9b2e06553b2fede275d643349f743dd17bf966bd80e5d51ee0c4",
+  "wiRenderer.cpp": "b33283c74bd875043818793448d14250b433f93608d58bed9f4132db3d51a6f1",
+  "Tests.exe": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf"
+}
