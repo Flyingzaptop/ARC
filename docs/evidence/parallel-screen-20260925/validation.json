@@ -1,0 +1,16 @@
+{
+  "tests": {
+    "cpu_parallel_screen_tests": 13,
+    "cpu_task_discovery_tests": 9,
+    "cpu_contract_tests": 5
+  },
+  "total": 27,
+  "native_boundary_events": 2,
+  "native_completed_calls": 1,
+  "first_attempt": "missed during loading, not zero frequency",
+  "full_traces_collected": 0,
+  "exact_sort_changed": false,
+  "selector_training_budget_clamp_checked": true,
+  "archive_hashes_verified": 22,
+  "fixture_restored": true
+}

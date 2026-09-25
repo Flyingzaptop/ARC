@@ -2,6 +2,7 @@
 import argparse,hashlib,json
 from pathlib import Path
 import pefile,capstone,struct
+from cpu_parallel_screen import build as parallel_screen
 from capstone.x86 import X86_OP_MEM,X86_OP_IMM
 PURE={"mov","movzx","movsx","movsxd","lea","add","sub","and","or","xor","shl","shr","sar","sal","inc","dec","cmp","test","neg","not","pxor"}
 def pure_instruction(i):return i.mnemonic in PURE and (i.mnemonic=="lea" or not any(x.type==X86_OP_MEM for x in i.operands))
@@ -25,10 +26,17 @@ def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=Fa
   if contiguous:bounds[root]=type('Bound',(),dict(BeginAddress=root,EndAddress=ranges[-1][1],UnwindData=raw_bounds[root].UnwindData,parts=ranges))
 
  groups={}
+ measurements_path=probe/'parallel-measurements.json'
+ measurements=json.loads(measurements_path.read_text()) if measurements_path.exists() else {}
+ if measurements and measurements['module_sha256']!=digest:raise ValueError('Measurement generation mismatch')
+ ranking=parallel_screen(probe,measurements=measurements.get('candidates',{}))
+ ranks={c['id']:c for c in ranking['candidates']}
  for c in j['candidates']:
-  f=c['function_rva'];g=groups.setdefault(f,{'samples':0,'ids':[],'exchange':False});g['samples']=max(g['samples'],c['samples']);g['ids'].append(c['id']);g['exchange']|=bool(c.get('record_exchanges'))
+  f=c['function_rva'];g=groups.setdefault(f,{'samples':0,'ids':[],'exchange':False,'screen_rank':len(ranks)+1,'deep_eligible':False,'cheap_eligible':False});g['samples']=max(g['samples'],c['samples']);g['ids'].append(c['id']);g['exchange']|=bool(c.get('record_exchanges'));g['screen_rank']=min(g['screen_rank'],ranks[c['id']]['rank']);g['deep_eligible']|=ranks[c['id']]['detailed_capture_eligible'];g['cheap_eligible']|=ranks[c['id']]['feasibility_tier']>=2
  output.mkdir(parents=True,exist_ok=True);plan=[]
- for f,g in sorted(groups.items(),key=lambda x:(not x[1]['exchange'],-x[1]['samples'],x[0])):
+ (output/'parallel-screen.json').write_text(json.dumps(ranking,indent=2))
+ for f,g in sorted(groups.items(),key=lambda x:(x[1]['screen_rank'],x[0])):
+  if not g['cheap_eligible']:continue
   logical=owner.get(f,f)
   if logical not in bounds:continue # unknown split layout stays unselected, never guessed
   b=bounds[logical];chains=[]
@@ -41,7 +49,10 @@ def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=Fa
   size=b.EndAddress-b.BeginAddress
   if not 0<size<=65536:raise ValueError('Selected function outside decode budget')
   (directory/'expected-code.bin').write_bytes(pe.get_data(b.BeginAddress,size))
-  (directory/'request.txt').write_text(f'{b.BeginAddress:x} {size:x} {pe.FILE_HEADER.TimeDateStamp:x} {pe.OPTIONAL_HEADER.SizeOfImage:x} {events} {ms} {mode} {max_span if g["exchange"] else 0} {int(outermost)} {int(stop_unsupported)}\n')
+  effective_mode=mode if g['deep_eligible'] or mode=='boundary' else 'boundary'
+  effective_events=max(32,min(events,64)) if effective_mode=='boundary' else events
+  effective_ms=min(ms,250) if effective_mode=='boundary' else ms
+  (directory/'request.txt').write_text(f'{b.BeginAddress:x} {size:x} {pe.FILE_HEADER.TimeDateStamp:x} {pe.OPTIONAL_HEADER.SizeOfImage:x} {effective_events} {effective_ms} {effective_mode} {max_span if g["exchange"] else 0} {int(outermost)} {int(stop_unsupported)}\n')
   decoder=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_64);decoder.detail=True
   pending=[b.BeginAddress];seen=set();checked=[];pure=[]
   while pending and len(seen)<128:
@@ -58,8 +69,8 @@ def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=Fa
    for address,blob in checked:sink.write(struct.pack('<II',address,len(blob)));sink.write(blob)
   (directory/'pure-rvas.bin').write_bytes(b''.join(struct.pack('<I',x['rva']) for x in pure))
   (directory/'pure-instructions.json').write_text(json.dumps(pure))
-  plan.append(dict(directory=directory.name,entry_rva=b.BeginAddress,end_rva=b.EndAddress,detector_function_rva=f,unwind_chain=chains,logical_ranges=b.parts,**g))
- result=dict(image_sha256=digest,detector_sha256=hashlib.sha256((probe/'candidates.json').read_bytes()).hexdigest(),symbols_used=False,engine_source_used=False,selection='paired-exchange hint then sampled activity; not a proven critical-path rank',candidates=plan)
+  plan.append(dict(directory=directory.name,entry_rva=b.BeginAddress,end_rva=b.EndAddress,detector_function_rva=f,unwind_chain=chains,logical_ranges=b.parts,effective_mode=effective_mode,effective_events=effective_events,effective_ms=effective_ms,requested_mode=mode,mode_reason='deep capture requires parallel/economic evidence' if effective_mode!=mode else None,**g))
+ result=dict(image_sha256=digest,detector_sha256=hashlib.sha256((probe/'candidates.json').read_bytes()).hexdigest(),symbols_used=False,engine_source_used=False,selection='parallel feasibility first; economic unknowns allow boundary measurement only; samples are not CPU time',candidates=plan)
  (output/'selection.json').write_text(json.dumps(result,indent=2));return result
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--mode',choices=['trace','boundary','training','consumer'],default='trace');p.add_argument('--events',type=int,default=32768);p.add_argument('--ms',type=int,default=100);p.add_argument('--max-arg-span',type=int,default=0);p.add_argument('--outermost',action='store_true');p.add_argument('--stop-unsupported',action='store_true');a=p.parse_args();j=select(a.probe,a.output,a.mode,a.events,a.ms,a.max_arg_span,a.outermost,a.stop_unsupported);print('Selected',len(j['candidates']),'whole entry regions')

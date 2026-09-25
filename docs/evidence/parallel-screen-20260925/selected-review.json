@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "selection": "automatic",
+  "selected_id": "a0a0babad8bef48b:1c9e90-1ca188",
+  "review": "manual semantic inspection of automatically selected interval; not automatic proof",
+  "proposed_stages": [
+    "per-record evaluation with unchanged arithmetic",
+    "mark batch starts by adjacent compatible keys",
+    "per-record output count",
+    "segmented exclusive integer scan",
+    "stable scatter with ascending set-bit order",
+    "optional certified segmented AABB/flag reduction",
+    "publish completed batch to existing GPU consumer"
+  ],
+  "sequential_boundaries": [
+    "CPU draw/state-changing callees remain outside pure slice",
+    "batch-count and offset consumers",
+    "queue publication after all writes",
+    "exact floating reduction/NaN/signed-zero/live-out contract"
+  ],
+  "useful_cpu_ms": null,
+  "parent_entry_to_return_ms": 5.3223,
+  "observer_handler_ms": 0.0971,
+  "observer_explicit_bytes": 82944,
+  "completed_calls": 1,
+  "call_frequency": null,
+  "cost_warning": "Parent elapsed includes unclosed effects and possible waits; thread CPU time reported zero at coarse resolution, not zero computation. Do not subtract handler time and call remainder pure CPU.",
+  "transfer": {
+    "general_input_bytes": null,
+    "general_output_bytes": null,
+    "upload_ms": null,
+    "gpu_ms": null,
+    "return_ms": null,
+    "wait_ms": null,
+    "record_only_scenario": {
+      "N": 65344,
+      "record_bytes": 16,
+      "record_array_bytes": 1045504,
+      "output_bytes_if_one_word_per_record_and_no_skips": 261376,
+      "upper_output_bytes_for_16_mask_bits": 4182016,
+      "scope": "prior captured workload scenario, not full live-in closure or this new invocation proof; object/material side inputs excluded"
+    },
+    "residency": "GPU consumer known from earlier manual reference analysis, not established by automatic edge tracing; ranking does not receive that fact"
+  },
+  "fusion": "Counting, scan and scatter can avoid intermediate return only if dataflow/lifetime is closed. Keeping final buffer GPU-resident additionally requires preserving CPU draw metadata/count consumers.",
+  "decision": "Keep first for bounded useful-cost and live-in/out measurement; no detailed trace or GPU implementation selected on current evidence",
+  "manual_annotations_not_fed_to_rank": [
+    "index generation guarded by buffer-size mismatch in earlier audit, frequency unknown",
+    "reduction-like interval has an unconditional escape, not a certified reduction; automatically demoted",
+    "historical RenderMeshes parent sum is not pack-loop time"
+  ]
+}

@@ -255,3 +255,19 @@ sort on this result.** A wider consumer chain or another found candidate needs
 its own bounded economic check; earlier manual adapter wins are not inherited.
 
 [Measurements, exact GPU implementation, raw data and decision](reports/2026-09-25-exact-sort-gpu-economics.md).
+
+## 2026-09-25 — parallelism-first automatic diagnostic selection
+
+Exact-sort development remains stopped. Replaced exchange-first capture selection
+with map/scan/reduction feasibility triage, explicit transfer/economic unknowns,
+overlap tracking and manual-evidence separation. Screened 43 saved intervals;
+automatic first choice is the record-processing/packing consumer. Unsupported
+exchange groups are omitted. Deep capture requests without suitable evidence
+become bounded entry/return observation, not another full instruction trace.
+
+The selected parent's new native boundary check measured 5.3223 ms wall time over
+one call; this is not isolated useful packing time or measured frequency. No GPU
+implementation is economically approved yet. Fixed fixture readiness timing after
+an initial loading-time miss. Existing tracer and exact-sort experiment are unchanged.
+
+[Shortlist, detailed selected-candidate review and limits](reports/2026-09-25-parallel-first-candidate-screen.md).

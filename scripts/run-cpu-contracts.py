@@ -1,5 +1,5 @@
 """Bounded native captures selected automatically from the prior runtime detector."""
-import argparse,subprocess,os,sys,json,time,shutil,hashlib
+import argparse,subprocess,os,sys,json,time,shutil,hashlib,csv,io
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--limit',type=int);p.add_argument('--mode',choices=['trace','boundary','training','consumer'],default='trace');p.add_argument('--events',type=int,default=32768);p.add_argument('--ms',type=int,default=100);p.add_argument('--max-arg-span',type=int,default=0);p.add_argument('--start',type=int,default=0);p.add_argument('--outermost',action='store_true');p.add_argument('--stop-unsupported',action='store_true');a=p.parse_args();r=Path(__file__).resolve().parents[1]
 subprocess.run([sys.executable,str(r/'scripts/select-cpu-contracts.py'),str(a.probe),str(a.output),"--mode",a.mode,"--events",str(a.events),"--ms",str(a.ms),"--max-arg-span",str(a.max_arg_span)]+(["--outermost"] if a.outermost else [])+(["--stop-unsupported"] if a.stop_unsupported else []),check=True)
@@ -12,10 +12,23 @@ try:
  shutil.copy2(source,exe)
  for selected in plan['candidates'][a.start:a.start+a.limit if a.limit is not None else None]:
   out=a.output/selected['directory'];env={k:v for k,v in os.environ.items() if not k.startswith('ARC_')}
-  env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_CPU_PROFILE=str(out/'cpu.csv'),ARC_WICKED_CPU_SCENE='18',ARC_WICKED_CPU_SECONDS='65' if a.mode in ['training','consumer'] else '12',ARC_FULL_WARMUP='4',ARC_WICKED_HOOK_TIMING='0',ARC_RESIDENT_QUEUE='0')
+  env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_CPU_PROFILE=str(out/'cpu.csv'),ARC_WICKED_CPU_SCENE='18',ARC_WICKED_CPU_SECONDS='65' if a.mode in ['training','consumer'] else '20',ARC_FULL_WARMUP='4',ARC_WICKED_HOOK_TIMING='0',ARC_RESIDENT_QUEUE='0')
   started=time.monotonic();process=subprocess.Popen([str(exe),'alwaysactive','dx12'],cwd=w/'Samples/Tests',env=env)
   try:
-   while time.monotonic()-started<4 and process.poll() is None:time.sleep(.02)
+   # Fixture readiness only, never an input to candidate classification. A fixed
+   # 4-second sleep armed the two-second observer during scene construction.
+   ready_frames=0
+   while time.monotonic()-started<16 and process.poll() is None:
+    try:
+     if (out/'cpu.csv').stat().st_size>8*1024*1024:raise RuntimeError('Readiness telemetry exceeded 8 MiB budget')
+     text=(out/'cpu.csv').read_text();switched=False;ready_frames=0
+     for row in csv.DictReader(io.StringIO(text)):
+      if row.get('event')=='Scene switch':switched=True;ready_frames=0
+      elif switched and row.get('event')=='Application Render':ready_frames+=1
+     if ready_frames>=5:break
+    except (OSError,ValueError):pass
+    time.sleep(.1)
+   if ready_frames<5:raise RuntimeError('Owned fixture did not reach five post-load render frames within 16 seconds')
    with (out/'attach.log').open('w') as log:
     attach=subprocess.run([str(r/'build/Release/arc-dx12-probe-launch.exe'),'--attach',str(process.pid),str(r/'build/Release/arc-cpu-contract-capture.dll'),str(out/'session.json')],stdout=log,stderr=log,timeout=8)
    until=started+150;ready=None

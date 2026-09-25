@@ -39,7 +39,7 @@ def describe_loop(insns,lo,hi):
   if i.mnemonic in ['inc','dec'] and i.operands[0].type==X86_OP_REG:
    n=canonical(i.reg_name(i.operands[0].reg))
    if n:steps[n]=1 if i.mnemonic=='inc' else -1
-  if i.mnemonic!='lea':
+  if i.mnemonic not in ('lea','nop'):
    for operand_index,op in enumerate(i.operands):
     if op.type!=X86_OP_MEM:continue
     read=bool(op.access&capstone.CS_AC_READ);write=bool(op.access&capstone.CS_AC_WRITE)
