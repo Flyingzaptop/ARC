@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "files": {
+    "raw/forced-heap/stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "raw/forced-heap/stdout.txt": {
+      "sha256": "9af19d770714ea2bd51e882e63b5b63aaecf8c1813724c544c806e9945bd156e",
+      "bytes": 226
+    },
+    "raw/forced-heap/timings.csv": {
+      "sha256": "c6ea8d9a35bac1da321f2b826d4e1883e2fb9348b51b33b02566aefa86be79c7",
+      "bytes": 467
+    },
+    "raw/generated/forced-heap.expected.bin": {
+      "sha256": "1105daa6843aced320b26a1c50471e56f238fb71df4e75bb06e09ae52ed23784",
+      "bytes": 65536
+    },
+    "raw/generated/forced-heap.input.bin": {
+      "sha256": "78dcfdd2cbe9d1b0d574632dc661fe19a59e28d61293e6b73b51adc5e8fe016f",
+      "bytes": 65536
+    },
+    "raw/generated/ties.expected.bin": {
+      "sha256": "b04806dd40e24c14846aa059df5a9fa164a0f2bab5f4f37a5f4c54ba87544de3",
+      "bytes": 1045504
+    },
+    "raw/generated/ties.input.bin": {
+      "sha256": "222ad4aae563d728e0f401c4c66d85bb6f2024c70d23279f119376d58e634c44",
+      "bytes": 1045504
+    },
+    "raw/generated/unsigned-random.expected.bin": {
+      "sha256": "933a6f220470e783071c5df6f80368801f03493e7b5ce00bf8f54554ca3f1b3b",
+      "bytes": 65536
+    },
+    "raw/generated/unsigned-random.input.bin": {
+      "sha256": "bdea323caea2f0282c2f21c9462dd5e4151addd0e6fa64712a0527d53bd7ad85",
+      "bytes": 65536
+    },
+    "raw/hardware.csv": {
+      "sha256": "b07aaa3a9e1ba9bd4fe0b17f59b653ef537834af21c433b8d76ca277bddb91f9",
+      "bytes": 8263
+    },
+    "raw/real-series-1/stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "raw/real-series-1/stdout.txt": {
+      "sha256": "303cd533d36e7e29d2d45469ba7eaa7b7f693348b9f761d0794fffc1d890e24d",
+      "bytes": 229
+    },
+    "raw/real-series-1/timings.csv": {
+      "sha256": "3fea874fab5d5e07a3251eda339840caf04f8904c4fb72a7f4379b6046f7196b",
+      "bytes": 1497
+    },
+    "raw/real-series-2/stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "raw/real-series-2/stdout.txt": {
+      "sha256": "4b2364dadc6cc8963d83044a9f95fae487f1241771ffb7d58323d4b341e42a9f",
+      "bytes": 229
+    },
+    "raw/real-series-2/timings.csv": {
+      "sha256": "27beaedea69f4be2ed1d50accdaa680d4e94f1b3e03458ad92dcd29391579114",
+      "bytes": 1496
+    },
+    "raw/real-validation/stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "raw/real-validation/stdout.txt": {
+      "sha256": "de657544b4374dde090f335dd71711f5f57dcf95d8bdfc42e15043b67393bd6b",
+      "bytes": 229
+    },
+    "raw/real-validation/timings.csv": {
+      "sha256": "1c2eb8405622d0d19fb6d1128ff4e2b3062b1fe0e36c30322498169873d4291b",
+      "bytes": 476
+    },
+    "raw/runs.json": {
+      "sha256": "e603bfa09784fdba7ecd3e2191bdfb9f5e66d80bc4cd4ff1d97ca3cd8dcfdc22",
+      "bytes": 6809
+    },
+    "raw/summary.json": {
+      "sha256": "69b7a8862eaafba2f37151e3c09bed813700a6b5fcb71c4970f01d0c43a99d8d",
+      "bytes": 10154
+    },
+    "raw/ties/stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "raw/ties/stdout.txt": {
+      "sha256": "6afec6cdbd92915cb3409eaaf16cc5eb578d6d27f542de46552273f34987f216",
+      "bytes": 229
+    },
+    "raw/ties/timings.csv": {
+      "sha256": "a544e934615ce89d05fb14d5a34822583142fc5a86abfb5323f7260c6a38058a",
+      "bytes": 478
+    },
+    "raw/unsigned-random/stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "raw/unsigned-random/stdout.txt": {
+      "sha256": "8fb76ad26f50af73fba7998a1f034648c3e0266907e7c340a8a96e9a05681637",
+      "bytes": 227
+    },
+    "raw/unsigned-random/timings.csv": {
+      "sha256": "c6ad868899d7492cb1de4dae3d31d4ee092b4f85c556ceb49ed055608030b95f",
+      "bytes": 470
+    },
+    "package/arc-exact-sort-gpu.exe": {
+      "sha256": "06ff7d68a059e25477600f3e18bd996cf16905e23b16752a6e480fb157e61e2f",
+      "bytes": 58880
+    },
+    "package/exact_sort.hlsl": {
+      "sha256": "990bd1bf9895c44f1568c169a8078beb1e2f27d6e87ff4d2967f9d25c6ada431",
+      "bytes": 4072
+    }
+  },
+  "zip_sha256": "5be7362539835e581df51f829d477a2b551892c9027ca2d7c9a975e3a16e313e",
+  "original_input_source": "Existing cpu-contract-20260924 archive: final-training/candidate-00/input-span.bin and output-span.bin; full code closure in logical-plan/candidate-00/checked-functions.bin"
+}

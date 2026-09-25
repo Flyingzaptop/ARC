@@ -239,3 +239,19 @@ machine path/continuation. Both live admission axes remain closed. Inner-loop
 frequency/cost are not inferred from parent-function timings or buffer creation.
 
 [Report, actual gate result, lifecycle and exact-order oracle](reports/2026-09-25-cpu-large-operation-admission.md).
+
+## 2026-09-25 — isolated GPU sort economic check: negative
+
+Implemented an exact-permutation GPU port on private buffers, with parallel
+disjoint child partitions. 26 GPU invocations / 1,453,952 checked records agree
+with the original native CPU code, including distinct-payload equal keys and heap
+fallback. No game, live replacement or full tracing was involved.
+
+On the saved 65,344-record array, two interleaved series measure CPU medians
+4.134 / 3.427 ms versus full GPU-route medians 64.010 / 60.369 ms. GPU sorting alone
+costs 62.961 / 59.272 ms; the root partition alone costs about 13 ms. Transfers
+are not the main loss. **Do not build ownership machinery for this standalone
+sort on this result.** A wider consumer chain or another found candidate needs
+its own bounded economic check; earlier manual adapter wins are not inherited.
+
+[Measurements, exact GPU implementation, raw data and decision](reports/2026-09-25-exact-sort-gpu-economics.md).

@@ -1,0 +1,167 @@
+{
+  "scope": "isolated exact-order sort, not automatic offload or game FPS",
+  "series": {
+    "real-series-1": {
+      "cpu_samples": 8,
+      "gpu_samples": 8,
+      "cpu_median_ms": 4.1342,
+      "cpu_min_ms": 3.4122,
+      "cpu_max_ms": 4.6096,
+      "gpu": {
+        "full_ms": {
+          "median_ms": 64.0104,
+          "min_ms": 56.0122,
+          "max_ms": 69.9962
+        },
+        "gpu_sort_ms": {
+          "median_ms": 62.961152,
+          "min_ms": 55.059456,
+          "max_ms": 68.955136
+        },
+        "gpu_upload_ms": {
+          "median_ms": 0.088288,
+          "min_ms": 0.086816,
+          "max_ms": 0.15312
+        },
+        "gpu_init_ms": {
+          "median_ms": 0.003984,
+          "min_ms": 0.003296,
+          "max_ms": 0.004576
+        },
+        "gpu_return_ms": {
+          "median_ms": 0.096224,
+          "min_ms": 0.0848,
+          "max_ms": 0.137824
+        },
+        "gpu_root_ms": {
+          "median_ms": 12.886528,
+          "min_ms": 10.523648,
+          "max_ms": 17.10592
+        },
+        "prep_ms": {
+          "median_ms": 0.11095,
+          "min_ms": 0.0897,
+          "max_ms": 0.1415
+        },
+        "record_ms": {
+          "median_ms": 0.22060000000000002,
+          "min_ms": 0.1598,
+          "max_ms": 0.498
+        },
+        "submit_ms": {
+          "median_ms": 0.13075,
+          "min_ms": 0.081,
+          "max_ms": 0.1435
+        },
+        "wait_ms": {
+          "median_ms": 63.363,
+          "min_ms": 55.5488,
+          "max_ms": 69.3732
+        },
+        "consume_ms": {
+          "median_ms": 0.1427,
+          "min_ms": 0.0682,
+          "max_ms": 0.2511
+        }
+      },
+      "full_gpu_cpu_ratio": 15.48314063180301,
+      "all_gpu_slower_than_all_cpu": true
+    },
+    "real-series-2": {
+      "cpu_samples": 8,
+      "gpu_samples": 8,
+      "cpu_median_ms": 3.4269499999999997,
+      "cpu_min_ms": 3.2372,
+      "cpu_max_ms": 4.1057,
+      "gpu": {
+        "full_ms": {
+          "median_ms": 60.369249999999994,
+          "min_ms": 51.7416,
+          "max_ms": 65.3221
+        },
+        "gpu_sort_ms": {
+          "median_ms": 59.27168,
+          "min_ms": 50.29888,
+          "max_ms": 62.93504
+        },
+        "gpu_upload_ms": {
+          "median_ms": 0.090976,
+          "min_ms": 0.086304,
+          "max_ms": 0.154272
+        },
+        "gpu_init_ms": {
+          "median_ms": 0.003584,
+          "min_ms": 0.003104,
+          "max_ms": 0.003968
+        },
+        "gpu_return_ms": {
+          "median_ms": 0.085696,
+          "min_ms": 0.084672,
+          "max_ms": 0.495328
+        },
+        "gpu_root_ms": {
+          "median_ms": 13.13536,
+          "min_ms": 9.80992,
+          "max_ms": 16.062464
+        },
+        "prep_ms": {
+          "median_ms": 0.12329999999999999,
+          "min_ms": 0.058,
+          "max_ms": 0.19
+        },
+        "record_ms": {
+          "median_ms": 0.2039,
+          "min_ms": 0.1554,
+          "max_ms": 0.557
+        },
+        "submit_ms": {
+          "median_ms": 0.10414999999999999,
+          "min_ms": 0.0793,
+          "max_ms": 0.2799
+        },
+        "wait_ms": {
+          "median_ms": 59.7726,
+          "min_ms": 51.286,
+          "max_ms": 64.595
+        },
+        "consume_ms": {
+          "median_ms": 0.11985,
+          "min_ms": 0.0824,
+          "max_ms": 0.1591
+        }
+      },
+      "full_gpu_cpu_ratio": 17.616028830300998,
+      "all_gpu_slower_than_all_cpu": true
+    }
+  },
+  "gpu_invocations": 26,
+  "record_comparisons": 1453952,
+  "profitable_in_this_experiment": false,
+  "develop_ownership_for_this_sort": false,
+  "hardware": {
+    "complete_samples": 70,
+    "incomplete_samples": 1,
+    "scope": "whole experiment, including compilation/validation; not per-kernel attribution",
+    "power_limit_known": false,
+    "power.draw [W]": {
+      "min": 21.76,
+      "max": 33.34,
+      "mean": 28.871285714285715
+    },
+    "temperature.gpu": {
+      "min": 44.0,
+      "max": 47.0,
+      "mean": 45.34285714285714
+    },
+    "clocks.current.graphics [MHz]": {
+      "min": 1702.0,
+      "max": 2002.0,
+      "mean": 1762.7428571428572
+    },
+    "clocks.current.memory [MHz]": {
+      "min": 6001.0,
+      "max": 7001.0,
+      "mean": 6672.428571428572
+    }
+  }
+}
