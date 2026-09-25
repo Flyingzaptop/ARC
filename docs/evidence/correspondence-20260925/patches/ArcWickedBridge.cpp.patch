@@ -1,0 +1,18 @@
+--- Samples/Tests/ArcWickedBridge.cpp
++++ Samples/Tests/ArcWickedBridge.cpp
+@@ -2,6 +2,7 @@
+ #include "ArcWickedBridge.h"
+ #include "ArcWickedHooks.h"
+ #include "ArcResidentProbe.h"
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/experiments/cpu-gpu-correspondence/gpu_audit.hpp"
+ #include "ArcResidentQueue.h"
+ #include "ArcResidentDebug.h"
+ #include "ArcWickedTelemetry.h"
+@@ -647,6 +648,7 @@
+     {
+         if (phase_ == Phase::Done) return;
+         if (cpu_profile_.is_open()) {
++            arc_pack_gpu_audit::poll();
+             arc_resident_probe::report();
+             cpu_profile_frame_=wi::graphics::GetDevice()->GetFrameCount();
+             g_arc_last_scene.store(cpu_profile_scene_, std::memory_order_relaxed);

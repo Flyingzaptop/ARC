@@ -39,11 +39,13 @@ inline void poll(){if(!consumers)return;auto done=consumers->GetCompletedValue()
  }
 }
 inline void transition(ID3D12GraphicsCommandList* c,ID3D12Resource* r,D3D12_RESOURCE_STATES a,D3D12_RESOURCE_STATES b){D3D12_RESOURCE_BARRIER v{};v.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;v.Transition={r,D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,a,b};c->ResourceBarrier(1,&v);}
-inline void prepare(const wi::scene::Scene* scene){poll();current=nullptr;auto* d=static_cast<GraphicsDevice_DX12*>(GetDevice());auto frame=d->GetFrameCount();auto& f=frames[frame%3];f.init(d);if(!reusable(f.frame,consumers->GetCompletedValue())){ARCWickedCpuSample("Indirect busy frame fallback",1);return;}auto t=Clock::now();f.frame=frame;f.reported=false;f.uploaded=mode()!=0&&source==scene&&!side.empty()&&scene->instanceBuffer.IsValid();check(f.a->Reset());check(f.start->Reset(f.a.Get(),nullptr));f.start->EndQuery(f.query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);
+inline void busyPulse();
+inline void busyRetire(ID3D12CommandQueue*,uint64_t);
+inline void prepare(const wi::scene::Scene* scene){busyPulse();poll();current=nullptr;auto* d=static_cast<GraphicsDevice_DX12*>(GetDevice());auto frame=d->GetFrameCount();auto& f=frames[frame%3];f.init(d);if(!reusable(f.frame,consumers->GetCompletedValue())){ARCWickedCpuSample("Indirect busy frame fallback",1);return;}auto t=Clock::now();f.frame=frame;f.reported=false;f.uploaded=mode()!=0&&source==scene&&!side.empty()&&scene->instanceBuffer.IsValid();check(f.a->Reset());check(f.start->Reset(f.a.Get(),nullptr));f.start->EndQuery(f.query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0);
  if(f.uploaded){memcpy(f.extraMapped,side.data(),side.size()*sizeof(Extra));auto* dst=d->ArcPacketResource(&scene->instanceBuffer);auto* src=d->ArcPacketResource(&scene->instanceUploadBuffer[scene->cpu_gpu_mapped_resource_index]);transition(f.start.Get(),dst,D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COPY_DEST);f.start->CopyBufferRegion(dst,0,src,0,scene->instanceArraySize*sizeof(ShaderMeshInstance));transition(f.start.Get(),dst,D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);}
  check(f.start->Close());ID3D12CommandList* c=f.start.Get();d->ArcPacketQueue()->ExecuteCommandLists(1,&c);current=&f;ARCWickedCpuSample("Indirect frame preparation CPU ms",elapsed(t));}
 inline bool moved(const wi::scene::Scene* s){return current&&current->uploaded&&source==s&&current->frame==GetDevice()->GetFrameCount();}
-inline void endFrame(ID3D12CommandQueue* q,uint64_t frame){if(!consumers)return;auto& f=frames[frame%3];if(f.frame==frame){check(f.b->Reset());check(f.end->Reset(f.b.Get(),nullptr));f.end->EndQuery(f.query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);f.end->ResolveQueryData(f.query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,f.times.Get(),0);check(f.end->Close());ID3D12CommandList* c=f.end.Get();q->ExecuteCommandLists(1,&c);}check(q->Signal(consumers.Get(),frame+1));}
+inline void endFrame(ID3D12CommandQueue* q,uint64_t frame){if(!consumers)return;auto& f=frames[frame%3];if(f.frame==frame){check(f.b->Reset());check(f.end->Reset(f.b.Get(),nullptr));f.end->EndQuery(f.query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,1);f.end->ResolveQueryData(f.query.Get(),D3D12_QUERY_TYPE_TIMESTAMP,0,2,f.times.Get(),0);check(f.end->Close());ID3D12CommandList* c=f.end.Get();q->ExecuteCommandLists(1,&c);}busyRetire(q,frame);}
 inline Slot* preflight(const wi::scene::Scene* scene,const void* input,uint32_t n,int pass){
  if(!moved(scene)||n==0||n>65536||pass<0||pass>1)return nullptr;auto t=Clock::now();auto frame=GetDevice()->GetFrameCount();auto& s=slots[frame%3][pass];if(s.claim.exchange(frame)==frame||!reusable(s.frame,consumers->GetCompletedValue()))return nullptr;arc_indirect_contract::Group key{};
  if(!arc_indirect_contract::admit((const uint32_t*)input,n,side.data(),side.size(),uint32_t(frame),key))return nullptr;
@@ -55,3 +57,5 @@ inline void submit(Slot& s,const wi::scene::Scene* scene,const void* records,con
  s.templates=templates;s.drawCount=uint32_t(templates.size()/5);s.worker.run(records,s.records,uint32_t(side.size()),true,d->ArcPacketResource(&scene->instanceBuffer),current->extra.Get(),d->ArcPacketResource(&s.output),d->ArcPacketResource(&s.args),templates.data(),s.drawCount,s.metrics,mode()==2);s.pending=true;
 }
 }
+
+#include "busy_test.hpp"

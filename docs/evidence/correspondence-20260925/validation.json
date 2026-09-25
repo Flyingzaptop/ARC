@@ -1,0 +1,10 @@
+{
+  "archive_files_verified": 138,
+  "discovery_reproduced": true,
+  "instrumentation_patches_reproduced": 6,
+  "restorations_verified": 7,
+  "python_tests_passed": 4,
+  "busy_native_exit": 0,
+  "capture_native_exit": 0,
+  "automatic_offload": false
+}

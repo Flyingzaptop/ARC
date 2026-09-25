@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "regions_scanned": 58,
+  "seed_needles": 27,
+  "models_tested": 13,
+  "elapsed_seconds": 1.3030045999912545,
+  "relations": [
+    {
+      "cpu_region": "2604268253184",
+      "cpu_offset": 608,
+      "cpu_stride": 576,
+      "gpu_offset": 80,
+      "gpu_stride": 256,
+      "width": 12,
+      "validated_records_per_frame": 64,
+      "changed_records": 64,
+      "seed_votes": 15,
+      "status": "observed_exact_affine_correspondence",
+      "replacement_allowed": false,
+      "subsample_of": null
+    },
+    {
+      "cpu_region": "2604268253184",
+      "cpu_offset": 608,
+      "cpu_stride": 1152,
+      "gpu_offset": 80,
+      "gpu_stride": 512,
+      "width": 12,
+      "validated_records_per_frame": 64,
+      "changed_records": 64,
+      "seed_votes": 7,
+      "status": "observed_exact_affine_correspondence",
+      "replacement_allowed": false,
+      "subsample_of": 0
+    },
+    {
+      "cpu_region": "2604268253184",
+      "cpu_offset": 1184,
+      "cpu_stride": 1152,
+      "gpu_offset": 336,
+      "gpu_stride": 512,
+      "width": 12,
+      "validated_records_per_frame": 64,
+      "changed_records": 64,
+      "seed_votes": 7,
+      "status": "observed_exact_affine_correspondence",
+      "replacement_allowed": false,
+      "subsample_of": 0
+    },
+    {
+      "cpu_region": "2604268253184",
+      "cpu_offset": 608,
+      "cpu_stride": 1728,
+      "gpu_offset": 80,
+      "gpu_stride": 768,
+      "width": 12,
+      "validated_records_per_frame": 64,
+      "changed_records": 64,
+      "seed_votes": 5,
+      "status": "observed_exact_affine_correspondence",
+      "replacement_allowed": false,
+      "subsample_of": 0
+    }
+  ],
+  "claims": {
+    "automatic_layout_correspondence": true,
+    "automatic_capture_selection": false,
+    "semantic_meaning_inferred": false,
+    "ownership_proven": false,
+    "automatic_offload": false
+  }
+}

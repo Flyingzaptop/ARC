@@ -1,0 +1,21 @@
+{
+  "primary_relations": 1,
+  "subsample_aliases": 3,
+  "oracle_matches": 1,
+  "semantic_label_from_oracle_only": "center",
+  "inferred": {
+    "cpu_region": "2604268253184",
+    "cpu_offset": 608,
+    "cpu_stride": 576,
+    "gpu_offset": 80,
+    "gpu_stride": 256,
+    "width": 12,
+    "validated_records_per_frame": 64,
+    "changed_records": 64,
+    "seed_votes": 15,
+    "status": "observed_exact_affine_correspondence",
+    "replacement_allowed": false,
+    "subsample_of": null
+  },
+  "automatic_offload": false
+}

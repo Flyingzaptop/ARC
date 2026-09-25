@@ -2,7 +2,10 @@
   "version": 1,
   "status": "Wicked source-assisted indirect experiment, not automatic ARC offload",
   "admission": {
-    "passes": ["MAIN", "PREPASS"],
+    "passes": [
+      "MAIN",
+      "PREPASS"
+    ],
     "records": "1..65536 sorted 16-byte records; one group; no change to CPU sort or tie order",
     "objects": "compact sidecar written by existing object producer in this frame; bounds/generation checked for every referenced record",
     "state": "identical mesh, effective uint8 LOD and stencil across packet; opaque object color alpha=1, alphaRef>=1, fadeDistance=FLT_MAX, finite positive radius; finite half-distance",
@@ -22,8 +25,20 @@
   "versions": {
     "frame_slots": 3,
     "separate_pass_slots": 2,
-    "owned_per_frame": ["sidecar upload", "start/end query allocators", "query readback"],
-    "owned_per_pass": ["record upload", "draw template upload", "compute allocator", "intermediate buffers", "packed output", "indirect arguments", "query readback"],
+    "owned_per_frame": [
+      "sidecar upload",
+      "start/end query allocators",
+      "query readback"
+    ],
+    "owned_per_pass": [
+      "record upload",
+      "draw template upload",
+      "compute allocator",
+      "intermediate buffers",
+      "packed output",
+      "indirect arguments",
+      "query readback"
+    ],
     "retirement": "native graphics queue fence after all frame command lists and cross-queue waits, value=frame+1",
     "reuse": "consumer fence completion must cover owner frame before any CPU overwrite or allocator reset; unfinished slot falls back, no CPU wait",
     "queue_order": "early current-instance upload and compute append to same graphics queue as subsequent indirect draws; existing later instance upload skipped"
@@ -33,5 +48,38 @@
     "diagnostic": "deferred exact output/metadata/argument checks after consumer fence; actual indirect commands still render",
     "full_gpu_envelope": "timestamps before early upload and after all frame queues complete; includes queue idle time, not GPU active-work sum",
     "cpu": "full Present-call cadence with producer, preflight, upload, command recording, original remaining work and diagnostics"
+  },
+  "manual_bindings": [
+    {
+      "link": "CPU sorted 16-byte records and bit fields",
+      "status": "manual_source_mapping"
+    },
+    {
+      "link": "GPU instanceBuffer identity and selection for capture",
+      "status": "manual_source_mapping"
+    },
+    {
+      "link": "GPU fade offset 44, radius 92, stencil flags 8",
+      "status": "manual_source_mapping_not_inferred_by_this_stage"
+    },
+    {
+      "link": "sidecar producer site and completed object-update jobs",
+      "status": "manual_source_mapping"
+    },
+    {
+      "link": "CPU material/PSO/LOD/stencil consumers and GPU indirect consumer",
+      "status": "manual_source_mapping"
+    },
+    {
+      "link": "early upload publication and consumer retirement fences",
+      "status": "manual_source_mapping"
+    }
+  ],
+  "training_discovery": {
+    "link": "one changing 12-byte CPU/GPU field",
+    "method": "byte equality across two observations with learned affine strides and holdout records",
+    "semantic_label": "center supplied only by independent fixture oracle",
+    "used_to_authorize_runtime_replacement": false,
+    "gpu_capture_selection_automatic": false
   }
 }
