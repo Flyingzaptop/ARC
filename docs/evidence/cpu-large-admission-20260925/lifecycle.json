@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "image_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+  "scope": "targeted static reconstruction from existing image, not a dynamic allocation history or closed alias proof",
+  "regions": [
+    {
+      "label": "TLS reset and fill",
+      "begin_rva": 1931206,
+      "end_rva": 1931848,
+      "sha256": "180db5b79659d3b33d0df86639c197fe4f58748a399c32225f0ece2fc4a7c0c1",
+      "bytes": "418bc4ba14000000c1e8082401488954246889842488000000418bc4c1e80924018944244465488b042558000000488b08803c0a007505e8be813e0065488b042558000000b9b801000048894c2478488b10488b040a483b440a0874054889440a0833c033db488944247048899c2480000000e8c2ebeeff84c07424488d0507348100488d8c24b80000004889442470e8a573edff488b1848899c2480000000498b87880000004d8ba78000000048898424900000004c3be00f84e50100004c8bac24a0020000488b7c24788b5c2444448bb42488000000c5f829bc2440020000c5fa103da5506600c57829842430020000c57a100574506600c5f829b424500200000f1f8000000000418b04244889842488000000488d34c0498b450848c1e606807c244000488b88800000004c8b7908740f4283bc3e20020000000f8412010000428b0c3ef6c1010f8405010000c4a1425c443e24c5782fc00f86f40000008bc1c1e8072401443af00f85e400000084db740d8bc1c1e808a8010f85d3000000807c246400740cc1e909f6c1010f85c0000000428b843e94000000420b443e14854424600f84a9000000498b4510c4a17b108c3e00020000c5fb10502cc4e36921603420c4a37121943e0802000020c4a17a108c3e10020000c5d85cdac4e36140c37fc5f851f0c4a17258843e0c020000c5f82ff0775c65488b042558000000488b08488b442468803c08007505e8e57f3e0065488b042558000000448b842488000000428b943e24020000c6442430ff488b08428b843e280200004803cf66c74424280100c5f828de89442420e82596feff4983c4044c3ba424900000000f85a3feffffc57828842430020000c5f828bc2440020000c5f828b42450020000"
+    },
+    {
+      "label": "sort entry and enclosing counters",
+      "begin_rva": 1931882,
+      "end_rva": 1932223,
+      "sha256": "ae1719fb47f1daa3082a0731fa6744404177983ad640ae8a319b07c8b138c594",
+      "bytes": "488b7424704885f6742e488d8c24c0000000e87f71edff488b08482bcbf048010ef048ff4610488b460890483bc17308f0480fb14e0875f365488b042558000000488b08488b442468803c08007505e8027f3e0065488b0425580000004c8b642478488b084a8b4421084a3904210f842904000033f633dbe819e9eeff84c07417488d8c2490000000488d353e318100e80171edff488b18807c24480065488b042558000000488b08488b442468743a803c08007505e89b7e3e0065488b042558000000440fb68c24b8020000488b084a8b5421084a8b0c214c8bc24c2bc149c1f804e8beb10400eb38803c08007505e8617e3e0065488b042558000000440fb68c24b8020000488b084a8b5421084a8b0c214c8bc24c2bc149c1f804e8c4b904004885f6742e488d8c2490000000e86270edff488b08482bcbf048010ef048ff4610488b460890483bc17308f0480fb14e0875f3"
+    },
+    {
+      "label": "consumer handoff",
+      "begin_rva": 1932987,
+      "end_rva": 1933084,
+      "sha256": "bdc416df2e30f3d393cd46fa050d2aef14bf3b06d272ac595782e17016cd1dc3",
+      "bytes": "65488b042558000000488b08488b442468803c08007505e8e97a3e0065488b0425580000004c896c2438c744243001000000488b104903d4448ba424b8020000e98af8ffffb905000000cd29448ba424b8020000448b742448448bac24a8020000"
+    },
+    {
+      "label": "vector append and grow",
+      "begin_rva": 1839168,
+      "end_rva": 1839552,
+      "sha256": "b9ebea9a7b4efdd0208d4cde3c21a871237582b582c8decbe497dacf1224e72f",
+      "bytes": "48895c241048896c241856574154415541574883ec30488b7108488bf9488b4910458be0448beac5f829742420c5f828f3483bf17419c5f9efc0c5f81106488b5f08488d431048894708e9c1000000488b07488bde482bd848bdffffffffffffff0f48c1fb04483bdd0f840b010000482bc84c8d7b0148c1f904488bc5488bd148d1ea482bc2483bc8771a488d0411498bcf493bc7480f43c8483bcd0f87d2000000488be9488bcd4c8974246048c1e104e8caddeeff48c1e3044c8bf04803d8488bc8c5f9efc0c5f811034c8b4708488b17493bf075054c2bc2eb194c8bc64c2bc2e8f90344004c8b4708488d4b104c2bc6488bd6e8e60344004c8bcd4d8bc7498bd6488bcfe8258fe6ff4c8b74246081630cff0000008b842480000000488b6c2470c1e00809430c0fb78424880000006689430a0fb6842490000000c5f857c0c5fa10cec5f828742420c4e3791dca0088430c44892b44896304c4e37915530800488b5c24684883c430415f415d415c5f5ec3e8e7dceeffcce861e4e5ffcc"
+    },
+    {
+      "label": "allocator wrapper",
+      "begin_rva": 716480,
+      "end_rva": 716569,
+      "sha256": "2fdb314f747bc6e3791c03c2d71a52d89c2d105f4d885f2a98b958884479f7ea",
+      "bytes": "4883ec284885c9750733c04883c428c34881f9001000007231488d4127483bc17631488bc8e836035100488bc84885c07507b905000000cd294883c0274883e0e0488948f84883c428c34883c428e90d035100e888ffffffcc"
+    },
+    {
+      "label": "generation replacement and deallocation",
+      "begin_rva": 172144,
+      "end_rva": 172265,
+      "sha256": "d30f99fb9c34ecd7da4139b2bc64730be327e7beb2a3594d976f93b8d5791f26",
+      "bytes": "40535556574883ec28488b01498bd9498bf8488bea488bf14885c0743a488b5110482bd04883e2f04881fa00100000721e488b48f8482bc14883e8084883f81f77064883c227eb0ab905000000cd29488bc8e85151590048c1e7044803fd48892e48c1e3044803dd48897e0848895e104883c4285f5e5d5bc3"
+    }
+  ],
+  "chain": [
+    {
+      "phase": "allocation",
+      "evidence_rvas": [
+        1839345,
+        716480
+      ],
+      "fact": "grow path obtains a new allocation; large allocation returns a 32-byte aligned interior pointer with raw base saved at data-8",
+      "allocation_identity": "unknown in existing trace",
+      "required_event": "raw allocation identity/generation plus interior data offset; attach after creation cannot assign a proven birth"
+    },
+    {
+      "phase": "fill",
+      "evidence_rvas": [
+        1931769,
+        1931798,
+        1839440,
+        1839515
+      ],
+      "fact": "TLS slot zero + offset 0x1b8 contains vector descriptor; append writes 16-byte record fields and advances end",
+      "pointer_transfers": [
+        "TLS descriptor -> append RCX",
+        "allocator return -> data pointer -> descriptor"
+      ],
+      "coverage": "selected caller path only"
+    },
+    {
+      "phase": "sort",
+      "evidence_rvas": [
+        1932148,
+        1932153,
+        1932167
+      ],
+      "fact": "begin/end loaded from descriptor into RCX/RDX; R8=(end-begin)/16; saved call has 65344 records",
+      "observed_begin": 2692890054752,
+      "observed_bytes": 1045504,
+      "generation": null
+    },
+    {
+      "phase": "consume",
+      "evidence_rvas": [
+        1932987,
+        1933040,
+        1931146,
+        1931175,
+        1875604
+      ],
+      "fact": "descriptor passed by address to CPU consumer after synchronous sort return; offset +4 read observed in separate continuation capture",
+      "first_global_consumer": "unknown"
+    },
+    {
+      "phase": "reuse",
+      "evidence_rvas": [
+        1931288,
+        1931299
+      ],
+      "fact": "next call resets end to begin, retaining capacity; address reuse without free still starts a new content epoch"
+    },
+    {
+      "phase": "grow/free",
+      "evidence_rvas": [
+        172193,
+        172226,
+        172238,
+        172248,
+        172252
+      ],
+      "fact": "old raw allocation is freed, then descriptor begin/end/capacity replaced; identical future virtual address is a different generation",
+      "dynamic_event_observed": false
+    }
+  ],
+  "synchronization": {
+    "sort_closure_atomics": 0,
+    "nearby_counters": [
+      1932196,
+      1932200,
+      1932215
+    ],
+    "array_lock_acquire_release_found": false,
+    "interpretation": "Counters are not treated as an array ownership lock. TLS initialization and timing atomics provide no established exclusion for the array.",
+    "other_alias_paths_closed": false,
+    "kernel_or_DMA_access_closed": false
+  },
+  "two_independent_axes": {
+    "semantics": "exact byte permutation differential result only; all-path and ABI proof separate",
+    "memory": "no verified ownership provider"
+  }
+}

@@ -1,0 +1,844 @@
+{
+  "schema": 1,
+  "seed": 250925,
+  "closure_sha256": "d40e3fa146ee51711c31d7b87b12e9e42f8a862bc063314e1e30257c4d07fe1a",
+  "cases": [
+    {
+      "name": "saved-real-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": 0,
+      "original_isolated_call_ns": 4089900,
+      "input_sha256": "e6d993ca98ad3d0dc9fa9c52a43d5276959788002570d8d1ba9de06f8ab18464",
+      "output_sha256": "ca7db0fc2ab9e0ea86eb3dcc9ef9d9b291b83191f39da7e8ba7dfca1b8a2d4f1",
+      "model_paths": {
+        "partitions": 2198,
+        "median3": 7670,
+        "insertion_ranges": 2199,
+        "heap_ranges": 0,
+        "swaps": 354551
+      }
+    },
+    {
+      "name": "random-33",
+      "records": 33,
+      "ideal": 33,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 35700,
+      "input_sha256": "d73c3cac34011d5a1605fb8daa7eca798ee307ef5121db234fba20d1e54d4770",
+      "output_sha256": "a10d8ddcc2cc6975951ad435b788aef635fcd5c07063f3da129f3465f15ca3e0",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 26
+      }
+    },
+    {
+      "name": "equal-33",
+      "records": 33,
+      "ideal": 33,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 9900,
+      "input_sha256": "4b31b38e62483a5d3e2530323fb15969b2501ad772ee45656b7fcc7d4e28742f",
+      "output_sha256": "4b31b38e62483a5d3e2530323fb15969b2501ad772ee45656b7fcc7d4e28742f",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-33",
+      "records": 33,
+      "ideal": 33,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2300,
+      "input_sha256": "af72b4660f15418000502ec5509f7373cf8c912e0ef1b578ae0d5b1a24ec3844",
+      "output_sha256": "7c41604aad872df03e5cccd564b11a190f2fa45ec184a19aa95fa98286e5444b",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 16
+      }
+    },
+    {
+      "name": "ascending-33",
+      "records": 33,
+      "ideal": 33,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2600,
+      "input_sha256": "c255783223dee5724013cdfba47b9ff57835189c20975e6bd93024dd276c8f38",
+      "output_sha256": "c255783223dee5724013cdfba47b9ff57835189c20975e6bd93024dd276c8f38",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-33",
+      "records": 33,
+      "ideal": 33,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2600,
+      "input_sha256": "48e142fd1ca41bf4d544c2b7a03555663481680378042b267b8ad101ef3a113e",
+      "output_sha256": "37a03ab23fb08b0ad87a9519acacbf3c190abdbfa13505ee4c34eb7705efd1ed",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 18
+      }
+    },
+    {
+      "name": "organ-pipe-33",
+      "records": 33,
+      "ideal": 33,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 3200,
+      "input_sha256": "79d4d0168573a27b15f0cd8ec3f0aed319da4655ac59cd2923866d46bf403aa1",
+      "output_sha256": "a7360bb6b77b141546dfd5a59ecb3af9a7bbcda5a2d4d957ce196113e952676a",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 16
+      }
+    },
+    {
+      "name": "random-41",
+      "records": 41,
+      "ideal": 41,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 5700,
+      "input_sha256": "9dbf6319b38e0308a1600b837b6266cb33bd84369ce61be53740965ebcec35e5",
+      "output_sha256": "e34417027bfa063b6a8c5df0d7907a0a4183a1041e9f77996f1fe285c60ff46d",
+      "model_paths": {
+        "partitions": 2,
+        "median3": 2,
+        "insertion_ranges": 3,
+        "heap_ranges": 0,
+        "swaps": 43
+      }
+    },
+    {
+      "name": "equal-41",
+      "records": 41,
+      "ideal": 41,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2300,
+      "input_sha256": "987b12708d0ecf831c3a528e6325f7ec3ad1ca5a8010066ce84839b314d989cd",
+      "output_sha256": "987b12708d0ecf831c3a528e6325f7ec3ad1ca5a8010066ce84839b314d989cd",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-41",
+      "records": 41,
+      "ideal": 41,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2900,
+      "input_sha256": "19a963bb7557ada0933260d72bfb4de8f3e2b500157905dba3736c0f400bc338",
+      "output_sha256": "dc06dec08c1948c877467319bde201af772e44f930b8794862a73ed523da5f86",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 20
+      }
+    },
+    {
+      "name": "ascending-41",
+      "records": 41,
+      "ideal": 41,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 1600,
+      "input_sha256": "31c0823d9a87625ad0c5fdf5892113f0e6cdc0d9dc8855f1f6886a0f4af2c717",
+      "output_sha256": "31c0823d9a87625ad0c5fdf5892113f0e6cdc0d9dc8855f1f6886a0f4af2c717",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-41",
+      "records": 41,
+      "ideal": 41,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2100,
+      "input_sha256": "44aaeb65c789da1fda85a5a4acbdbd301cf4b38887c5088646f22cbd8661f15e",
+      "output_sha256": "93cb51f10ed55af1c47e74615bcae61a730ba796ba7c71c40489e5e8c3adcacc",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 1,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 22
+      }
+    },
+    {
+      "name": "organ-pipe-41",
+      "records": 41,
+      "ideal": 41,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2500,
+      "input_sha256": "5203a31abb2d7da6d792c6dbb4ee0166b23f78b64d0f94a74dbceaacf6d9a85f",
+      "output_sha256": "cc5a57faee9a4c7ff27c2aceda2382f8a9a1a392bfbf6730092b4c757a19b397",
+      "model_paths": {
+        "partitions": 4,
+        "median3": 4,
+        "insertion_ranges": 5,
+        "heap_ranges": 0,
+        "swaps": 86
+      }
+    },
+    {
+      "name": "random-42",
+      "records": 42,
+      "ideal": 42,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 3200,
+      "input_sha256": "a88b3e146fd6fefc2d6e9cdec8e6e687e2ac9876f50a15c3aeaa6ede25cd8f85",
+      "output_sha256": "a81ac2c3cbf38895bf5c336eddbc913b2a838a523878c5a2f3b6f4dfe76ee0b2",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 20
+      }
+    },
+    {
+      "name": "equal-42",
+      "records": 42,
+      "ideal": 42,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2100,
+      "input_sha256": "00cd8475a4823ce3f511586d737d5d64eed75084d298bd048682e22d6d9edc3e",
+      "output_sha256": "00cd8475a4823ce3f511586d737d5d64eed75084d298bd048682e22d6d9edc3e",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-42",
+      "records": 42,
+      "ideal": 42,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2400,
+      "input_sha256": "04360426b007b5192dba7fe7c4d54e0fa0fc05d06dfdb6a6d8a90a928c557b37",
+      "output_sha256": "b4f72c81efc74ca3f466dd9b9d4f9c65d7abaa129c2490a673f2fabddbd44245",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 21
+      }
+    },
+    {
+      "name": "ascending-42",
+      "records": 42,
+      "ideal": 42,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2500,
+      "input_sha256": "171934d6c1eecc62ed52dba18f647e7b276b4e6affe7e0c6cf4a2e4d236958c6",
+      "output_sha256": "171934d6c1eecc62ed52dba18f647e7b276b4e6affe7e0c6cf4a2e4d236958c6",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-42",
+      "records": 42,
+      "ideal": 42,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2900,
+      "input_sha256": "ef61e1479b852c3d5f91ff5480bce6f8700325a09c20a7660f6e1672d4593ff2",
+      "output_sha256": "0fbce2abe4b5bbe58662d72e5b32cd71da22209b823d2b0cafbb610122d3e020",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 32
+      }
+    },
+    {
+      "name": "organ-pipe-42",
+      "records": 42,
+      "ideal": 42,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 3200,
+      "input_sha256": "0371e254a2b2a8e03c6599057c92f70a454a15a1d9a3319f640feb607305e3f2",
+      "output_sha256": "dc8dab77c705be9857a0339340dbf9f7a51553424a8fabeebebd39f9eec38405",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 32
+      }
+    },
+    {
+      "name": "random-257",
+      "records": 257,
+      "ideal": 257,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 12100,
+      "input_sha256": "0e31756ae472c079b2e93c71e5bf289aa8d984e5f65b325cabb4207ea5d67bb7",
+      "output_sha256": "39c7eb784301e092aad27645021bc4fb6b10edf3c87088109b15d5769e720e3a",
+      "model_paths": {
+        "partitions": 10,
+        "median3": 37,
+        "insertion_ranges": 11,
+        "heap_ranges": 0,
+        "swaps": 452
+      }
+    },
+    {
+      "name": "forced-heap-random-257",
+      "records": 257,
+      "ideal": 0,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 12900,
+      "input_sha256": "0e31756ae472c079b2e93c71e5bf289aa8d984e5f65b325cabb4207ea5d67bb7",
+      "output_sha256": "39c7eb784301e092aad27645021bc4fb6b10edf3c87088109b15d5769e720e3a",
+      "model_paths": {
+        "partitions": 0,
+        "median3": 0,
+        "insertion_ranges": 0,
+        "heap_ranges": 1,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "equal-257",
+      "records": 257,
+      "ideal": 257,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 4000,
+      "input_sha256": "bc3505011c12f10c121cb6dc6cb6f9445312534651d4c7f05be08c2d82820554",
+      "output_sha256": "bc3505011c12f10c121cb6dc6cb6f9445312534651d4c7f05be08c2d82820554",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "forced-heap-equal-257",
+      "records": 257,
+      "ideal": 0,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 13200,
+      "input_sha256": "bc3505011c12f10c121cb6dc6cb6f9445312534651d4c7f05be08c2d82820554",
+      "output_sha256": "479198223a9d8d495df9d69b197ad26c3fdd07f0b5b2e578eb70265420894a9a",
+      "model_paths": {
+        "partitions": 0,
+        "median3": 0,
+        "insertion_ranges": 0,
+        "heap_ranges": 1,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-257",
+      "records": 257,
+      "ideal": 257,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 4400,
+      "input_sha256": "7182664c6320cc361c71b33b369355701a75d6e0efa2c9af28e6b6776db8e955",
+      "output_sha256": "4d2417125b7c38b8f617ff83ec55515dd99576414b6d25d9a79afc57213923a6",
+      "model_paths": {
+        "partitions": 2,
+        "median3": 8,
+        "insertion_ranges": 3,
+        "heap_ranges": 0,
+        "swaps": 128
+      }
+    },
+    {
+      "name": "forced-heap-two-keys-257",
+      "records": 257,
+      "ideal": 0,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 16200,
+      "input_sha256": "7182664c6320cc361c71b33b369355701a75d6e0efa2c9af28e6b6776db8e955",
+      "output_sha256": "52ae868fddcd69a27c75e43714116c441cfc9626973c06aa36b00fd146fc8513",
+      "model_paths": {
+        "partitions": 0,
+        "median3": 0,
+        "insertion_ranges": 0,
+        "heap_ranges": 1,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "ascending-257",
+      "records": 257,
+      "ideal": 257,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 7000,
+      "input_sha256": "de0ab380cd63290763312fceeb47f734647d87b533861cd3426fc60554f0ba3c",
+      "output_sha256": "de0ab380cd63290763312fceeb47f734647d87b533861cd3426fc60554f0ba3c",
+      "model_paths": {
+        "partitions": 7,
+        "median3": 28,
+        "insertion_ranges": 8,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-257",
+      "records": 257,
+      "ideal": 257,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 12200,
+      "input_sha256": "0547c6b2545d6e054cbd1909a92bdbd232fa9b465089b927a2841aad5ac3b96c",
+      "output_sha256": "25a384b0f2cb270ece7c2a8337eecd3c1dd8825cc5b081843333ddba66d5ae58",
+      "model_paths": {
+        "partitions": 9,
+        "median3": 30,
+        "insertion_ranges": 10,
+        "heap_ranges": 0,
+        "swaps": 168
+      }
+    },
+    {
+      "name": "organ-pipe-257",
+      "records": 257,
+      "ideal": 257,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 12800,
+      "input_sha256": "f4bd01538b36de544ff8e244d40795b527bc5987f477174a8fbf547099a8bc01",
+      "output_sha256": "60cc82f080cdc85b628d0aa34040eae7be0c028e2e38f4b36c963018fc3c33b9",
+      "model_paths": {
+        "partitions": 10,
+        "median3": 37,
+        "insertion_ranges": 11,
+        "heap_ranges": 0,
+        "swaps": 531
+      }
+    },
+    {
+      "name": "random-4096",
+      "records": 4096,
+      "ideal": 4096,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 308400,
+      "input_sha256": "84e74c73a9bc72d00e24d48feea65cad44cbf4d9686f6a4be613511380dc877e",
+      "output_sha256": "1f7e70e32d1af1a0a3220b2b192be806e873187c8fce54a384ec76e0ecb65e93",
+      "model_paths": {
+        "partitions": 188,
+        "median3": 641,
+        "insertion_ranges": 189,
+        "heap_ranges": 0,
+        "swaps": 16302
+      }
+    },
+    {
+      "name": "equal-4096",
+      "records": 4096,
+      "ideal": 4096,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 10100,
+      "input_sha256": "c1b72d2f7e12d2f7e66f3b92c88b727d999dd89654ea4666549b6fec8dc2db56",
+      "output_sha256": "c1b72d2f7e12d2f7e66f3b92c88b727d999dd89654ea4666549b6fec8dc2db56",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-4096",
+      "records": 4096,
+      "ideal": 4096,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 19100,
+      "input_sha256": "6dc2fedd77c76169084555535cb6f93eca99ec44f0f3a3c135b1dca93f957d2a",
+      "output_sha256": "688d9e8ad73a237da5c5b7ed35530fd8e49ffc9d19b123935b58344ef6953794",
+      "model_paths": {
+        "partitions": 2,
+        "median3": 8,
+        "insertion_ranges": 3,
+        "heap_ranges": 0,
+        "swaps": 2047
+      }
+    },
+    {
+      "name": "ascending-4096",
+      "records": 4096,
+      "ideal": 4096,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 102800,
+      "input_sha256": "eb620e57c200e939557438b180578a7141b9b4c59e447501bd31e69cccbd8e3b",
+      "output_sha256": "eb620e57c200e939557438b180578a7141b9b4c59e447501bd31e69cccbd8e3b",
+      "model_paths": {
+        "partitions": 127,
+        "median3": 508,
+        "insertion_ranges": 128,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-4096",
+      "records": 4096,
+      "ideal": 4096,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 92700,
+      "input_sha256": "a8cb9e40baf34d5f2969c8795a70ec432b6f8016dea8090d61cc896ff91be3be",
+      "output_sha256": "7db5c479d8218d3f738938ccb172a06f11ba2c39ea914d617d13b350c2f7ad22",
+      "model_paths": {
+        "partitions": 173,
+        "median3": 572,
+        "insertion_ranges": 174,
+        "heap_ranges": 0,
+        "swaps": 3121
+      }
+    },
+    {
+      "name": "organ-pipe-4096",
+      "records": 4096,
+      "ideal": 4096,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 155600,
+      "input_sha256": "c26d0759940b53bde580ae33609caca52f06f8ac96d5cfca345f521d5b96a693",
+      "output_sha256": "2102d2b680666e1a8b00bd894fe4edd4ecd460132b74e746125479a6625789ec",
+      "model_paths": {
+        "partitions": 192,
+        "median3": 618,
+        "insertion_ranges": 193,
+        "heap_ranges": 0,
+        "swaps": 17119
+      }
+    },
+    {
+      "name": "random-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 5171900,
+      "input_sha256": "dc66c75b796b684061869228437c78219d3204e365626617a774d34798a7d747",
+      "output_sha256": "9664d40a3b03f811c51fed936a6026f35612dadf47fc1014bfc4c2e519658822",
+      "model_paths": {
+        "partitions": 3071,
+        "median3": 10166,
+        "insertion_ranges": 3072,
+        "heap_ranges": 0,
+        "swaps": 352261
+      }
+    },
+    {
+      "name": "forced-heap-random-65344",
+      "records": 65344,
+      "ideal": 0,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 8725000,
+      "input_sha256": "dc66c75b796b684061869228437c78219d3204e365626617a774d34798a7d747",
+      "output_sha256": "9664d40a3b03f811c51fed936a6026f35612dadf47fc1014bfc4c2e519658822",
+      "model_paths": {
+        "partitions": 0,
+        "median3": 0,
+        "insertion_ranges": 0,
+        "heap_ranges": 1,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "equal-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 107400,
+      "input_sha256": "d04c217df91e6d9015e7a25f36e770fea914e8f3f4261ec22da40f2241cb5868",
+      "output_sha256": "d04c217df91e6d9015e7a25f36e770fea914e8f3f4261ec22da40f2241cb5868",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "forced-heap-equal-65344",
+      "records": 65344,
+      "ideal": 0,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 6078800,
+      "input_sha256": "d04c217df91e6d9015e7a25f36e770fea914e8f3f4261ec22da40f2241cb5868",
+      "output_sha256": "a9ac32e750dd7ecc31e46defbf4c1d5707a38b2394877a62366a7b6bd13469af",
+      "model_paths": {
+        "partitions": 0,
+        "median3": 0,
+        "insertion_ranges": 0,
+        "heap_ranges": 1,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 185400,
+      "input_sha256": "222ad4aae563d728e0f401c4c66d85bb6f2024c70d23279f119376d58e634c44",
+      "output_sha256": "b04806dd40e24c14846aa059df5a9fa164a0f2bab5f4f37a5f4c54ba87544de3",
+      "model_paths": {
+        "partitions": 2,
+        "median3": 8,
+        "insertion_ranges": 3,
+        "heap_ranges": 0,
+        "swaps": 32671
+      }
+    },
+    {
+      "name": "forced-heap-two-keys-65344",
+      "records": 65344,
+      "ideal": 0,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 5012800,
+      "input_sha256": "222ad4aae563d728e0f401c4c66d85bb6f2024c70d23279f119376d58e634c44",
+      "output_sha256": "2addea01563bca7084b37b6fc328b74f76499db73aa263f36ca68d0e3ad0942c",
+      "model_paths": {
+        "partitions": 0,
+        "median3": 0,
+        "insertion_ranges": 0,
+        "heap_ranges": 1,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "ascending-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 1913900,
+      "input_sha256": "9967b79cf0e87b7614d0a5cf654f453609103c1d78f412b7529fe0e03a3935fb",
+      "output_sha256": "9967b79cf0e87b7614d0a5cf654f453609103c1d78f412b7529fe0e03a3935fb",
+      "model_paths": {
+        "partitions": 2047,
+        "median3": 8188,
+        "insertion_ranges": 2048,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 1816200,
+      "input_sha256": "7976d067166f1303fbe66aab68a12000a2afe0b355108ce64039d15b6901b52d",
+      "output_sha256": "1acdf4e52d762dbd9693d8f53f450b7bc06955fb7408133f339ae9637d4516f0",
+      "model_paths": {
+        "partitions": 3015,
+        "median3": 9384,
+        "insertion_ranges": 3016,
+        "heap_ranges": 0,
+        "swaps": 56888
+      }
+    },
+    {
+      "name": "organ-pipe-65344",
+      "records": 65344,
+      "ideal": 65344,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 2598800,
+      "input_sha256": "bebaf854ea9cd0c85343bb0fa254b45c05c8d6658118dd68a80c10c85348486b",
+      "output_sha256": "48d63768011ebcb7eae262c80cb307fbfb9f97d2293ce683730339d708ac795f",
+      "model_paths": {
+        "partitions": 2922,
+        "median3": 9876,
+        "insertion_ranges": 2923,
+        "heap_ranges": 0,
+        "swaps": 392887
+      }
+    },
+    {
+      "name": "random-65536",
+      "records": 65536,
+      "ideal": 65536,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 5691800,
+      "input_sha256": "d1c380f13955fc063fac1e60987b0b4a9f10b07be363b49f47824cda464f942f",
+      "output_sha256": "92f661c456f43016cfbb692fc678ff2d703c3f25764fe0eca02dc1bfd4684bf4",
+      "model_paths": {
+        "partitions": 3056,
+        "median3": 10223,
+        "insertion_ranges": 3057,
+        "heap_ranges": 0,
+        "swaps": 383316
+      }
+    },
+    {
+      "name": "equal-65536",
+      "records": 65536,
+      "ideal": 65536,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 132800,
+      "input_sha256": "39bb691e1df4beed899b63ab67c3d30a585701312fc8d56fdc95ce9d29079ed6",
+      "output_sha256": "39bb691e1df4beed899b63ab67c3d30a585701312fc8d56fdc95ce9d29079ed6",
+      "model_paths": {
+        "partitions": 1,
+        "median3": 4,
+        "insertion_ranges": 2,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "two-keys-65536",
+      "records": 65536,
+      "ideal": 65536,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 234700,
+      "input_sha256": "5a444950820bcdd37440cbaedb665fe75d22b4c59aa8f449c252660dc439b9e9",
+      "output_sha256": "eb56b538b6385b75f56291d38f47d1d1925daeef294d71ee31be4f05576603c5",
+      "model_paths": {
+        "partitions": 2,
+        "median3": 8,
+        "insertion_ranges": 3,
+        "heap_ranges": 0,
+        "swaps": 32767
+      }
+    },
+    {
+      "name": "ascending-65536",
+      "records": 65536,
+      "ideal": 65536,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 1543000,
+      "input_sha256": "09172e35fa3b3b5daa06c4d41a5ee8302b82bcaf0a945b81934f3b30794e844e",
+      "output_sha256": "09172e35fa3b3b5daa06c4d41a5ee8302b82bcaf0a945b81934f3b30794e844e",
+      "model_paths": {
+        "partitions": 2047,
+        "median3": 8188,
+        "insertion_ranges": 2048,
+        "heap_ranges": 0,
+        "swaps": 0
+      }
+    },
+    {
+      "name": "descending-65536",
+      "records": 65536,
+      "ideal": 65536,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 1615800,
+      "input_sha256": "182de56ecc8f0731e5f3adbbea64a3cfe6a64c0ec37d5d00f40644122d45d1d2",
+      "output_sha256": "4584cbd1315ea375e7bca855a0a1bb8549b21ee6694f6cd28c84355325f9e950",
+      "model_paths": {
+        "partitions": 2828,
+        "median3": 9290,
+        "insertion_ranges": 2829,
+        "heap_ranges": 0,
+        "swaps": 51682
+      }
+    },
+    {
+      "name": "organ-pipe-65536",
+      "records": 65536,
+      "ideal": 65536,
+      "mismatch_records": 0,
+      "saved_output_mismatch_records": null,
+      "original_isolated_call_ns": 4239000,
+      "input_sha256": "67f609dcdebf3224403fd2f074d25a21856331146475542241e2c1481925f49e",
+      "output_sha256": "d69398e8c7bd5b6bac1b742f6b2dc9f765766f2069d4f0a27d947a2819194180",
+      "model_paths": {
+        "partitions": 2912,
+        "median3": 10010,
+        "insertion_ranges": 2913,
+        "heap_ranges": 0,
+        "swaps": 397235
+      }
+    }
+  ],
+  "all_exact": true,
+  "live_memory_admitted": false,
+  "gpu_replacement": false,
+  "scope": "Array-result differential oracle, not a complete equivalence proof of registers/exceptions/lifetime; isolated call times are not application savings."
+}

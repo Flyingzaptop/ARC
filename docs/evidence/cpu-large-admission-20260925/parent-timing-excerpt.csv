@@ -1,0 +1,2121 @@
+elapsed_ms,frame,scene,event,ms
+6009.6197,108,18,Resident previous build elapsed sum ms,5.8094
+6009.624,108,18,Resident previous sort elapsed sum ms,6.4981
+6009.6262,108,18,Resident previous RenderMeshes elapsed sum ms,4.3897
+6009.6285,108,18,Resident previous RenderMeshes max pass ms,2.1983
+6009.6307,108,18,Resident previous RenderMeshes calls,2
+6031.9588,109,18,Resident previous build elapsed sum ms,7.4758
+6031.9629,109,18,Resident previous sort elapsed sum ms,6.8517
+6031.9651,109,18,Resident previous RenderMeshes elapsed sum ms,4.1462
+6031.9672,109,18,Resident previous RenderMeshes max pass ms,2.1742
+6031.9694,109,18,Resident previous RenderMeshes calls,2
+6051.5146,110,18,Resident previous build elapsed sum ms,5.7406
+6051.5186,110,18,Resident previous sort elapsed sum ms,6.6979
+6051.5207,110,18,Resident previous RenderMeshes elapsed sum ms,4.1158
+6051.5231,110,18,Resident previous RenderMeshes max pass ms,2.0679
+6051.5751,110,18,Resident previous RenderMeshes calls,2
+6070.9857,111,18,Resident previous build elapsed sum ms,5.8935
+6070.9895,111,18,Resident previous sort elapsed sum ms,6.591
+6070.9917,111,18,Resident previous RenderMeshes elapsed sum ms,3.9646
+6070.9941,111,18,Resident previous RenderMeshes max pass ms,1.9935
+6070.9963,111,18,Resident previous RenderMeshes calls,2
+6092.478,112,18,Resident previous build elapsed sum ms,10.0163
+6092.4828,112,18,Resident previous sort elapsed sum ms,6.4563
+6092.4851,112,18,Resident previous RenderMeshes elapsed sum ms,3.816
+6092.4875,112,18,Resident previous RenderMeshes max pass ms,1.9129
+6092.4898,112,18,Resident previous RenderMeshes calls,2
+6111.604,113,18,Resident previous build elapsed sum ms,5.8267
+6111.6079,113,18,Resident previous sort elapsed sum ms,6.7131
+6111.61,113,18,Resident previous RenderMeshes elapsed sum ms,4.4038
+6111.6126,113,18,Resident previous RenderMeshes max pass ms,2.2653
+6111.6592,113,18,Resident previous RenderMeshes calls,2
+6131.3003,114,18,Resident previous build elapsed sum ms,6.5189
+6131.3045,114,18,Resident previous sort elapsed sum ms,6.7265
+6131.3068,114,18,Resident previous RenderMeshes elapsed sum ms,4.065
+6131.3092,114,18,Resident previous RenderMeshes max pass ms,2.0573
+6131.3115,114,18,Resident previous RenderMeshes calls,2
+6150.3214,115,18,Resident previous build elapsed sum ms,6.6248
+6150.3256,115,18,Resident previous sort elapsed sum ms,6.2298
+6150.3279,115,18,Resident previous RenderMeshes elapsed sum ms,4.1666
+6150.3301,115,18,Resident previous RenderMeshes max pass ms,2.0868
+6150.3323,115,18,Resident previous RenderMeshes calls,2
+6170.4902,116,18,Resident previous build elapsed sum ms,5.5054
+6170.4985,116,18,Resident previous sort elapsed sum ms,6.7573
+6170.5012,116,18,Resident previous RenderMeshes elapsed sum ms,4.6648
+6170.5037,116,18,Resident previous RenderMeshes max pass ms,2.3366
+6170.5439,116,18,Resident previous RenderMeshes calls,2
+6192.6494,117,18,Resident previous build elapsed sum ms,8.2928
+6192.6534,117,18,Resident previous sort elapsed sum ms,6.8751
+6192.6554,117,18,Resident previous RenderMeshes elapsed sum ms,5.1614
+6192.6579,117,18,Resident previous RenderMeshes max pass ms,2.5815
+6192.6599,117,18,Resident previous RenderMeshes calls,2
+6212.7818,118,18,Resident previous build elapsed sum ms,6.7641
+6212.7866,118,18,Resident previous sort elapsed sum ms,6.8055
+6212.7888,118,18,Resident previous RenderMeshes elapsed sum ms,3.7377
+6212.7911,118,18,Resident previous RenderMeshes max pass ms,1.8718
+6212.7934,118,18,Resident previous RenderMeshes calls,2
+6232.31,119,18,Resident previous build elapsed sum ms,5.8238
+6232.3142,119,18,Resident previous sort elapsed sum ms,6.7739
+6232.3163,119,18,Resident previous RenderMeshes elapsed sum ms,4.1193
+6232.3187,119,18,Resident previous RenderMeshes max pass ms,2.0765
+6232.3594,119,18,Resident previous RenderMeshes calls,2
+6252.8379,120,18,Resident previous build elapsed sum ms,6.896
+6252.8422,120,18,Resident previous sort elapsed sum ms,6.7946
+6252.8444,120,18,Resident previous RenderMeshes elapsed sum ms,4.3257
+6252.8473,120,18,Resident previous RenderMeshes max pass ms,2.1678
+6252.8494,120,18,Resident previous RenderMeshes calls,2
+6277.718,121,18,Resident previous build elapsed sum ms,6.4214
+6277.7221,121,18,Resident previous sort elapsed sum ms,10.278
+6277.7244,121,18,Resident previous RenderMeshes elapsed sum ms,7.8315
+6277.7267,121,18,Resident previous RenderMeshes max pass ms,3.9158
+6277.729,121,18,Resident previous RenderMeshes calls,2
+6298.3172,122,18,Resident previous build elapsed sum ms,7.6107
+6298.3211,122,18,Resident previous sort elapsed sum ms,6.811
+6298.3234,122,18,Resident previous RenderMeshes elapsed sum ms,3.8893
+6298.3256,122,18,Resident previous RenderMeshes max pass ms,1.9585
+6298.3839,122,18,Resident previous RenderMeshes calls,2
+6319.1702,123,18,Resident previous build elapsed sum ms,7.5721
+6319.1747,123,18,Resident previous sort elapsed sum ms,6.8304
+6319.1769,123,18,Resident previous RenderMeshes elapsed sum ms,5.3559
+6319.1792,123,18,Resident previous RenderMeshes max pass ms,2.681
+6319.1815,123,18,Resident previous RenderMeshes calls,2
+6340.5904,124,18,Resident previous build elapsed sum ms,7.6842
+6340.5945,124,18,Resident previous sort elapsed sum ms,6.863
+6340.5967,124,18,Resident previous RenderMeshes elapsed sum ms,5.9794
+6340.5991,124,18,Resident previous RenderMeshes max pass ms,2.9957
+6340.6013,124,18,Resident previous RenderMeshes calls,2
+6363.4588,125,18,Resident previous build elapsed sum ms,6.6654
+6363.4627,125,18,Resident previous sort elapsed sum ms,10.0733
+6363.465,125,18,Resident previous RenderMeshes elapsed sum ms,6.1332
+6363.4674,125,18,Resident previous RenderMeshes max pass ms,3.0666
+6363.5128,125,18,Resident previous RenderMeshes calls,2
+6384.7401,126,18,Resident previous build elapsed sum ms,5.4695
+6384.7445,126,18,Resident previous sort elapsed sum ms,7.3494
+6384.7467,126,18,Resident previous RenderMeshes elapsed sum ms,6.5105
+6384.7489,126,18,Resident previous RenderMeshes max pass ms,3.2739
+6384.7513,126,18,Resident previous RenderMeshes calls,2
+6404.0635,127,18,Resident previous build elapsed sum ms,6.2527
+6404.0676,127,18,Resident previous sort elapsed sum ms,6.9184
+6404.0702,127,18,Resident previous RenderMeshes elapsed sum ms,3.8086
+6404.0725,127,18,Resident previous RenderMeshes max pass ms,1.935
+6404.0748,127,18,Resident previous RenderMeshes calls,2
+6423.483,128,18,Resident previous build elapsed sum ms,6.384
+6423.4872,128,18,Resident previous sort elapsed sum ms,6.8891
+6423.4894,128,18,Resident previous RenderMeshes elapsed sum ms,3.8697
+6423.4921,128,18,Resident previous RenderMeshes max pass ms,1.9459
+6423.5417,128,18,Resident previous RenderMeshes calls,2
+6446.3621,129,18,Resident previous build elapsed sum ms,6.5964
+6446.3661,129,18,Resident previous sort elapsed sum ms,10.4047
+6446.3684,129,18,Resident previous RenderMeshes elapsed sum ms,7.1878
+6446.3707,129,18,Resident previous RenderMeshes max pass ms,3.5939
+6446.3727,129,18,Resident previous RenderMeshes calls,2
+6465.4537,130,18,Resident previous build elapsed sum ms,5.7117
+6465.4576,130,18,Resident previous sort elapsed sum ms,6.6549
+6465.4597,130,18,Resident previous RenderMeshes elapsed sum ms,3.9988
+6465.462,130,18,Resident previous RenderMeshes max pass ms,2.031
+6465.4643,130,18,Resident previous RenderMeshes calls,2
+6485.9243,131,18,Resident previous build elapsed sum ms,6.6975
+6485.9293,131,18,Resident previous sort elapsed sum ms,6.6929
+6485.9315,131,18,Resident previous RenderMeshes elapsed sum ms,5.8676
+6485.9338,131,18,Resident previous RenderMeshes max pass ms,2.9339
+6485.9743,131,18,Resident previous RenderMeshes calls,2
+6505.6187,132,18,Resident previous build elapsed sum ms,6.5185
+6505.6226,132,18,Resident previous sort elapsed sum ms,6.615
+6505.6248,132,18,Resident previous RenderMeshes elapsed sum ms,4.3698
+6505.6274,132,18,Resident previous RenderMeshes max pass ms,2.1888
+6505.6295,132,18,Resident previous RenderMeshes calls,2
+6528.6667,133,18,Resident previous build elapsed sum ms,6.7335
+6528.6707,133,18,Resident previous sort elapsed sum ms,10.1441
+6528.6729,133,18,Resident previous RenderMeshes elapsed sum ms,6.5308
+6528.6751,133,18,Resident previous RenderMeshes max pass ms,3.2654
+6528.6773,133,18,Resident previous RenderMeshes calls,2
+6548.9667,134,18,Resident previous build elapsed sum ms,6.7473
+6548.9707,134,18,Resident previous sort elapsed sum ms,6.5575
+6548.9729,134,18,Resident previous RenderMeshes elapsed sum ms,4.7428
+6548.9752,134,18,Resident previous RenderMeshes max pass ms,2.3744
+6549.0216,134,18,Resident previous RenderMeshes calls,2
+6570.8931,135,18,Resident previous build elapsed sum ms,6.2444
+6570.8967,135,18,Resident previous sort elapsed sum ms,9.7724
+6570.8988,135,18,Resident previous RenderMeshes elapsed sum ms,6.3324
+6570.9011,135,18,Resident previous RenderMeshes max pass ms,3.1662
+6570.9033,135,18,Resident previous RenderMeshes calls,2
+6594.1193,136,18,Resident previous build elapsed sum ms,10.5392
+6594.1233,136,18,Resident previous sort elapsed sum ms,6.8725
+6594.126,136,18,Resident previous RenderMeshes elapsed sum ms,5.2873
+6594.1283,136,18,Resident previous RenderMeshes max pass ms,2.647
+6594.1377,136,18,Resident previous RenderMeshes calls,2
+6613.588,137,18,Resident previous build elapsed sum ms,5.3735
+6613.5924,137,18,Resident previous sort elapsed sum ms,6.7223
+6613.595,137,18,Resident previous RenderMeshes elapsed sum ms,4.2079
+6613.5973,137,18,Resident previous RenderMeshes max pass ms,2.1053
+6613.6449,137,18,Resident previous RenderMeshes calls,2
+6633.0748,138,18,Resident previous build elapsed sum ms,5.6158
+6633.0784,138,18,Resident previous sort elapsed sum ms,6.6305
+6633.0805,138,18,Resident previous RenderMeshes elapsed sum ms,4.003
+6633.0828,138,18,Resident previous RenderMeshes max pass ms,2.0112
+6633.0851,138,18,Resident previous RenderMeshes calls,2
+6652.9795,139,18,Resident previous build elapsed sum ms,6.8446
+6652.9835,139,18,Resident previous sort elapsed sum ms,6.5553
+6652.9856,139,18,Resident previous RenderMeshes elapsed sum ms,3.8087
+6652.9879,139,18,Resident previous RenderMeshes max pass ms,1.9104
+6652.9901,139,18,Resident previous RenderMeshes calls,2
+6672.7249,140,18,Resident previous build elapsed sum ms,6.7029
+6672.7289,140,18,Resident previous sort elapsed sum ms,6.4145
+6672.7311,140,18,Resident previous RenderMeshes elapsed sum ms,4.5347
+6672.7335,140,18,Resident previous RenderMeshes max pass ms,2.2695
+6672.7806,140,18,Resident previous RenderMeshes calls,2
+6694.9036,141,18,Resident previous build elapsed sum ms,9.3529
+6694.9078,141,18,Resident previous sort elapsed sum ms,6.5854
+6694.9099,141,18,Resident previous RenderMeshes elapsed sum ms,4.0182
+6694.9124,141,18,Resident previous RenderMeshes max pass ms,2.013
+6694.9147,141,18,Resident previous RenderMeshes calls,2
+6715.718,142,18,Resident previous build elapsed sum ms,7.041
+6715.722,142,18,Resident previous sort elapsed sum ms,6.348
+6715.7242,142,18,Resident previous RenderMeshes elapsed sum ms,5.0782
+6715.7267,142,18,Resident previous RenderMeshes max pass ms,2.5418
+6715.7289,142,18,Resident previous RenderMeshes calls,2
+6735.1677,143,18,Resident previous build elapsed sum ms,5.8107
+6735.1717,143,18,Resident previous sort elapsed sum ms,6.4123
+6735.1739,143,18,Resident previous RenderMeshes elapsed sum ms,4.048
+6735.1764,143,18,Resident previous RenderMeshes max pass ms,2.0257
+6735.2221,143,18,Resident previous RenderMeshes calls,2
+6755.4747,144,18,Resident previous build elapsed sum ms,6.9178
+6755.4788,144,18,Resident previous sort elapsed sum ms,6.5097
+6755.4809,144,18,Resident previous RenderMeshes elapsed sum ms,4.1797
+6755.4832,144,18,Resident previous RenderMeshes max pass ms,2.0929
+6755.4853,144,18,Resident previous RenderMeshes calls,2
+6775.004,145,18,Resident previous build elapsed sum ms,6.199
+6775.0087,145,18,Resident previous sort elapsed sum ms,6.4779
+6775.0167,145,18,Resident previous RenderMeshes elapsed sum ms,3.7254
+6775.0197,145,18,Resident previous RenderMeshes max pass ms,1.8666
+6775.0219,145,18,Resident previous RenderMeshes calls,2
+6798.6826,146,18,Resident previous build elapsed sum ms,7.1711
+6798.6869,146,18,Resident previous sort elapsed sum ms,6.4459
+6798.6893,146,18,Resident previous RenderMeshes elapsed sum ms,9.5676
+6798.6917,146,18,Resident previous RenderMeshes max pass ms,4.7893
+6798.7964,146,18,Resident previous RenderMeshes calls,2
+6825.2591,147,18,Resident previous build elapsed sum ms,7.4764
+6825.2635,147,18,Resident previous sort elapsed sum ms,7.0296
+6825.2657,147,18,Resident previous RenderMeshes elapsed sum ms,9.1079
+6825.268,147,18,Resident previous RenderMeshes max pass ms,4.5562
+6825.2707,147,18,Resident previous RenderMeshes calls,2
+6846.215,148,18,Resident previous build elapsed sum ms,6.9275
+6846.219,148,18,Resident previous sort elapsed sum ms,6.7392
+6846.2212,148,18,Resident previous RenderMeshes elapsed sum ms,4.8246
+6846.2309,148,18,Resident previous RenderMeshes max pass ms,2.4169
+6846.2331,148,18,Resident previous RenderMeshes calls,2
+6866.0603,149,18,Resident previous build elapsed sum ms,6.0898
+6866.065,149,18,Resident previous sort elapsed sum ms,6.8304
+6866.0673,149,18,Resident previous RenderMeshes elapsed sum ms,4.2447
+6866.0697,149,18,Resident previous RenderMeshes max pass ms,2.1247
+6866.1229,149,18,Resident previous RenderMeshes calls,2
+6891.0125,150,18,Resident previous build elapsed sum ms,6.3434
+6891.0169,150,18,Resident previous sort elapsed sum ms,9.4773
+6891.0191,150,18,Resident previous RenderMeshes elapsed sum ms,6.8085
+6891.0214,150,18,Resident previous RenderMeshes max pass ms,4.6532
+6891.0237,150,18,Resident previous RenderMeshes calls,2
+6916.9578,151,18,Resident previous build elapsed sum ms,5.7994
+6916.9772,151,18,Resident previous sort elapsed sum ms,7.106
+6916.9799,151,18,Resident previous RenderMeshes elapsed sum ms,4.6994
+6916.9827,151,18,Resident previous RenderMeshes max pass ms,2.4481
+6916.9849,151,18,Resident previous RenderMeshes calls,2
+6935.825,152,18,Resident previous build elapsed sum ms,5.7864
+6935.8296,152,18,Resident previous sort elapsed sum ms,6.7563
+6935.8317,152,18,Resident previous RenderMeshes elapsed sum ms,4.2983
+6935.834,152,18,Resident previous RenderMeshes max pass ms,2.1561
+6935.8818,152,18,Resident previous RenderMeshes calls,2
+6956.5463,153,18,Resident previous build elapsed sum ms,7.0462
+6956.5509,153,18,Resident previous sort elapsed sum ms,6.696
+6956.5531,153,18,Resident previous RenderMeshes elapsed sum ms,4.2716
+6956.5556,153,18,Resident previous RenderMeshes max pass ms,2.1395
+6956.5579,153,18,Resident previous RenderMeshes calls,2
+6979.2115,154,18,Resident previous build elapsed sum ms,6.3697
+6979.2153,154,18,Resident previous sort elapsed sum ms,10.1344
+6979.2176,154,18,Resident previous RenderMeshes elapsed sum ms,7.419
+6979.22,154,18,Resident previous RenderMeshes max pass ms,3.7095
+6979.2222,154,18,Resident previous RenderMeshes calls,2
+7000.2743,155,18,Resident previous build elapsed sum ms,8.4785
+7000.2782,155,18,Resident previous sort elapsed sum ms,6.9802
+7000.2805,155,18,Resident previous RenderMeshes elapsed sum ms,4.1404
+7000.2827,155,18,Resident previous RenderMeshes max pass ms,2.1301
+7000.3316,155,18,Resident previous RenderMeshes calls,2
+7020.2914,156,18,Resident previous build elapsed sum ms,7.3148
+7020.2955,156,18,Resident previous sort elapsed sum ms,6.5985
+7020.2977,156,18,Resident previous RenderMeshes elapsed sum ms,4.0375
+7020.3,156,18,Resident previous RenderMeshes max pass ms,2.0189
+7020.3022,156,18,Resident previous RenderMeshes calls,2
+7039.6674,157,18,Resident previous build elapsed sum ms,5.8627
+7039.672,157,18,Resident previous sort elapsed sum ms,6.4229
+7039.6741,157,18,Resident previous RenderMeshes elapsed sum ms,4.3243
+7039.6764,157,18,Resident previous RenderMeshes max pass ms,2.1663
+7039.6785,157,18,Resident previous RenderMeshes calls,2
+7060.2563,158,18,Resident previous build elapsed sum ms,7.548
+7060.2604,158,18,Resident previous sort elapsed sum ms,6.6891
+7060.2627,158,18,Resident previous RenderMeshes elapsed sum ms,3.9165
+7060.3124,158,18,Resident previous RenderMeshes max pass ms,1.9835
+7060.3149,158,18,Resident previous RenderMeshes calls,2
+7079.8448,159,18,Resident previous build elapsed sum ms,5.6122
+7079.8502,159,18,Resident previous sort elapsed sum ms,6.5966
+7079.8606,159,18,Resident previous RenderMeshes elapsed sum ms,4.0992
+7079.8629,159,18,Resident previous RenderMeshes max pass ms,2.0538
+7079.8651,159,18,Resident previous RenderMeshes calls,2
+7101.4917,160,18,Resident previous build elapsed sum ms,7.8285
+7101.4958,160,18,Resident previous sort elapsed sum ms,6.5943
+7101.4981,160,18,Resident previous RenderMeshes elapsed sum ms,3.8186
+7101.5004,160,18,Resident previous RenderMeshes max pass ms,1.9186
+7101.5026,160,18,Resident previous RenderMeshes calls,2
+7121.2744,161,18,Resident previous build elapsed sum ms,6.9472
+7121.2784,161,18,Resident previous sort elapsed sum ms,6.4917
+7121.2806,161,18,Resident previous RenderMeshes elapsed sum ms,3.8743
+7121.3348,161,18,Resident previous RenderMeshes max pass ms,1.9453
+7121.3376,161,18,Resident previous RenderMeshes calls,2
+7140.3307,162,18,Resident previous build elapsed sum ms,5.4294
+7140.3346,162,18,Resident previous sort elapsed sum ms,6.6628
+7140.3368,162,18,Resident previous RenderMeshes elapsed sum ms,3.9862
+7140.3392,162,18,Resident previous RenderMeshes max pass ms,2.0867
+7140.3414,162,18,Resident previous RenderMeshes calls,2
+7160.539,163,18,Resident previous build elapsed sum ms,6.2762
+7160.5436,163,18,Resident previous sort elapsed sum ms,6.5999
+7160.5457,163,18,Resident previous RenderMeshes elapsed sum ms,4.3428
+7160.5482,163,18,Resident previous RenderMeshes max pass ms,2.2501
+7160.5505,163,18,Resident previous RenderMeshes calls,2
+7181.2006,164,18,Resident previous build elapsed sum ms,7.5817
+7181.2048,164,18,Resident previous sort elapsed sum ms,6.891
+7181.207,164,18,Resident previous RenderMeshes elapsed sum ms,4.2425
+7181.2536,164,18,Resident previous RenderMeshes max pass ms,2.1707
+7181.2559,164,18,Resident previous RenderMeshes calls,2
+7201.302,165,18,Resident previous build elapsed sum ms,7.8531
+7201.3062,165,18,Resident previous sort elapsed sum ms,6.5556
+7201.3083,165,18,Resident previous RenderMeshes elapsed sum ms,3.768
+7201.3107,165,18,Resident previous RenderMeshes max pass ms,1.9085
+7201.3128,165,18,Resident previous RenderMeshes calls,2
+7222.102,166,18,Resident previous build elapsed sum ms,7.4813
+7222.1058,166,18,Resident previous sort elapsed sum ms,6.5345
+7222.1079,166,18,Resident previous RenderMeshes elapsed sum ms,5.0473
+7222.1105,166,18,Resident previous RenderMeshes max pass ms,2.5237
+7222.1127,166,18,Resident previous RenderMeshes calls,2
+7241.9444,167,18,Resident previous build elapsed sum ms,6.5019
+7241.9482,167,18,Resident previous sort elapsed sum ms,6.3773
+7241.9503,167,18,Resident previous RenderMeshes elapsed sum ms,4.8515
+7241.9988,167,18,Resident previous RenderMeshes max pass ms,2.4343
+7242.0012,167,18,Resident previous RenderMeshes calls,2
+7261.8924,168,18,Resident previous build elapsed sum ms,6.9894
+7261.8971,168,18,Resident previous sort elapsed sum ms,6.3967
+7261.8992,168,18,Resident previous RenderMeshes elapsed sum ms,4.1982
+7261.9016,168,18,Resident previous RenderMeshes max pass ms,2.1037
+7261.9037,168,18,Resident previous RenderMeshes calls,2
+7281.6469,169,18,Resident previous build elapsed sum ms,6.7227
+7281.6512,169,18,Resident previous sort elapsed sum ms,6.2952
+7281.6534,169,18,Resident previous RenderMeshes elapsed sum ms,4.1298
+7281.6557,169,18,Resident previous RenderMeshes max pass ms,2.069
+7281.6578,169,18,Resident previous RenderMeshes calls,2
+7302.1579,170,18,Resident previous build elapsed sum ms,8.0545
+7302.1618,170,18,Resident previous sort elapsed sum ms,6.7973
+7302.164,170,18,Resident previous RenderMeshes elapsed sum ms,3.749
+7302.2087,170,18,Resident previous RenderMeshes max pass ms,1.8859
+7302.211,170,18,Resident previous RenderMeshes calls,2
+7321.8265,171,18,Resident previous build elapsed sum ms,6.096
+7321.8314,171,18,Resident previous sort elapsed sum ms,6.7134
+7321.8337,171,18,Resident previous RenderMeshes elapsed sum ms,4.1081
+7321.8363,171,18,Resident previous RenderMeshes max pass ms,2.0575
+7321.8384,171,18,Resident previous RenderMeshes calls,2
+7345.7755,172,18,Resident previous build elapsed sum ms,6.6494
+7345.7801,172,18,Resident previous sort elapsed sum ms,10.1204
+7345.7824,172,18,Resident previous RenderMeshes elapsed sum ms,7.8543
+7345.7849,172,18,Resident previous RenderMeshes max pass ms,3.9272
+7345.787,172,18,Resident previous RenderMeshes calls,2
+7371.6174,173,18,Resident previous build elapsed sum ms,6.0029
+7371.6214,173,18,Resident previous sort elapsed sum ms,6.5767
+7371.6235,173,18,Resident previous RenderMeshes elapsed sum ms,3.8609
+7371.6687,173,18,Resident previous RenderMeshes max pass ms,1.9322
+7371.671,173,18,Resident previous RenderMeshes calls,2
+7391.393,174,18,Resident previous build elapsed sum ms,7.3116
+7391.3975,174,18,Resident previous sort elapsed sum ms,6.4612
+7391.3997,174,18,Resident previous RenderMeshes elapsed sum ms,3.9399
+7391.402,174,18,Resident previous RenderMeshes max pass ms,1.97
+7391.4043,174,18,Resident previous RenderMeshes calls,2
+7411.9058,175,18,Resident previous build elapsed sum ms,6.2995
+7411.9098,175,18,Resident previous sort elapsed sum ms,6.6146
+7411.9118,175,18,Resident previous RenderMeshes elapsed sum ms,4.1008
+7411.9142,175,18,Resident previous RenderMeshes max pass ms,2.0603
+7411.9163,175,18,Resident previous RenderMeshes calls,2
+7436.0338,176,18,Resident previous build elapsed sum ms,6.3464
+7436.0381,176,18,Resident previous sort elapsed sum ms,10.5134
+7436.0404,176,18,Resident previous RenderMeshes elapsed sum ms,6.892
+7436.0847,176,18,Resident previous RenderMeshes max pass ms,3.446
+7436.0869,176,18,Resident previous RenderMeshes calls,2
+7456.1763,177,18,Resident previous build elapsed sum ms,7.0254
+7456.1802,177,18,Resident previous sort elapsed sum ms,6.4829
+7456.1825,177,18,Resident previous RenderMeshes elapsed sum ms,4.3088
+7456.1849,177,18,Resident previous RenderMeshes max pass ms,2.1671
+7456.1869,177,18,Resident previous RenderMeshes calls,2
+7476.3205,178,18,Resident previous build elapsed sum ms,6.4628
+7476.3273,178,18,Resident previous sort elapsed sum ms,6.4748
+7476.3303,178,18,Resident previous RenderMeshes elapsed sum ms,3.99
+7476.3333,178,18,Resident previous RenderMeshes max pass ms,2.0003
+7476.3362,178,18,Resident previous RenderMeshes calls,2
+7497.9032,179,18,Resident previous build elapsed sum ms,5.8502
+7497.907,179,18,Resident previous sort elapsed sum ms,6.7121
+7497.9092,179,18,Resident previous RenderMeshes elapsed sum ms,6.0143
+7497.9598,179,18,Resident previous RenderMeshes max pass ms,3.0108
+7497.9621,179,18,Resident previous RenderMeshes calls,2
+7517.5828,180,18,Resident previous build elapsed sum ms,5.9626
+7517.5868,180,18,Resident previous sort elapsed sum ms,6.8336
+7517.589,180,18,Resident previous RenderMeshes elapsed sum ms,4.3127
+7517.5914,180,18,Resident previous RenderMeshes max pass ms,2.1592
+7517.5936,180,18,Resident previous RenderMeshes calls,2
+7536.7853,181,18,Resident previous build elapsed sum ms,4.9727
+7536.7899,181,18,Resident previous sort elapsed sum ms,6.8496
+7536.792,181,18,Resident previous RenderMeshes elapsed sum ms,4.0255
+7536.7943,181,18,Resident previous RenderMeshes max pass ms,2.0171
+7536.7966,181,18,Resident previous RenderMeshes calls,2
+7558.2641,182,18,Resident previous build elapsed sum ms,6.858
+7558.2687,182,18,Resident previous sort elapsed sum ms,6.8736
+7558.2711,182,18,Resident previous RenderMeshes elapsed sum ms,3.9717
+7558.3529,182,18,Resident previous RenderMeshes max pass ms,1.9923
+7558.3552,182,18,Resident previous RenderMeshes calls,2
+7577.7881,183,18,Resident previous build elapsed sum ms,5.2769
+7577.792,183,18,Resident previous sort elapsed sum ms,7.0949
+7577.7941,183,18,Resident previous RenderMeshes elapsed sum ms,4.1188
+7577.7963,183,18,Resident previous RenderMeshes max pass ms,2.1426
+7577.8056,183,18,Resident previous RenderMeshes calls,2
+7600.5801,184,18,Resident previous build elapsed sum ms,6.6493
+7600.5844,184,18,Resident previous sort elapsed sum ms,7.0284
+7600.5866,184,18,Resident previous RenderMeshes elapsed sum ms,6.4427
+7600.5889,184,18,Resident previous RenderMeshes max pass ms,3.229
+7600.591,184,18,Resident previous RenderMeshes calls,2
+7620.8447,185,18,Resident previous build elapsed sum ms,6.7251
+7620.85,185,18,Resident previous sort elapsed sum ms,6.824
+7620.8524,185,18,Resident previous RenderMeshes elapsed sum ms,4.0542
+7620.8981,185,18,Resident previous RenderMeshes max pass ms,2.0339
+7620.9005,185,18,Resident previous RenderMeshes calls,2
+7639.7365,186,18,Resident previous build elapsed sum ms,5.4408
+7639.7405,186,18,Resident previous sort elapsed sum ms,6.8922
+7639.7427,186,18,Resident previous RenderMeshes elapsed sum ms,4.1752
+7639.7451,186,18,Resident previous RenderMeshes max pass ms,2.0912
+7639.7473,186,18,Resident previous RenderMeshes calls,2
+7660.5948,187,18,Resident previous build elapsed sum ms,6.6966
+7660.599,187,18,Resident previous sort elapsed sum ms,6.8027
+7660.6011,187,18,Resident previous RenderMeshes elapsed sum ms,4.4277
+7660.6035,187,18,Resident previous RenderMeshes max pass ms,2.2236
+7660.6056,187,18,Resident previous RenderMeshes calls,2
+7680.4283,188,18,Resident previous build elapsed sum ms,5.7948
+7680.4324,188,18,Resident previous sort elapsed sum ms,6.8936
+7680.4346,188,18,Resident previous RenderMeshes elapsed sum ms,4.9441
+7680.4842,188,18,Resident previous RenderMeshes max pass ms,2.5697
+7680.4864,188,18,Resident previous RenderMeshes calls,2
+7700.2509,189,18,Resident previous build elapsed sum ms,6.0681
+7700.255,189,18,Resident previous sort elapsed sum ms,6.9734
+7700.2572,189,18,Resident previous RenderMeshes elapsed sum ms,4.5653
+7700.2595,189,18,Resident previous RenderMeshes max pass ms,2.2856
+7700.2617,189,18,Resident previous RenderMeshes calls,2
+7721.8113,190,18,Resident previous build elapsed sum ms,9.273
+7721.8157,190,18,Resident previous sort elapsed sum ms,6.5869
+7721.8179,190,18,Resident previous RenderMeshes elapsed sum ms,4.5568
+7721.8204,190,18,Resident previous RenderMeshes max pass ms,2.292
+7721.8225,190,18,Resident previous RenderMeshes calls,2
+7742.0995,191,18,Resident previous build elapsed sum ms,5.7912
+7742.1035,191,18,Resident previous sort elapsed sum ms,6.7671
+7742.1057,191,18,Resident previous RenderMeshes elapsed sum ms,4.2833
+7742.2671,191,18,Resident previous RenderMeshes max pass ms,2.1429
+7742.27,191,18,Resident previous RenderMeshes calls,2
+7762.6333,192,18,Resident previous build elapsed sum ms,5.868
+7762.6377,192,18,Resident previous sort elapsed sum ms,6.5559
+7762.6398,192,18,Resident previous RenderMeshes elapsed sum ms,4.2256
+7762.6421,192,18,Resident previous RenderMeshes max pass ms,2.1183
+7762.6443,192,18,Resident previous RenderMeshes calls,2
+7783.2285,193,18,Resident previous build elapsed sum ms,7.1328
+7783.2324,193,18,Resident previous sort elapsed sum ms,6.7335
+7783.2345,193,18,Resident previous RenderMeshes elapsed sum ms,4.3715
+7783.2367,193,18,Resident previous RenderMeshes max pass ms,2.1989
+7783.2388,193,18,Resident previous RenderMeshes calls,2
+7803.9802,194,18,Resident previous build elapsed sum ms,7.5481
+7803.9843,194,18,Resident previous sort elapsed sum ms,7.3343
+7804.028,194,18,Resident previous RenderMeshes elapsed sum ms,4.4513
+7804.0308,194,18,Resident previous RenderMeshes max pass ms,2.2427
+7804.033,194,18,Resident previous RenderMeshes calls,2
+7825.0636,195,18,Resident previous build elapsed sum ms,7.3432
+7825.0678,195,18,Resident previous sort elapsed sum ms,6.6018
+7825.0701,195,18,Resident previous RenderMeshes elapsed sum ms,4.16
+7825.0725,195,18,Resident previous RenderMeshes max pass ms,2.0817
+7825.0746,195,18,Resident previous RenderMeshes calls,2
+7845.1846,196,18,Resident previous build elapsed sum ms,6.4291
+7845.1899,196,18,Resident previous sort elapsed sum ms,6.8568
+7845.1921,196,18,Resident previous RenderMeshes elapsed sum ms,4.3985
+7845.1944,196,18,Resident previous RenderMeshes max pass ms,2.2007
+7845.1966,196,18,Resident previous RenderMeshes calls,2
+7868.0041,197,18,Resident previous build elapsed sum ms,6.4676
+7868.0082,197,18,Resident previous sort elapsed sum ms,10.3355
+7868.0689,197,18,Resident previous RenderMeshes elapsed sum ms,6.9108
+7868.0716,197,18,Resident previous RenderMeshes max pass ms,3.4554
+7868.0737,197,18,Resident previous RenderMeshes calls,2
+7888.2784,198,18,Resident previous build elapsed sum ms,6.6939
+7888.2823,198,18,Resident previous sort elapsed sum ms,6.812
+7888.2846,198,18,Resident previous RenderMeshes elapsed sum ms,3.9368
+7888.2869,198,18,Resident previous RenderMeshes max pass ms,2.0217
+7888.2892,198,18,Resident previous RenderMeshes calls,2
+7909.17,199,18,Resident previous build elapsed sum ms,7.2174
+7909.1741,199,18,Resident previous sort elapsed sum ms,6.8161
+7909.1763,199,18,Resident previous RenderMeshes elapsed sum ms,4.4452
+7909.1786,199,18,Resident previous RenderMeshes max pass ms,2.2317
+7909.1807,199,18,Resident previous RenderMeshes calls,2
+7929.0524,200,18,Resident previous build elapsed sum ms,6.6979
+7929.0572,200,18,Resident previous sort elapsed sum ms,6.6658
+7929.0997,200,18,Resident previous RenderMeshes elapsed sum ms,4.0048
+7929.1024,200,18,Resident previous RenderMeshes max pass ms,2.0062
+7929.1045,200,18,Resident previous RenderMeshes calls,2
+7949.0731,201,18,Resident previous build elapsed sum ms,6.9549
+7949.0771,201,18,Resident previous sort elapsed sum ms,6.2689
+7949.0792,201,18,Resident previous RenderMeshes elapsed sum ms,4.3636
+7949.0815,201,18,Resident previous RenderMeshes max pass ms,2.1842
+7949.0837,201,18,Resident previous RenderMeshes calls,2
+7969.956,202,18,Resident previous build elapsed sum ms,6.4826
+7969.9619,202,18,Resident previous sort elapsed sum ms,6.7746
+7969.9642,202,18,Resident previous RenderMeshes elapsed sum ms,6.0641
+7969.9672,202,18,Resident previous RenderMeshes max pass ms,3.0355
+7969.9693,202,18,Resident previous RenderMeshes calls,2
+7993.6169,203,18,Resident previous build elapsed sum ms,9.073
+7993.6218,203,18,Resident previous sort elapsed sum ms,6.7595
+7993.6614,203,18,Resident previous RenderMeshes elapsed sum ms,6.0714
+7993.6639,203,18,Resident previous RenderMeshes max pass ms,3.0395
+7993.6662,203,18,Resident previous RenderMeshes calls,2
+8015.0423,204,18,Resident previous build elapsed sum ms,8.2799
+8015.0464,204,18,Resident previous sort elapsed sum ms,6.5432
+8015.0485,204,18,Resident previous RenderMeshes elapsed sum ms,5.6306
+8015.0508,204,18,Resident previous RenderMeshes max pass ms,2.8206
+8015.0528,204,18,Resident previous RenderMeshes calls,2
+8036.1604,205,18,Resident previous build elapsed sum ms,7.5562
+8036.1649,205,18,Resident previous sort elapsed sum ms,6.632
+8036.1671,205,18,Resident previous RenderMeshes elapsed sum ms,4.212
+8036.1694,205,18,Resident previous RenderMeshes max pass ms,2.1085
+8036.1715,205,18,Resident previous RenderMeshes calls,2
+8058.9059,206,18,Resident previous build elapsed sum ms,5.7131
+8058.9107,206,18,Resident previous sort elapsed sum ms,7.4271
+8058.9511,206,18,Resident previous RenderMeshes elapsed sum ms,7.6278
+8058.9536,206,18,Resident previous RenderMeshes max pass ms,3.8461
+8058.9557,206,18,Resident previous RenderMeshes calls,2
+8082.9224,207,18,Resident previous build elapsed sum ms,7.7067
+8082.9266,207,18,Resident previous sort elapsed sum ms,10.0627
+8082.9291,207,18,Resident previous RenderMeshes elapsed sum ms,6.7996
+8082.9313,207,18,Resident previous RenderMeshes max pass ms,3.3998
+8082.9334,207,18,Resident previous RenderMeshes calls,2
+8104.5433,208,18,Resident previous build elapsed sum ms,6.3844
+8104.5475,208,18,Resident previous sort elapsed sum ms,6.75
+8104.5497,208,18,Resident previous RenderMeshes elapsed sum ms,5.4452
+8104.552,208,18,Resident previous RenderMeshes max pass ms,2.725
+8104.5542,208,18,Resident previous RenderMeshes calls,2
+8125.2558,209,18,Resident previous build elapsed sum ms,6.0635
+8125.2605,209,18,Resident previous sort elapsed sum ms,6.4438
+8125.3015,209,18,Resident previous RenderMeshes elapsed sum ms,3.8439
+8125.3039,209,18,Resident previous RenderMeshes max pass ms,1.9349
+8125.3061,209,18,Resident previous RenderMeshes calls,2
+8146.4919,210,18,Resident previous build elapsed sum ms,7.6648
+8146.496,210,18,Resident previous sort elapsed sum ms,6.6898
+8146.4981,210,18,Resident previous RenderMeshes elapsed sum ms,5.1606
+8146.5003,210,18,Resident previous RenderMeshes max pass ms,2.5881
+8146.5024,210,18,Resident previous RenderMeshes calls,2
+8166.9097,211,18,Resident previous build elapsed sum ms,6.6841
+8166.9143,211,18,Resident previous sort elapsed sum ms,6.814
+8166.9165,211,18,Resident previous RenderMeshes elapsed sum ms,3.9786
+8166.9187,211,18,Resident previous RenderMeshes max pass ms,1.9995
+8166.9208,211,18,Resident previous RenderMeshes calls,2
+8188.8215,212,18,Resident previous build elapsed sum ms,7.7571
+8188.826,212,18,Resident previous sort elapsed sum ms,6.6506
+8188.8283,212,18,Resident previous RenderMeshes elapsed sum ms,3.98
+8188.8728,212,18,Resident previous RenderMeshes max pass ms,2.0446
+8188.8751,212,18,Resident previous RenderMeshes calls,2
+8211.2158,213,18,Resident previous build elapsed sum ms,7.3313
+8211.2214,213,18,Resident previous sort elapsed sum ms,6.7911
+8211.2239,213,18,Resident previous RenderMeshes elapsed sum ms,4.1738
+8211.2262,213,18,Resident previous RenderMeshes max pass ms,2.0901
+8211.2286,213,18,Resident previous RenderMeshes calls,2
+8236.634,214,18,Resident previous build elapsed sum ms,8.1061
+8236.6385,214,18,Resident previous sort elapsed sum ms,10.0958
+8236.6407,214,18,Resident previous RenderMeshes elapsed sum ms,6.7539
+8236.643,214,18,Resident previous RenderMeshes max pass ms,3.377
+8236.6453,214,18,Resident previous RenderMeshes calls,2
+8263.0598,215,18,Resident previous build elapsed sum ms,10.2776
+8263.064,215,18,Resident previous sort elapsed sum ms,10.6639
+8263.0665,215,18,Resident previous RenderMeshes elapsed sum ms,7.3084
+8263.1151,215,18,Resident previous RenderMeshes max pass ms,3.6542
+8263.1172,215,18,Resident previous RenderMeshes calls,2
+8285.9407,216,18,Resident previous build elapsed sum ms,5.9355
+8285.9451,216,18,Resident previous sort elapsed sum ms,6.9974
+8285.9475,216,18,Resident previous RenderMeshes elapsed sum ms,5.583
+8285.9498,216,18,Resident previous RenderMeshes max pass ms,2.7972
+8285.952,216,18,Resident previous RenderMeshes calls,2
+8309.5269,217,18,Resident previous build elapsed sum ms,6.1865
+8309.5315,217,18,Resident previous sort elapsed sum ms,10.3423
+8309.534,217,18,Resident previous RenderMeshes elapsed sum ms,7.752
+8309.5364,217,18,Resident previous RenderMeshes max pass ms,3.876
+8309.5386,217,18,Resident previous RenderMeshes calls,2
+8330.7234,218,18,Resident previous build elapsed sum ms,7.2297
+8330.7277,218,18,Resident previous sort elapsed sum ms,6.8268
+8330.7299,218,18,Resident previous RenderMeshes elapsed sum ms,4.2376
+8330.769,218,18,Resident previous RenderMeshes max pass ms,2.1222
+8330.7713,218,18,Resident previous RenderMeshes calls,2
+8352.9796,219,18,Resident previous build elapsed sum ms,9.4542
+8352.9845,219,18,Resident previous sort elapsed sum ms,6.8761
+8352.9868,219,18,Resident previous RenderMeshes elapsed sum ms,5.4909
+8352.9896,219,18,Resident previous RenderMeshes max pass ms,2.7618
+8352.9918,219,18,Resident previous RenderMeshes calls,2
+8375.0754,220,18,Resident previous build elapsed sum ms,8.21
+8375.0799,220,18,Resident previous sort elapsed sum ms,7.1032
+8375.0822,220,18,Resident previous RenderMeshes elapsed sum ms,4.9639
+8375.0847,220,18,Resident previous RenderMeshes max pass ms,2.4847
+8375.0869,220,18,Resident previous RenderMeshes calls,2
+8395.7884,221,18,Resident previous build elapsed sum ms,5.5598
+8395.7928,221,18,Resident previous sort elapsed sum ms,6.9353
+8395.8351,221,18,Resident previous RenderMeshes elapsed sum ms,3.8927
+8395.8474,221,18,Resident previous RenderMeshes max pass ms,1.9513
+8395.8496,221,18,Resident previous RenderMeshes calls,2
+8416.6695,222,18,Resident previous build elapsed sum ms,7.19
+8416.6734,222,18,Resident previous sort elapsed sum ms,6.7376
+8416.6756,222,18,Resident previous RenderMeshes elapsed sum ms,4.7555
+8416.6779,222,18,Resident previous RenderMeshes max pass ms,2.407
+8416.6801,222,18,Resident previous RenderMeshes calls,2
+8440.0935,223,18,Resident previous build elapsed sum ms,6.449
+8440.1134,223,18,Resident previous sort elapsed sum ms,10.3583
+8440.1162,223,18,Resident previous RenderMeshes elapsed sum ms,6.4601
+8440.119,223,18,Resident previous RenderMeshes max pass ms,3.2302
+8440.1214,223,18,Resident previous RenderMeshes calls,2
+8460.3876,224,18,Resident previous build elapsed sum ms,5.151
+8460.3917,224,18,Resident previous sort elapsed sum ms,7.0995
+8460.4344,224,18,Resident previous RenderMeshes elapsed sum ms,4.0869
+8460.4369,224,18,Resident previous RenderMeshes max pass ms,2.0448
+8460.4392,224,18,Resident previous RenderMeshes calls,2
+8483.5619,225,18,Resident previous build elapsed sum ms,6.3808
+8483.5662,225,18,Resident previous sort elapsed sum ms,10.1074
+8483.5685,225,18,Resident previous RenderMeshes elapsed sum ms,6.9482
+8483.5709,225,18,Resident previous RenderMeshes max pass ms,3.4741
+8483.573,225,18,Resident previous RenderMeshes calls,2
+8503.203,226,18,Resident previous build elapsed sum ms,5.9775
+8503.21,226,18,Resident previous sort elapsed sum ms,6.6666
+8503.2126,226,18,Resident previous RenderMeshes elapsed sum ms,3.8604
+8503.2151,226,18,Resident previous RenderMeshes max pass ms,1.9467
+8503.2173,226,18,Resident previous RenderMeshes calls,2
+8524.4716,227,18,Resident previous build elapsed sum ms,8.8167
+8524.4759,227,18,Resident previous sort elapsed sum ms,6.4031
+8524.5166,227,18,Resident previous RenderMeshes elapsed sum ms,3.7802
+8524.5191,227,18,Resident previous RenderMeshes max pass ms,1.8994
+8524.5212,227,18,Resident previous RenderMeshes calls,2
+8543.919,228,18,Resident previous build elapsed sum ms,5.5637
+8543.9246,228,18,Resident previous sort elapsed sum ms,6.7654
+8543.927,228,18,Resident previous RenderMeshes elapsed sum ms,4.0151
+8543.9293,228,18,Resident previous RenderMeshes max pass ms,2.0211
+8543.9316,228,18,Resident previous RenderMeshes calls,2
+8564.1018,229,18,Resident previous build elapsed sum ms,5.8971
+8564.106,229,18,Resident previous sort elapsed sum ms,6.5081
+8564.1083,229,18,Resident previous RenderMeshes elapsed sum ms,4.4526
+8564.1106,229,18,Resident previous RenderMeshes max pass ms,2.2461
+8564.1128,229,18,Resident previous RenderMeshes calls,2
+8585.4257,230,18,Resident previous build elapsed sum ms,5.6724
+8585.4305,230,18,Resident previous sort elapsed sum ms,6.7408
+8585.4812,230,18,Resident previous RenderMeshes elapsed sum ms,4.9616
+8585.4835,230,18,Resident previous RenderMeshes max pass ms,2.511
+8585.4857,230,18,Resident previous RenderMeshes calls,2
+8607.1745,231,18,Resident previous build elapsed sum ms,5.6039
+8607.1788,231,18,Resident previous sort elapsed sum ms,6.7656
+8607.1811,231,18,Resident previous RenderMeshes elapsed sum ms,4.2894
+8607.1835,231,18,Resident previous RenderMeshes max pass ms,2.1452
+8607.1856,231,18,Resident previous RenderMeshes calls,2
+8628.2369,232,18,Resident previous build elapsed sum ms,6.4763
+8628.2407,232,18,Resident previous sort elapsed sum ms,6.4846
+8628.2428,232,18,Resident previous RenderMeshes elapsed sum ms,4.0035
+8628.2451,232,18,Resident previous RenderMeshes max pass ms,2.0024
+8628.2473,232,18,Resident previous RenderMeshes calls,2
+8648.6659,233,18,Resident previous build elapsed sum ms,6.6079
+8648.6721,233,18,Resident previous sort elapsed sum ms,6.8552
+8648.7135,233,18,Resident previous RenderMeshes elapsed sum ms,4.5418
+8648.7158,233,18,Resident previous RenderMeshes max pass ms,2.2723
+8648.7179,233,18,Resident previous RenderMeshes calls,2
+8667.9228,234,18,Resident previous build elapsed sum ms,5.5223
+8667.927,234,18,Resident previous sort elapsed sum ms,6.4543
+8667.9292,234,18,Resident previous RenderMeshes elapsed sum ms,3.9679
+8667.9319,234,18,Resident previous RenderMeshes max pass ms,1.9941
+8667.934,234,18,Resident previous RenderMeshes calls,2
+8687.9486,235,18,Resident previous build elapsed sum ms,6.8634
+8687.9532,235,18,Resident previous sort elapsed sum ms,6.6511
+8687.9555,235,18,Resident previous RenderMeshes elapsed sum ms,4.3251
+8687.9579,235,18,Resident previous RenderMeshes max pass ms,2.1795
+8687.9599,235,18,Resident previous RenderMeshes calls,2
+8708.146,236,18,Resident previous build elapsed sum ms,6.0866
+8708.1577,236,18,Resident previous sort elapsed sum ms,6.8027
+8708.3773,236,18,Resident previous RenderMeshes elapsed sum ms,4.6204
+8708.3804,236,18,Resident previous RenderMeshes max pass ms,2.4134
+8708.3829,236,18,Resident previous RenderMeshes calls,2
+8729.964,237,18,Resident previous build elapsed sum ms,8.3304
+8729.9684,237,18,Resident previous sort elapsed sum ms,6.8558
+8729.9707,237,18,Resident previous RenderMeshes elapsed sum ms,4.3806
+8729.9728,237,18,Resident previous RenderMeshes max pass ms,2.1905
+8729.975,237,18,Resident previous RenderMeshes calls,2
+8750.0678,238,18,Resident previous build elapsed sum ms,5.5694
+8750.0722,238,18,Resident previous sort elapsed sum ms,6.8589
+8750.0744,238,18,Resident previous RenderMeshes elapsed sum ms,4.5766
+8750.0768,238,18,Resident previous RenderMeshes max pass ms,2.3592
+8750.079,238,18,Resident previous RenderMeshes calls,2
+8769.5426,239,18,Resident previous build elapsed sum ms,5.8643
+8769.5474,239,18,Resident previous sort elapsed sum ms,7.0176
+8769.6486,239,18,Resident previous RenderMeshes elapsed sum ms,4.5976
+8769.6514,239,18,Resident previous RenderMeshes max pass ms,2.3843
+8769.6538,239,18,Resident previous RenderMeshes calls,2
+8789.4444,240,18,Resident previous build elapsed sum ms,6.9514
+8789.4484,240,18,Resident previous sort elapsed sum ms,6.7172
+8789.4507,240,18,Resident previous RenderMeshes elapsed sum ms,4.105
+8789.4529,240,18,Resident previous RenderMeshes max pass ms,2.0716
+8789.4551,240,18,Resident previous RenderMeshes calls,2
+8812.0645,241,18,Resident previous build elapsed sum ms,6.4132
+8812.0687,241,18,Resident previous sort elapsed sum ms,6.6366
+8812.0709,241,18,Resident previous RenderMeshes elapsed sum ms,7.0181
+8812.0732,241,18,Resident previous RenderMeshes max pass ms,3.5167
+8812.0754,241,18,Resident previous RenderMeshes calls,2
+8831.9086,242,18,Resident previous build elapsed sum ms,6.726
+8831.9143,242,18,Resident previous sort elapsed sum ms,6.6823
+8831.9614,242,18,Resident previous RenderMeshes elapsed sum ms,4.2774
+8831.9637,242,18,Resident previous RenderMeshes max pass ms,2.1442
+8831.9658,242,18,Resident previous RenderMeshes calls,2
+8851.5965,243,18,Resident previous build elapsed sum ms,6.5577
+8851.6004,243,18,Resident previous sort elapsed sum ms,6.6185
+8851.6025,243,18,Resident previous RenderMeshes elapsed sum ms,4.1762
+8851.605,243,18,Resident previous RenderMeshes max pass ms,2.0916
+8851.6073,243,18,Resident previous RenderMeshes calls,2
+8872.0787,244,18,Resident previous build elapsed sum ms,6.6789
+8872.0832,244,18,Resident previous sort elapsed sum ms,6.7933
+8872.0854,244,18,Resident previous RenderMeshes elapsed sum ms,4.4504
+8872.0878,244,18,Resident previous RenderMeshes max pass ms,2.2299
+8872.0899,244,18,Resident previous RenderMeshes calls,2
+8892.1721,245,18,Resident previous build elapsed sum ms,6.8206
+8892.1764,245,18,Resident previous sort elapsed sum ms,6.6252
+8892.2252,245,18,Resident previous RenderMeshes elapsed sum ms,3.7193
+8892.2276,245,18,Resident previous RenderMeshes max pass ms,1.8727
+8892.2297,245,18,Resident previous RenderMeshes calls,2
+8912.6824,246,18,Resident previous build elapsed sum ms,5.7075
+8912.7107,246,18,Resident previous sort elapsed sum ms,6.6172
+8912.7134,246,18,Resident previous RenderMeshes elapsed sum ms,6.2163
+8912.7159,246,18,Resident previous RenderMeshes max pass ms,3.112
+8912.7182,246,18,Resident previous RenderMeshes calls,2
+8932.7609,247,18,Resident previous build elapsed sum ms,5.8351
+8932.7653,247,18,Resident previous sort elapsed sum ms,6.5525
+8932.7675,247,18,Resident previous RenderMeshes elapsed sum ms,3.823
+8932.7698,247,18,Resident previous RenderMeshes max pass ms,1.9235
+8932.7722,247,18,Resident previous RenderMeshes calls,2
+8954.6981,248,18,Resident previous build elapsed sum ms,5.901
+8954.7628,248,18,Resident previous sort elapsed sum ms,6.5567
+8954.7653,248,18,Resident previous RenderMeshes elapsed sum ms,4.0771
+8954.7678,248,18,Resident previous RenderMeshes max pass ms,2.0572
+8954.7698,248,18,Resident previous RenderMeshes calls,2
+8978.4102,249,18,Resident previous build elapsed sum ms,7.1036
+8978.4145,249,18,Resident previous sort elapsed sum ms,10.07
+8978.4168,249,18,Resident previous RenderMeshes elapsed sum ms,7.7084
+8978.4192,249,18,Resident previous RenderMeshes max pass ms,3.8542
+8978.4214,249,18,Resident previous RenderMeshes calls,2
+8997.9141,250,18,Resident previous build elapsed sum ms,5.449
+8997.9193,250,18,Resident previous sort elapsed sum ms,6.7836
+8997.9217,250,18,Resident previous RenderMeshes elapsed sum ms,3.9907
+8997.924,250,18,Resident previous RenderMeshes max pass ms,2.0654
+8997.9262,250,18,Resident previous RenderMeshes calls,2
+9022.1605,251,18,Resident previous build elapsed sum ms,8.874
+9022.2075,251,18,Resident previous sort elapsed sum ms,10.1666
+9022.2099,251,18,Resident previous RenderMeshes elapsed sum ms,6.5268
+9022.2122,251,18,Resident previous RenderMeshes max pass ms,3.2634
+9022.2143,251,18,Resident previous RenderMeshes calls,2
+9041.4727,252,18,Resident previous build elapsed sum ms,5.6682
+9041.4767,252,18,Resident previous sort elapsed sum ms,6.7704
+9041.479,252,18,Resident previous RenderMeshes elapsed sum ms,3.8398
+9041.4813,252,18,Resident previous RenderMeshes max pass ms,1.9837
+9041.4839,252,18,Resident previous RenderMeshes calls,2
+9061.4244,253,18,Resident previous build elapsed sum ms,6.2623
+9061.4286,253,18,Resident previous sort elapsed sum ms,6.9006
+9061.4308,253,18,Resident previous RenderMeshes elapsed sum ms,3.9857
+9061.4333,253,18,Resident previous RenderMeshes max pass ms,1.9936
+9061.4354,253,18,Resident previous RenderMeshes calls,2
+9083.4529,254,18,Resident previous build elapsed sum ms,7.1328
+9083.5117,254,18,Resident previous sort elapsed sum ms,8.832
+9083.5141,254,18,Resident previous RenderMeshes elapsed sum ms,5.3993
+9083.5166,254,18,Resident previous RenderMeshes max pass ms,2.7906
+9083.5189,254,18,Resident previous RenderMeshes calls,2
+9104.5396,255,18,Resident previous build elapsed sum ms,7.0277
+9104.5454,255,18,Resident previous sort elapsed sum ms,6.6264
+9104.548,255,18,Resident previous RenderMeshes elapsed sum ms,4.8077
+9104.5505,255,18,Resident previous RenderMeshes max pass ms,2.4056
+9104.553,255,18,Resident previous RenderMeshes calls,2
+9126.1933,256,18,Resident previous build elapsed sum ms,7.5246
+9126.1982,256,18,Resident previous sort elapsed sum ms,6.8551
+9126.2003,256,18,Resident previous RenderMeshes elapsed sum ms,4.5378
+9126.2027,256,18,Resident previous RenderMeshes max pass ms,2.2737
+9126.2047,256,18,Resident previous RenderMeshes calls,2
+9146.6411,257,18,Resident previous build elapsed sum ms,6.0515
+9146.6874,257,18,Resident previous sort elapsed sum ms,6.9339
+9146.6899,257,18,Resident previous RenderMeshes elapsed sum ms,5.2536
+9146.6923,257,18,Resident previous RenderMeshes max pass ms,2.6344
+9146.6945,257,18,Resident previous RenderMeshes calls,2
+9166.152,258,18,Resident previous build elapsed sum ms,6.0044
+9166.1561,258,18,Resident previous sort elapsed sum ms,6.7098
+9166.1582,258,18,Resident previous RenderMeshes elapsed sum ms,3.9626
+9166.1605,258,18,Resident previous RenderMeshes max pass ms,1.9853
+9166.1627,258,18,Resident previous RenderMeshes calls,2
+9187.3339,259,18,Resident previous build elapsed sum ms,8.4732
+9187.3382,259,18,Resident previous sort elapsed sum ms,6.6002
+9187.3405,259,18,Resident previous RenderMeshes elapsed sum ms,4.062
+9187.3429,259,18,Resident previous RenderMeshes max pass ms,2.0354
+9187.345,259,18,Resident previous RenderMeshes calls,2
+9207.8271,260,18,Resident previous build elapsed sum ms,5.2933
+9207.8793,260,18,Resident previous sort elapsed sum ms,7.0987
+9207.8816,260,18,Resident previous RenderMeshes elapsed sum ms,4.6397
+9207.8837,260,18,Resident previous RenderMeshes max pass ms,2.3244
+9207.886,260,18,Resident previous RenderMeshes calls,2
+9229.6174,261,18,Resident previous build elapsed sum ms,5.5332
+9229.6217,261,18,Resident previous sort elapsed sum ms,6.5586
+9229.6239,261,18,Resident previous RenderMeshes elapsed sum ms,4.0365
+9229.6263,261,18,Resident previous RenderMeshes max pass ms,2.0209
+9229.6284,261,18,Resident previous RenderMeshes calls,2
+9249.6464,262,18,Resident previous build elapsed sum ms,5.5887
+9249.6506,262,18,Resident previous sort elapsed sum ms,6.3802
+9249.6528,262,18,Resident previous RenderMeshes elapsed sum ms,5.6451
+9249.655,262,18,Resident previous RenderMeshes max pass ms,2.8232
+9249.6572,262,18,Resident previous RenderMeshes calls,2
+9269.9102,263,18,Resident previous build elapsed sum ms,5.9
+9269.9636,263,18,Resident previous sort elapsed sum ms,6.997
+9269.966,263,18,Resident previous RenderMeshes elapsed sum ms,5.7865
+9269.9686,263,18,Resident previous RenderMeshes max pass ms,2.8961
+9269.9707,263,18,Resident previous RenderMeshes calls,2
+9290.656,264,18,Resident previous build elapsed sum ms,6.3052
+9290.6601,264,18,Resident previous sort elapsed sum ms,6.6072
+9290.6622,264,18,Resident previous RenderMeshes elapsed sum ms,4.0369
+9290.6645,264,18,Resident previous RenderMeshes max pass ms,2.0266
+9290.6666,264,18,Resident previous RenderMeshes calls,2
+9311.634,265,18,Resident previous build elapsed sum ms,6.0744
+9311.6382,265,18,Resident previous sort elapsed sum ms,6.5645
+9311.6403,265,18,Resident previous RenderMeshes elapsed sum ms,5.4866
+9311.6425,265,18,Resident previous RenderMeshes max pass ms,2.7505
+9311.6446,265,18,Resident previous RenderMeshes calls,2
+9333.8848,266,18,Resident previous build elapsed sum ms,7.5488
+9333.9405,266,18,Resident previous sort elapsed sum ms,6.6396
+9333.9427,266,18,Resident previous RenderMeshes elapsed sum ms,4.4488
+9333.9451,266,18,Resident previous RenderMeshes max pass ms,2.2283
+9333.9473,266,18,Resident previous RenderMeshes calls,2
+9355.1062,267,18,Resident previous build elapsed sum ms,7.4623
+9355.1112,267,18,Resident previous sort elapsed sum ms,6.7576
+9355.1139,267,18,Resident previous RenderMeshes elapsed sum ms,4.4425
+9355.1163,267,18,Resident previous RenderMeshes max pass ms,2.2224
+9355.1184,267,18,Resident previous RenderMeshes calls,2
+9378.9556,268,18,Resident previous build elapsed sum ms,8.6302
+9378.9601,268,18,Resident previous sort elapsed sum ms,7.0422
+9378.9625,268,18,Resident previous RenderMeshes elapsed sum ms,6.2526
+9378.9649,268,18,Resident previous RenderMeshes max pass ms,3.1301
+9378.9676,268,18,Resident previous RenderMeshes calls,2
+9405.1794,269,18,Resident previous build elapsed sum ms,11.1243
+9405.2632,269,18,Resident previous sort elapsed sum ms,6.9871
+9405.2658,269,18,Resident previous RenderMeshes elapsed sum ms,6.8388
+9405.2684,269,18,Resident previous RenderMeshes max pass ms,3.4583
+9405.2707,269,18,Resident previous RenderMeshes calls,2
+9430.9003,270,18,Resident previous build elapsed sum ms,12.4493
+9430.9045,270,18,Resident previous sort elapsed sum ms,7.0551
+9430.9069,270,18,Resident previous RenderMeshes elapsed sum ms,5.9223
+9430.9094,270,18,Resident previous RenderMeshes max pass ms,2.9637
+9430.9115,270,18,Resident previous RenderMeshes calls,2
+9454.6003,271,18,Resident previous build elapsed sum ms,8.8259
+9454.6062,271,18,Resident previous sort elapsed sum ms,6.9658
+9454.6086,271,18,Resident previous RenderMeshes elapsed sum ms,4.4796
+9454.611,271,18,Resident previous RenderMeshes max pass ms,2.2432
+9454.6134,271,18,Resident previous RenderMeshes calls,2
+9482.5225,272,18,Resident previous build elapsed sum ms,10.9608
+9482.5958,272,18,Resident previous sort elapsed sum ms,10.83
+9482.5985,272,18,Resident previous RenderMeshes elapsed sum ms,7.4595
+9482.6015,272,18,Resident previous RenderMeshes max pass ms,3.7298
+9482.6038,272,18,Resident previous RenderMeshes calls,2
+9507.0286,273,18,Resident previous build elapsed sum ms,8.7339
+9507.0334,273,18,Resident previous sort elapsed sum ms,6.8786
+9507.0357,273,18,Resident previous RenderMeshes elapsed sum ms,6.1462
+9507.0379,273,18,Resident previous RenderMeshes max pass ms,3.0789
+9507.0401,273,18,Resident previous RenderMeshes calls,2
+9529.4786,274,18,Resident previous build elapsed sum ms,7.4784
+9529.4828,274,18,Resident previous sort elapsed sum ms,7.0381
+9529.4851,274,18,Resident previous RenderMeshes elapsed sum ms,4.0567
+9529.4874,274,18,Resident previous RenderMeshes max pass ms,2.0337
+9529.4895,274,18,Resident previous RenderMeshes calls,2
+9549.0867,275,18,Resident previous build elapsed sum ms,5.6593
+9549.136,275,18,Resident previous sort elapsed sum ms,6.9111
+9549.1388,275,18,Resident previous RenderMeshes elapsed sum ms,4.4344
+9549.1411,275,18,Resident previous RenderMeshes max pass ms,2.2234
+9549.1433,275,18,Resident previous RenderMeshes calls,2
+9568.5471,276,18,Resident previous build elapsed sum ms,5.7226
+9568.5515,276,18,Resident previous sort elapsed sum ms,6.9377
+9568.5538,276,18,Resident previous RenderMeshes elapsed sum ms,3.835
+9568.5562,276,18,Resident previous RenderMeshes max pass ms,1.9686
+9568.5589,276,18,Resident previous RenderMeshes calls,2
+9589.529,277,18,Resident previous build elapsed sum ms,7.3895
+9589.5336,277,18,Resident previous sort elapsed sum ms,6.9395
+9589.5359,277,18,Resident previous RenderMeshes elapsed sum ms,5.5592
+9589.5382,277,18,Resident previous RenderMeshes max pass ms,2.7859
+9589.5404,277,18,Resident previous RenderMeshes calls,2
+9609.0997,278,18,Resident previous build elapsed sum ms,6.0224
+9609.1498,278,18,Resident previous sort elapsed sum ms,7.0935
+9609.1524,278,18,Resident previous RenderMeshes elapsed sum ms,4.3659
+9609.1548,278,18,Resident previous RenderMeshes max pass ms,2.2602
+9609.1577,278,18,Resident previous RenderMeshes calls,2
+9629.5368,279,18,Resident previous build elapsed sum ms,7.8046
+9629.5407,279,18,Resident previous sort elapsed sum ms,6.943
+9629.5431,279,18,Resident previous RenderMeshes elapsed sum ms,4.1446
+9629.5454,279,18,Resident previous RenderMeshes max pass ms,2.0726
+9629.5474,279,18,Resident previous RenderMeshes calls,2
+9649.1906,280,18,Resident previous build elapsed sum ms,6.2857
+9649.1947,280,18,Resident previous sort elapsed sum ms,6.7068
+9649.1968,280,18,Resident previous RenderMeshes elapsed sum ms,4.1195
+9649.199,280,18,Resident previous RenderMeshes max pass ms,2.0658
+9649.2012,280,18,Resident previous RenderMeshes calls,2
+9668.5453,281,18,Resident previous build elapsed sum ms,5.4284
+9668.5964,281,18,Resident previous sort elapsed sum ms,6.8677
+9668.5986,281,18,Resident previous RenderMeshes elapsed sum ms,3.9581
+9668.6011,281,18,Resident previous RenderMeshes max pass ms,1.9821
+9668.6032,281,18,Resident previous RenderMeshes calls,2
+9691.889,282,18,Resident previous build elapsed sum ms,6.6669
+9691.893,282,18,Resident previous sort elapsed sum ms,10.434
+9691.8953,282,18,Resident previous RenderMeshes elapsed sum ms,6.8651
+9691.8977,282,18,Resident previous RenderMeshes max pass ms,3.4326
+9691.8998,282,18,Resident previous RenderMeshes calls,2
+9712.8897,283,18,Resident previous build elapsed sum ms,7.1399
+9712.8945,283,18,Resident previous sort elapsed sum ms,7.1921
+9712.8965,283,18,Resident previous RenderMeshes elapsed sum ms,4.2993
+9712.899,283,18,Resident previous RenderMeshes max pass ms,2.1575
+9712.9013,283,18,Resident previous RenderMeshes calls,2
+9736.282,284,18,Resident previous build elapsed sum ms,10.8558
+9736.3207,284,18,Resident previous sort elapsed sum ms,6.8755
+9736.3231,284,18,Resident previous RenderMeshes elapsed sum ms,5.1786
+9736.3257,284,18,Resident previous RenderMeshes max pass ms,2.5902
+9736.3278,284,18,Resident previous RenderMeshes calls,2
+9757.3915,285,18,Resident previous build elapsed sum ms,6.2573
+9757.3998,285,18,Resident previous sort elapsed sum ms,6.7976
+9757.4033,285,18,Resident previous RenderMeshes elapsed sum ms,4.0041
+9757.4141,285,18,Resident previous RenderMeshes max pass ms,2.0088
+9757.417,285,18,Resident previous RenderMeshes calls,2
+9777.6476,286,18,Resident previous build elapsed sum ms,5.5781
+9777.6519,286,18,Resident previous sort elapsed sum ms,6.7565
+9777.6546,286,18,Resident previous RenderMeshes elapsed sum ms,5.0334
+9777.657,286,18,Resident previous RenderMeshes max pass ms,2.5261
+9777.6592,286,18,Resident previous RenderMeshes calls,2
+9797.3978,287,18,Resident previous build elapsed sum ms,6.4033
+9797.5067,287,18,Resident previous sort elapsed sum ms,6.592
+9797.509,287,18,Resident previous RenderMeshes elapsed sum ms,4.671
+9797.5115,287,18,Resident previous RenderMeshes max pass ms,2.3471
+9797.5137,287,18,Resident previous RenderMeshes calls,2
+9817.9321,288,18,Resident previous build elapsed sum ms,7.4335
+9817.9366,288,18,Resident previous sort elapsed sum ms,6.8427
+9817.9387,288,18,Resident previous RenderMeshes elapsed sum ms,4.2163
+9817.9411,288,18,Resident previous RenderMeshes max pass ms,2.1124
+9817.9433,288,18,Resident previous RenderMeshes calls,2
+9841.9375,289,18,Resident previous build elapsed sum ms,7.8682
+9841.9415,289,18,Resident previous sort elapsed sum ms,7.3104
+9841.9437,289,18,Resident previous RenderMeshes elapsed sum ms,6.7401
+9841.9459,289,18,Resident previous RenderMeshes max pass ms,3.4867
+9841.948,289,18,Resident previous RenderMeshes calls,2
+9865.7725,290,18,Resident previous build elapsed sum ms,6.5031
+9865.7775,290,18,Resident previous sort elapsed sum ms,10.295
+9865.7799,290,18,Resident previous RenderMeshes elapsed sum ms,6.7087
+9865.7824,290,18,Resident previous RenderMeshes max pass ms,3.3544
+9865.7845,290,18,Resident previous RenderMeshes calls,2
+9886.4486,291,18,Resident previous build elapsed sum ms,6.8809
+9886.4528,291,18,Resident previous sort elapsed sum ms,6.8752
+9886.4549,291,18,Resident previous RenderMeshes elapsed sum ms,4.8619
+9886.4572,291,18,Resident previous RenderMeshes max pass ms,2.4388
+9886.4593,291,18,Resident previous RenderMeshes calls,2
+9906.1226,292,18,Resident previous build elapsed sum ms,5.8734
+9906.1379,292,18,Resident previous sort elapsed sum ms,6.7824
+9906.1401,292,18,Resident previous RenderMeshes elapsed sum ms,4.4372
+9906.1424,292,18,Resident previous RenderMeshes max pass ms,2.2221
+9906.1445,292,18,Resident previous RenderMeshes calls,2
+9929.6111,293,18,Resident previous build elapsed sum ms,6.761
+9929.6155,293,18,Resident previous sort elapsed sum ms,10.2509
+9929.6178,293,18,Resident previous RenderMeshes elapsed sum ms,6.7879
+9929.6201,293,18,Resident previous RenderMeshes max pass ms,3.394
+9929.6224,293,18,Resident previous RenderMeshes calls,2
+9952.4164,294,18,Resident previous build elapsed sum ms,6.9317
+9952.4204,294,18,Resident previous sort elapsed sum ms,9.9214
+9952.4225,294,18,Resident previous RenderMeshes elapsed sum ms,6.5116
+9952.4248,294,18,Resident previous RenderMeshes max pass ms,3.2558
+9952.427,294,18,Resident previous RenderMeshes calls,2
+9972.0774,295,18,Resident previous build elapsed sum ms,5.5572
+9972.0813,295,18,Resident previous sort elapsed sum ms,6.8875
+9972.0836,295,18,Resident previous RenderMeshes elapsed sum ms,4.1315
+9972.0858,295,18,Resident previous RenderMeshes max pass ms,2.1159
+9972.0879,295,18,Resident previous RenderMeshes calls,2
+9991.8067,296,18,Resident previous build elapsed sum ms,6.3149
+9991.8109,296,18,Resident previous sort elapsed sum ms,6.7603
+9991.813,296,18,Resident previous RenderMeshes elapsed sum ms,3.8988
+9991.8153,296,18,Resident previous RenderMeshes max pass ms,1.9537
+9991.8175,296,18,Resident previous RenderMeshes calls,2
+10015.0815,297,18,Resident previous build elapsed sum ms,7.0344
+10015.0854,297,18,Resident previous sort elapsed sum ms,10.3692
+10015.0876,297,18,Resident previous RenderMeshes elapsed sum ms,6.8562
+10015.09,297,18,Resident previous RenderMeshes max pass ms,3.4488
+10015.0922,297,18,Resident previous RenderMeshes calls,2
+10035.2646,298,18,Resident previous build elapsed sum ms,5.8618
+10035.2687,298,18,Resident previous sort elapsed sum ms,6.8082
+10035.2709,298,18,Resident previous RenderMeshes elapsed sum ms,3.972
+10035.2732,298,18,Resident previous RenderMeshes max pass ms,1.9906
+10035.2754,298,18,Resident previous RenderMeshes calls,2
+10055.1449,299,18,Resident previous build elapsed sum ms,5.958
+10055.149,299,18,Resident previous sort elapsed sum ms,6.5347
+10055.1512,299,18,Resident previous RenderMeshes elapsed sum ms,3.8344
+10055.1536,299,18,Resident previous RenderMeshes max pass ms,1.9186
+10055.1558,299,18,Resident previous RenderMeshes calls,2
+10075.4446,300,18,Resident previous build elapsed sum ms,5.4834
+10075.449,300,18,Resident previous sort elapsed sum ms,6.7379
+10075.4513,300,18,Resident previous RenderMeshes elapsed sum ms,4.7703
+10075.4536,300,18,Resident previous RenderMeshes max pass ms,2.4418
+10075.4557,300,18,Resident previous RenderMeshes calls,2
+10095.1156,301,18,Resident previous build elapsed sum ms,6.577
+10095.1193,301,18,Resident previous sort elapsed sum ms,6.7076
+10095.1215,301,18,Resident previous RenderMeshes elapsed sum ms,3.8574
+10095.1238,301,18,Resident previous RenderMeshes max pass ms,1.9295
+10095.1258,301,18,Resident previous RenderMeshes calls,2
+10114.6783,302,18,Resident previous build elapsed sum ms,6.2829
+10114.6828,302,18,Resident previous sort elapsed sum ms,6.5825
+10114.6849,302,18,Resident previous RenderMeshes elapsed sum ms,3.9984
+10114.6872,302,18,Resident previous RenderMeshes max pass ms,2.0053
+10114.6894,302,18,Resident previous RenderMeshes calls,2
+10137.307,303,18,Resident previous build elapsed sum ms,5.7667
+10137.3111,303,18,Resident previous sort elapsed sum ms,8.4508
+10137.3134,303,18,Resident previous RenderMeshes elapsed sum ms,6.0206
+10137.3158,303,18,Resident previous RenderMeshes max pass ms,3.3818
+10137.3179,303,18,Resident previous RenderMeshes calls,2
+10158.9468,304,18,Resident previous build elapsed sum ms,5.9703
+10158.9511,304,18,Resident previous sort elapsed sum ms,6.6859
+10158.9535,304,18,Resident previous RenderMeshes elapsed sum ms,4.1683
+10158.9558,304,18,Resident previous RenderMeshes max pass ms,2.1034
+10158.9581,304,18,Resident previous RenderMeshes calls,2
+10181.1425,305,18,Resident previous build elapsed sum ms,8.4372
+10181.1462,305,18,Resident previous sort elapsed sum ms,7.0942
+10181.1483,305,18,Resident previous RenderMeshes elapsed sum ms,4.8025
+10181.1507,305,18,Resident previous RenderMeshes max pass ms,2.4035
+10181.1528,305,18,Resident previous RenderMeshes calls,2
+10202.5643,306,18,Resident previous build elapsed sum ms,5.9397
+10202.5689,306,18,Resident previous sort elapsed sum ms,8.6668
+10202.5712,306,18,Resident previous RenderMeshes elapsed sum ms,3.9185
+10202.5736,306,18,Resident previous RenderMeshes max pass ms,1.9653
+10202.5758,306,18,Resident previous RenderMeshes calls,2
+10223.4352,307,18,Resident previous build elapsed sum ms,7.3046
+10223.4395,307,18,Resident previous sort elapsed sum ms,6.7769
+10223.4417,307,18,Resident previous RenderMeshes elapsed sum ms,4.502
+10223.4441,307,18,Resident previous RenderMeshes max pass ms,2.2672
+10223.4463,307,18,Resident previous RenderMeshes calls,2
+10244.7147,308,18,Resident previous build elapsed sum ms,9.4505
+10244.7254,308,18,Resident previous sort elapsed sum ms,6.9706
+10244.7276,308,18,Resident previous RenderMeshes elapsed sum ms,4.0687
+10244.7297,308,18,Resident previous RenderMeshes max pass ms,2.1106
+10244.7319,308,18,Resident previous RenderMeshes calls,2
+10265.6166,309,18,Resident previous build elapsed sum ms,5.4869
+10265.6205,309,18,Resident previous sort elapsed sum ms,6.328
+10265.6226,309,18,Resident previous RenderMeshes elapsed sum ms,4.7718
+10265.6249,309,18,Resident previous RenderMeshes max pass ms,2.3867
+10265.6271,309,18,Resident previous RenderMeshes calls,2
+10286.2891,310,18,Resident previous build elapsed sum ms,5.9917
+10286.2929,310,18,Resident previous sort elapsed sum ms,6.8708
+10286.2952,310,18,Resident previous RenderMeshes elapsed sum ms,4.0503
+10286.2975,310,18,Resident previous RenderMeshes max pass ms,2.0256
+10286.2995,310,18,Resident previous RenderMeshes calls,2
+10307.2639,311,18,Resident previous build elapsed sum ms,6.6132
+10307.2685,311,18,Resident previous sort elapsed sum ms,6.8837
+10307.2706,311,18,Resident previous RenderMeshes elapsed sum ms,5.3162
+10307.273,311,18,Resident previous RenderMeshes max pass ms,2.6612
+10307.2752,311,18,Resident previous RenderMeshes calls,2
+10327.3549,312,18,Resident previous build elapsed sum ms,5.5603
+10327.3598,312,18,Resident previous sort elapsed sum ms,6.589
+10327.3619,312,18,Resident previous RenderMeshes elapsed sum ms,4.2029
+10327.3643,312,18,Resident previous RenderMeshes max pass ms,2.1018
+10327.3665,312,18,Resident previous RenderMeshes calls,2
+10348.1459,313,18,Resident previous build elapsed sum ms,7.2969
+10348.15,313,18,Resident previous sort elapsed sum ms,6.8751
+10348.1524,313,18,Resident previous RenderMeshes elapsed sum ms,4.5104
+10348.1546,313,18,Resident previous RenderMeshes max pass ms,2.274
+10348.157,313,18,Resident previous RenderMeshes calls,2
+10371.697,314,18,Resident previous build elapsed sum ms,6.7577
+10371.7009,314,18,Resident previous sort elapsed sum ms,10.1546
+10371.703,314,18,Resident previous RenderMeshes elapsed sum ms,7.5412
+10371.7057,314,18,Resident previous RenderMeshes max pass ms,3.7706
+10371.7078,314,18,Resident previous RenderMeshes calls,2
+10395.5701,315,18,Resident previous build elapsed sum ms,9.4972
+10395.5743,315,18,Resident previous sort elapsed sum ms,6.9197
+10395.5764,315,18,Resident previous RenderMeshes elapsed sum ms,7.2227
+10395.5792,315,18,Resident previous RenderMeshes max pass ms,3.6129
+10395.5813,315,18,Resident previous RenderMeshes calls,2
+10415.4885,316,18,Resident previous build elapsed sum ms,5.7464
+10415.4925,316,18,Resident previous sort elapsed sum ms,6.5652
+10415.4946,316,18,Resident previous RenderMeshes elapsed sum ms,4.8471
+10415.4968,316,18,Resident previous RenderMeshes max pass ms,2.4236
+10415.4989,316,18,Resident previous RenderMeshes calls,2
+10435.7946,317,18,Resident previous build elapsed sum ms,5.8559
+10435.8068,317,18,Resident previous sort elapsed sum ms,6.7111
+10435.8094,317,18,Resident previous RenderMeshes elapsed sum ms,4.2511
+10435.812,317,18,Resident previous RenderMeshes max pass ms,2.1276
+10435.8142,317,18,Resident previous RenderMeshes calls,2
+10458.9555,318,18,Resident previous build elapsed sum ms,7.0483
+10458.9596,318,18,Resident previous sort elapsed sum ms,9.9336
+10458.9619,318,18,Resident previous RenderMeshes elapsed sum ms,6.4134
+10458.9644,318,18,Resident previous RenderMeshes max pass ms,3.2067
+10458.9665,318,18,Resident previous RenderMeshes calls,2
+10478.875,319,18,Resident previous build elapsed sum ms,5.3205
+10478.8789,319,18,Resident previous sort elapsed sum ms,7.0565
+10478.8814,319,18,Resident previous RenderMeshes elapsed sum ms,4.9501
+10478.8836,319,18,Resident previous RenderMeshes max pass ms,2.5538
+10478.8858,319,18,Resident previous RenderMeshes calls,2
+10498.3165,320,18,Resident previous build elapsed sum ms,5.5626
+10498.3211,320,18,Resident previous sort elapsed sum ms,6.8046
+10498.3234,320,18,Resident previous RenderMeshes elapsed sum ms,4.3275
+10498.3257,320,18,Resident previous RenderMeshes max pass ms,2.1679
+10498.3277,320,18,Resident previous RenderMeshes calls,2
+10521.7274,321,18,Resident previous build elapsed sum ms,6.7714
+10521.7381,321,18,Resident previous sort elapsed sum ms,10.5878
+10521.7407,321,18,Resident previous RenderMeshes elapsed sum ms,6.528
+10521.7433,321,18,Resident previous RenderMeshes max pass ms,3.264
+10521.7455,321,18,Resident previous RenderMeshes calls,2
+10542.3532,322,18,Resident previous build elapsed sum ms,6.6067
+10542.3576,322,18,Resident previous sort elapsed sum ms,7.195
+10542.3599,322,18,Resident previous RenderMeshes elapsed sum ms,4.7762
+10542.3624,322,18,Resident previous RenderMeshes max pass ms,2.3973
+10542.3645,322,18,Resident previous RenderMeshes calls,2
+10563.6072,323,18,Resident previous build elapsed sum ms,5.9468
+10563.6119,323,18,Resident previous sort elapsed sum ms,6.8351
+10563.614,323,18,Resident previous RenderMeshes elapsed sum ms,5.2136
+10563.6163,323,18,Resident previous RenderMeshes max pass ms,2.6126
+10563.6187,323,18,Resident previous RenderMeshes calls,2
+10585.3037,324,18,Resident previous build elapsed sum ms,7.0956
+10585.3078,324,18,Resident previous sort elapsed sum ms,6.9464
+10585.3103,324,18,Resident previous RenderMeshes elapsed sum ms,5.9457
+10585.3129,324,18,Resident previous RenderMeshes max pass ms,2.9749
+10585.3152,324,18,Resident previous RenderMeshes calls,2
+10609.0732,325,18,Resident previous build elapsed sum ms,10.3008
+10609.078,325,18,Resident previous sort elapsed sum ms,7.089
+10609.0805,325,18,Resident previous RenderMeshes elapsed sum ms,6.1326
+10609.0831,325,18,Resident previous RenderMeshes max pass ms,3.0686
+10609.0853,325,18,Resident previous RenderMeshes calls,2
+10631.4107,326,18,Resident previous build elapsed sum ms,7.5777
+10631.4147,326,18,Resident previous sort elapsed sum ms,6.6631
+10631.417,326,18,Resident previous RenderMeshes elapsed sum ms,6.2931
+10631.4198,326,18,Resident previous RenderMeshes max pass ms,3.1548
+10631.4221,326,18,Resident previous RenderMeshes calls,2
+10655.4582,327,18,Resident previous build elapsed sum ms,11.6917
+10655.4623,327,18,Resident previous sort elapsed sum ms,6.8955
+10655.4647,327,18,Resident previous RenderMeshes elapsed sum ms,5.4592
+10655.4676,327,18,Resident previous RenderMeshes max pass ms,2.7322
+10655.4698,327,18,Resident previous RenderMeshes calls,2
+10677.8827,328,18,Resident previous build elapsed sum ms,7.3767
+10677.8903,328,18,Resident previous sort elapsed sum ms,7.7351
+10677.8928,328,18,Resident previous RenderMeshes elapsed sum ms,5.8686
+10677.8955,328,18,Resident previous RenderMeshes max pass ms,3.0097
+10677.8979,328,18,Resident previous RenderMeshes calls,2
+10700.0401,329,18,Resident previous build elapsed sum ms,8.0574
+10700.0447,329,18,Resident previous sort elapsed sum ms,6.6862
+10700.0472,329,18,Resident previous RenderMeshes elapsed sum ms,5.5778
+10700.0497,329,18,Resident previous RenderMeshes max pass ms,2.7957
+10700.052,329,18,Resident previous RenderMeshes calls,2
+10723.0183,330,18,Resident previous build elapsed sum ms,9.7744
+10723.0229,330,18,Resident previous sort elapsed sum ms,6.7556
+10723.0252,330,18,Resident previous RenderMeshes elapsed sum ms,5.8628
+10723.0281,330,18,Resident previous RenderMeshes max pass ms,2.9328
+10723.0302,330,18,Resident previous RenderMeshes calls,2
+10748.048,331,18,Resident previous build elapsed sum ms,11.3615
+10748.0521,331,18,Resident previous sort elapsed sum ms,7.4865
+10748.0544,331,18,Resident previous RenderMeshes elapsed sum ms,6.6912
+10748.0568,331,18,Resident previous RenderMeshes max pass ms,3.4458
+10748.0591,331,18,Resident previous RenderMeshes calls,2
+10770.4367,332,18,Resident previous build elapsed sum ms,7.7652
+10770.4413,332,18,Resident previous sort elapsed sum ms,7.1237
+10770.4435,332,18,Resident previous RenderMeshes elapsed sum ms,5.667
+10770.446,332,18,Resident previous RenderMeshes max pass ms,2.8454
+10770.4484,332,18,Resident previous RenderMeshes calls,2
+10792.1859,333,18,Resident previous build elapsed sum ms,6.6256
+10792.1908,333,18,Resident previous sort elapsed sum ms,6.884
+10792.193,333,18,Resident previous RenderMeshes elapsed sum ms,4.3134
+10792.1955,333,18,Resident previous RenderMeshes max pass ms,2.157
+10792.1977,333,18,Resident previous RenderMeshes calls,2
+10813.3368,334,18,Resident previous build elapsed sum ms,6.5834
+10813.3413,334,18,Resident previous sort elapsed sum ms,7.0343
+10813.3437,334,18,Resident previous RenderMeshes elapsed sum ms,4.8405
+10813.3461,334,18,Resident previous RenderMeshes max pass ms,2.4408
+10813.3962,334,18,Resident previous RenderMeshes calls,2
+10836.6633,335,18,Resident previous build elapsed sum ms,8.0096
+10836.669,335,18,Resident previous sort elapsed sum ms,6.989
+10836.6714,335,18,Resident previous RenderMeshes elapsed sum ms,8.2165
+10836.674,335,18,Resident previous RenderMeshes max pass ms,4.1422
+10836.6763,335,18,Resident previous RenderMeshes calls,2
+10861.4271,336,18,Resident previous build elapsed sum ms,6.9575
+10861.4314,336,18,Resident previous sort elapsed sum ms,7.0339
+10861.4338,336,18,Resident previous RenderMeshes elapsed sum ms,8.3388
+10861.4362,336,18,Resident previous RenderMeshes max pass ms,4.1736
+10861.4385,336,18,Resident previous RenderMeshes calls,2
+10881.5502,337,18,Resident previous build elapsed sum ms,5.3417
+10881.555,337,18,Resident previous sort elapsed sum ms,7.0753
+10881.5573,337,18,Resident previous RenderMeshes elapsed sum ms,4.4352
+10881.6025,337,18,Resident previous RenderMeshes max pass ms,2.2179
+10881.6049,337,18,Resident previous RenderMeshes calls,2
+10901.2344,338,18,Resident previous build elapsed sum ms,5.7371
+10901.2393,338,18,Resident previous sort elapsed sum ms,6.977
+10901.2417,338,18,Resident previous RenderMeshes elapsed sum ms,4.6949
+10901.244,338,18,Resident previous RenderMeshes max pass ms,2.3682
+10901.2461,338,18,Resident previous RenderMeshes calls,2
+10921.4299,339,18,Resident previous build elapsed sum ms,7.199
+10921.4341,339,18,Resident previous sort elapsed sum ms,6.6437
+10921.4364,339,18,Resident previous RenderMeshes elapsed sum ms,4.1886
+10921.4391,339,18,Resident previous RenderMeshes max pass ms,2.0957
+10921.4413,339,18,Resident previous RenderMeshes calls,2
+10942.0227,340,18,Resident previous build elapsed sum ms,6.9764
+10942.0267,340,18,Resident previous sort elapsed sum ms,6.5803
+10942.0801,340,18,Resident previous RenderMeshes elapsed sum ms,5.5414
+10942.0825,340,18,Resident previous RenderMeshes max pass ms,2.7743
+10942.0847,340,18,Resident previous RenderMeshes calls,2
+10961.7712,341,18,Resident previous build elapsed sum ms,5.9187
+10961.7757,341,18,Resident previous sort elapsed sum ms,7.02
+10961.7779,341,18,Resident previous RenderMeshes elapsed sum ms,3.7429
+10961.7803,341,18,Resident previous RenderMeshes max pass ms,1.8738
+10961.7824,341,18,Resident previous RenderMeshes calls,2
+10983.1045,342,18,Resident previous build elapsed sum ms,6.9416
+10983.1094,342,18,Resident previous sort elapsed sum ms,6.7739
+10983.1116,342,18,Resident previous RenderMeshes elapsed sum ms,4.271
+10983.1141,342,18,Resident previous RenderMeshes max pass ms,2.1398
+10983.1162,342,18,Resident previous RenderMeshes calls,2
+11002.7202,343,18,Resident previous build elapsed sum ms,6.1179
+11002.7252,343,18,Resident previous sort elapsed sum ms,6.7939
+11002.7275,343,18,Resident previous RenderMeshes elapsed sum ms,3.8732
+11002.7299,343,18,Resident previous RenderMeshes max pass ms,1.9429
+11002.7321,343,18,Resident previous RenderMeshes calls,2
+11023.2008,344,18,Resident previous build elapsed sum ms,6.4412
+11023.2052,344,18,Resident previous sort elapsed sum ms,6.8955
+11023.2074,344,18,Resident previous RenderMeshes elapsed sum ms,3.8624
+11023.2098,344,18,Resident previous RenderMeshes max pass ms,1.9398
+11023.2122,344,18,Resident previous RenderMeshes calls,2
+11043.1747,345,18,Resident previous build elapsed sum ms,5.5473
+11043.1794,345,18,Resident previous sort elapsed sum ms,7.0949
+11043.1817,345,18,Resident previous RenderMeshes elapsed sum ms,5.1693
+11043.1841,345,18,Resident previous RenderMeshes max pass ms,2.6289
+11043.1863,345,18,Resident previous RenderMeshes calls,2
+11063.5709,346,18,Resident previous build elapsed sum ms,5.4401
+11063.5752,346,18,Resident previous sort elapsed sum ms,6.7856
+11063.5778,346,18,Resident previous RenderMeshes elapsed sum ms,4.4871
+11063.5806,346,18,Resident previous RenderMeshes max pass ms,2.2592
+11063.5827,346,18,Resident previous RenderMeshes calls,2
+11083.1629,347,18,Resident previous build elapsed sum ms,6.067
+11083.1673,347,18,Resident previous sort elapsed sum ms,6.9802
+11083.1697,347,18,Resident previous RenderMeshes elapsed sum ms,4.7766
+11083.1721,347,18,Resident previous RenderMeshes max pass ms,2.4061
+11083.1743,347,18,Resident previous RenderMeshes calls,2
+11102.6262,348,18,Resident previous build elapsed sum ms,5.9433
+11102.6383,348,18,Resident previous sort elapsed sum ms,6.9238
+11102.6405,348,18,Resident previous RenderMeshes elapsed sum ms,4.1321
+11102.6429,348,18,Resident previous RenderMeshes max pass ms,2.0668
+11102.645,348,18,Resident previous RenderMeshes calls,2
+11122.3908,349,18,Resident previous build elapsed sum ms,6.5927
+11122.3954,349,18,Resident previous sort elapsed sum ms,6.9099
+11122.3976,349,18,Resident previous RenderMeshes elapsed sum ms,3.9966
+11122.3999,349,18,Resident previous RenderMeshes max pass ms,2.0049
+11122.4022,349,18,Resident previous RenderMeshes calls,2
+11142.821,350,18,Resident previous build elapsed sum ms,6.0072
+11142.826,350,18,Resident previous sort elapsed sum ms,6.8615
+11142.8284,350,18,Resident previous RenderMeshes elapsed sum ms,5.9966
+11142.8307,350,18,Resident previous RenderMeshes max pass ms,3.011
+11142.8329,350,18,Resident previous RenderMeshes calls,2
+11163.1907,351,18,Resident previous build elapsed sum ms,6.1259
+11163.1955,351,18,Resident previous sort elapsed sum ms,6.6761
+11163.1976,351,18,Resident previous RenderMeshes elapsed sum ms,4.4973
+11163.1999,351,18,Resident previous RenderMeshes max pass ms,2.2592
+11163.202,351,18,Resident previous RenderMeshes calls,2
+11184.2436,352,18,Resident previous build elapsed sum ms,8.8545
+11184.2478,352,18,Resident previous sort elapsed sum ms,6.533
+11184.25,352,18,Resident previous RenderMeshes elapsed sum ms,4.0919
+11184.2524,352,18,Resident previous RenderMeshes max pass ms,2.051
+11184.2545,352,18,Resident previous RenderMeshes calls,2
+11203.5353,353,18,Resident previous build elapsed sum ms,5.7437
+11203.5401,353,18,Resident previous sort elapsed sum ms,6.6998
+11203.5424,353,18,Resident previous RenderMeshes elapsed sum ms,3.9337
+11203.5449,353,18,Resident previous RenderMeshes max pass ms,1.9707
+11203.5471,353,18,Resident previous RenderMeshes calls,2
+11223.2072,354,18,Resident previous build elapsed sum ms,6.6745
+11223.2113,354,18,Resident previous sort elapsed sum ms,6.4603
+11223.2136,354,18,Resident previous RenderMeshes elapsed sum ms,3.9513
+11223.216,354,18,Resident previous RenderMeshes max pass ms,1.9797
+11223.2182,354,18,Resident previous RenderMeshes calls,2
+11243.7284,355,18,Resident previous build elapsed sum ms,5.4802
+11243.7329,355,18,Resident previous sort elapsed sum ms,6.9942
+11243.7351,355,18,Resident previous RenderMeshes elapsed sum ms,5.9739
+11243.7373,355,18,Resident previous RenderMeshes max pass ms,3.0088
+11243.7396,355,18,Resident previous RenderMeshes calls,2
+11264.1838,356,18,Resident previous build elapsed sum ms,6.5929
+11264.1881,356,18,Resident previous sort elapsed sum ms,6.6638
+11264.1902,356,18,Resident previous RenderMeshes elapsed sum ms,4.3572
+11264.1926,356,18,Resident previous RenderMeshes max pass ms,2.179
+11264.1948,356,18,Resident previous RenderMeshes calls,2
+11284.6945,357,18,Resident previous build elapsed sum ms,6.7601
+11284.6998,357,18,Resident previous sort elapsed sum ms,7.1148
+11284.702,357,18,Resident previous RenderMeshes elapsed sum ms,4.2641
+11284.7045,357,18,Resident previous RenderMeshes max pass ms,2.1559
+11284.7068,357,18,Resident previous RenderMeshes calls,2
+11305.3683,358,18,Resident previous build elapsed sum ms,5.9524
+11305.3729,358,18,Resident previous sort elapsed sum ms,6.7859
+11305.3751,358,18,Resident previous RenderMeshes elapsed sum ms,5.7625
+11305.3776,358,18,Resident previous RenderMeshes max pass ms,2.8846
+11305.3797,358,18,Resident previous RenderMeshes calls,2
+11335.4218,359,18,Resident previous build elapsed sum ms,7.1969
+11335.4339,359,18,Resident previous sort elapsed sum ms,6.9207
+11335.4364,359,18,Resident previous RenderMeshes elapsed sum ms,5.7904
+11335.4391,359,18,Resident previous RenderMeshes max pass ms,2.8968
+11335.4413,359,18,Resident previous RenderMeshes calls,2
+11357.009,360,18,Resident previous build elapsed sum ms,7.6659
+11357.0137,360,18,Resident previous sort elapsed sum ms,6.9492
+11357.0158,360,18,Resident previous RenderMeshes elapsed sum ms,4.7095
+11357.0184,360,18,Resident previous RenderMeshes max pass ms,2.3602
+11357.0206,360,18,Resident previous RenderMeshes calls,2
+11379.5126,361,18,Resident previous build elapsed sum ms,6.7651
+11379.5175,361,18,Resident previous sort elapsed sum ms,7.2093
+11379.5197,361,18,Resident previous RenderMeshes elapsed sum ms,6.582
+11379.522,361,18,Resident previous RenderMeshes max pass ms,3.9484
+11379.5246,361,18,Resident previous RenderMeshes calls,2
+11403.3854,362,18,Resident previous build elapsed sum ms,7.2472
+11403.3902,362,18,Resident previous sort elapsed sum ms,10.2442
+11403.3938,362,18,Resident previous RenderMeshes elapsed sum ms,7.264
+11403.4148,362,18,Resident previous RenderMeshes max pass ms,3.632
+11403.417,362,18,Resident previous RenderMeshes calls,2
+11424.5862,363,18,Resident previous build elapsed sum ms,6.9666
+11424.5915,363,18,Resident previous sort elapsed sum ms,6.6734
+11424.5937,363,18,Resident previous RenderMeshes elapsed sum ms,4.2724
+11424.5965,363,18,Resident previous RenderMeshes max pass ms,2.1406
+11424.5987,363,18,Resident previous RenderMeshes calls,2
+11445.4591,364,18,Resident previous build elapsed sum ms,5.6689
+11445.4632,364,18,Resident previous sort elapsed sum ms,6.6377
+11445.4653,364,18,Resident previous RenderMeshes elapsed sum ms,5.1088
+11445.4675,364,18,Resident previous RenderMeshes max pass ms,2.5728
+11445.4697,364,18,Resident previous RenderMeshes calls,2
+11465.1481,365,18,Resident previous build elapsed sum ms,5.5177
+11465.1528,365,18,Resident previous sort elapsed sum ms,6.3979
+11465.1549,365,18,Resident previous RenderMeshes elapsed sum ms,3.9679
+11465.1577,365,18,Resident previous RenderMeshes max pass ms,1.9851
+11465.1599,365,18,Resident previous RenderMeshes calls,2
+11486.0554,366,18,Resident previous build elapsed sum ms,7.091
+11486.0606,366,18,Resident previous sort elapsed sum ms,6.606
+11486.0628,366,18,Resident previous RenderMeshes elapsed sum ms,4.2594
+11486.0652,366,18,Resident previous RenderMeshes max pass ms,2.1367
+11486.0673,366,18,Resident previous RenderMeshes calls,2
+11505.6651,367,18,Resident previous build elapsed sum ms,5.5185
+11505.669,367,18,Resident previous sort elapsed sum ms,6.8595
+11505.6713,367,18,Resident previous RenderMeshes elapsed sum ms,4.2107
+11505.6736,367,18,Resident previous RenderMeshes max pass ms,2.1089
+11505.6757,367,18,Resident previous RenderMeshes calls,2
+11525.846,368,18,Resident previous build elapsed sum ms,6.6615
+11525.8504,368,18,Resident previous sort elapsed sum ms,6.743
+11525.8525,368,18,Resident previous RenderMeshes elapsed sum ms,4.057
+11525.8548,368,18,Resident previous RenderMeshes max pass ms,2.0341
+11525.8569,368,18,Resident previous RenderMeshes calls,2
+11546.8817,369,18,Resident previous build elapsed sum ms,6.6481
+11546.8892,369,18,Resident previous sort elapsed sum ms,6.7711
+11546.8915,369,18,Resident previous RenderMeshes elapsed sum ms,5.0493
+11546.8938,369,18,Resident previous RenderMeshes max pass ms,2.5304
+11546.896,369,18,Resident previous RenderMeshes calls,2
+11566.3195,370,18,Resident previous build elapsed sum ms,5.868
+11566.3239,370,18,Resident previous sort elapsed sum ms,6.949
+11566.3261,370,18,Resident previous RenderMeshes elapsed sum ms,4.0732
+11566.3284,370,18,Resident previous RenderMeshes max pass ms,2.0473
+11566.3305,370,18,Resident previous RenderMeshes calls,2
+11590.3542,371,18,Resident previous build elapsed sum ms,7.1774
+11590.3586,371,18,Resident previous sort elapsed sum ms,10.8208
+11590.3609,371,18,Resident previous RenderMeshes elapsed sum ms,7.8423
+11590.3632,371,18,Resident previous RenderMeshes max pass ms,3.9214
+11590.3654,371,18,Resident previous RenderMeshes calls,2
+11610.5911,372,18,Resident previous build elapsed sum ms,5.7402
+11610.5952,372,18,Resident previous sort elapsed sum ms,6.8089
+11610.5974,372,18,Resident previous RenderMeshes elapsed sum ms,5.5029
+11610.6001,372,18,Resident previous RenderMeshes max pass ms,2.7541
+11610.6023,372,18,Resident previous RenderMeshes calls,2
+11633.2521,373,18,Resident previous build elapsed sum ms,6.1974
+11633.256,373,18,Resident previous sort elapsed sum ms,10.3647
+11633.2584,373,18,Resident previous RenderMeshes elapsed sum ms,6.3899
+11633.2607,373,18,Resident previous RenderMeshes max pass ms,3.2291
+11633.2629,373,18,Resident previous RenderMeshes calls,2
+11655.2425,374,18,Resident previous build elapsed sum ms,9.7742
+11655.247,374,18,Resident previous sort elapsed sum ms,6.9181
+11655.2493,374,18,Resident previous RenderMeshes elapsed sum ms,4.0292
+11655.2521,374,18,Resident previous RenderMeshes max pass ms,2.0165
+11655.2543,374,18,Resident previous RenderMeshes calls,2
+11674.479,375,18,Resident previous build elapsed sum ms,5.4647
+11674.4836,375,18,Resident previous sort elapsed sum ms,6.94
+11674.4858,375,18,Resident previous RenderMeshes elapsed sum ms,3.8931
+11674.4885,375,18,Resident previous RenderMeshes max pass ms,1.9475
+11674.4907,375,18,Resident previous RenderMeshes calls,2
+11694.5011,376,18,Resident previous build elapsed sum ms,5.5912
+11694.5063,376,18,Resident previous sort elapsed sum ms,6.9662
+11694.5086,376,18,Resident previous RenderMeshes elapsed sum ms,4.0418
+11694.5182,376,18,Resident previous RenderMeshes max pass ms,2.025
+11694.5205,376,18,Resident previous RenderMeshes calls,2
+11714.6339,377,18,Resident previous build elapsed sum ms,5.7554
+11714.6384,377,18,Resident previous sort elapsed sum ms,6.9077
+11714.6405,377,18,Resident previous RenderMeshes elapsed sum ms,4.7251
+11714.6427,377,18,Resident previous RenderMeshes max pass ms,2.3676
+11714.6449,377,18,Resident previous RenderMeshes calls,2
+11734.5142,378,18,Resident previous build elapsed sum ms,6.0717
+11734.5186,378,18,Resident previous sort elapsed sum ms,6.7519
+11734.5209,378,18,Resident previous RenderMeshes elapsed sum ms,4.0081
+11734.5231,378,18,Resident previous RenderMeshes max pass ms,2.0058
+11734.5254,378,18,Resident previous RenderMeshes calls,2
+11759.4559,379,18,Resident previous build elapsed sum ms,9.5859
+11759.4612,379,18,Resident previous sort elapsed sum ms,10.4104
+11759.4635,379,18,Resident previous RenderMeshes elapsed sum ms,6.4582
+11759.4658,379,18,Resident previous RenderMeshes max pass ms,3.2291
+11759.4679,379,18,Resident previous RenderMeshes calls,2
+11779.0539,380,18,Resident previous build elapsed sum ms,5.5187
+11779.0588,380,18,Resident previous sort elapsed sum ms,6.8309
+11779.0609,380,18,Resident previous RenderMeshes elapsed sum ms,4.2644
+11779.0634,380,18,Resident previous RenderMeshes max pass ms,2.1538
+11779.0656,380,18,Resident previous RenderMeshes calls,2
+11798.1073,381,18,Resident previous build elapsed sum ms,5.3631
+11798.1114,381,18,Resident previous sort elapsed sum ms,6.7691
+11798.1137,381,18,Resident previous RenderMeshes elapsed sum ms,3.7568
+11798.1161,381,18,Resident previous RenderMeshes max pass ms,1.9513
+11798.1789,381,18,Resident previous RenderMeshes calls,2
+11818.7997,382,18,Resident previous build elapsed sum ms,6.396
+11818.8043,382,18,Resident previous sort elapsed sum ms,6.8946
+11818.8067,382,18,Resident previous RenderMeshes elapsed sum ms,4.4354
+11818.8095,382,18,Resident previous RenderMeshes max pass ms,2.2217
+11818.8118,382,18,Resident previous RenderMeshes calls,2
+11839.0264,383,18,Resident previous build elapsed sum ms,5.1647
+11839.031,383,18,Resident previous sort elapsed sum ms,7.1376
+11839.0332,383,18,Resident previous RenderMeshes elapsed sum ms,5.4987
+11839.0354,383,18,Resident previous RenderMeshes max pass ms,2.7538
+11839.0376,383,18,Resident previous RenderMeshes calls,2
+11864.7926,384,18,Resident previous build elapsed sum ms,11.1144
+11864.7969,384,18,Resident previous sort elapsed sum ms,6.5274
+11864.7993,384,18,Resident previous RenderMeshes elapsed sum ms,4.445
+11864.8546,384,18,Resident previous RenderMeshes max pass ms,2.2408
+11864.857,384,18,Resident previous RenderMeshes calls,2
+11887.223,385,18,Resident previous build elapsed sum ms,8.171
+11887.2273,385,18,Resident previous sort elapsed sum ms,7.1759
+11887.2296,385,18,Resident previous RenderMeshes elapsed sum ms,6.4927
+11887.2322,385,18,Resident previous RenderMeshes max pass ms,3.2551
+11887.2344,385,18,Resident previous RenderMeshes calls,2
+11906.473,386,18,Resident previous build elapsed sum ms,5.6025
+11906.4775,386,18,Resident previous sort elapsed sum ms,6.9967
+11906.48,386,18,Resident previous RenderMeshes elapsed sum ms,4.5215
+11906.4825,386,18,Resident previous RenderMeshes max pass ms,2.265
+11906.4849,386,18,Resident previous RenderMeshes calls,2
+11926.6081,387,18,Resident previous build elapsed sum ms,6.34
+11926.6125,387,18,Resident previous sort elapsed sum ms,6.8364
+11926.6559,387,18,Resident previous RenderMeshes elapsed sum ms,4.0511
+11926.671,387,18,Resident previous RenderMeshes max pass ms,2.0256
+11926.6736,387,18,Resident previous RenderMeshes calls,2
+11945.8731,388,18,Resident previous build elapsed sum ms,5.2476
+11945.8787,388,18,Resident previous sort elapsed sum ms,6.8756
+11945.881,388,18,Resident previous RenderMeshes elapsed sum ms,4.312
+11945.8834,388,18,Resident previous RenderMeshes max pass ms,2.1722
+11945.8856,388,18,Resident previous RenderMeshes calls,2
+11965.8588,389,18,Resident previous build elapsed sum ms,6.5937
+11965.8634,389,18,Resident previous sort elapsed sum ms,6.9412
+11965.8658,389,18,Resident previous RenderMeshes elapsed sum ms,4.0512
+11965.8685,389,18,Resident previous RenderMeshes max pass ms,2.0292
+11965.8711,389,18,Resident previous RenderMeshes calls,2
+11989.9999,390,18,Resident previous build elapsed sum ms,7.3023
+11990.0045,390,18,Resident previous sort elapsed sum ms,10.968
+11990.0072,390,18,Resident previous RenderMeshes elapsed sum ms,7.3628
+11990.0095,390,18,Resident previous RenderMeshes max pass ms,3.6814
+11990.0195,390,18,Resident previous RenderMeshes calls,2
+12010.6702,391,18,Resident previous build elapsed sum ms,7.9279
+12010.6803,391,18,Resident previous sort elapsed sum ms,6.7879
+12010.6829,391,18,Resident previous RenderMeshes elapsed sum ms,3.9995
+12010.6852,391,18,Resident previous RenderMeshes max pass ms,2.0015
+12010.6874,391,18,Resident previous RenderMeshes calls,2
+12033.7596,392,18,Resident previous build elapsed sum ms,9.1179
+12033.7647,392,18,Resident previous sort elapsed sum ms,7.0105
+12033.7669,392,18,Resident previous RenderMeshes elapsed sum ms,4.1412
+12033.7693,392,18,Resident previous RenderMeshes max pass ms,2.1339
+12033.7715,392,18,Resident previous RenderMeshes calls,2
+12055.1255,393,18,Resident previous build elapsed sum ms,8.0613
+12055.1296,393,18,Resident previous sort elapsed sum ms,6.9455
+12055.1319,393,18,Resident previous RenderMeshes elapsed sum ms,6.0621
+12055.1343,393,18,Resident previous RenderMeshes max pass ms,3.0479
+12055.1365,393,18,Resident previous RenderMeshes calls,2
+12075.2728,394,18,Resident previous build elapsed sum ms,6.5761
+12075.277,394,18,Resident previous sort elapsed sum ms,6.9627
+12075.2793,394,18,Resident previous RenderMeshes elapsed sum ms,3.996
+12075.2819,394,18,Resident previous RenderMeshes max pass ms,2.0027
+12075.2841,394,18,Resident previous RenderMeshes calls,2
+12095.8124,395,18,Resident previous build elapsed sum ms,7.2088
+12095.8169,395,18,Resident previous sort elapsed sum ms,6.7783
+12095.8192,395,18,Resident previous RenderMeshes elapsed sum ms,4.8927
+12095.8218,395,18,Resident previous RenderMeshes max pass ms,2.4505
+12095.824,395,18,Resident previous RenderMeshes calls,2
+12117.7805,396,18,Resident previous build elapsed sum ms,10.512
+12117.7846,396,18,Resident previous sort elapsed sum ms,6.6313
+12117.7867,396,18,Resident previous RenderMeshes elapsed sum ms,4.0335
+12117.789,396,18,Resident previous RenderMeshes max pass ms,2.1186
+12117.7916,396,18,Resident previous RenderMeshes calls,2
+12138.5426,397,18,Resident previous build elapsed sum ms,6.1738
+12138.5464,397,18,Resident previous sort elapsed sum ms,6.7991
+12138.5486,397,18,Resident previous RenderMeshes elapsed sum ms,4.4957
+12138.551,397,18,Resident previous RenderMeshes max pass ms,2.2516
+12138.5532,397,18,Resident previous RenderMeshes calls,2
+12161.7707,398,18,Resident previous build elapsed sum ms,9.2652
+12161.7759,398,18,Resident previous sort elapsed sum ms,7.3335
+12161.7783,398,18,Resident previous RenderMeshes elapsed sum ms,5.1971
+12161.7806,398,18,Resident previous RenderMeshes max pass ms,2.6111
+12161.7828,398,18,Resident previous RenderMeshes calls,2
+12185.4758,399,18,Resident previous build elapsed sum ms,12.1248
+12185.4799,399,18,Resident previous sort elapsed sum ms,6.7957
+12185.4822,399,18,Resident previous RenderMeshes elapsed sum ms,5.0574
+12185.4847,399,18,Resident previous RenderMeshes max pass ms,2.6587
+12185.487,399,18,Resident previous RenderMeshes calls,2
+12207.0281,400,18,Resident previous build elapsed sum ms,8.0357
+12207.0325,400,18,Resident previous sort elapsed sum ms,7.0295
+12207.0347,400,18,Resident previous RenderMeshes elapsed sum ms,4.695
+12207.0374,400,18,Resident previous RenderMeshes max pass ms,2.3499
+12207.0397,400,18,Resident previous RenderMeshes calls,2
+12229.4229,401,18,Resident previous build elapsed sum ms,6.4146
+12229.4271,401,18,Resident previous sort elapsed sum ms,6.8142
+12229.4293,401,18,Resident previous RenderMeshes elapsed sum ms,4.4126
+12229.4316,401,18,Resident previous RenderMeshes max pass ms,2.2139
+12229.4339,401,18,Resident previous RenderMeshes calls,2
+12251.3958,402,18,Resident previous build elapsed sum ms,8.6979
+12251.3997,402,18,Resident previous sort elapsed sum ms,7.1047
+12251.402,402,18,Resident previous RenderMeshes elapsed sum ms,4.7421
+12251.4044,402,18,Resident previous RenderMeshes max pass ms,2.3837
+12251.4066,402,18,Resident previous RenderMeshes calls,2
+12275.6036,403,18,Resident previous build elapsed sum ms,10.3562
+12275.6077,403,18,Resident previous sort elapsed sum ms,7.1086
+12275.6099,403,18,Resident previous RenderMeshes elapsed sum ms,5.2358
+12275.6124,403,18,Resident previous RenderMeshes max pass ms,2.6243
+12275.6146,403,18,Resident previous RenderMeshes calls,2
+12298.0445,404,18,Resident previous build elapsed sum ms,6.1576
+12298.0483,404,18,Resident previous sort elapsed sum ms,6.9887
+12298.0507,404,18,Resident previous RenderMeshes elapsed sum ms,5.5749
+12298.0531,404,18,Resident previous RenderMeshes max pass ms,2.7935
+12298.0554,404,18,Resident previous RenderMeshes calls,2
+12319.8658,405,18,Resident previous build elapsed sum ms,7.1672
+12319.8706,405,18,Resident previous sort elapsed sum ms,7.1492
+12319.8727,405,18,Resident previous RenderMeshes elapsed sum ms,4.9564
+12319.8751,405,18,Resident previous RenderMeshes max pass ms,2.4816
+12319.8772,405,18,Resident previous RenderMeshes calls,2
+12345.338,406,18,Resident previous build elapsed sum ms,8.6372
+12345.3423,406,18,Resident previous sort elapsed sum ms,8.2905
+12345.3445,406,18,Resident previous RenderMeshes elapsed sum ms,6.6973
+12345.347,406,18,Resident previous RenderMeshes max pass ms,3.3676
+12345.3492,406,18,Resident previous RenderMeshes calls,2
+12368.141,407,18,Resident previous build elapsed sum ms,10.2146
+12368.1456,407,18,Resident previous sort elapsed sum ms,7.1463
+12368.1479,407,18,Resident previous RenderMeshes elapsed sum ms,4.6731
+12368.1504,407,18,Resident previous RenderMeshes max pass ms,2.3414
+12368.1527,407,18,Resident previous RenderMeshes calls,2
+12391.7966,408,18,Resident previous build elapsed sum ms,7.2185
+12391.8017,408,18,Resident previous sort elapsed sum ms,6.9688
+12391.8039,408,18,Resident previous RenderMeshes elapsed sum ms,5.2867
+12391.8063,408,18,Resident previous RenderMeshes max pass ms,2.7707
+12391.8088,408,18,Resident previous RenderMeshes calls,2
+12417.3914,409,18,Resident previous build elapsed sum ms,9.5185
+12417.3961,409,18,Resident previous sort elapsed sum ms,7.0975
+12417.3984,409,18,Resident previous RenderMeshes elapsed sum ms,8.1062
+12417.4014,409,18,Resident previous RenderMeshes max pass ms,4.803
+12417.4037,409,18,Resident previous RenderMeshes calls,2
+12439.8557,410,18,Resident previous build elapsed sum ms,7.5385
+12439.8648,410,18,Resident previous sort elapsed sum ms,7.0205
+12439.8673,410,18,Resident previous RenderMeshes elapsed sum ms,6.8715
+12439.8698,410,18,Resident previous RenderMeshes max pass ms,3.4495
+12439.8722,410,18,Resident previous RenderMeshes calls,2
+12464.5359,411,18,Resident previous build elapsed sum ms,6.5867
+12464.5404,411,18,Resident previous sort elapsed sum ms,10.7592
+12464.5501,411,18,Resident previous RenderMeshes elapsed sum ms,7.4502
+12464.5525,411,18,Resident previous RenderMeshes max pass ms,3.7251
+12464.5547,411,18,Resident previous RenderMeshes calls,2
+12486.3294,412,18,Resident previous build elapsed sum ms,7.0514
+12486.334,412,18,Resident previous sort elapsed sum ms,6.9164
+12486.3364,412,18,Resident previous RenderMeshes elapsed sum ms,5.1486
+12486.3388,412,18,Resident previous RenderMeshes max pass ms,2.583
+12486.341,412,18,Resident previous RenderMeshes calls,2
+12508.3699,413,18,Resident previous build elapsed sum ms,6.7506
+12508.3787,413,18,Resident previous sort elapsed sum ms,7.1257
+12508.3811,413,18,Resident previous RenderMeshes elapsed sum ms,5.4467
+12508.3836,413,18,Resident previous RenderMeshes max pass ms,2.7339
+12508.3858,413,18,Resident previous RenderMeshes calls,2
+12528.8206,414,18,Resident previous build elapsed sum ms,6.2387
+12528.8253,414,18,Resident previous sort elapsed sum ms,7.2503
+12528.8276,414,18,Resident previous RenderMeshes elapsed sum ms,4.428
+12528.83,414,18,Resident previous RenderMeshes max pass ms,2.3091
+12528.8325,414,18,Resident previous RenderMeshes calls,2
+12549.1957,415,18,Resident previous build elapsed sum ms,6.1503
+12549.2002,415,18,Resident previous sort elapsed sum ms,6.9807
+12549.2024,415,18,Resident previous RenderMeshes elapsed sum ms,5.0012
+12549.2048,415,18,Resident previous RenderMeshes max pass ms,2.5014
+12549.207,415,18,Resident previous RenderMeshes calls,2
+12570.4227,416,18,Resident previous build elapsed sum ms,8.4145
+12570.427,416,18,Resident previous sort elapsed sum ms,6.6188
+12570.4293,416,18,Resident previous RenderMeshes elapsed sum ms,4.4488
+12570.4318,416,18,Resident previous RenderMeshes max pass ms,2.2322
+12570.434,416,18,Resident previous RenderMeshes calls,2
+12593.8447,417,18,Resident previous build elapsed sum ms,7.8143
+12593.8493,417,18,Resident previous sort elapsed sum ms,8.04
+12593.8517,417,18,Resident previous RenderMeshes elapsed sum ms,5.5773
+12593.854,417,18,Resident previous RenderMeshes max pass ms,2.812
+12593.8564,417,18,Resident previous RenderMeshes calls,2
+12616.6982,418,18,Resident previous build elapsed sum ms,8.0164
+12616.7025,418,18,Resident previous sort elapsed sum ms,6.7515
+12616.7047,418,18,Resident previous RenderMeshes elapsed sum ms,4.6242
+12616.707,418,18,Resident previous RenderMeshes max pass ms,2.3193
+12616.7092,418,18,Resident previous RenderMeshes calls,2
+12638.0259,419,18,Resident previous build elapsed sum ms,6.2655
+12638.0304,419,18,Resident previous sort elapsed sum ms,7.122
+12638.0327,419,18,Resident previous RenderMeshes elapsed sum ms,4.5698
+12638.035,419,18,Resident previous RenderMeshes max pass ms,2.3349
+12638.0374,419,18,Resident previous RenderMeshes calls,2
+12660.3378,420,18,Resident previous build elapsed sum ms,7.6353
+12660.3428,420,18,Resident previous sort elapsed sum ms,6.9233
+12660.3451,420,18,Resident previous RenderMeshes elapsed sum ms,4.7018
+12660.3475,420,18,Resident previous RenderMeshes max pass ms,2.3545
+12660.3497,420,18,Resident previous RenderMeshes calls,2
+12686.1907,421,18,Resident previous build elapsed sum ms,8.8706
+12686.1945,421,18,Resident previous sort elapsed sum ms,10.6136
+12686.1967,421,18,Resident previous RenderMeshes elapsed sum ms,7.6425
+12686.1991,421,18,Resident previous RenderMeshes max pass ms,3.8213
+12686.2013,421,18,Resident previous RenderMeshes calls,2
+12708.9187,422,18,Resident previous build elapsed sum ms,6.9241
+12708.9232,422,18,Resident previous sort elapsed sum ms,7.1753
+12708.9254,422,18,Resident previous RenderMeshes elapsed sum ms,5.8166
+12708.9278,422,18,Resident previous RenderMeshes max pass ms,3.0936
+12708.9301,422,18,Resident previous RenderMeshes calls,2
+12731.4914,423,18,Resident previous build elapsed sum ms,7.2003
+12731.4963,423,18,Resident previous sort elapsed sum ms,6.9033
+12731.4986,423,18,Resident previous RenderMeshes elapsed sum ms,4.9308
+12731.501,423,18,Resident previous RenderMeshes max pass ms,2.4861
+12731.5032,423,18,Resident previous RenderMeshes calls,2
+12752.8941,424,18,Resident previous build elapsed sum ms,7.5073
+12752.9,424,18,Resident previous sort elapsed sum ms,7.0044
+12752.9024,424,18,Resident previous RenderMeshes elapsed sum ms,4.6772
+12752.9047,424,18,Resident previous RenderMeshes max pass ms,2.3456
+12752.907,424,18,Resident previous RenderMeshes calls,2
+12776.3296,425,18,Resident previous build elapsed sum ms,8.1793
+12776.3335,425,18,Resident previous sort elapsed sum ms,6.6891
+12776.3358,425,18,Resident previous RenderMeshes elapsed sum ms,5.4197
+12776.3383,425,18,Resident previous RenderMeshes max pass ms,2.7132
+12776.3404,425,18,Resident previous RenderMeshes calls,2
+12797.1132,426,18,Resident previous build elapsed sum ms,6.4624
+12797.117,426,18,Resident previous sort elapsed sum ms,6.6317
+12797.1193,426,18,Resident previous RenderMeshes elapsed sum ms,4.6439
+12797.1217,426,18,Resident previous RenderMeshes max pass ms,2.3307
+12797.1238,426,18,Resident previous RenderMeshes calls,2
+12818.3545,427,18,Resident previous build elapsed sum ms,8.0314
+12818.3589,427,18,Resident previous sort elapsed sum ms,6.6649
+12818.3612,427,18,Resident previous RenderMeshes elapsed sum ms,4.9174
+12818.3637,427,18,Resident previous RenderMeshes max pass ms,2.4623
+12818.3659,427,18,Resident previous RenderMeshes calls,2
+12839.0534,428,18,Resident previous build elapsed sum ms,6.2771
+12839.0577,428,18,Resident previous sort elapsed sum ms,6.8058
+12839.06,428,18,Resident previous RenderMeshes elapsed sum ms,4.5949
+12839.0626,428,18,Resident previous RenderMeshes max pass ms,2.3255
+12839.1045,428,18,Resident previous RenderMeshes calls,2
+12860.8089,429,18,Resident previous build elapsed sum ms,6.4785
+12860.8133,429,18,Resident previous sort elapsed sum ms,6.6769
+12860.8158,429,18,Resident previous RenderMeshes elapsed sum ms,4.6139
+12860.8184,429,18,Resident previous RenderMeshes max pass ms,2.3118
+12860.8207,429,18,Resident previous RenderMeshes calls,2
+12886.1483,430,18,Resident previous build elapsed sum ms,9.0436
+12886.1535,430,18,Resident previous sort elapsed sum ms,6.7965
+12886.1557,430,18,Resident previous RenderMeshes elapsed sum ms,10.0886
+12886.1586,430,18,Resident previous RenderMeshes max pass ms,5.0574
+12886.161,430,18,Resident previous RenderMeshes calls,2
+12906.9274,431,18,Resident previous build elapsed sum ms,6.4628
+12906.9312,431,18,Resident previous sort elapsed sum ms,6.9849
+12906.9626,431,18,Resident previous RenderMeshes elapsed sum ms,4.8585
+12906.9651,431,18,Resident previous RenderMeshes max pass ms,2.4422
+12906.9672,431,18,Resident previous RenderMeshes calls,2
+12928.768,432,18,Resident previous build elapsed sum ms,7.1381
+12928.7725,432,18,Resident previous sort elapsed sum ms,7.2944
+12928.7751,432,18,Resident previous RenderMeshes elapsed sum ms,4.8303
+12928.7774,432,18,Resident previous RenderMeshes max pass ms,2.4224
+12928.7796,432,18,Resident previous RenderMeshes calls,2
+12949.8859,433,18,Resident previous build elapsed sum ms,8.1693
+12949.8905,433,18,Resident previous sort elapsed sum ms,6.7171
+12949.8928,433,18,Resident previous RenderMeshes elapsed sum ms,4.9573
+12949.895,433,18,Resident previous RenderMeshes max pass ms,2.5186
+12949.8974,433,18,Resident previous RenderMeshes calls,2
+12971.1677,434,18,Resident previous build elapsed sum ms,7.1319
+12971.2016,434,18,Resident previous sort elapsed sum ms,7.1016
+12971.204,434,18,Resident previous RenderMeshes elapsed sum ms,5.5177
+12971.2063,434,18,Resident previous RenderMeshes max pass ms,2.7589
+12971.2085,434,18,Resident previous RenderMeshes calls,2
+12992.9574,435,18,Resident previous build elapsed sum ms,7.6062
+12992.9625,435,18,Resident previous sort elapsed sum ms,7.1049
+12992.9648,435,18,Resident previous RenderMeshes elapsed sum ms,6.0197
+12992.9674,435,18,Resident previous RenderMeshes max pass ms,3.0152
+12992.9697,435,18,Resident previous RenderMeshes calls,2
+13014.3607,436,18,Resident previous build elapsed sum ms,6.6196
+13014.3657,436,18,Resident previous sort elapsed sum ms,7.1817
+13014.368,436,18,Resident previous RenderMeshes elapsed sum ms,4.3953
+13014.3705,436,18,Resident previous RenderMeshes max pass ms,2.1982
+13014.3727,436,18,Resident previous RenderMeshes calls,2
+13033.9124,437,18,Resident previous build elapsed sum ms,6.5922
+13033.9167,437,18,Resident previous sort elapsed sum ms,7.028
+13033.9191,437,18,Resident previous RenderMeshes elapsed sum ms,3.8814
+13033.9216,437,18,Resident previous RenderMeshes max pass ms,1.9465
+13033.9239,437,18,Resident previous RenderMeshes calls,2
+13053.9123,438,18,Resident previous build elapsed sum ms,7.0208
+13053.9167,438,18,Resident previous sort elapsed sum ms,6.5021
+13053.9189,438,18,Resident previous RenderMeshes elapsed sum ms,4.1952
+13053.9212,438,18,Resident previous RenderMeshes max pass ms,2.0978
+13053.9234,438,18,Resident previous RenderMeshes calls,2
+13074.152,439,18,Resident previous build elapsed sum ms,7.5331
+13074.1567,439,18,Resident previous sort elapsed sum ms,7.2882
+13074.159,439,18,Resident previous RenderMeshes elapsed sum ms,4.0712
+13074.1616,439,18,Resident previous RenderMeshes max pass ms,2.0472
+13074.1638,439,18,Resident previous RenderMeshes calls,2
+13094.3303,440,18,Resident previous build elapsed sum ms,7.3464
+13094.3347,440,18,Resident previous sort elapsed sum ms,6.6101
+13094.3368,440,18,Resident previous RenderMeshes elapsed sum ms,3.6608
+13094.3391,440,18,Resident previous RenderMeshes max pass ms,1.9422
+13094.3415,440,18,Resident previous RenderMeshes calls,2
+13116.9056,441,18,Resident previous build elapsed sum ms,6.4258
+13116.9113,441,18,Resident previous sort elapsed sum ms,10.0185
+13116.9136,441,18,Resident previous RenderMeshes elapsed sum ms,6.8906
+13116.916,441,18,Resident previous RenderMeshes max pass ms,3.4453
+13116.9182,441,18,Resident previous RenderMeshes calls,2
+13136.3025,442,18,Resident previous build elapsed sum ms,5.5717
+13136.307,442,18,Resident previous sort elapsed sum ms,6.8218
+13136.3092,442,18,Resident previous RenderMeshes elapsed sum ms,4.2107
+13136.3115,442,18,Resident previous RenderMeshes max pass ms,2.1078
+13136.3136,442,18,Resident previous RenderMeshes calls,2
+13156.2174,443,18,Resident previous build elapsed sum ms,7.042
+13156.2215,443,18,Resident previous sort elapsed sum ms,6.6896
+13156.2238,443,18,Resident previous RenderMeshes elapsed sum ms,4.2704
+13156.2262,443,18,Resident previous RenderMeshes max pass ms,2.1399
+13156.2284,443,18,Resident previous RenderMeshes calls,2
+13179.2126,444,18,Resident previous build elapsed sum ms,7.4312
+13179.2169,444,18,Resident previous sort elapsed sum ms,6.4676
+13179.2191,444,18,Resident previous RenderMeshes elapsed sum ms,6.3019
+13179.2214,444,18,Resident previous RenderMeshes max pass ms,3.1571
+13179.2235,444,18,Resident previous RenderMeshes calls,2
+13198.6839,445,18,Resident previous build elapsed sum ms,5.8813
+13198.6881,445,18,Resident previous sort elapsed sum ms,6.7967
+13198.6902,445,18,Resident previous RenderMeshes elapsed sum ms,3.9948
+13198.6927,445,18,Resident previous RenderMeshes max pass ms,2.0013
+13198.6949,445,18,Resident previous RenderMeshes calls,2
+13218.6719,446,18,Resident previous build elapsed sum ms,6.5328
+13218.6765,446,18,Resident previous sort elapsed sum ms,6.7099
+13218.6786,446,18,Resident previous RenderMeshes elapsed sum ms,4.2449
+13218.6809,446,18,Resident previous RenderMeshes max pass ms,2.1245
+13218.6831,446,18,Resident previous RenderMeshes calls,2
+13237.6485,447,18,Resident previous build elapsed sum ms,5.2148
+13237.6536,447,18,Resident previous sort elapsed sum ms,6.6234
+13237.6572,447,18,Resident previous RenderMeshes elapsed sum ms,3.9904
+13237.6806,447,18,Resident previous RenderMeshes max pass ms,2.0088
+13237.6843,447,18,Resident previous RenderMeshes calls,2
+13257.4689,448,18,Resident previous build elapsed sum ms,5.9308
+13257.4731,448,18,Resident previous sort elapsed sum ms,6.7554
+13257.4752,448,18,Resident previous RenderMeshes elapsed sum ms,3.859
+13257.4775,448,18,Resident previous RenderMeshes max pass ms,1.9725
+13257.4797,448,18,Resident previous RenderMeshes calls,2
+13278.2307,449,18,Resident previous build elapsed sum ms,6.8516
+13278.2351,449,18,Resident previous sort elapsed sum ms,6.7121
+13278.2372,449,18,Resident previous RenderMeshes elapsed sum ms,4.0661
+13278.2396,449,18,Resident previous RenderMeshes max pass ms,2.1197
+13278.2417,449,18,Resident previous RenderMeshes calls,2
+13297.6116,450,18,Resident previous build elapsed sum ms,5.9254
+13297.6159,450,18,Resident previous sort elapsed sum ms,6.2806
+13297.6179,450,18,Resident previous RenderMeshes elapsed sum ms,4.6278
+13297.6201,450,18,Resident previous RenderMeshes max pass ms,2.3244
+13297.6221,450,18,Resident previous RenderMeshes calls,2
+13317.5108,451,18,Resident previous build elapsed sum ms,6.536
+13317.5146,451,18,Resident previous sort elapsed sum ms,6.2648
+13317.5169,451,18,Resident previous RenderMeshes elapsed sum ms,4.4041
+13317.5192,451,18,Resident previous RenderMeshes max pass ms,2.2049
+13317.5214,451,18,Resident previous RenderMeshes calls,2
+13337.0175,452,18,Resident previous build elapsed sum ms,5.9771
+13337.0217,452,18,Resident previous sort elapsed sum ms,6.4846
+13337.0241,452,18,Resident previous RenderMeshes elapsed sum ms,4.2862
+13337.0265,452,18,Resident previous RenderMeshes max pass ms,2.1442
+13337.0286,452,18,Resident previous RenderMeshes calls,2
+13356.9432,453,18,Resident previous build elapsed sum ms,6.3104
+13356.9478,453,18,Resident previous sort elapsed sum ms,6.4152
+13356.9498,453,18,Resident previous RenderMeshes elapsed sum ms,3.8494
+13356.952,453,18,Resident previous RenderMeshes max pass ms,1.9255
+13356.9542,453,18,Resident previous RenderMeshes calls,2
+13378.7579,454,18,Resident previous build elapsed sum ms,9.2386
+13378.7617,454,18,Resident previous sort elapsed sum ms,6.5643
+13378.7639,454,18,Resident previous RenderMeshes elapsed sum ms,5.0302
+13378.7662,454,18,Resident previous RenderMeshes max pass ms,2.576
+13378.7684,454,18,Resident previous RenderMeshes calls,2
+13398.8409,455,18,Resident previous build elapsed sum ms,5.7201
+13398.8452,455,18,Resident previous sort elapsed sum ms,6.3057
+13398.8477,455,18,Resident previous RenderMeshes elapsed sum ms,4.8333
+13398.8501,455,18,Resident previous RenderMeshes max pass ms,2.417
+13398.8524,455,18,Resident previous RenderMeshes calls,2
+13420.0386,456,18,Resident previous build elapsed sum ms,7.0803
+13420.0433,456,18,Resident previous sort elapsed sum ms,6.6498
+13420.0455,456,18,Resident previous RenderMeshes elapsed sum ms,5.3278
+13420.0477,456,18,Resident previous RenderMeshes max pass ms,2.7302
+13420.0499,456,18,Resident previous RenderMeshes calls,2
+13441.1978,457,18,Resident previous build elapsed sum ms,7.2729
+13441.2021,457,18,Resident previous sort elapsed sum ms,6.7635
+13441.2043,457,18,Resident previous RenderMeshes elapsed sum ms,4.6464
+13441.2065,457,18,Resident previous RenderMeshes max pass ms,2.333
+13441.2088,457,18,Resident previous RenderMeshes calls,2
+13462.1592,458,18,Resident previous build elapsed sum ms,8.3519
+13462.1647,458,18,Resident previous sort elapsed sum ms,6.6389
+13462.1668,458,18,Resident previous RenderMeshes elapsed sum ms,4.6483
+13462.1692,458,18,Resident previous RenderMeshes max pass ms,2.3254
+13462.1714,458,18,Resident previous RenderMeshes calls,2
+13482.9552,459,18,Resident previous build elapsed sum ms,8.7891
+13482.9592,459,18,Resident previous sort elapsed sum ms,6.3984
+13482.9613,459,18,Resident previous RenderMeshes elapsed sum ms,4.2269
+13482.9636,459,18,Resident previous RenderMeshes max pass ms,2.1196
+13482.9658,459,18,Resident previous RenderMeshes calls,2
+13502.3277,460,18,Resident previous build elapsed sum ms,5.8934
+13502.3319,460,18,Resident previous sort elapsed sum ms,6.4953
+13502.3341,460,18,Resident previous RenderMeshes elapsed sum ms,3.8412
+13502.3364,460,18,Resident previous RenderMeshes max pass ms,1.9294
+13502.3385,460,18,Resident previous RenderMeshes calls,2
+13522.2925,461,18,Resident previous build elapsed sum ms,6.361
+13522.2966,461,18,Resident previous sort elapsed sum ms,6.3505
+13522.2988,461,18,Resident previous RenderMeshes elapsed sum ms,3.8771
+13522.3011,461,18,Resident previous RenderMeshes max pass ms,1.9398
+13522.3033,461,18,Resident previous RenderMeshes calls,2
+13541.7007,462,18,Resident previous build elapsed sum ms,5.2139
+13541.7052,462,18,Resident previous sort elapsed sum ms,6.7288
+13541.7074,462,18,Resident previous RenderMeshes elapsed sum ms,4.096
+13541.7097,462,18,Resident previous RenderMeshes max pass ms,2.0505
+13541.7119,462,18,Resident previous RenderMeshes calls,2
+13561.5619,463,18,Resident previous build elapsed sum ms,5.8277
+13561.566,463,18,Resident previous sort elapsed sum ms,6.3364
+13561.5682,463,18,Resident previous RenderMeshes elapsed sum ms,4.1166
+13561.5706,463,18,Resident previous RenderMeshes max pass ms,2.0586
+13561.5729,463,18,Resident previous RenderMeshes calls,2
+13582.7979,464,18,Resident previous build elapsed sum ms,8.3143
+13582.8022,464,18,Resident previous sort elapsed sum ms,6.9603
+13582.8044,464,18,Resident previous RenderMeshes elapsed sum ms,4.8444
+13582.8067,464,18,Resident previous RenderMeshes max pass ms,2.4424
+13582.809,464,18,Resident previous RenderMeshes calls,2
+13604.3084,465,18,Resident previous build elapsed sum ms,5.8114
+13604.3126,465,18,Resident previous sort elapsed sum ms,6.6838
+13604.3148,465,18,Resident previous RenderMeshes elapsed sum ms,3.9078
+13604.3171,465,18,Resident previous RenderMeshes max pass ms,1.9568
+13604.3198,465,18,Resident previous RenderMeshes calls,2
+13625.3825,466,18,Resident previous build elapsed sum ms,6.435
+13625.3873,466,18,Resident previous sort elapsed sum ms,6.9899
+13625.3899,466,18,Resident previous RenderMeshes elapsed sum ms,4.0935
+13625.3922,466,18,Resident previous RenderMeshes max pass ms,2.053
+13625.3943,466,18,Resident previous RenderMeshes calls,2
+13646.0063,467,18,Resident previous build elapsed sum ms,6.5515
+13646.011,467,18,Resident previous sort elapsed sum ms,6.9549
+13646.0133,467,18,Resident previous RenderMeshes elapsed sum ms,4.2239
+13646.0157,467,18,Resident previous RenderMeshes max pass ms,2.1401
+13646.0179,467,18,Resident previous RenderMeshes calls,2
+13664.9855,468,18,Resident previous build elapsed sum ms,5.4734
+13664.9897,468,18,Resident previous sort elapsed sum ms,6.6768
+13664.9918,468,18,Resident previous RenderMeshes elapsed sum ms,3.87
+13664.9942,468,18,Resident previous RenderMeshes max pass ms,1.9852
+13664.9964,468,18,Resident previous RenderMeshes calls,2
+13686.4233,469,18,Resident previous build elapsed sum ms,9.5337
+13686.4277,469,18,Resident previous sort elapsed sum ms,6.7875
+13686.4297,469,18,Resident previous RenderMeshes elapsed sum ms,4.0515
+13686.4319,469,18,Resident previous RenderMeshes max pass ms,2.0286
+13686.4342,469,18,Resident previous RenderMeshes calls,2
+13707.1865,470,18,Resident previous build elapsed sum ms,5.9946
+13707.191,470,18,Resident previous sort elapsed sum ms,6.6026
+13707.1932,470,18,Resident previous RenderMeshes elapsed sum ms,4.5097
+13707.1955,470,18,Resident previous RenderMeshes max pass ms,2.2653
+13707.1977,470,18,Resident previous RenderMeshes calls,2
+13727.6354,471,18,Resident previous build elapsed sum ms,6.0409
+13727.6394,471,18,Resident previous sort elapsed sum ms,6.6984
+13727.6416,471,18,Resident previous RenderMeshes elapsed sum ms,4.2352
+13727.6438,471,18,Resident previous RenderMeshes max pass ms,2.1371
+13727.646,471,18,Resident previous RenderMeshes calls,2
+13748.0482,472,18,Resident previous build elapsed sum ms,6.1165
+13748.0521,472,18,Resident previous sort elapsed sum ms,6.7482
+13748.0542,472,18,Resident previous RenderMeshes elapsed sum ms,5.0462
+13748.0982,472,18,Resident previous RenderMeshes max pass ms,2.5274
+13748.1007,472,18,Resident previous RenderMeshes calls,2
+13769.2264,473,18,Resident previous build elapsed sum ms,5.8104
+13769.2311,473,18,Resident previous sort elapsed sum ms,6.598
+13769.2332,473,18,Resident previous RenderMeshes elapsed sum ms,4.6174
+13769.2356,473,18,Resident previous RenderMeshes max pass ms,2.3126
+13769.2378,473,18,Resident previous RenderMeshes calls,2
+13793.7029,474,18,Resident previous build elapsed sum ms,9.6884
+13793.7071,474,18,Resident previous sort elapsed sum ms,10.1151
+13793.7093,474,18,Resident previous RenderMeshes elapsed sum ms,6.51
+13793.7117,474,18,Resident previous RenderMeshes max pass ms,3.255
+13793.7145,474,18,Resident previous RenderMeshes calls,2
+13813.0636,475,18,Resident previous build elapsed sum ms,5.8345
+13813.0677,475,18,Resident previous sort elapsed sum ms,6.784
+13813.1166,475,18,Resident previous RenderMeshes elapsed sum ms,4.0927
+13813.1195,475,18,Resident previous RenderMeshes max pass ms,2.0612
+13813.1217,475,18,Resident previous RenderMeshes calls,2
+13832.2195,476,18,Resident previous build elapsed sum ms,5.9422
+13832.2234,476,18,Resident previous sort elapsed sum ms,6.649
+13832.2256,476,18,Resident previous RenderMeshes elapsed sum ms,3.7864
+13832.2282,476,18,Resident previous RenderMeshes max pass ms,1.9062
+13832.2304,476,18,Resident previous RenderMeshes calls,2
+13855.3818,477,18,Resident previous build elapsed sum ms,9.062
+13855.387,477,18,Resident previous sort elapsed sum ms,6.5464
+13855.3917,477,18,Resident previous RenderMeshes elapsed sum ms,6.0215
+13855.4029,477,18,Resident previous RenderMeshes max pass ms,3.0126
+13855.4052,477,18,Resident previous RenderMeshes calls,2
+13878.9983,478,18,Resident previous build elapsed sum ms,6.9769
+13879.0453,478,18,Resident previous sort elapsed sum ms,6.8998
+13879.0477,478,18,Resident previous RenderMeshes elapsed sum ms,8.2454
+13879.0501,478,18,Resident previous RenderMeshes max pass ms,4.1588
+13879.0524,478,18,Resident previous RenderMeshes calls,2
+13899.3539,479,18,Resident previous build elapsed sum ms,5.8815
+13899.3662,479,18,Resident previous sort elapsed sum ms,6.4556
+13899.3684,479,18,Resident previous RenderMeshes elapsed sum ms,4.3253
+13899.3706,479,18,Resident previous RenderMeshes max pass ms,2.177
+13899.3728,479,18,Resident previous RenderMeshes calls,2
+13919.2781,480,18,Resident previous build elapsed sum ms,6.528
+13919.2829,480,18,Resident previous sort elapsed sum ms,6.7366
+13919.2852,480,18,Resident previous RenderMeshes elapsed sum ms,4.4522
+13919.2877,480,18,Resident previous RenderMeshes max pass ms,2.2292
+13919.2898,480,18,Resident previous RenderMeshes calls,2
+13939.424,481,18,Resident previous build elapsed sum ms,5.3814
+13939.4286,481,18,Resident previous sort elapsed sum ms,7.0963
+13939.4311,481,18,Resident previous RenderMeshes elapsed sum ms,4.7779
+13939.4335,481,18,Resident previous RenderMeshes max pass ms,2.4003
+13939.4358,481,18,Resident previous RenderMeshes calls,2
+13960.9707,482,18,Resident previous build elapsed sum ms,6.085
+13960.9774,482,18,Resident previous sort elapsed sum ms,6.9084
+13960.9811,482,18,Resident previous RenderMeshes elapsed sum ms,4.4259
+13960.9843,482,18,Resident previous RenderMeshes max pass ms,2.2568
+13960.9865,482,18,Resident previous RenderMeshes calls,2
+13988.7262,483,18,Resident previous build elapsed sum ms,5.7389
+13988.7362,483,18,Resident previous sort elapsed sum ms,6.5714
+13988.7385,483,18,Resident previous RenderMeshes elapsed sum ms,5.9356
+13988.7409,483,18,Resident previous RenderMeshes max pass ms,2.968
+13988.7433,483,18,Resident previous RenderMeshes calls,2
+14007.3044,484,18,Resident previous build elapsed sum ms,5.6148
+14007.3086,484,18,Resident previous sort elapsed sum ms,6.2369
+14007.3112,484,18,Resident previous RenderMeshes elapsed sum ms,4.0867
+14007.3135,484,18,Resident previous RenderMeshes max pass ms,2.0462
+14007.3157,484,18,Resident previous RenderMeshes calls,2
+14027.3578,485,18,Resident previous build elapsed sum ms,5.5029
+14027.3617,485,18,Resident previous sort elapsed sum ms,6.5171
+14027.3638,485,18,Resident previous RenderMeshes elapsed sum ms,3.8263
+14027.3661,485,18,Resident previous RenderMeshes max pass ms,1.9802
+14027.3683,485,18,Resident previous RenderMeshes calls,2
+14047.5743,486,18,Resident previous build elapsed sum ms,6.1055
+14047.5784,486,18,Resident previous sort elapsed sum ms,6.5266
+14047.5805,486,18,Resident previous RenderMeshes elapsed sum ms,4.8862
+14047.5828,486,18,Resident previous RenderMeshes max pass ms,2.4589
+14047.585,486,18,Resident previous RenderMeshes calls,2
+14069.1291,487,18,Resident previous build elapsed sum ms,6.3049
+14069.1362,487,18,Resident previous sort elapsed sum ms,6.9248
+14069.1386,487,18,Resident previous RenderMeshes elapsed sum ms,5.1119
+14069.1423,487,18,Resident previous RenderMeshes max pass ms,2.556
+14069.1447,487,18,Resident previous RenderMeshes calls,2
+14091.285,488,18,Resident previous build elapsed sum ms,9.6096
+14091.2899,488,18,Resident previous sort elapsed sum ms,7.1473
+14091.2921,488,18,Resident previous RenderMeshes elapsed sum ms,4.6856
+14091.2945,488,18,Resident previous RenderMeshes max pass ms,2.3511
+14091.2967,488,18,Resident previous RenderMeshes calls,2
+14111.0757,489,18,Resident previous build elapsed sum ms,6.1082
+14111.0796,489,18,Resident previous sort elapsed sum ms,6.8698
+14111.0816,489,18,Resident previous RenderMeshes elapsed sum ms,4.2213
+14111.0839,489,18,Resident previous RenderMeshes max pass ms,2.1203
+14111.0861,489,18,Resident previous RenderMeshes calls,2
+14130.5161,490,18,Resident previous build elapsed sum ms,6.2688
+14130.5202,490,18,Resident previous sort elapsed sum ms,6.7605
+14130.5223,490,18,Resident previous RenderMeshes elapsed sum ms,4.1719
+14130.5246,490,18,Resident previous RenderMeshes max pass ms,2.0904
+14130.5269,490,18,Resident previous RenderMeshes calls,2
+14149.9116,491,18,Resident previous build elapsed sum ms,6.4972
+14149.9155,491,18,Resident previous sort elapsed sum ms,6.843
+14149.9179,491,18,Resident previous RenderMeshes elapsed sum ms,4.1157
+14149.9201,491,18,Resident previous RenderMeshes max pass ms,2.0608
+14149.9223,491,18,Resident previous RenderMeshes calls,2
+14169.6679,492,18,Resident previous build elapsed sum ms,6.0816
+14169.6722,492,18,Resident previous sort elapsed sum ms,6.8813
+14169.6743,492,18,Resident previous RenderMeshes elapsed sum ms,4.3506
+14169.6767,492,18,Resident previous RenderMeshes max pass ms,2.1821
+14169.6788,492,18,Resident previous RenderMeshes calls,2
+14191.7269,493,18,Resident previous build elapsed sum ms,10.9106
+14191.7307,493,18,Resident previous sort elapsed sum ms,6.7529
+14191.7329,493,18,Resident previous RenderMeshes elapsed sum ms,4.1321
+14191.7351,493,18,Resident previous RenderMeshes max pass ms,2.0678
+14191.7376,493,18,Resident previous RenderMeshes calls,2
+14211.3813,494,18,Resident previous build elapsed sum ms,6.1915
+14211.3853,494,18,Resident previous sort elapsed sum ms,6.4153
+14211.3878,494,18,Resident previous RenderMeshes elapsed sum ms,4.3163
+14211.3903,494,18,Resident previous RenderMeshes max pass ms,2.1622
+14211.3925,494,18,Resident previous RenderMeshes calls,2
+14231.2531,495,18,Resident previous build elapsed sum ms,5.7801
+14231.2575,495,18,Resident previous sort elapsed sum ms,6.8054
+14231.2596,495,18,Resident previous RenderMeshes elapsed sum ms,4.0491
+14231.262,495,18,Resident previous RenderMeshes max pass ms,2.0277
+14231.2642,495,18,Resident previous RenderMeshes calls,2
+14250.7242,496,18,Resident previous build elapsed sum ms,5.8083
+14250.7279,496,18,Resident previous sort elapsed sum ms,6.7134
+14250.7301,496,18,Resident previous RenderMeshes elapsed sum ms,4.1982
+14250.7323,496,18,Resident previous RenderMeshes max pass ms,2.1735
+14250.7346,496,18,Resident previous RenderMeshes calls,2
+14270.215,497,18,Resident previous build elapsed sum ms,5.9533
+14270.219,497,18,Resident previous sort elapsed sum ms,6.5517
+14270.2212,497,18,Resident previous RenderMeshes elapsed sum ms,4.0792
+14270.2235,497,18,Resident previous RenderMeshes max pass ms,2.0465
+14270.2257,497,18,Resident previous RenderMeshes calls,2
+14292.0252,498,18,Resident previous build elapsed sum ms,8.7732
+14292.0291,498,18,Resident previous sort elapsed sum ms,6.6334
+14292.0312,498,18,Resident previous RenderMeshes elapsed sum ms,4.275
+14292.0335,498,18,Resident previous RenderMeshes max pass ms,2.1476
+14292.0357,498,18,Resident previous RenderMeshes calls,2
+14311.6973,499,18,Resident previous build elapsed sum ms,6.2483
+14311.7015,499,18,Resident previous sort elapsed sum ms,6.3965
+14311.7035,499,18,Resident previous RenderMeshes elapsed sum ms,4.3609
+14311.7059,499,18,Resident previous RenderMeshes max pass ms,2.1864
+14311.708,499,18,Resident previous RenderMeshes calls,2
+14330.6032,500,18,Resident previous build elapsed sum ms,5.1678
+14330.6076,500,18,Resident previous sort elapsed sum ms,6.367
+14330.6098,500,18,Resident previous RenderMeshes elapsed sum ms,4.2362
+14330.6122,500,18,Resident previous RenderMeshes max pass ms,2.1204
+14330.6143,500,18,Resident previous RenderMeshes calls,2
+14350.5076,501,18,Resident previous build elapsed sum ms,6.4761
+14350.5116,501,18,Resident previous sort elapsed sum ms,6.7574
+14350.5137,501,18,Resident previous RenderMeshes elapsed sum ms,4.1871
+14350.516,501,18,Resident previous RenderMeshes max pass ms,2.1496
+14350.5186,501,18,Resident previous RenderMeshes calls,2
+14369.8728,502,18,Resident previous build elapsed sum ms,5.3093
+14369.8776,502,18,Resident previous sort elapsed sum ms,7.0235
+14369.8797,502,18,Resident previous RenderMeshes elapsed sum ms,3.8793
+14369.8821,502,18,Resident previous RenderMeshes max pass ms,1.9415
+14369.8843,502,18,Resident previous RenderMeshes calls,2
+14393.874,503,18,Resident previous build elapsed sum ms,8.0413
+14393.8782,503,18,Resident previous sort elapsed sum ms,10.1935
+14393.8803,503,18,Resident previous RenderMeshes elapsed sum ms,7.2122
+14393.8825,503,18,Resident previous RenderMeshes max pass ms,3.6061
+14393.8848,503,18,Resident previous RenderMeshes calls,2
+14416.1428,504,18,Resident previous build elapsed sum ms,8.1102
+14416.1481,504,18,Resident previous sort elapsed sum ms,6.9259
+14416.1503,504,18,Resident previous RenderMeshes elapsed sum ms,5.9956
+14416.1528,504,18,Resident previous RenderMeshes max pass ms,3.007
+14416.1551,504,18,Resident previous RenderMeshes calls,2
+14437.042,505,18,Resident previous build elapsed sum ms,6.6571
+14437.0469,505,18,Resident previous sort elapsed sum ms,6.6268
+14437.049,505,18,Resident previous RenderMeshes elapsed sum ms,5.0655
+14437.0513,505,18,Resident previous RenderMeshes max pass ms,2.5337
+14437.0534,505,18,Resident previous RenderMeshes calls,2
+14458.7664,506,18,Resident previous build elapsed sum ms,6.491
+14458.7706,506,18,Resident previous sort elapsed sum ms,6.4198
+14458.7728,506,18,Resident previous RenderMeshes elapsed sum ms,4.4309
+14458.775,506,18,Resident previous RenderMeshes max pass ms,2.2168
+14458.7773,506,18,Resident previous RenderMeshes calls,2
+14479.4378,507,18,Resident previous build elapsed sum ms,5.6411
+14479.4418,507,18,Resident previous sort elapsed sum ms,6.906
+14479.4444,507,18,Resident previous RenderMeshes elapsed sum ms,6.8219
+14479.4467,507,18,Resident previous RenderMeshes max pass ms,3.4127
+14479.4489,507,18,Resident previous RenderMeshes calls,2
+14500.4052,508,18,Resident previous build elapsed sum ms,8.049
+14500.4092,508,18,Resident previous sort elapsed sum ms,6.8335
+14500.4116,508,18,Resident previous RenderMeshes elapsed sum ms,3.8325
+14500.4139,508,18,Resident previous RenderMeshes max pass ms,1.9456
+14500.4161,508,18,Resident previous RenderMeshes calls,2
+14520.5959,509,18,Resident previous build elapsed sum ms,6.6431
+14520.6006,509,18,Resident previous sort elapsed sum ms,6.8147
+14520.6029,509,18,Resident previous RenderMeshes elapsed sum ms,3.7982
+14520.6054,509,18,Resident previous RenderMeshes max pass ms,1.9796
+14520.6077,509,18,Resident previous RenderMeshes calls,2
+14540.1588,510,18,Resident previous build elapsed sum ms,5.5408
+14540.1694,510,18,Resident previous sort elapsed sum ms,6.7534
+14540.1716,510,18,Resident previous RenderMeshes elapsed sum ms,3.9984
+14540.1739,510,18,Resident previous RenderMeshes max pass ms,1.9994
+14540.176,510,18,Resident previous RenderMeshes calls,2
+14559.896,511,18,Resident previous build elapsed sum ms,6.3918
+14559.9001,511,18,Resident previous sort elapsed sum ms,6.3872
+14559.9023,511,18,Resident previous RenderMeshes elapsed sum ms,4.4641
+14559.9045,511,18,Resident previous RenderMeshes max pass ms,2.2324
+14559.9067,511,18,Resident previous RenderMeshes calls,2
+14579.1035,512,18,Resident previous build elapsed sum ms,6.0519
+14579.1075,512,18,Resident previous sort elapsed sum ms,6.777
+14579.1099,512,18,Resident previous RenderMeshes elapsed sum ms,3.7275
+14579.1122,512,18,Resident previous RenderMeshes max pass ms,1.9205
+14579.1144,512,18,Resident previous RenderMeshes calls,2
+14603.5757,513,18,Resident previous build elapsed sum ms,8.2275
+14603.58,513,18,Resident previous sort elapsed sum ms,9.7787
+14603.5823,513,18,Resident previous RenderMeshes elapsed sum ms,8.0406
+14603.5846,513,18,Resident previous RenderMeshes max pass ms,4.0203
+14603.5867,513,18,Resident previous RenderMeshes calls,2
+14623.9476,514,18,Resident previous build elapsed sum ms,7.4895
+14623.9515,514,18,Resident previous sort elapsed sum ms,6.371
+14623.9537,514,18,Resident previous RenderMeshes elapsed sum ms,4.1102
+14623.956,514,18,Resident previous RenderMeshes max pass ms,2.0609
+14623.9582,514,18,Resident previous RenderMeshes calls,2
+14643.7924,515,18,Resident previous build elapsed sum ms,6.0572
+14643.7972,515,18,Resident previous sort elapsed sum ms,6.4334
+14643.7994,515,18,Resident previous RenderMeshes elapsed sum ms,4.8307
+14643.8021,515,18,Resident previous RenderMeshes max pass ms,2.4162
+14643.8042,515,18,Resident previous RenderMeshes calls,2
+14666.9193,516,18,Resident previous build elapsed sum ms,7.1252
+14666.9233,516,18,Resident previous sort elapsed sum ms,9.9761
+14666.9256,516,18,Resident previous RenderMeshes elapsed sum ms,6.5101
+14666.928,516,18,Resident previous RenderMeshes max pass ms,3.2835
+14666.9303,516,18,Resident previous RenderMeshes calls,2
+14691.5392,517,18,Resident previous build elapsed sum ms,6.3631
+14691.5437,517,18,Resident previous sort elapsed sum ms,9.8241
+14691.546,517,18,Resident previous RenderMeshes elapsed sum ms,6.7259
+14691.5483,517,18,Resident previous RenderMeshes max pass ms,3.4079
+14691.5506,517,18,Resident previous RenderMeshes calls,2
+14714.715,518,18,Resident previous build elapsed sum ms,6.7232
+14714.7196,518,18,Resident previous sort elapsed sum ms,9.9578
+14714.7218,518,18,Resident previous RenderMeshes elapsed sum ms,7.5234
+14714.7241,518,18,Resident previous RenderMeshes max pass ms,3.762
+14714.7263,518,18,Resident previous RenderMeshes calls,2
+14734.3505,519,18,Resident previous build elapsed sum ms,6.1178
+14734.3547,519,18,Resident previous sort elapsed sum ms,6.393
+14734.3569,519,18,Resident previous RenderMeshes elapsed sum ms,3.9737
+14734.3594,519,18,Resident previous RenderMeshes max pass ms,1.992
+14734.407,519,18,Resident previous RenderMeshes calls,2
+14754.369,520,18,Resident previous build elapsed sum ms,7.4045
+14754.3729,520,18,Resident previous sort elapsed sum ms,6.2996
+14754.3751,520,18,Resident previous RenderMeshes elapsed sum ms,4.1196
+14754.3774,520,18,Resident previous RenderMeshes max pass ms,2.0606
+14754.3795,520,18,Resident previous RenderMeshes calls,2
+14774.51,521,18,Resident previous build elapsed sum ms,7.4256
+14774.5143,521,18,Resident previous sort elapsed sum ms,6.5065
+14774.5165,521,18,Resident previous RenderMeshes elapsed sum ms,4.8623
+14774.5188,521,18,Resident previous RenderMeshes max pass ms,2.4355
+14774.5209,521,18,Resident previous RenderMeshes calls,2
+14794.9677,522,18,Resident previous build elapsed sum ms,6.0443
+14794.9717,522,18,Resident previous sort elapsed sum ms,6.8266
+14794.9739,522,18,Resident previous RenderMeshes elapsed sum ms,5.1041
+14795.0194,522,18,Resident previous RenderMeshes max pass ms,2.5554
+14795.0217,522,18,Resident previous RenderMeshes calls,2
+14815.8845,523,18,Resident previous build elapsed sum ms,6.4803
+14815.8893,523,18,Resident previous sort elapsed sum ms,6.6427
+14815.8914,523,18,Resident previous RenderMeshes elapsed sum ms,4.7301
+14815.8939,523,18,Resident previous RenderMeshes max pass ms,2.4223
+14815.896,523,18,Resident previous RenderMeshes calls,2
+14835.0788,524,18,Resident previous build elapsed sum ms,5.9274
+14835.0834,524,18,Resident previous sort elapsed sum ms,6.5607
+14835.0856,524,18,Resident previous RenderMeshes elapsed sum ms,3.9109
+14835.0879,524,18,Resident previous RenderMeshes max pass ms,1.9557
+14835.09,524,18,Resident previous RenderMeshes calls,2
+14856.1679,525,18,Resident previous build elapsed sum ms,5.7893
+14856.1738,525,18,Resident previous sort elapsed sum ms,6.6447
+14856.2164,525,18,Resident previous RenderMeshes elapsed sum ms,3.8514
+14856.2187,525,18,Resident previous RenderMeshes max pass ms,1.9298
+14856.2208,525,18,Resident previous RenderMeshes calls,2
+14877.9026,526,18,Resident previous build elapsed sum ms,6.5406
+14877.9067,526,18,Resident previous sort elapsed sum ms,7.0687
+14877.9089,526,18,Resident previous RenderMeshes elapsed sum ms,6.3573
+14877.9112,526,18,Resident previous RenderMeshes max pass ms,3.1791
+14877.9135,526,18,Resident previous RenderMeshes calls,2
+14901.0807,527,18,Resident previous build elapsed sum ms,6.6256
+14901.0855,527,18,Resident previous sort elapsed sum ms,6.9208
+14901.0879,527,18,Resident previous RenderMeshes elapsed sum ms,5.6538
+14901.0902,527,18,Resident previous RenderMeshes max pass ms,2.8323
+14901.0925,527,18,Resident previous RenderMeshes calls,2
+14922.753,528,18,Resident previous build elapsed sum ms,6.2677
+14922.8029,528,18,Resident previous sort elapsed sum ms,6.857
+14922.8054,528,18,Resident previous RenderMeshes elapsed sum ms,3.927
+14922.8078,528,18,Resident previous RenderMeshes max pass ms,1.9744
+14922.8101,528,18,Resident previous RenderMeshes calls,2
+14942.9587,529,18,Resident previous build elapsed sum ms,5.6115
+14942.9628,529,18,Resident previous sort elapsed sum ms,6.7926
+14942.9651,529,18,Resident previous RenderMeshes elapsed sum ms,5.3726
+14942.9673,529,18,Resident previous RenderMeshes max pass ms,2.6971
+14942.9695,529,18,Resident previous RenderMeshes calls,2
+14966.128,530,18,Resident previous build elapsed sum ms,7.2529
+14966.1327,530,18,Resident previous sort elapsed sum ms,9.8955
+14966.135,530,18,Resident previous RenderMeshes elapsed sum ms,6.7932
+14966.1374,530,18,Resident previous RenderMeshes max pass ms,3.3966
+14966.1396,530,18,Resident previous RenderMeshes calls,2
+14986.0101,531,18,Resident previous build elapsed sum ms,6.2696
+14986.0142,531,18,Resident previous sort elapsed sum ms,6.4784
+14986.0163,531,18,Resident previous RenderMeshes elapsed sum ms,4.2294
+14986.0186,531,18,Resident previous RenderMeshes max pass ms,2.1164
+14986.0207,531,18,Resident previous RenderMeshes calls,2

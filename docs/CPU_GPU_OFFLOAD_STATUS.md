@@ -219,3 +219,23 @@ no live dispatcher or automatic GPU replacement is enabled. Maximum recorded
 training Present interval is 57.61 seconds, so the full tracer stays diagnostic.
 
 [Refinement, remaining proof obligations and reproduction](reports/2026-09-24-cpu-contract-refinement.md).
+
+## 2026-09-25 — large exact-order model and independent admission axes
+
+From `037d00b`, reproduced the full 65,344-record permutation, including equal-key
+ordering, with a deterministic model and the saved original machine code. All 49
+native differential cases (1,074,241 records), including heap fallback, agree.
+The isolated oracle uses the complete grouped 519-byte heap helper, not the old
+18-byte prologue-only capture. No new full trace or renderer run occurred.
+
+Reconstructed the TLS vector's allocation/growth, fill, sorting, consumption,
+reset/reuse and growth-time retirement from the existing image. Birth/generation,
+all aliases and exclusion through commit are still unknown. Added executable
+separate semantics/access gates and generation-bound dispatch/commit tickets as
+a contract checker; no trusted live provider or dispatcher is implemented.
+
+The full algorithm model is differentially validated, not certified for every
+machine path/continuation. Both live admission axes remain closed. Inner-loop
+frequency/cost are not inferred from parent-function timings or buffer creation.
+
+[Report, actual gate result, lifecycle and exact-order oracle](reports/2026-09-25-cpu-large-operation-admission.md).

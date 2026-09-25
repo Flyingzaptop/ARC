@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "unit_tests": {
+    "cpu_large_sort_tests": 3,
+    "cpu_admission_conditions_tests": 9,
+    "cpu_sort_contract_tests": 7,
+    "cpu_cfg_constants_tests": 6
+  },
+  "unit_tests_passed": 25,
+  "native_differential_cases": 49,
+  "native_total_records": 1074241,
+  "record_mismatches": 0,
+  "canary_failures": 0,
+  "evidence_replay_passed": true,
+  "new_game_runs": 0,
+  "new_full_traces": 0,
+  "live_replacement": false,
+  "initial_oracle_fault": {
+    "case": "forced-heap-random-257",
+    "exception": "0xc0000005",
+    "fault_rva": "0x228462",
+    "invalid_write_address": "0xfe",
+    "cause": "first offline oracle loaded archived prologue-only 18-byte helper; execution fell into zero-filled gap",
+    "resolution": "use existing logical-plan grouped 519-byte helper; pin complete closure SHA-256",
+    "renderer_affected": false
+  }
+}

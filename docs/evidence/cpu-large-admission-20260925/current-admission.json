@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "facts_source": "existing capture; no trusted ownership or full-equivalence provider",
+  "result": {
+    "semantics_pass": false,
+    "memory_pass": false,
+    "eligible": false,
+    "semantic_failures": [
+      "path_input_guards_pass",
+      "exact_permutation_all_paths",
+      "continuation_state_preserved",
+      "exception_and_external_effects_preserved"
+    ],
+    "memory_failures": [
+      "no_verified_ownership_provider",
+      "complete_access_domain",
+      "exclusive_through_commit",
+      "lifetime_pinned",
+      "consumer_publication_held",
+      "missing_allocation_generation_or_epoch"
+    ]
+  },
+  "dispatch_ticket": null,
+  "replacement_enabled": false
+}

@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "representation": "Git blob bytes before working-tree line-ending conversion",
+  "files": {
+    "docs/CPU_GPU_OFFLOAD_STATUS.md": {
+      "sha256": "02c44f853f13be1e6b2472a1dd2ae599ba5c41c6b3e2c5bb9b296d011da49a4e",
+      "bytes": 14328
+    },
+    "docs/evidence/cpu-large-admission-20260925/current-admission.json": {
+      "sha256": "440680c98ca679a595ddacdef65857bd07ee93b68d3b46a8d3862a10e5171143",
+      "bytes": 697
+    },
+    "docs/evidence/cpu-large-admission-20260925/inner-economics.json": {
+      "sha256": "a446adbe92660bde76130820e51897d2f10c612949804dfa582736a34cea89b2",
+      "bytes": 2083
+    },
+    "docs/evidence/cpu-large-admission-20260925/large-native-oracle.json": {
+      "sha256": "7f7814ea0ec37cabe0ef43d15d69f1240a82cd6a0604bb66baab4dae258d9356",
+      "bytes": 26957
+    },
+    "docs/evidence/cpu-large-admission-20260925/lifecycle-code.txt": {
+      "sha256": "fe9dfe5ca269876ff0917fb8804ab5a2946d57bce6a7fa5a9da54b9968db3d74",
+      "bytes": 11673
+    },
+    "docs/evidence/cpu-large-admission-20260925/lifecycle.json": {
+      "sha256": "65347894d1ce4b347f6bca3ef7ab332bf33720ba4ce495d9971d6441431996ea",
+      "bytes": 7628
+    },
+    "docs/evidence/cpu-large-admission-20260925/parent-timing-excerpt.csv": {
+      "sha256": "a114d3918710c436db32b9f480f13536beb3084e52a3eae28df4ad9faff04320",
+      "bytes": 135679
+    },
+    "docs/evidence/cpu-large-admission-20260925/validation.json": {
+      "sha256": "61c0bd28d39904f4780439d0303b5a95def767d293ffceab114fab5bf4eaf6e9",
+      "bytes": 951
+    },
+    "docs/reports/2026-09-25-cpu-large-operation-admission.md": {
+      "sha256": "f2f869596caffa11d77072a7c9deae24869d6e0c6d7bef2c19a1a5e3fd48a945",
+      "bytes": 13769
+    },
+    "scripts/check-cpu-large-sort-native.py": {
+      "sha256": "618a553c731418d8f964aceafb685f8798323d05175b66cf646dccce956850eb",
+      "bytes": 7583
+    },
+    "scripts/cpu_admission_conditions.py": {
+      "sha256": "b1df3aa6907753542a92d2ded6cf83e5d15f0cb6158c1bc62185e59e686f90e2",
+      "bytes": 3386
+    },
+    "scripts/cpu_large_sort.py": {
+      "sha256": "1c9a35a4f7d1f3d2dacf0b9c93e78d0fa20851f38e5721e6c80f4dccef0a5695",
+      "bytes": 4199
+    },
+    "scripts/verify-cpu-large-admission-evidence.py": {
+      "sha256": "e119531e1707c564ae92af2c7fc0983911417c29dfb9c99d804170895e5a47d8",
+      "bytes": 2568
+    },
+    "tests/cpu_admission_conditions_tests.py": {
+      "sha256": "f25c187b3b7dbe75909d9431e40c25e3ab357abc6e408c72b487b1726085fb34",
+      "bytes": 2804
+    },
+    "tests/cpu_large_sort_tests.py": {
+      "sha256": "51f2d046b00ae99f07c128a4812bd8c63be4a6a2391e793e7186a29270df107c",
+      "bytes": 1973
+    }
+  }
+}

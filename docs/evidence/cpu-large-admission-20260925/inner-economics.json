@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "short_consumer_tail": {
+    "sha256": "22d0eabf159ca7bad40adfe20dba42015e8e169cfaf0941fb232b25e7805c169",
+    "recorded_loop_visits": 829,
+    "mask_histogram": {
+      "1": 829
+    },
+    "scope": "partial single-thread continuation; not a per-frame invocation count; instrumented QPC not useful work cost"
+  },
+  "parent_screen": {
+    "sha256": "dcc2c673455c0ab7f3b4a7edb31aaf07305dfaedd81c7c0007c09d12965c2a67",
+    "warmup_min_ms": 6000,
+    "metrics": {
+      "Resident previous build elapsed sum ms": {
+        "samples": 424,
+        "mean": 6.87317287735849,
+        "max": 12.4493
+      },
+      "Resident previous sort elapsed sum ms": {
+        "samples": 424,
+        "mean": 7.1378978773584905,
+        "max": 10.968
+      },
+      "Resident previous RenderMeshes elapsed sum ms": {
+        "samples": 424,
+        "mean": 4.914309198113208,
+        "max": 10.0886
+      },
+      "Resident previous RenderMeshes max pass ms": {
+        "samples": 424,
+        "mean": 2.4790877358490566,
+        "max": 5.0574
+      },
+      "Resident previous RenderMeshes calls": {
+        "samples": 424,
+        "mean": 2.0,
+        "max": 2.0
+      }
+    },
+    "scope": "historical source-assisted whole-parent timing, not isolated bitmask loop cost or automatic-offload gain"
+  },
+  "grid_indices": {
+    "frequency": null,
+    "pure_cost_ms": null,
+    "reason": "rebuild path conditional on desired size != current buffer size, absent complete counter coverage; cannot infer per-frame execution",
+    "batchability": "independent cells after allocation guards, but recurring benefit unestablished",
+    "action": "do not develop GPU port before size-change branch entry/exit counters and useful time exist"
+  },
+  "mask_pack": {
+    "frequency_per_frame": null,
+    "pure_cost_ms": null,
+    "parent_calls_per_frame": 2,
+    "batchability": "batch multiple outer records only after closing order, prefix offsets, per-batch counters, mapped-buffer ownership and publication",
+    "action": "do not assign entire parent duration to the tiny inner loop"
+  }
+}
