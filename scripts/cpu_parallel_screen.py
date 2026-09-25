@@ -101,40 +101,104 @@ def assess(c):
         'provenance':c.get('screen_origin','runtime_sampled_loop'),'manual_facts_used':False,
         'limits':['same-stream stride is not cross-output disjointness','sampling is not useful CPU cost','topology classification is a hypothesis, not a correctness certificate']}
 
+CONTEXT_FIELDS=('device','driver','algorithm_version','batch_class','residency','remaining_cpu_contract')
+RESEARCH_ATTEMPTS=3
+TERMINAL={'unprofitable_or_not_recurring_large_batch','research_budget_exhausted'}
+
+def context_key(c,conditions=None):
+    relevant={k:v for k,v in (conditions or {}).items() if k in CONTEXT_FIELDS}
+    return hashlib.sha256(json.dumps([c['id'],c['gpu_algorithm'],relevant],sort_keys=True).encode()).hexdigest()
+
 def incorporate_measurements(ranked,measurements):
-    """Accept measurements as ranking evidence, never as replacement permission."""
+    """Bounded research is independent of demonstrated replacement economics.
+
+    Only a directly measured end-to-end duration is used for benefit. GPU and
+    fence-wait components remain diagnostics and are NEVER added to that duration.
+    """
     for c in ranked:
+        c.setdefault('context_key',context_key(c))
+        c.update(economics_status='unknown',net_task_ms_estimate=None,
+                 replacement_economics_passed=False,research_attempts=0,
+                 useful_cpu_ms=None,calls_per_frame=None,batch_elements=None,manual_facts_used=False)
+        for field in ('replacement_total_ms','net_task_ms_upper_bound','rejection_basis','manual_note','measurement_evidence','measurement_provenance','previous_context_result','reconsidered_reason'):
+            c.pop(field,None)
+        c['exchange'].update(input_bytes=None,output_bytes=None,upload_ms=None,return_ms=None,wait_ms=None,gpu_consumer_proven=False)
+        c['exchange'].pop('consumer_edge_evidence',None)
         m=measurements.get(c['id'])
-        c['economics_status']='unknown';c['net_task_ms_estimate']=None
-        if not m:continue
-        c['measurement_provenance']=m.get('provenance','unknown')
-        if m.get('provenance')!='runtime_measured':
-            c['manual_facts_used']=True;c['manual_note']=m
-            continue # manual notes are visible but cannot silently drive automatic rank
-        c['measurement_evidence']=m.get('evidence')
-        fields=['cpu_useful_ms','calls_per_frame','batch_elements','input_bytes','output_bytes','upload_ms','return_ms','wait_ms','gpu_ms','dispatch_ms']
-        if not m.get('evidence') or any(type(m.get(k)) not in (int,float) or not math.isfinite(m[k]) or m[k]<0 for k in fields):
-            c['economics_status']='incomplete_measurements';continue
-        c['useful_cpu_ms']=m['cpu_useful_ms'];c['calls_per_frame']=m['calls_per_frame'];c['batch_elements']=m['batch_elements']
-        c['exchange'].update({k:m[k] for k in ['input_bytes','output_bytes','upload_ms','return_ms','wait_ms']})
-        if m.get('cpu_time_scope')!='isolated_useful_running_time':
-            c['economics_status']='parent_or_wait_time_not_useful_work';continue
-        if m.get('gpu_consumer') and not m.get('consumer_edge_evidence'):
-            c['economics_status']='gpu_residency_unsubstantiated';continue
-        c['exchange']['gpu_consumer_proven']=bool(m.get('gpu_consumer') and m.get('consumer_edge_evidence'))
-        c['exchange']['consumer_edge_evidence']=m.get('consumer_edge_evidence')
-        total=sum(m[k] for k in ['upload_ms','return_ms','wait_ms','gpu_ms','dispatch_ms'])
-        c['net_task_ms_estimate']=m['cpu_useful_ms']-total
-        c['economics_status']='promising_task_not_frame_gain' if c['net_task_ms_estimate']>0 and m['calls_per_frame']>0 and m['batch_elements']>1 else 'unprofitable_or_not_recurring_large_batch'
-        c['detailed_capture_eligible']=c['feasibility_tier']>=2 and c['economics_status']=='promising_task_not_frame_gain'
-        if not c['detailed_capture_eligible']:c['next_action']='defer: insufficient economic or parallel evidence'
+        if m:
+            recorded=m.get('context_key') or context_key(c,m.get('conditions'))
+            if recorded!=c['context_key']:
+                c['previous_context_result']=m.get('evidence');m=None
+                c['reconsidered_reason']='material context changed'
+        if m:
+            c['research_attempts']=m.get('research_attempts',0)
+            if type(c['research_attempts']) is not int or c['research_attempts']<0:raise ValueError('Invalid research attempt count')
+            c['measurement_provenance']=m.get('provenance','unknown')
+            if m.get('provenance')!='runtime_measured':
+                c['manual_facts_used']=True;c['manual_note']=m
+            else:
+                c['measurement_evidence']=m.get('evidence')
+                def valid(k):return type(m.get(k)) in (int,float) and math.isfinite(m[k]) and m[k]>=0
+                for k in ['calls_per_frame','batch_elements']:
+                    if valid(k):c[k]=m[k]
+                for k in ['input_bytes','output_bytes','upload_ms','return_ms','wait_ms']:
+                    if valid(k):c['exchange'][k]=m[k]
+                if m.get('cpu_time_scope') in ('isolated_useful_running_time','isolated_original_work_elapsed') and valid('cpu_useful_ms'):
+                    c['useful_cpu_ms']=m['cpu_useful_ms']
+                elif valid('cpu_useful_ms'):c['economics_status']='parent_or_wait_time_not_useful_work'
+                if m.get('gpu_consumer') and m.get('consumer_edge_evidence'):
+                    c['exchange']['gpu_consumer_proven']=True;c['exchange']['consumer_edge_evidence']=m['consumer_edge_evidence']
+                elif m.get('gpu_consumer'):c['economics_status']='gpu_residency_unsubstantiated'
+                if m.get('evidence') and (c['calls_per_frame']==0 or c['batch_elements']==1):
+                    c['economics_status']='unprofitable_or_not_recurring_large_batch'
+                elif (m.get('evidence') and c['useful_cpu_ms'] is not None and valid('replacement_total_ms')
+                      and m.get('replacement_time_scope')=='input_ready_to_all_consumers_ready'
+                      and c['economics_status']!='gpu_residency_unsubstantiated'):
+                    c['net_task_ms_estimate']=c['useful_cpu_ms']-m['replacement_total_ms']
+                    c['replacement_total_ms']=m['replacement_total_ms']
+                    c['economics_status']='promising_task_not_frame_gain' if c['net_task_ms_estimate']>0 else 'unprofitable_or_not_recurring_large_batch'
+                    c['replacement_economics_passed']=c['net_task_ms_estimate']>0
+                elif (m.get('evidence') and c['useful_cpu_ms'] is not None and valid('replacement_lower_bound_ms')
+                      and m.get('lower_bound_scope')=='mandatory_input_preparation_for_declared_contract'
+                      and m['replacement_lower_bound_ms']>=c['useful_cpu_ms']):
+                    c['economics_status']='unprofitable_or_not_recurring_large_batch'
+                    c['net_task_ms_upper_bound']=c['useful_cpu_ms']-m['replacement_lower_bound_ms']
+                    c['rejection_basis']='mandatory preparation alone exhausts measured original-work budget; full replacement was not measured'
+                elif c['economics_status']=='unknown':c['economics_status']='incomplete_measurements'
+        if c['research_attempts']>=RESEARCH_ATTEMPTS and c['economics_status'] not in TERMINAL:
+            c['economics_status']='research_budget_exhausted'
+        eligible=c['feasibility_tier']>=2 and c['economics_status'] not in TERMINAL
+        c['bounded_research_eligible']=eligible
+        c['detailed_capture_eligible']=eligible # legacy reader; bounded, NOT enablement
+        c['cheap_measurement_eligible']=eligible and not c['replacement_economics_passed']
+        c['research_budget']={'max_attempts_per_context':RESEARCH_ATTEMPTS,'max_events':32768,'max_ms':100}
+        c['next_action']='bounded contract/economics experiment; no replacement admission' if eligible else 'defer until material conditions or algorithm change'
+
+def record_attempt(path,module_sha,ids,ranked,evidence):
+    """Small local investigation ledger, not a pattern exchange or proof store."""
+    ledger=json.loads(path.read_text()) if path.exists() else {'module_sha256':module_sha,'candidates':{}}
+    if ledger['module_sha256']!=module_sha:raise ValueError('Ledger generation mismatch')
+    lookup={c['id']:c for c in ranked}
+    for identity in ids:
+        c=lookup[identity];m=ledger['candidates'].get(identity,{})
+        previous=m.get('context_key') or context_key(c,m.get('conditions'))
+        if previous!=c['context_key']:m={}
+        m.setdefault('provenance','runtime_measured');m['context_key']=c['context_key']
+        m['research_attempts']=m.get('research_attempts',0)+1
+        m['research_evidence']=(m.get('research_evidence',[])+[str(evidence)])[-RESEARCH_ATTEMPTS:]
+        ledger['candidates'][identity]=m
+    temporary=path.with_suffix(path.suffix+'.tmp');temporary.write_text(json.dumps(ledger,indent=2)+'\n',encoding='utf-8');temporary.replace(path)
+
+def recommendations(ranked):
+    return {'recommended_cheap_measurement':next((x['id'] for x in ranked if x['cheap_measurement_eligible']),None),
+            'recommended_deep_capture':next((x['id'] for x in ranked if x['bounded_research_eligible']),None)}
 
 def ordering(c):
-    rejected=c.get('economics_status') in ('unprofitable_or_not_recurring_large_batch','parent_or_wait_time_not_useful_work','gpu_residency_unsubstantiated')
-    return (rejected,-int(c.get('detailed_capture_eligible',False)),-int(c['feasibility_tier']>=2),-int(c['sample_hits']>0),-c['feasibility_tier'],
+    rejected=c.get('economics_status') in TERMINAL
+    return (rejected,-int(c.get('replacement_economics_passed',False)),-int(c['feasibility_tier']>=2),-int(c['sample_hits']>0),-c['feasibility_tier'],
             -int(c['exchange']['gpu_consumer_proven']),-(c.get('net_task_ms_estimate') or 0),-c['sample_hits'],c['backedge_rva']-c['loop_rva'],c['id'])
 
-def build(probe,context=None,measurements=None):
+def build(probe,context=None,measurements=None,conditions=None):
     source=json.loads((probe/'candidates.json').read_text());candidates={c['id']:c for c in source['candidates']}
     if context:
         spec=importlib.util.spec_from_file_location('discovery',Path(__file__).with_name('discover-cpu-tasks.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
@@ -153,21 +217,21 @@ def build(probe,context=None,measurements=None):
                 loop=m.describe_loop(ins,target,i.address)
                 candidates[identity]=dict(id=identity,function_rva=entry['entry_rva'],loop_rva=target,backedge_rva=i.address,samples=0,screen_origin='static_inner_loop_of_previously_sampled_function; execution/frequency unobserved',**loop)
     ranked=[assess(c) for c in candidates.values()]
+    for c in ranked:c['context_key']=context_key(c,conditions)
     incorporate_measurements(ranked,measurements or {})
     ranked.sort(key=ordering)
     # Structural nested loops are not independent amounts of CPU time.
     for i,c in enumerate(ranked):
         c['rank']=i+1;c['overlap_ids']=[d['id'] for d in ranked if d['id']!=c['id'] and max(c['loop_rva'],d['loop_rva'])<=min(c['backedge_rva'],d['backedge_rva'])]
-    return {'schema':1,'module_sha256':source['module_sha256'],'candidate_source_sha256':hashlib.sha256((probe/'candidates.json').read_bytes()).hexdigest(),
-            'selection':'automatic feasibility-first cheap screen; unknown economics require bounded measurement before deep study',
+    return {'schema':2,'module_sha256':source['module_sha256'],'candidate_source_sha256':hashlib.sha256((probe/'candidates.json').read_bytes()).hexdigest(),
+            'selection':'parallel feasibility permits bounded research with unknown economics; replacement requires separate evidence',
             'manual_selection':False,'runtime_admission':False,'ranking_is_profit_prediction':False,
-            'candidates':ranked,'recommended_cheap_measurement':next((x['id'] for x in ranked if x['feasibility_tier']>=2),None),
-            'recommended_deep_capture':next((x['id'] for x in ranked if x['detailed_capture_eligible']),None)}
+            'candidates':ranked,**recommendations(ranked)}
 
 if __name__=='__main__':
     import argparse
     p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--context',type=Path);p.add_argument('--measurements',type=Path);a=p.parse_args()
     measured=json.loads(a.measurements.read_text()) if a.measurements else {}
     if measured and measured['module_sha256']!=json.loads((a.probe/'candidates.json').read_text())['module_sha256']:raise ValueError('Measurement generation mismatch')
-    result=build(a.probe,a.context,measured.get('candidates',{}));a.output.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    result=build(a.probe,a.context,measured.get('candidates',{}),measured.get('current_conditions',{}));a.output.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print([(x['rank'],x['id'],x['topology']) for x in result['candidates'][:5]])

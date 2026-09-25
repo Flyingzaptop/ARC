@@ -1,0 +1,16 @@
+{
+  "targeted_selector_suite_passed": 19,
+  "new_full_instruction_traces": 0,
+  "control_runs": 5,
+  "captured_packets": 3,
+  "captured_words_exact": 196608,
+  "gpu_replacement_built": false,
+  "full_gpu_route_measured": false,
+  "automatic_progression": [
+    "outer record package",
+    "grid generation",
+    "narrow mask expansion"
+  ],
+  "control_executables_and_sources_restored": true,
+  "archive_files_verified": 34
+}

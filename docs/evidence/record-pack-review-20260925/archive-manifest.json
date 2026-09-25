@@ -1,0 +1,142 @@
+{
+  "files": {
+    "control/instrumentation.patch": {
+      "bytes": 1844,
+      "sha256": "6444fe86a9b5163fea16e52809b84def006f0312fc2b5e3c3072c0ed5f616657"
+    },
+    "control/prepare-a/calls.csv": {
+      "bytes": 33225,
+      "sha256": "eefae6dad195531865beea0387e71c88a0be15605bdac8d3de2d99a4732dde99"
+    },
+    "control/prepare-a/calls.csv.input.bin": {
+      "bytes": 3145728,
+      "sha256": "295909749eff9ef68d462a413d50a52d8ca71bbad263f12b0a8346dac17517e0"
+    },
+    "control/prepare-a/calls.csv.output.bin": {
+      "bytes": 262144,
+      "sha256": "1bb204d13a69339b009ca32d6c6248fb55dfce94798a715fb67eaa8ab54f1650"
+    },
+    "control/prepare-a/frames.csv": {
+      "bytes": 387484,
+      "sha256": "2df6f922fd8d56f4e9f7aec9b822b1d3b74176300d7a7a3571a528212d2df40a"
+    },
+    "control/prepare-a/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/prepare-a/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/prepare-b/calls.csv": {
+      "bytes": 44416,
+      "sha256": "80b805ba4c607b6b925aa2a76b19e22054bfc5bd75b983d585068e7616560f52"
+    },
+    "control/prepare-b/calls.csv.input.bin": {
+      "bytes": 3145728,
+      "sha256": "bc4825bc9dd9823c810afa0c6910e8cff6b86b0a67b60bbe84bc57e2042f2160"
+    },
+    "control/prepare-b/calls.csv.output.bin": {
+      "bytes": 262144,
+      "sha256": "89675fbbf08f7bc0ceab27fe13114f053ce7c4bb79449c1b632609a4549d75fb"
+    },
+    "control/prepare-b/frames.csv": {
+      "bytes": 476304,
+      "sha256": "515d0bfa78964f27da971325d4be72939aa03d76dd20a6087971f4875dfb7ddd"
+    },
+    "control/prepare-b/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/prepare-b/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/restoration.json": {
+      "bytes": 178,
+      "sha256": "94e2f749b93ee45ea10e2a7a0bf9682aa84d79e08cebff0129110e6e198a7e1e"
+    },
+    "control/runs.json": {
+      "bytes": 2757,
+      "sha256": "3757709ccf0f92a55c94186247d66ba75d9183a857e865aa4ca3a0cc28374966"
+    },
+    "control/Tests.control.exe": {
+      "bytes": 9589760,
+      "sha256": "a81d19fe1700b6ea5fb580b78c56b09b610e96b6fcb1a434601605bdbfdd9828"
+    },
+    "control/timing-a/calls.csv": {
+      "bytes": 24634,
+      "sha256": "e9228f3fde51f99e38df1821845ac2f873f7a7b0f372eee4cce2e08b190450d6"
+    },
+    "control/timing-a/frames.csv": {
+      "bytes": 314986,
+      "sha256": "7007c9fcf3fe0ad1b7c206281f674dcdc77dba3911aea4e6edb0b144818cb772"
+    },
+    "control/timing-a/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/timing-a/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/timing-b/calls.csv": {
+      "bytes": 36890,
+      "sha256": "bc6e81e978fa2ccd9627b9d04a27410c2a25f2886543686efda962f3e07dfe99"
+    },
+    "control/timing-b/frames.csv": {
+      "bytes": 441158,
+      "sha256": "17d47c4160a3c4827245adb82eba7f8c555e033bd4c67ac3497cfacd11910433"
+    },
+    "control/timing-b/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "control/timing-b/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "gate/gate/calls.csv": {
+      "bytes": 52428,
+      "sha256": "f186fdd7db1e53623a0bdabc8094547be711f5981f475bd91be7c577f119ecb7"
+    },
+    "gate/gate/calls.csv.input.bin": {
+      "bytes": 3145728,
+      "sha256": "2e498496b205442fca1520bd44ac2f86377719ca5241b50e8b2cfd35688fa660"
+    },
+    "gate/gate/calls.csv.output.bin": {
+      "bytes": 262144,
+      "sha256": "8c5ae005a393b49f345347ded35ee3df7003d68ba5ac6efc12f0a52116cdd62a"
+    },
+    "gate/gate/frames.csv": {
+      "bytes": 560455,
+      "sha256": "926013aadb905134d7c86d4591ddd29adde083f56a2ffa55454963f0795cc582"
+    },
+    "gate/gate/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "gate/gate/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "gate/instrumentation.patch": {
+      "bytes": 1880,
+      "sha256": "6efffc8c18fd17fcfebb0e34257d2c52149969b8378adf548217fedf0cf86249"
+    },
+    "gate/restoration.json": {
+      "bytes": 178,
+      "sha256": "94e2f749b93ee45ea10e2a7a0bf9682aa84d79e08cebff0129110e6e198a7e1e"
+    },
+    "gate/runs.json": {
+      "bytes": 672,
+      "sha256": "972d03c30f472a0a37b15fd97f375da1a727f6d3ba7c5a4ba793230052bf9207"
+    },
+    "gate/Tests.control.exe": {
+      "bytes": 9589760,
+      "sha256": "5c01afad9b6e592584dad1bf229925432a4563209e955e26d3a33ffe46967361"
+    }
+  },
+  "zip_sha256": "5152eaeef470d010e40edad1d06a30002fad42d728d23f367850a0382cb57094",
+  "note": "Control and gate use two instrumentation layouts; both executables and their patches are preserved. No baseline source or executable left modified."
+}

@@ -1,0 +1,145 @@
+{
+  "scope": "source-assisted timing of automatically selected package; no GPU replacement",
+  "runs": {
+    "timing-a": {
+      "samples": 450,
+      "frames": 225,
+      "calls_per_frame": {
+        "2": 225
+      },
+      "records": {
+        "65344": 450
+      },
+      "words": {
+        "65344": 450
+      },
+      "groups": {
+        "1": 450
+      },
+      "cpu_slice_median_ms": 5.62005,
+      "prepare_median_ms": 0.0,
+      "paired_headroom_before_gpu_median_ms": 5.62005,
+      "prepare_exceeds_slice_samples": null,
+      "retained_flush_median_ms": 0.0427,
+      "forward_flags": {
+        "0": 450
+      },
+      "cost_scope": "elapsed original loop minus nested flush. No deliberate waits in slice; scheduling delay is not separately measured. Preparation includes gather/materialization, not transfer or GPU."
+    },
+    "prepare-a": {
+      "samples": 548,
+      "frames": 274,
+      "calls_per_frame": {
+        "2": 274
+      },
+      "records": {
+        "65344": 548
+      },
+      "words": {
+        "65344": 548
+      },
+      "groups": {
+        "1": 548
+      },
+      "cpu_slice_median_ms": 2.57805,
+      "prepare_median_ms": 2.8545,
+      "paired_headroom_before_gpu_median_ms": -0.2549000000000001,
+      "prepare_exceeds_slice_samples": 405,
+      "retained_flush_median_ms": 0.0324,
+      "forward_flags": {
+        "0": 548
+      },
+      "cost_scope": "elapsed original loop minus nested flush. No deliberate waits in slice; scheduling delay is not separately measured. Preparation includes gather/materialization, not transfer or GPU.",
+      "packet": {
+        "bytes": 3145728,
+        "records": 65536,
+        "output_bytes": 262144,
+        "groups": [
+          {
+            "key": [
+              0,
+              0,
+              0
+            ],
+            "offset": 0,
+            "count": 65536,
+            "alpha": false
+          }
+        ],
+        "exact_output_match": true,
+        "input_sha256": "295909749eff9ef68d462a413d50a52d8ca71bbad263f12b0a8346dac17517e0",
+        "output_sha256": "1bb204d13a69339b009ca32d6c6248fb55dfce94798a715fb67eaa8ab54f1650"
+      }
+    },
+    "prepare-b": {
+      "samples": 748,
+      "frames": 374,
+      "calls_per_frame": {
+        "2": 374
+      },
+      "records": {
+        "65344": 748
+      },
+      "words": {
+        "65344": 748
+      },
+      "groups": {
+        "1": 748
+      },
+      "cpu_slice_median_ms": 2.16025,
+      "prepare_median_ms": 2.4898,
+      "paired_headroom_before_gpu_median_ms": -0.3093999999999999,
+      "prepare_exceeds_slice_samples": 647,
+      "retained_flush_median_ms": 0.02905,
+      "forward_flags": {
+        "0": 748
+      },
+      "cost_scope": "elapsed original loop minus nested flush. No deliberate waits in slice; scheduling delay is not separately measured. Preparation includes gather/materialization, not transfer or GPU.",
+      "packet": {
+        "bytes": 3145728,
+        "records": 65536,
+        "output_bytes": 262144,
+        "groups": [
+          {
+            "key": [
+              0,
+              0,
+              0
+            ],
+            "offset": 0,
+            "count": 65536,
+            "alpha": false
+          }
+        ],
+        "exact_output_match": true,
+        "input_sha256": "bc4825bc9dd9823c810afa0c6910e8cff6b86b0a67b60bbe84bc57e2042f2160",
+        "output_sha256": "89675fbbf08f7bc0ceab27fe13114f053ce7c4bb79449c1b632609a4549d75fb"
+      }
+    },
+    "timing-b": {
+      "samples": 690,
+      "frames": 345,
+      "calls_per_frame": {
+        "2": 345
+      },
+      "records": {
+        "65344": 690
+      },
+      "words": {
+        "65344": 690
+      },
+      "groups": {
+        "1": 690
+      },
+      "cpu_slice_median_ms": 3.0545,
+      "prepare_median_ms": 0.0,
+      "paired_headroom_before_gpu_median_ms": 3.0545,
+      "prepare_exceeds_slice_samples": null,
+      "retained_flush_median_ms": 0.033049999999999996,
+      "forward_flags": {
+        "0": 690
+      },
+      "cost_scope": "elapsed original loop minus nested flush. No deliberate waits in slice; scheduling delay is not separately measured. Preparation includes gather/materialization, not transfer or GPU."
+    }
+  }
+}

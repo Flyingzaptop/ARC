@@ -271,3 +271,21 @@ implementation is economically approved yet. Fixed fixture readiness timing afte
 an initial loading-time miss. Existing tracer and exact-sort experiment are unchanged.
 
 [Shortlist, detailed selected-candidate review and limits](reports/2026-09-25-parallel-first-candidate-screen.md).
+
+## 2026-09-25 — selector review fixes and record-package costs
+
+Fixed the circular research gate, overlap double-counting and reselection of
+rejected candidates. Unknown economics permit bounded investigation; positive
+economics use measured end-to-end time, not GPU time added again to fence wait.
+Rejections/attempt budgets persist per material context. These are investigation
+rules, not live replacement admission.
+
+Source-assisted control instrumentation isolates the automatically selected loop
+from its nested flush calls: two 65,344-record packets per frame. In paired runs,
+preparing a 48-byte CPU-materialized input packet takes longer than that original
+loop, before transfer/GPU work. This route is screened out; no GPU prototype or
+full replacement timing is claimed. The next grid-generation candidate's necessary
+guard is inactive in the controlled steady window. Selection then advances to the
+narrow mask-expansion slice, whose separate costs remain to be established.
+
+[Review fixes, actual scopes, measurements and automatic progression](reports/2026-09-25-record-pack-review-fixes.md).

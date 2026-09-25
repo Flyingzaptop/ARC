@@ -1,8 +1,9 @@
 """Bounded native captures selected automatically from the prior runtime detector."""
 import argparse,subprocess,os,sys,json,time,shutil,hashlib,csv,io
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--limit',type=int);p.add_argument('--mode',choices=['trace','boundary','training','consumer'],default='trace');p.add_argument('--events',type=int,default=32768);p.add_argument('--ms',type=int,default=100);p.add_argument('--max-arg-span',type=int,default=0);p.add_argument('--start',type=int,default=0);p.add_argument('--outermost',action='store_true');p.add_argument('--stop-unsupported',action='store_true');a=p.parse_args();r=Path(__file__).resolve().parents[1]
-subprocess.run([sys.executable,str(r/'scripts/select-cpu-contracts.py'),str(a.probe),str(a.output),"--mode",a.mode,"--events",str(a.events),"--ms",str(a.ms),"--max-arg-span",str(a.max_arg_span)]+(["--outermost"] if a.outermost else [])+(["--stop-unsupported"] if a.stop_unsupported else []),check=True)
+from cpu_parallel_screen import record_attempt
+p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--limit',type=int);p.add_argument('--context',type=Path);p.add_argument('--measurements',type=Path);p.add_argument('--mode',choices=['trace','boundary','training','consumer'],default='trace');p.add_argument('--events',type=int,default=32768);p.add_argument('--ms',type=int,default=100);p.add_argument('--max-arg-span',type=int,default=0);p.add_argument('--start',type=int,default=0);p.add_argument('--outermost',action='store_true');p.add_argument('--stop-unsupported',action='store_true');a=p.parse_args();r=Path(__file__).resolve().parents[1]
+subprocess.run([sys.executable,str(r/'scripts/select-cpu-contracts.py'),str(a.probe),str(a.output),"--mode",a.mode,"--events",str(a.events),"--ms",str(a.ms),"--max-arg-span",str(a.max_arg_span)]+(["--outermost"] if a.outermost else [])+(["--stop-unsupported"] if a.stop_unsupported else [])+(["--context",str(a.context)] if a.context else [])+(["--measurements",str(a.measurements)] if a.measurements else []),check=True)
 plan=json.loads((a.output/'selection.json').read_text());w=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/WickedEngine');exe=w/'BUILD/x64/Release/Tests/Tests.exe';backup=a.output/'Tests-before.exe';source=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/full-arc-20260924/package/Tests.exe')
 if hashlib.sha256(source.read_bytes()).hexdigest()!=plan['image_sha256']:raise ValueError('Fixture generation differs from detector')
 shutil.copy2(exe,backup)
@@ -50,7 +51,7 @@ try:
      break
     time.sleep(.05)
    code=process.wait(timeout=10);manifest={'selected':selected,'pid':process.pid,'exe_sha256':plan['image_sha256'],'capture_dll_sha256':hashlib.sha256((r/'build/Release/arc-cpu-contract-capture.dll').read_bytes()).hexdigest(),'attach_code':attach.returncode,'exit_code':code,'seconds':time.monotonic()-started,'observation_only':True,'original_work_executed':True}
-   (out/'run.json').write_text(json.dumps(manifest,indent=2));print(selected['directory'],attach.returncode,code,flush=True)
+   (out/'run.json').write_text(json.dumps(manifest,indent=2));record_attempt(a.measurements or a.probe/'parallel-measurements.json',plan['image_sha256'],selected['ids'],json.loads((a.output/'parallel-screen.json').read_text())['candidates'],out/'capture.json');print(selected['directory'],attach.returncode,code,flush=True)
    if code:raise RuntimeError('Owned renderer failed; stop captures')
   finally:
    if process.poll() is None:process.terminate();process.wait(timeout=5)

@@ -1,0 +1,14 @@
+{
+  "module_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+  "conditions": {
+    "algorithm_version": "record-pack-cpu-materialization48-v1",
+    "residency": "CPU-records-and-objects",
+    "batch_class": "instances-65344-two-passes-forward-off",
+    "remaining_cpu_contract": "original-batch-flush-and-publication",
+    "device": "Intel Core i7-11800H / NVIDIA GeForce RTX 3060 Laptop GPU",
+    "driver": "616.64"
+  },
+  "record_package": "a0a0babad8bef48b:1c9e90-1ca188",
+  "grid_generation": "a0a0babad8bef48b:1d7260-1d72a3",
+  "provenance": "manual association of source instrumentation to automatically selected binary candidates; not a selector rule"
+}

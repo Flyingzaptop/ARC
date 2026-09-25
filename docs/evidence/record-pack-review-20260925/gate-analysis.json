@@ -1,0 +1,53 @@
+{
+  "scope": "source-assisted timing of automatically selected package; no GPU replacement",
+  "runs": {
+    "gate": {
+      "samples": 854,
+      "frames": 427,
+      "calls_per_frame": {
+        "2": 427
+      },
+      "records": {
+        "65344": 854
+      },
+      "words": {
+        "65344": 854
+      },
+      "groups": {
+        "1": 854
+      },
+      "cpu_slice_median_ms": 2.2285500000000003,
+      "prepare_median_ms": 2.4892,
+      "paired_headroom_before_gpu_median_ms": -0.2516999999999999,
+      "prepare_exceeds_slice_samples": 635,
+      "retained_flush_median_ms": 0.0288,
+      "forward_flags": {
+        "0": 854
+      },
+      "cost_scope": "elapsed original loop minus nested flush. No deliberate waits in slice; scheduling delay is not separately measured. Preparation includes gather/materialization, not transfer or GPU.",
+      "grid_gate_histogram": {
+        "0": 854
+      },
+      "packet": {
+        "bytes": 3145728,
+        "records": 65536,
+        "output_bytes": 262144,
+        "groups": [
+          {
+            "key": [
+              0,
+              0,
+              0
+            ],
+            "offset": 0,
+            "count": 65536,
+            "alpha": false
+          }
+        ],
+        "exact_output_match": true,
+        "input_sha256": "2e498496b205442fca1520bd44ac2f86377719ca5241b50e8b2cfd35688fa660",
+        "output_sha256": "8c5ae005a393b49f345347ded35ee3df7003d68ba5ac6efc12f0a52116cdd62a"
+      }
+    }
+  }
+}

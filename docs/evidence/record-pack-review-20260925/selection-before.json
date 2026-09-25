@@ -1,0 +1,3338 @@
+{
+  "schema": 2,
+  "module_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+  "candidate_source_sha256": "b5bf5587574327c70568f70ce4389431dd9fda92a344694b6d53cd7d43bcf05e",
+  "selection": "parallel feasibility permits bounded research with unknown economics; replacement requires separate evidence",
+  "manual_selection": false,
+  "runtime_admission": false,
+  "ranking_is_profit_prediction": false,
+  "candidates": [
+    {
+      "id": "a0a0babad8bef48b:1c9e90-1ca188",
+      "function_rva": 1875530,
+      "loop_rva": 1875600,
+      "backedge_rva": 1876360,
+      "topology": "mask_expansion_scan",
+      "feasibility_tier": 3,
+      "sample_hits": 6,
+      "parallel_work": "Masks of different records can be counted and expanded independently after offsets",
+      "sequential_dependencies": [
+        "prefix-offset dependency replaced by parallel scan",
+        "batch boundaries, counters and consumer publication unclosed",
+        "callee effects are unclosed; proposed topology covers only an inner slice"
+      ],
+      "gpu_algorithm": "per-record popcount -> exclusive integer scan -> stable scatter in ascending bit order",
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r11",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 5,
+        "span_ms": 7445.786599999999,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "Floating reductions require exact NaN/signed-zero/order contract; integer tree/scan requires matching width, overflow and live-out flags",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 193,
+        "write": 151,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": true,
+      "next_action": "bounded contract/economics experiment; no replacement admission",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "fb8d313940821a32188604fd3cf2a99ec266130388d222714a2e26e3429d02e5",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": true,
+      "cheap_measurement_eligible": true,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 1,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1ca130-1ca15b"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d7260-1d72a3",
+      "function_rva": 1929296,
+      "loop_rva": 1929824,
+      "backedge_rva": 1929891,
+      "topology": "affine_map",
+      "feasibility_tier": 4,
+      "sample_hits": 0,
+      "parallel_work": "Element-local arithmetic with candidate fixed-stride output",
+      "sequential_dependencies": [
+        "cross-stream alias and induction/control proof still required"
+      ],
+      "gpu_algorithm": "one GPU lane per independent element; procedural map if no data input",
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 0,
+        "write": 24,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": true,
+      "next_action": "bounded contract/economics experiment; no replacement admission",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "acf72752156da50b71f1baef5e7dcfe0de13248cf09b0f696227d35c39078007",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": true,
+      "cheap_measurement_eligible": true,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 2,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d7250-1d72ae"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1ca130-1ca15b",
+      "function_rva": 1874240,
+      "loop_rva": 1876272,
+      "backedge_rva": 1876315,
+      "topology": "mask_expansion_scan",
+      "feasibility_tier": 3,
+      "sample_hits": 0,
+      "parallel_work": "Masks of different records can be counted and expanded independently after offsets",
+      "sequential_dependencies": [
+        "prefix-offset dependency replaced by parallel scan",
+        "batch boundaries, counters and consumer publication unclosed"
+      ],
+      "gpu_algorithm": "per-record popcount -> exclusive integer scan -> stable scatter in ascending bit order",
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r8"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "Floating reductions require exact NaN/signed-zero/order contract; integer tree/scan requires matching width, overflow and live-out flags",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 12,
+        "write": 8,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": true,
+      "next_action": "bounded contract/economics experiment; no replacement admission",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "6ba6343381cf06d05124033a199b52a220b02301cc3b3bd2f28e4059c9281cb7",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": true,
+      "cheap_measurement_eligible": true,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 3,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1c9e90-1ca188"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d78d0-1d7a27",
+      "function_rva": 1931422,
+      "loop_rva": 1931472,
+      "backedge_rva": 1931815,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 15,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 15,
+        "span_ms": 9471.898000000001,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 151,
+        "write": 15,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "2edc9b84895ed6ce5e1afb95a8794c518e3d9df7b75218052c162f035c59a500",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 4,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d778a-1d7efb"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d1180-1d122d",
+      "function_rva": 1904756,
+      "loop_rva": 1905024,
+      "backedge_rva": 1905197,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 3,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r8",
+        "rax",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 3,
+        "span_ms": 2647.7088,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 109,
+        "write": 41,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "40a1e5741f83f1cb4e2da83c451e298ab36b65df719aff6b70b92dbe3124bfc3",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 5,
+      "overlap_ids": []
+    },
+    {
+      "id": "a0a0babad8bef48b:230f13-231a9b",
+      "function_rva": 2297101,
+      "loop_rva": 2297619,
+      "backedge_rva": 2300571,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 2,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r12",
+        "r13",
+        "rax",
+        "rbp",
+        "rsi",
+        "rsp"
+      ],
+      "unclosed_control_edges": [
+        2297644
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 2,
+        "span_ms": 8306.2142,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "Floating reductions require exact NaN/signed-zero/order contract; integer tree/scan requires matching width, overflow and live-out flags",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 796,
+        "write": 162,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "e76260be513616a31a3005baf6716c5fb1a6770ffb70c5a2ae203ef755cc5011",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 6,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:231180-23118e",
+        "a0a0babad8bef48b:2317d0-231806",
+        "a0a0babad8bef48b:231660-2316a7",
+        "a0a0babad8bef48b:2319f0-231a38",
+        "a0a0babad8bef48b:231a3c-231ab7",
+        "a0a0babad8bef48b:230fe0-231061",
+        "a0a0babad8bef48b:231780-231813",
+        "a0a0babad8bef48b:230e44-230f4a",
+        "a0a0babad8bef48b:2316cf-2317f9",
+        "a0a0babad8bef48b:230d82-230f2c",
+        "a0a0babad8bef48b:2315f0-231824",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:230f07-231ac3",
+      "function_rva": 2297101,
+      "loop_rva": 2297607,
+      "backedge_rva": 2300611,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 2,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r12",
+        "r13",
+        "rax",
+        "rbp",
+        "rsi",
+        "rsp"
+      ],
+      "unclosed_control_edges": [
+        2297644
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 2,
+        "span_ms": 8306.2142,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "Floating reductions require exact NaN/signed-zero/order contract; integer tree/scan requires matching width, overflow and live-out flags",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 798,
+        "write": 171,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "bed979694a51c8d0f7bf1a081dadedb6ad314b9eaad5eeb529b71a38799dae53",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 7,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:231180-23118e",
+        "a0a0babad8bef48b:2317d0-231806",
+        "a0a0babad8bef48b:231660-2316a7",
+        "a0a0babad8bef48b:2319f0-231a38",
+        "a0a0babad8bef48b:231a3c-231ab7",
+        "a0a0babad8bef48b:230fe0-231061",
+        "a0a0babad8bef48b:231780-231813",
+        "a0a0babad8bef48b:230e44-230f4a",
+        "a0a0babad8bef48b:2316cf-2317f9",
+        "a0a0babad8bef48b:230d82-230f2c",
+        "a0a0babad8bef48b:2315f0-231824",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223764-2238e3",
+      "function_rva": 2241872,
+      "loop_rva": 2242404,
+      "backedge_rva": 2242787,
+      "topology": "ordered_exchange",
+      "feasibility_tier": 0,
+      "sample_hits": 14,
+      "parallel_work": "No effective parallel transformation established for exact exchange order",
+      "sequential_dependencies": [
+        "data-dependent swaps and next-address decisions",
+        "equal-key permutation contract"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r11",
+        "r8",
+        "r9",
+        "rax",
+        "rcx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 13,
+        "span_ms": 8734.7384,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 176,
+        "write": 128,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "5bdeccd737729eacdd0beafd9fdc1e2eb95b9b51dc70147777a4655699267502",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 8,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223764-223921",
+        "a0a0babad8bef48b:223764-22393c",
+        "a0a0babad8bef48b:2235a0-2239a4",
+        "a0a0babad8bef48b:223810-22389e",
+        "a0a0babad8bef48b:223770-2237f7"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223764-223921",
+      "function_rva": 2241872,
+      "loop_rva": 2242404,
+      "backedge_rva": 2242849,
+      "topology": "ordered_exchange",
+      "feasibility_tier": 0,
+      "sample_hits": 14,
+      "parallel_work": "No effective parallel transformation established for exact exchange order",
+      "sequential_dependencies": [
+        "data-dependent swaps and next-address decisions",
+        "equal-key permutation contract"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r11",
+        "r9",
+        "rax",
+        "rcx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 13,
+        "span_ms": 8734.7384,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 240,
+        "write": 192,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "2154ca8e6f5a9058c6787a8a9a9e895409b25603fc90d8bbc95e5c580615cca8",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 9,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223764-2238e3",
+        "a0a0babad8bef48b:223764-22393c",
+        "a0a0babad8bef48b:2235a0-2239a4",
+        "a0a0babad8bef48b:223810-22389e",
+        "a0a0babad8bef48b:223770-2237f7"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223764-22393c",
+      "function_rva": 2241872,
+      "loop_rva": 2242404,
+      "backedge_rva": 2242876,
+      "topology": "ordered_exchange",
+      "feasibility_tier": 0,
+      "sample_hits": 14,
+      "parallel_work": "No effective parallel transformation established for exact exchange order",
+      "sequential_dependencies": [
+        "data-dependent swaps and next-address decisions",
+        "equal-key permutation contract"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r11",
+        "r9",
+        "rax",
+        "rcx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 13,
+        "span_ms": 8734.7384,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 272,
+        "write": 224,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "6f6125ee74df323253e8480e697f57ae7c8d8336f07032f7109a98c8c2f6c9b1",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 10,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223764-2238e3",
+        "a0a0babad8bef48b:223764-223921",
+        "a0a0babad8bef48b:2235a0-2239a4",
+        "a0a0babad8bef48b:223810-22389e",
+        "a0a0babad8bef48b:223770-2237f7"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2235a0-2239a4",
+      "function_rva": 2241872,
+      "loop_rva": 2241952,
+      "backedge_rva": 2242980,
+      "topology": "ordered_exchange",
+      "feasibility_tier": 0,
+      "sample_hits": 14,
+      "parallel_work": "No effective parallel transformation established for exact exchange order",
+      "sequential_dependencies": [
+        "data-dependent swaps and next-address decisions",
+        "equal-key permutation contract"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r11",
+        "r12",
+        "r13",
+        "rax",
+        "rbp",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 13,
+        "span_ms": 8734.7384,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 328,
+        "write": 232,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "3b91f8611ca3b0d74a9c5283cafbe90e44a551fc48e08700463009074d806ada",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 11,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223764-2238e3",
+        "a0a0babad8bef48b:223764-223921",
+        "a0a0babad8bef48b:223764-22393c",
+        "a0a0babad8bef48b:223810-22389e",
+        "a0a0babad8bef48b:223770-2237f7",
+        "a0a0babad8bef48b:223720-22375c",
+        "a0a0babad8bef48b:223670-2236e4"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223810-22389e",
+      "function_rva": 2241872,
+      "loop_rva": 2242576,
+      "backedge_rva": 2242718,
+      "topology": "ordered_exchange",
+      "feasibility_tier": 0,
+      "sample_hits": 8,
+      "parallel_work": "No effective parallel transformation established for exact exchange order",
+      "sequential_dependencies": [
+        "data-dependent swaps and next-address decisions",
+        "equal-key permutation contract"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r11",
+        "r8",
+        "rax",
+        "rcx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 8,
+        "span_ms": 6809.3778999999995,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 56,
+        "write": 32,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "40658384cdd8079bdbdcfcd6bc7959fd6060923a1ebbadfae7490986265aa6b8",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 12,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223764-2238e3",
+        "a0a0babad8bef48b:223764-223921",
+        "a0a0babad8bef48b:223764-22393c",
+        "a0a0babad8bef48b:2235a0-2239a4"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223770-2237f7",
+      "function_rva": 2241872,
+      "loop_rva": 2242416,
+      "backedge_rva": 2242551,
+      "topology": "ordered_exchange",
+      "feasibility_tier": 0,
+      "sample_hits": 5,
+      "parallel_work": "No effective parallel transformation established for exact exchange order",
+      "sequential_dependencies": [
+        "data-dependent swaps and next-address decisions",
+        "equal-key permutation contract"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r9",
+        "rax",
+        "rcx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 5,
+        "span_ms": 8734.7384,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 56,
+        "write": 32,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "8a4f5a46071b4c614fb64153402de861ef8e50912ac06a6c3e16136badf77f49",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 13,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223764-2238e3",
+        "a0a0babad8bef48b:223764-223921",
+        "a0a0babad8bef48b:223764-22393c",
+        "a0a0babad8bef48b:2235a0-2239a4"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2448f0-244a0b",
+      "function_rva": 2377808,
+      "loop_rva": 2377968,
+      "backedge_rva": 2378251,
+      "topology": "synchronization_or_atomic",
+      "feasibility_tier": 0,
+      "sample_hits": 2,
+      "parallel_work": "Inspect computation inside synchronization boundaries; do not move whole parent",
+      "sequential_dependencies": [
+        "original atomic ordering and publication",
+        "callee effects are unclosed; proposed topology covers only an inner slice"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 2,
+        "span_ms": 1374.9771999999994,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 134,
+        "write": 77,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "runtime_sampled_loop",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "458d879f88f5f82bc0f5c3dee75b7d9a39f33d060d13108b48352d5b122042fe",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 14,
+      "overlap_ids": []
+    },
+    {
+      "id": "a0a0babad8bef48b:231180-23118e",
+      "function_rva": 2296848,
+      "loop_rva": 2298240,
+      "backedge_rva": 2298254,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 5,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "c4a96cc654297503d151453ec1a23d5fccf4a0b9c7ea3afa580e76070709072a",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 15,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:230e30-230e42",
+      "function_rva": 2296848,
+      "loop_rva": 2297392,
+      "backedge_rva": 2297410,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 5,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "c8f87f59ca0ec33854dffe7e3a440d55f600e31fe055386739c8c498cf1622a3",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 16,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230d82-230f2c"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:230ed6-230eea",
+      "function_rva": 2296848,
+      "loop_rva": 2297558,
+      "backedge_rva": 2297578,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 5,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "1cdddf3ce8f1efc5d95965bbe805e0965a5fbc7d64e7935a5d5327ae3cd5e766",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 17,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230e44-230f4a",
+        "a0a0babad8bef48b:230d82-230f2c"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223a90-223abf",
+      "function_rva": 2241872,
+      "loop_rva": 2243216,
+      "backedge_rva": 2243263,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 16,
+        "write": 17,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "64c531679a29a0986209810a73bed71151ed9ba7c9818f845ff1f5060c6e64f2",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 18,
+      "overlap_ids": [
+        "a0a0babad8bef48b:2239d0-223bf9"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2317d0-231806",
+      "function_rva": 2296848,
+      "loop_rva": 2299856,
+      "backedge_rva": 2299910,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 2,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "5ab7c79cdae9357177f01e4c590f36112932ac9059db53059f12e108782eba56",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 19,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:231780-231813",
+        "a0a0babad8bef48b:2316cf-2317f9",
+        "a0a0babad8bef48b:2315f0-231824",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d1102-1d113d",
+      "function_rva": 1904736,
+      "loop_rva": 1904898,
+      "backedge_rva": 1904957,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 48,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "38021cd75a40c515524d4d68ac4b1024b20ada45bc8bc38808b28036a9a81d72",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 20,
+      "overlap_ids": []
+    },
+    {
+      "id": "a0a0babad8bef48b:223720-22375c",
+      "function_rva": 2241872,
+      "loop_rva": 2242336,
+      "backedge_rva": 2242396,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax",
+        "rcx",
+        "rdx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 12,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "fc2ea0a26abb19db88f4ae615836606f52db954c65450a4989825a3e1132e3f6",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 21,
+      "overlap_ids": [
+        "a0a0babad8bef48b:2235a0-2239a4"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223b92-223bd7",
+      "function_rva": 2241872,
+      "loop_rva": 2243474,
+      "backedge_rva": 2243543,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "rdx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 26,
+        "write": 16,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "89cecc6139cf1134047afeb43350b5fbf53b481123089bae1ddda493915eb2d5",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 22,
+      "overlap_ids": [
+        "a0a0babad8bef48b:2239d0-223bf9"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:231660-2316a7",
+      "function_rva": 2296848,
+      "loop_rva": 2299488,
+      "backedge_rva": 2299559,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 4,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "fc0a9de80f1b124e7b559048ffd1a7ac20a534730685b430d2976f416ef67002",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 23,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:2315f0-231824",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2319f0-231a38",
+      "function_rva": 2296848,
+      "loop_rva": 2300400,
+      "backedge_rva": 2300472,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 4,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "168d0b6475127bedaa59021473ee9b1783d50c4d82351982b1f20d24ffdc3993",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 24,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:223ad0-223b23",
+      "function_rva": 2241872,
+      "loop_rva": 2243280,
+      "backedge_rva": 2243363,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r13",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 32,
+        "write": 33,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "f88beec59e5729e7654113b7314ad61d18c1668546d1aa64a510608188f6249a",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 25,
+      "overlap_ids": [
+        "a0a0babad8bef48b:2239d0-223bf9"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d7250-1d72ae",
+      "function_rva": 1929296,
+      "loop_rva": 1929808,
+      "backedge_rva": 1929902,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 0,
+        "write": 24,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "7a79c09580a65c4217eb947d5eee767fcc76147497b5b1a359cce154fb206007",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 26,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d7260-1d72a3"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d8130-1d818f",
+      "function_rva": 1929296,
+      "loop_rva": 1933616,
+      "backedge_rva": 1933711,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r9",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 60,
+        "write": 2,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "01628a259a5d1a7f0006fdd51360080ffc6e1d981e4a1f2e5c3ae67e8fd062e2",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 27,
+      "overlap_ids": []
+    },
+    {
+      "id": "a0a0babad8bef48b:223670-2236e4",
+      "function_rva": 2241872,
+      "loop_rva": 2242160,
+      "backedge_rva": 2242276,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r8",
+        "rax",
+        "rcx",
+        "rdi",
+        "rdx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 20,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "e5a65f0c01c8fd1f7f846ce1e68d62b72e3251f9c971218c4b72f71ccabeb281",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 28,
+      "overlap_ids": [
+        "a0a0babad8bef48b:2235a0-2239a4"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:231a3c-231ab7",
+      "function_rva": 2296848,
+      "loop_rva": 2300476,
+      "backedge_rva": 2300599,
+      "topology": "reduction_hypothesis",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Partial per-tile reductions, then combine",
+      "sequential_dependencies": [
+        "combination tree",
+        "floating-point reassociation and NaN/signed-zero semantics not authorized",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": "hierarchical reduction only for certified associative operator and permitted numeric order",
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax"
+      ],
+      "unclosed_control_edges": [
+        2300571
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "Floating reductions require exact NaN/signed-zero/order contract; integer tree/scan requires matching width, overflow and live-out flags",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 34,
+        "write": 12,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "68da70c187a178d470b5e6f0933b2d461210bf96a140c67cf8ad7befab43fbc4",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 29,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:230fe0-231061",
+      "function_rva": 2296848,
+      "loop_rva": 2297824,
+      "backedge_rva": 2297953,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 98,
+        "write": 8,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "c444c44f9245b4ccfdb92e36ecd39f570c04ec45eb778c1ef7c6c9e9a78a2fae",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 30,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:231780-231813",
+      "function_rva": 2296848,
+      "loop_rva": 2299776,
+      "backedge_rva": 2299923,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [
+        2299912
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 6,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "f87debdd6d179a3fc634882e7e234a366beb2940979d7adf7ab2c17a777b8ff2",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 31,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:2317d0-231806",
+        "a0a0babad8bef48b:2316cf-2317f9",
+        "a0a0babad8bef48b:2315f0-231824",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d1940-1d19dc",
+      "function_rva": 1904736,
+      "loop_rva": 1907008,
+      "backedge_rva": 1907164,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r8",
+        "rax",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 108,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "9fdfbe5db797207c8b8d1d86be7426a435a4ec963cbdbf18c6ea4382550c05fd",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 32,
+      "overlap_ids": []
+    },
+    {
+      "id": "a0a0babad8bef48b:230e44-230f4a",
+      "function_rva": 2296848,
+      "loop_rva": 2297412,
+      "backedge_rva": 2297674,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [
+        2297644
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 43,
+        "write": 16,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "48050a4275a260f8b8b91b64a5ebc73385904a79a627c7c799d8275a04de4191",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 33,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:230ed6-230eea",
+        "a0a0babad8bef48b:230d82-230f2c"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2316cf-2317f9",
+      "function_rva": 2296848,
+      "loop_rva": 2299599,
+      "backedge_rva": 2299897,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r8",
+        "rdx"
+      ],
+      "unclosed_control_edges": [
+        2299819,
+        2299895
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 18,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "0f6c8dca7a370ad530045050451bef8e9ecdab9799f15de7d583248d7a0afbb5",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 34,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:2317d0-231806",
+        "a0a0babad8bef48b:231780-231813",
+        "a0a0babad8bef48b:2315f0-231824",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:230d82-230f2c",
+      "function_rva": 2296848,
+      "loop_rva": 2297218,
+      "backedge_rva": 2297644,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "rax",
+        "rdi",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 64,
+        "write": 20,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "55ef4524bd0dcb12a35c6ad928623f9b1b6d47f89aba7987c2b380f56ec20076",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 35,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:230e30-230e42",
+        "a0a0babad8bef48b:230ed6-230eea",
+        "a0a0babad8bef48b:230e44-230f4a"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d7c70-1d7e7f",
+      "function_rva": 1929296,
+      "loop_rva": 1932400,
+      "backedge_rva": 1932927,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r15",
+        "rsp"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 204,
+        "write": 100,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "2caa9ac935f8669cb81dbf459c9dd6068c194a06ac2698775b3b25bd1db3bfcc",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 36,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d778a-1d7efb"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2239d0-223bf9",
+      "function_rva": 2241872,
+      "loop_rva": 2243024,
+      "backedge_rva": 2243577,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r10",
+        "r13",
+        "r8",
+        "rax",
+        "rcx",
+        "rdx",
+        "rsp"
+      ],
+      "unclosed_control_edges": [
+        2243365
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 112,
+        "write": 98,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "d700bcf559a5e3211d34f918cfec8951545cfe8895d200749ac7a0c053dccf39",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 37,
+      "overlap_ids": [
+        "a0a0babad8bef48b:223a90-223abf",
+        "a0a0babad8bef48b:223b92-223bd7",
+        "a0a0babad8bef48b:223ad0-223b23"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:2315f0-231824",
+      "function_rva": 2296848,
+      "loop_rva": 2299376,
+      "backedge_rva": 2299940,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r11",
+        "r8",
+        "rax",
+        "rdx"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 32,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "124e10a284c81ba20ecd8e36fc0a66a79d804e25d76c39deebc4f61f29c097ef",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 38,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:2317d0-231806",
+        "a0a0babad8bef48b:231660-2316a7",
+        "a0a0babad8bef48b:231780-231813",
+        "a0a0babad8bef48b:2316cf-2317f9",
+        "a0a0babad8bef48b:231590-231843"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:231590-231843",
+      "function_rva": 2296848,
+      "loop_rva": 2299280,
+      "backedge_rva": 2299971,
+      "topology": "unclosed_element_loop",
+      "feasibility_tier": 1,
+      "sample_hits": 0,
+      "parallel_work": "Element iteration visible; independent work not established",
+      "sequential_dependencies": [
+        "callee effects, address recurrence or loop-carried state unresolved"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r11",
+        "r8",
+        "rax"
+      ],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 54,
+        "write": 4,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "eae477a6d907e98d9b77bbe70403e68ee4aa7e973068f3f2759afff6ed32767c",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 39,
+      "overlap_ids": [
+        "a0a0babad8bef48b:230f13-231a9b",
+        "a0a0babad8bef48b:230f07-231ac3",
+        "a0a0babad8bef48b:2317d0-231806",
+        "a0a0babad8bef48b:231660-2316a7",
+        "a0a0babad8bef48b:231780-231813",
+        "a0a0babad8bef48b:2316cf-2317f9",
+        "a0a0babad8bef48b:2315f0-231824"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1ca272-1ca27d",
+      "function_rva": 1874240,
+      "loop_rva": 1876594,
+      "backedge_rva": 1876605,
+      "topology": "synchronization_or_atomic",
+      "feasibility_tier": 0,
+      "sample_hits": 0,
+      "parallel_work": "Inspect computation inside synchronization boundaries; do not move whole parent",
+      "sequential_dependencies": [
+        "original atomic ordering and publication"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 8,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "b6bbb1aaeea60e4aced72e78252701ba9d783685cb9135090e816a1f6872f0c7",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 40,
+      "overlap_ids": []
+    },
+    {
+      "id": "a0a0babad8bef48b:1d7a95-1d7aa0",
+      "function_rva": 1929296,
+      "loop_rva": 1931925,
+      "backedge_rva": 1931936,
+      "topology": "synchronization_or_atomic",
+      "feasibility_tier": 0,
+      "sample_hits": 0,
+      "parallel_work": "Inspect computation inside synchronization boundaries; do not move whole parent",
+      "sequential_dependencies": [
+        "original atomic ordering and publication"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 8,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "f83173c6780a0a6056829f0d1c06a8cf3bf9cbbb3dbfc64b20b43ecc47c8ffdd",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 41,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d778a-1d7efb"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d7bb2-1d7bbd",
+      "function_rva": 1929296,
+      "loop_rva": 1932210,
+      "backedge_rva": 1932221,
+      "topology": "synchronization_or_atomic",
+      "feasibility_tier": 0,
+      "sample_hits": 0,
+      "parallel_work": "Inspect computation inside synchronization boundaries; do not move whole parent",
+      "sequential_dependencies": [
+        "original atomic ordering and publication"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [],
+      "unclosed_control_edges": [],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "preserve original arithmetic and live-out effects",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 8,
+        "write": 0,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "b650e0b4aa152ab3f015df05fef5f1b990f5963b72bad3928e696195c52f92d5",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 42,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d778a-1d7efb"
+      ]
+    },
+    {
+      "id": "a0a0babad8bef48b:1d778a-1d7efb",
+      "function_rva": 1929296,
+      "loop_rva": 1931146,
+      "backedge_rva": 1933051,
+      "topology": "synchronization_or_atomic",
+      "feasibility_tier": 0,
+      "sample_hits": 0,
+      "parallel_work": "Inspect computation inside synchronization boundaries; do not move whole parent",
+      "sequential_dependencies": [
+        "original atomic ordering and publication",
+        "callee effects are unclosed; proposed topology covers only an inner slice",
+        "unconditional edge leaves backedge interval; recover real CFG before applying proposed primitive"
+      ],
+      "gpu_algorithm": null,
+      "cross_output_iteration_conflicts": [],
+      "non_induction_gpr_recurrence_candidates": [
+        "r14",
+        "r15",
+        "r9",
+        "rbx",
+        "rdi",
+        "rsi",
+        "rsp"
+      ],
+      "unclosed_control_edges": [
+        1931185
+      ],
+      "observed_activity": {
+        "distinct_sample_times": 0,
+        "span_ms": null,
+        "scope": "activity only, not invocation frequency"
+      },
+      "numeric_requirements": "Floating reductions require exact NaN/signed-zero/order contract; integer tree/scan requires matching width, overflow and live-out flags",
+      "useful_cpu_ms": null,
+      "calls_per_frame": null,
+      "batch_elements": null,
+      "static_access_bytes_per_iteration": {
+        "read": 998,
+        "write": 328,
+        "scope": "sum of decoded operands, NOT traffic or transfer volume"
+      },
+      "exchange": {
+        "input_bytes": null,
+        "output_bytes": null,
+        "upload_ms": null,
+        "return_ms": null,
+        "wait_ms": null,
+        "gpu_consumer_proven": false,
+        "rules": [
+          "Count unique transferred live-in bytes, not decoded loads",
+          "If CPU consumes output, include full return and readiness wait",
+          "Fuse linked operations only after resource-edge/lifetime proof; do not double-count overlapping work"
+        ]
+      },
+      "possible_fusion": "inspect adjacent producer/consumer edges; none established automatically",
+      "benefit_ms": null,
+      "detailed_capture_eligible": false,
+      "next_action": "defer until material conditions or algorithm change",
+      "provenance": "static_inner_loop_of_previously_sampled_function; execution/frequency unobserved",
+      "manual_facts_used": false,
+      "limits": [
+        "same-stream stride is not cross-output disjointness",
+        "sampling is not useful CPU cost",
+        "topology classification is a hypothesis, not a correctness certificate"
+      ],
+      "context_key": "8d1edce1b9650d7ac67670b4afd82cac182165c9609c87ce1acf16115a7c5e8f",
+      "economics_status": "unknown",
+      "net_task_ms_estimate": null,
+      "replacement_economics_passed": false,
+      "research_attempts": 0,
+      "bounded_research_eligible": false,
+      "cheap_measurement_eligible": false,
+      "research_budget": {
+        "max_attempts_per_context": 3,
+        "max_events": 32768,
+        "max_ms": 100
+      },
+      "rank": 43,
+      "overlap_ids": [
+        "a0a0babad8bef48b:1d78d0-1d7a27",
+        "a0a0babad8bef48b:1d7c70-1d7e7f",
+        "a0a0babad8bef48b:1d7a95-1d7aa0",
+        "a0a0babad8bef48b:1d7bb2-1d7bbd"
+      ]
+    }
+  ],
+  "recommended_cheap_measurement": "a0a0babad8bef48b:1c9e90-1ca188",
+  "recommended_deep_capture": "a0a0babad8bef48b:1c9e90-1ca188"
+}

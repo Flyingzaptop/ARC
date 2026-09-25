@@ -1,0 +1,63 @@
+{
+  "image_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+  "detector_sha256": "b5bf5587574327c70568f70ce4389431dd9fda92a344694b6d53cd7d43bcf05e",
+  "symbols_used": false,
+  "engine_source_used": false,
+  "selection": "bounded research independent of replacement economics; rejected contexts are skipped",
+  "candidates": [
+    {
+      "directory": "candidate-00",
+      "entry_rva": 1874240,
+      "end_rva": 1876638,
+      "detector_function_rva": 1874240,
+      "unwind_chain": [],
+      "logical_ranges": [
+        [
+          1874240,
+          1874298
+        ],
+        [
+          1874298,
+          1874305
+        ],
+        [
+          1874305,
+          1875530
+        ],
+        [
+          1875530,
+          1876413
+        ],
+        [
+          1876413,
+          1876519
+        ],
+        [
+          1876519,
+          1876564
+        ],
+        [
+          1876564,
+          1876623
+        ],
+        [
+          1876623,
+          1876638
+        ]
+      ],
+      "effective_mode": "training",
+      "effective_events": 32768,
+      "effective_ms": 100,
+      "requested_mode": "training",
+      "mode_reason": null,
+      "samples": 0,
+      "ids": [
+        "a0a0babad8bef48b:1ca130-1ca15b"
+      ],
+      "exchange": false,
+      "screen_rank": 1,
+      "deep_eligible": true,
+      "cheap_eligible": true
+    }
+  ]
+}

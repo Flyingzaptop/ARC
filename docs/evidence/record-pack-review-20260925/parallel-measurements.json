@@ -1,0 +1,51 @@
+{
+  "module_sha256": "a0a0babad8bef48b2210cea88c4ac987f6c928fb2e2d4b97c7033fbf73306d48",
+  "current_conditions": {
+    "algorithm_version": "record-pack-cpu-materialization48-v1",
+    "residency": "CPU-records-and-objects",
+    "batch_class": "instances-65344-two-passes-forward-off",
+    "remaining_cpu_contract": "original-batch-flush-and-publication",
+    "device": "Intel Core i7-11800H / NVIDIA GeForce RTX 3060 Laptop GPU",
+    "driver": "616.64"
+  },
+  "candidates": {
+    "a0a0babad8bef48b:1c9e90-1ca188": {
+      "provenance": "runtime_measured",
+      "conditions": {
+        "algorithm_version": "record-pack-cpu-materialization48-v1",
+        "residency": "CPU-records-and-objects",
+        "batch_class": "instances-65344-two-passes-forward-off",
+        "remaining_cpu_contract": "original-batch-flush-and-publication",
+        "device": "Intel Core i7-11800H / NVIDIA GeForce RTX 3060 Laptop GPU",
+        "driver": "616.64"
+      },
+      "evidence": "gate-analysis.json#/runs/gate",
+      "measurement_method": "source-assisted original-loop measurement; source/binary association manually reviewed",
+      "cpu_time_scope": "isolated_original_work_elapsed",
+      "cpu_useful_ms": 2.2285500000000003,
+      "calls_per_frame": 2,
+      "batch_elements": 65344,
+      "input_bytes": 3136512,
+      "output_bytes": 261376,
+      "replacement_lower_bound_ms": 2.4892,
+      "lower_bound_scope": "mandatory_input_preparation_for_declared_contract",
+      "research_attempts": 1
+    },
+    "a0a0babad8bef48b:1d7260-1d72a3": {
+      "provenance": "runtime_measured",
+      "conditions": {
+        "algorithm_version": "record-pack-cpu-materialization48-v1",
+        "residency": "CPU-records-and-objects",
+        "batch_class": "instances-65344-two-passes-forward-off",
+        "remaining_cpu_contract": "original-batch-flush-and-publication",
+        "device": "Intel Core i7-11800H / NVIDIA GeForce RTX 3060 Laptop GPU",
+        "driver": "616.64"
+      },
+      "evidence": "gate-analysis.json#/runs/gate/grid_gate_histogram",
+      "measurement_method": "source-assisted necessary-guard observation; manually reviewed binding, tested fixture only",
+      "calls_per_frame": 0,
+      "batch_elements": 0,
+      "research_attempts": 1
+    }
+  }
+}
