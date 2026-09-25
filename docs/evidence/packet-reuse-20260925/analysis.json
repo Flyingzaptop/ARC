@@ -1,0 +1,113 @@
+{
+  "scope": "source-assisted controlled fixture; not a live ARC replacement",
+  "timing": {
+    "fresh": {
+      "allocation_ms": 0.0475,
+      "gather_ms": 2.6549500000000004,
+      "release_ms": 0.1556,
+      "record_copy_ms": 0.13145,
+      "prepare_ms": 2.723,
+      "cpu_slice_ms": 2.7647,
+      "headroom_before_gpu_ms": 0.04074999999999984,
+      "calls": 758,
+      "frames": 379,
+      "records": {
+        "65344": 758
+      },
+      "excluded_audit_frames": []
+    },
+    "reuse": {
+      "allocation_ms": 0.0001,
+      "gather_ms": 2.40225,
+      "release_ms": 0.0,
+      "record_copy_ms": 0.1339,
+      "prepare_ms": 2.4024,
+      "cpu_slice_ms": 2.7628000000000004,
+      "headroom_before_gpu_ms": 0.3474499999999998,
+      "calls": 842,
+      "frames": 421,
+      "records": {
+        "65344": 842
+      },
+      "excluded_audit_frames": [
+        380,
+        381,
+        382
+      ]
+    }
+  },
+  "gpu_audits": [
+    {
+      "frame": 380,
+      "read_after_frame": 381,
+      "wait_for_gpu": true,
+      "objects": 65536,
+      "instances": 65536,
+      "stride": 256,
+      "center_offset": 80,
+      "fade_offset": 44,
+      "radius_offset": 92,
+      "color_offset": 48,
+      "alpha_test_offset": 76,
+      "flags_offset": 8,
+      "exact_errors": 0,
+      "alpha_full_errors": 0,
+      "alpha_test_full_errors": 0,
+      "changed_centers": 0,
+      "source_identity": 2908776499712,
+      "verified_field_errors": 0,
+      "verified_alpha_errors": 0,
+      "verified_alpha_predicate_errors": 0,
+      "stale_previous_centers_rejected": 0,
+      "gpu_sha256": "c8c4768066d2f73f49a8b364de3d54bafbe33364d20eacc428e90048ed174aa3",
+      "expected_sha256": "b19c6911cb6d61f611da4025716884984e4439995ef323a7dd4b36d99b753fc3"
+    },
+    {
+      "frame": 381,
+      "read_after_frame": 382,
+      "wait_for_gpu": true,
+      "objects": 65536,
+      "instances": 65536,
+      "stride": 256,
+      "center_offset": 80,
+      "fade_offset": 44,
+      "radius_offset": 92,
+      "color_offset": 48,
+      "alpha_test_offset": 76,
+      "flags_offset": 8,
+      "exact_errors": 0,
+      "alpha_full_errors": 0,
+      "alpha_test_full_errors": 0,
+      "changed_centers": 65535,
+      "source_identity": 2908776499712,
+      "verified_field_errors": 0,
+      "verified_alpha_errors": 0,
+      "verified_alpha_predicate_errors": 0,
+      "stale_previous_centers_rejected": 65535,
+      "gpu_sha256": "31c3ed0cb2dd7500ad7ffd7ecac822c91ca22194d32ee501a1f8b562bca4d97b",
+      "expected_sha256": "a1b0602be6a573582c95de9c7121c432184845576cf9719b2b355fc5053c909a"
+    }
+  ],
+  "mask_replay": {
+    "mask_original": {
+      "median_ms": 0.0573,
+      "min_ms": 0.0568,
+      "max_ms": 0.0786,
+      "samples": 20
+    },
+    "packet_prepare": {
+      "median_ms": 0.05595,
+      "min_ms": 0.0543,
+      "max_ms": 0.0626,
+      "samples": 20
+    },
+    "scope": "source-equivalent CPU replay on reused D3D12 UPLOAD buffers; live-ins assumed ready; no GPU launches or measured full replacement",
+    "headroom_before_gpu_ms": 0.001349999999999997
+  },
+  "alpha_counterexample": {
+    "cpu_alpha": 0.9998999834060669,
+    "gpu_half_alpha": 1.0,
+    "cpu_positive_transparency": true,
+    "gpu_positive_transparency": false
+  }
+}

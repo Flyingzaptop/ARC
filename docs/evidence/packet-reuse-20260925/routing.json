@@ -1,0 +1,43 @@
+{
+  "conditions": {
+    "algorithm_version": "record-pack-reused48-v2",
+    "residency": "CPU-records-and-objects",
+    "batch_class": "instances-65344-two-passes-forward-off",
+    "remaining_cpu_contract": "original-batch-flush-and-publication",
+    "device": "Intel Core i7-11800H / NVIDIA GeForce RTX 3060 Laptop GPU",
+    "driver": "616.64",
+    "execution_conditions": {
+      "ocean_enabled": false
+    }
+  },
+  "old_allocating_route_rejection_invalidated": true,
+  "candidate": "a0a0babad8bef48b:1c9e90-1ca188",
+  "status": "incomplete_measurements",
+  "bounded_research_eligible": true,
+  "replacement_economics_passed": false,
+  "measured_preparation_only": {
+    "provenance": "runtime_measured",
+    "conditions": {
+      "algorithm_version": "record-pack-reused48-v2",
+      "residency": "CPU-records-and-objects",
+      "batch_class": "instances-65344-two-passes-forward-off",
+      "remaining_cpu_contract": "original-batch-flush-and-publication",
+      "device": "Intel Core i7-11800H / NVIDIA GeForce RTX 3060 Laptop GPU",
+      "driver": "616.64",
+      "execution_conditions": {
+        "ocean_enabled": false
+      }
+    },
+    "evidence": "analysis.json#/timing/reuse",
+    "cpu_time_scope": "isolated_original_work_elapsed",
+    "cpu_useful_ms": 2.7628000000000004,
+    "calls_per_frame": 2,
+    "batch_elements": 65344,
+    "input_bytes": 3136512,
+    "output_bytes": 261376,
+    "replacement_lower_bound_ms": 2.4024,
+    "lower_bound_scope": "mandatory_input_preparation_for_declared_contract",
+    "research_attempts": 1
+  },
+  "next_direction": "direct record upload + verified existing GPU fields + explicitly supplied missing fields; no fresh field gather"
+}

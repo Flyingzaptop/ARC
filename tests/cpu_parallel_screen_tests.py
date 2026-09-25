@@ -74,4 +74,13 @@ class ParallelScreenTests(unittest.TestCase):
                 c=assess(self.candidate());incorporate_measurements([c],json.loads(path.read_text())['candidates'] if path.exists() else {})
                 record_attempt(path,'image',['map'],[c],'capture.json')
             c=assess(self.candidate());incorporate_measurements([c],json.loads(path.read_text())['candidates']);self.assertFalse(c['bounded_research_eligible'])
+    def test_execution_condition_reopens_inactive_candidate(self):
+        spec=importlib.util.spec_from_file_location('feedback',Path(__file__).resolve().parents[1]/'experiments/record-pack/feed_screen.py');feedback=importlib.util.module_from_spec(spec);spec.loader.exec_module(feedback)
+        c=assess(self.candidate());off={'execution_conditions':feedback.execution_conditions({'grid_gate_histogram':{'0':10}})}
+        c['context_key']=context_key(c,off);v=self.measurement();v.update(calls_per_frame=0,conditions=off)
+        incorporate_measurements([c],{'map':v});self.assertFalse(c['bounded_research_eligible'])
+        same=assess(self.candidate());same['context_key']=context_key(same,off);incorporate_measurements([same],{'map':v});self.assertFalse(same['bounded_research_eligible'])
+        self.assertEqual(context_key(c,off),context_key(c,{'execution_conditions':feedback.execution_conditions({'grid_gate_histogram':{'0':999}})}))
+        c['context_key']=context_key(c,{'execution_conditions':feedback.execution_conditions({'grid_gate_histogram':{'1':10}})})
+        incorporate_measurements([c],{'map':v});self.assertTrue(c['bounded_research_eligible']);self.assertIsNone(c['calls_per_frame'])
 if __name__=='__main__':unittest.main()

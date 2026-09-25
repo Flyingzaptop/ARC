@@ -289,3 +289,22 @@ guard is inactive in the controlled steady window. Selection then advances to th
 narrow mask-expansion slice, whose separate costs remain to be established.
 
 [Review fixes, actual scopes, measurements and automatic progression](reports/2026-09-25-record-pack-review-fixes.md).
+
+## 2026-09-25 — pool reuse and current GPU inputs
+
+A single fresh/reused preparation pair separates reserve, gather and release.
+Reused preparation is 2.402 ms/call against a 2.763 ms original loop; reserve is
+effectively removed but gathering still dominates. Existing 16-byte records copy
+in 0.134 ms. Two actual GPU readbacks after producer upload/completion match CPU
+fields, including 65,535 changed centers on the second frame. Full transparency
+precision/raw LOD are not generally recoverable from that GPU representation.
+
+Mask-only whole-batch CPU replay measures 0.0573 ms versus 0.05595 ms packet
+preparation; no separate GPU mask dispatch was added. Prioritize shared inputs
+and a GPU consumer. No full-path speedup or live replacement is claimed.
+
+Execution-condition observations now participate in rejection context keys;
+the false-to-true ocean regression reopens research instead of retaining the
+inactive-work rejection. This remains a source-assisted observation provider.
+
+[Measurements, correspondence/freshness evidence and missing fields](reports/2026-09-25-packet-reuse-and-gpu-inputs.md).

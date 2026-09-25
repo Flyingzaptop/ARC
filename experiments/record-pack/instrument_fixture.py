@@ -20,6 +20,18 @@ def main():
     for old,new in edits:
         if s.count(old)!=1:raise ValueError('Instrumentation site not unique')
         s=s.replace(old,new,1)
+    gpu_header=(ROOT/'experiments/record-pack/gpu_input_audit.hpp').as_posix()
+    s=s.replace('#include "ArcResidentProbe.h"','#include "ArcResidentProbe.h"\n#include "'+gpu_header+'"',1)
+    site='PushBarrier(GPUBarrier::Buffer(&vis.scene->instanceBuffer, ResourceState::COPY_DST, ResourceState::SHADER_RESOURCE));'
+    if s.count(site)!=1:raise ValueError('GPU upload hook not unique')
+    s=s.replace(site,'arc_pack_gpu_audit::enqueue(*vis.scene,cmd);\n\t\t'+site)
+    bridge=a.renderer_source.parent.parent/'Samples/Tests/ArcWickedBridge.cpp';bridge_raw=bridge.read_bytes();bridge_backup=a.checkpoint/'ArcWickedBridge.before.bin'
+    if bridge_backup.exists() and bridge_backup.read_bytes()!=bridge_raw:raise ValueError('Bridge differs from checkpoint')
+    bridge_backup.write_bytes(bridge_raw)
+    bridge_text=bridge_raw.decode('utf-8-sig').replace('\r\n','\n')
+    bridge_new=bridge_text.replace('#include "ArcResidentProbe.h"','#include "ArcResidentProbe.h"\n#include "'+gpu_header+'"',1).replace('arc_resident_probe::report();','arc_pack_gpu_audit::poll();\n            arc_resident_probe::report();',1)
+    (a.checkpoint/'bridge.patch').write_text(''.join(difflib.unified_diff(bridge_text.splitlines(True),bridge_new.splitlines(True),fromfile='ArcWickedBridge.cpp',tofile='ArcWickedBridge.cpp')),encoding='utf-8')
+    bridge.write_text(bridge_new,encoding='utf-8')
     (a.checkpoint/'patch.diff').write_text(''.join(difflib.unified_diff(before.splitlines(True),s.splitlines(True),fromfile='wiRenderer.cpp',tofile='wiRenderer.cpp')),encoding='utf-8')
     a.renderer_source.write_text(s,encoding='utf-8')
     print('Original source SHA256',hashlib.sha256(raw).hexdigest())

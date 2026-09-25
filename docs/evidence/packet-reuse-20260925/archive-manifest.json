@@ -1,0 +1,101 @@
+{
+  "files": {
+    "raw/bridge.patch": {
+      "bytes": 718,
+      "sha256": "c2e8bf8706dec074f23d2d563d3992be8ad4867ca31f5e2d164fac8cdddac1d3"
+    },
+    "raw/fresh/calls.csv": {
+      "bytes": 72592,
+      "sha256": "a1fdcba4fa57fa5b9d078f81fffba0ee1599092e3d7866f0a0dbe5fb153b1437"
+    },
+    "raw/fresh/calls.csv.input.bin": {
+      "bytes": 3145728,
+      "sha256": "a75a86f7dfc9844f5003280cfe73ca7ca647b88131e0a12779897d7820adce63"
+    },
+    "raw/fresh/calls.csv.output.bin": {
+      "bytes": 262144,
+      "sha256": "f1daae5afd9b58a92752c8eedee8d6db469f81bcfe476fa70f3cab2da97a88fd"
+    },
+    "raw/fresh/frames.csv": {
+      "bytes": 541618,
+      "sha256": "6f5ffe11efb27105ad240dcfac5885b6a5eea715d3489dc273a8fa436a90b0bc"
+    },
+    "raw/fresh/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/fresh/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/instrumentation.patch": {
+      "bytes": 2260,
+      "sha256": "8ec4fff80c12da23ea9ff0b3465970f2726b10b280548902aae2ca0fc2a2317a"
+    },
+    "raw/restoration.json": {
+      "bytes": 178,
+      "sha256": "94e2f749b93ee45ea10e2a7a0bf9682aa84d79e08cebff0129110e6e198a7e1e"
+    },
+    "raw/reuse/audit.0.expected.bin": {
+      "bytes": 2359296,
+      "sha256": "b19c6911cb6d61f611da4025716884984e4439995ef323a7dd4b36d99b753fc3"
+    },
+    "raw/reuse/audit.0.gpu.bin": {
+      "bytes": 16777216,
+      "sha256": "c8c4768066d2f73f49a8b364de3d54bafbe33364d20eacc428e90048ed174aa3"
+    },
+    "raw/reuse/audit.0.json": {
+      "bytes": 335,
+      "sha256": "a29ec75ffcdad4381a693c8f06511dbf2073774761506a298baf85bed593a55f"
+    },
+    "raw/reuse/audit.1.expected.bin": {
+      "bytes": 2359296,
+      "sha256": "a1b0602be6a573582c95de9c7121c432184845576cf9719b2b355fc5053c909a"
+    },
+    "raw/reuse/audit.1.gpu.bin": {
+      "bytes": 16777216,
+      "sha256": "31c3ed0cb2dd7500ad7ffd7ecac822c91ca22194d32ee501a1f8b562bca4d97b"
+    },
+    "raw/reuse/audit.1.json": {
+      "bytes": 339,
+      "sha256": "7978bcc4ac5398ac36d65ac0d39410eb739a071efb3d00062a8fb7d451986562"
+    },
+    "raw/reuse/calls.csv": {
+      "bytes": 72950,
+      "sha256": "5df0ef87d716fe2bfb6c144ae7856ba8ff81fc60267dd0a3bbe8642b41618b42"
+    },
+    "raw/reuse/calls.csv.input.bin": {
+      "bytes": 3145728,
+      "sha256": "6084e121aa9de1dae8b094d688c0dbe73b147d250d08f0615f6421191cbc1c77"
+    },
+    "raw/reuse/calls.csv.output.bin": {
+      "bytes": 262144,
+      "sha256": "ecf745c80be940de10e47df62285fcd3a45f190825cadd9351ba7179c24b4055"
+    },
+    "raw/reuse/frames.csv": {
+      "bytes": 535296,
+      "sha256": "a21d57486172fa04a423e1fc6f73afb4518774bd9e418bf04b29d4d1b51e33eb"
+    },
+    "raw/reuse/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/reuse/stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw/runs.json": {
+      "bytes": 1545,
+      "sha256": "40e64afeff4a88b1ca2c3044071c997f6b9f45566b4329d5e96ac8c144354efe"
+    },
+    "raw/Tests.control.exe": {
+      "bytes": 9597952,
+      "sha256": "7350d0f58f9f89b277158f3f400c08d698fc3a9ddc0434d9452d2b4caa39c1bb"
+    },
+    "package/arc-mask-cost.exe": {
+      "bytes": 38400,
+      "sha256": "fe8cf62dae9ff1ee170eceb9ebc57835495f665299172c93e24369c29e8b81d5"
+    }
+  },
+  "zip_sha256": "1e3445e413b07488dbdabab13b75de6e1dc4462ed60065687ab094a2f24956bb"
+}

@@ -101,7 +101,7 @@ def assess(c):
         'provenance':c.get('screen_origin','runtime_sampled_loop'),'manual_facts_used':False,
         'limits':['same-stream stride is not cross-output disjointness','sampling is not useful CPU cost','topology classification is a hypothesis, not a correctness certificate']}
 
-CONTEXT_FIELDS=('device','driver','algorithm_version','batch_class','residency','remaining_cpu_contract')
+CONTEXT_FIELDS=('device','driver','algorithm_version','batch_class','residency','remaining_cpu_contract','execution_conditions')
 RESEARCH_ATTEMPTS=3
 TERMINAL={'unprofitable_or_not_recurring_large_batch','research_budget_exhausted'}
 

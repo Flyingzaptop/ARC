@@ -1,0 +1,12 @@
+{
+  "selector_tests": 20,
+  "archive_files_verified": 24,
+  "independent_replay": true,
+  "gpu_objects_checked": 131072,
+  "stale_previous_frame_objects_rejected": 65535,
+  "native_mask_replay_exact": true,
+  "gpu_mask_dispatches": 0,
+  "fixture_runs": 2,
+  "full_instruction_traces": 0,
+  "restoration_verified": true
+}
