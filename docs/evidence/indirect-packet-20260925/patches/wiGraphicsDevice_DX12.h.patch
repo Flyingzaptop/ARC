@@ -1,0 +1,12 @@
+--- WickedEngine/wiGraphicsDevice_DX12.h
++++ WickedEngine/wiGraphicsDevice_DX12.h
+@@ -299,6 +299,9 @@
+ 		void predispatch(CommandList cmd);
+ 
+ 	public:
++		ID3D12Device* ArcPacketDevice(){return device.Get();}
++		ID3D12CommandQueue* ArcPacketQueue(){return queues[QUEUE_GRAPHICS].queue.Get();}
++		ID3D12Resource* ArcPacketResource(const GPUBuffer* b);
+ 		GraphicsDevice_DX12(ValidationMode validationMode = ValidationMode::Disabled, GPUPreference preference = GPUPreference::Discrete);
+ 		~GraphicsDevice_DX12() override;
+ 

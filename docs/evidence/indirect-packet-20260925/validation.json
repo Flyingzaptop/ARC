@@ -1,0 +1,13 @@
+{
+  "raw_files_verified": 22,
+  "analysis_reproduced": true,
+  "patches_reproduced": 5,
+  "restorations_verified": 6,
+  "admission_test_exit": 0,
+  "live_oracle_words": 31365504,
+  "live_oracle_draw_commands": 478,
+  "performance_records_replaced": 195902080,
+  "performance_indirect_commands": 2994,
+  "metadata_cpu_wait_ms": 0,
+  "scope": "manual Wicked adapter; single group"
+}

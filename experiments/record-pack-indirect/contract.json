@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "status": "Wicked source-assisted indirect experiment, not automatic ARC offload",
+  "admission": {
+    "passes": ["MAIN", "PREPASS"],
+    "records": "1..65536 sorted 16-byte records; one group; no change to CPU sort or tie order",
+    "objects": "compact sidecar written by existing object producer in this frame; bounds/generation checked for every referenced record",
+    "state": "identical mesh, effective uint8 LOD and stencil across packet; opaque object color alpha=1, alphaRef>=1, fadeDistance=FLT_MAX, finite positive radius; finite half-distance",
+    "mesh": "valid index buffer, 1..64 subsets, no requested mesh shader/tessellation/custom shader/wireframe",
+    "fallback": "original CPU packing if admission fails or versioned frame slot is busy"
+  },
+  "metadata_consumers": {
+    "mesh": "CPU mesh/index/material/PSO setup; record word 0, checked across packet",
+    "lod": "CPU GetLODSubsetRange; record override or compact producer sidecar",
+    "stencil": "CPU material/object stencil combination; compact producer sidecar",
+    "alpha": "CPU PSO choice; object force-alpha is proven false by admission, material alpha-test selection unchanged",
+    "count": "GPU DrawIndexedInstancedIndirect argument InstanceCount",
+    "offset": "GPU StartInstanceLocation; zero for the supported single group, CPU push byte offset remains zero",
+    "first_end": "diagnostic only; packet is one group from 0 to N",
+    "aabb": "not supported; forward-light merging passes remain CPU"
+  },
+  "versions": {
+    "frame_slots": 3,
+    "separate_pass_slots": 2,
+    "owned_per_frame": ["sidecar upload", "start/end query allocators", "query readback"],
+    "owned_per_pass": ["record upload", "draw template upload", "compute allocator", "intermediate buffers", "packed output", "indirect arguments", "query readback"],
+    "retirement": "native graphics queue fence after all frame command lists and cross-queue waits, value=frame+1",
+    "reuse": "consumer fence completion must cover owner frame before any CPU overwrite or allocator reset; unfinished slot falls back, no CPU wait",
+    "queue_order": "early current-instance upload and compute append to same graphics queue as subsequent indirect draws; existing later instance upload skipped"
+  },
+  "measurement": {
+    "performance_readback": "timestamps only; no metadata, packed output or draw arguments returned",
+    "diagnostic": "deferred exact output/metadata/argument checks after consumer fence; actual indirect commands still render",
+    "full_gpu_envelope": "timestamps before early upload and after all frame queues complete; includes queue idle time, not GPU active-work sum",
+    "cpu": "full Present-call cadence with producer, preflight, upload, command recording, original remaining work and diagnostics"
+  }
+}

@@ -1,0 +1,77 @@
+--- WickedEngine/wiRenderer.cpp
++++ WickedEngine/wiRenderer.cpp
+@@ -1,3 +1,4 @@
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/experiments/record-pack-indirect/fixture.hpp"
+ #include "wiRenderer.h"
+ #include "wiHairParticle.h"
+ #include "wiEmittedParticle.h"
+@@ -3186,10 +3187,23 @@
+ 	const bool mesh_shader = IsMeshShaderAllowed() &&
+ 		(renderPass == RENDERPASS_PREPASS || renderPass == RENDERPASS_PREPASS_DEPTHONLY || renderPass == RENDERPASS_MAIN || renderPass == RENDERPASS_SHADOW || renderPass == RENDERPASS_RAINBLOCKER);
+ 
++    auto* indirect_slot = !resident && stencil_usage && !wireframe ? arc_indirect::preflight(vis.scene,renderQueue.batches.data(),(uint32_t)renderQueue.size(),renderPass==RENDERPASS_MAIN?0:1):nullptr;
++    if(indirect_slot){
++        const auto& mesh=vis.scene->meshes[indirect_slot->group.mesh];
++        bool supported=mesh.generalBuffer.IsValid() && !mesh.subsets.empty() && mesh.subsets.size()<=64 && !(mesh_shader&&mesh.vb_clu.IsValid()) && !(tessellation&&mesh.GetTessellationFactor()>0);
++        for(const auto& subset:mesh.subsets)if(subset.materialIndex<vis.scene->materials.GetCount() && vis.scene->materials[subset.materialIndex].customShaderID>=0)supported=false;
++        if(!supported)indirect_slot=nullptr;
++        else{
++            std::vector<uint32_t> templates(mesh.subsets.size()*5);
++            for(uint32_t i=0;i<mesh.subsets.size();++i){auto& subset=mesh.subsets[i];const auto& ibv=mesh.ib_provoke;auto stride=mesh.GetProvokingIndexStride();uint32_t offset=uint32_t((ibv.offset+(mesh.generalBufferOffsetAllocation.IsValid()?uint64_t(mesh.generalBufferOffsetAllocation.byte_offset):0))/stride)+subset.indexOffset;templates[i*5]=subset.indexCount;templates[i*5+2]=offset;}
++            if(arc_indirect::mode()==2){indirect_slot->expected.clear();for(const auto& b:renderQueue.batches){const auto& ob=vis.scene->objects[b.GetInstanceIndex()];float d=std::max(ob.GetTransparency(),std::max(0.f,b.GetDistance()-ob.fadeDistance)/ob.radius);if(d>.99f)continue;uint32_t bits=b.camera_mask;while(bits){auto bit=firstbitlow(bits);bits^=1u<<bit;ShaderMeshInstancePointer ptr;ptr.Create(b.GetInstanceIndex(),bit,d);indirect_slot->expected.push_back(ptr.data);}}}
++            arc_indirect::submit(*indirect_slot,vis.scene,renderQueue.batches.data(),templates);
++        }
++    }
+ 	// Pre-allocate space for all the instances in GPU-buffer:
+ 	const size_t alloc_size = renderQueue.size() * camera_count * sizeof(ShaderMeshInstancePointer);
+-	const GraphicsDevice::GPUAllocation instances = resident ? GraphicsDevice::GPUAllocation{} : device->AllocateGPU(alloc_size, cmd);
+-	const int instanceBufferDescriptorIndex = device->GetDescriptorIndex(resident ? &resident->pointers : &instances.buffer, SubresourceType::SRV);
++	const GraphicsDevice::GPUAllocation instances = (resident || indirect_slot) ? GraphicsDevice::GPUAllocation{} : device->AllocateGPU(alloc_size, cmd);
++	const int instanceBufferDescriptorIndex = device->GetDescriptorIndex(indirect_slot ? &indirect_slot->output : resident ? &resident->pointers : &instances.buffer, SubresourceType::SRV);
+ 
+ 	// This will correspond to a single draw call
+ 	//	It's used to render multiple instances of a single mesh
+@@ -3425,7 +3439,7 @@
+ 				}
+ 				else
+ 				{
+-					device->DrawIndexedInstanced(subset.indexCount, instancedBatch.instanceCount, indexOffset, 0, 0, cmd);
++					if(indirect_slot){if(indirect_slot->templates[subsetIndex*5]!=subset.indexCount||indirect_slot->templates[subsetIndex*5+2]!=indexOffset)throw std::runtime_error("indirect static command mismatch");device->DrawIndexedInstancedIndirect(&indirect_slot->args,subsetIndex*20,cmd);++indirect_slot->commands;}else device->DrawIndexedInstanced(subset.indexCount, instancedBatch.instanceCount, indexOffset, 0, 0, cmd);
+ 				}
+ 			}
+ 
+@@ -3437,12 +3451,15 @@
+ 			}
+ 			else
+ 			{
+-				device->DrawIndexedInstanced(subset.indexCount, instancedBatch.instanceCount, indexOffset, 0, 0, cmd);
++				if(indirect_slot){if(indirect_slot->templates[subsetIndex*5]!=subset.indexCount||indirect_slot->templates[subsetIndex*5+2]!=indexOffset)throw std::runtime_error("indirect static command mismatch");device->DrawIndexedInstancedIndirect(&indirect_slot->args,subsetIndex*20,cmd);++indirect_slot->commands;}else device->DrawIndexedInstanced(subset.indexCount, instancedBatch.instanceCount, indexOffset, 0, 0, cmd);
+ 			}
+ 
+ 		}
+ 	};
+ 
++    if(indirect_slot){
++        auto t=arc_packet::Clock::now();const auto& g=indirect_slot->group;instancedBatch={};instancedBatch.meshIndex=g.mesh;instancedBatch.instanceCount=1;instancedBatch.dataOffset=0;instancedBatch.userStencilRefOverride=uint8_t(g.stencil);instancedBatch.lod=uint8_t(g.lod);instancedBatch.forceAlphatestForDithering=false;batch_flush();indirect_slot->retained=arc_packet::elapsed(t);device->EventEnd(cmd);return;
++    }
+     if(resident){
+         instancedBatch.meshIndex=resident->mesh;instancedBatch.instanceCount=resident->count;
+         instancedBatch.dataOffset=0;instancedBatch.userStencilRefOverride=uint8_t(resident->stencil);
+@@ -5246,7 +5263,7 @@
+ 	PushBarrier(GPUBarrier::Buffer(&vis.scene->meshletBuffer, ResourceState::SHADER_RESOURCE, ResourceState::UNORDERED_ACCESS));
+ 
+ 	PushBarrier(GPUBarrier::Buffer(&buffers[BUFFERTYPE_FRAMECB], ResourceState::CONSTANT_BUFFER, ResourceState::COPY_DST));
+-	if (vis.scene->instanceBuffer.IsValid())
++	if (vis.scene->instanceBuffer.IsValid() && !arc_indirect::moved(vis.scene))
+ 	{
+ 		PushBarrier(GPUBarrier::Buffer(&vis.scene->instanceBuffer, ResourceState::SHADER_RESOURCE, ResourceState::COPY_DST));
+ 	}
+@@ -5267,7 +5284,7 @@
+ 	device->UpdateBuffer(&buffers[BUFFERTYPE_FRAMECB], &frameCB, cmd);
+ 	PushBarrier(GPUBarrier::Buffer(&buffers[BUFFERTYPE_FRAMECB], ResourceState::COPY_DST, ResourceState::CONSTANT_BUFFER));
+ 
+-	if (vis.scene->instanceBuffer.IsValid() && vis.scene->instanceArraySize > 0)
++	if (vis.scene->instanceBuffer.IsValid() && vis.scene->instanceArraySize > 0 && !arc_indirect::moved(vis.scene))
+ 	{
+ 		device->CopyBuffer(
+ 			&vis.scene->instanceBuffer,

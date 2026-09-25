@@ -1,0 +1,23 @@
+--- WickedEngine/wiGraphicsDevice_DX12.cpp
++++ WickedEngine/wiGraphicsDevice_DX12.cpp
+@@ -1,3 +1,4 @@
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/experiments/record-pack-indirect/fixture.hpp"
+ #include "wiGraphicsDevice_DX12.h"
+ #include "ArcWickedHooks.h"
+ 
+@@ -5371,6 +5372,7 @@
+ 		if (queue == QUEUE_GRAPHICS) ARCWickedAttributionRegion(commandlist.GetCommandList(), 1, 0, 0, 16384, 16384);
+ 		return cmd;
+ 	}
++	ID3D12Resource* GraphicsDevice_DX12::ArcPacketResource(const GPUBuffer* b){return to_internal(b)->resource.Get();}
+ 	void GraphicsDevice_DX12::SubmitCommandLists()
+ 	{
+ #ifdef PLATFORM_XBOX
+@@ -5518,6 +5520,7 @@
+ 		descriptorheap_sam.SignalGPU(queues[QUEUE_GRAPHICS].queue.Get());
+ 
+ 		// From here, we begin a new frame, this affects GetBufferIndex()!
++		arc_indirect::endFrame(queues[QUEUE_GRAPHICS].queue.Get(),FRAMECOUNT);
+ 		FRAMECOUNT++;
+ 
+ 		// Initiate stalling CPU when GPU is not yet finished with next frame:
