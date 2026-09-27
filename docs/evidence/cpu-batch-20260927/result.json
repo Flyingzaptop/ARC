@@ -1,0 +1,414 @@
+{
+  "schema": 1,
+  "status": "validated_local_packets",
+  "groups": [
+    {
+      "role": "subsequent_validation",
+      "start": 512,
+      "end": 768,
+      "elements": 256,
+      "bounds_and_addresses_valid": true,
+      "output_mismatches": 0,
+      "inputs_changed_inside_callback": 256,
+      "inputs_changed_after_producer": 0
+    },
+    {
+      "role": "subsequent_validation",
+      "start": 1792,
+      "end": 2048,
+      "elements": 256,
+      "bounds_and_addresses_valid": true,
+      "output_mismatches": 0,
+      "inputs_changed_inside_callback": 256,
+      "inputs_changed_after_producer": 0
+    },
+    {
+      "role": "holdout",
+      "start": 3328,
+      "end": 3584,
+      "elements": 256,
+      "bounds_and_addresses_valid": true,
+      "output_mismatches": 0,
+      "inputs_changed_inside_callback": 256,
+      "inputs_changed_after_producer": 0
+    }
+  ],
+  "consumers": {
+    "events": [
+      {
+        "event": 0,
+        "qpc": 7768240830292,
+        "tid": 35292,
+        "pc": 140695054989557,
+        "function": 140695054987808,
+        "role": "write",
+        "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+      },
+      {
+        "event": 1,
+        "qpc": 7768240831821,
+        "tid": 35292,
+        "pc": 140695054991828,
+        "function": 140695054987808,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+      },
+      {
+        "event": 2,
+        "qpc": 7768240918536,
+        "tid": 22628,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 3,
+        "qpc": 7768240925332,
+        "tid": 36904,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 4,
+        "qpc": 7768241058763,
+        "tid": 33688,
+        "pc": 140695054989557,
+        "function": 140695054987808,
+        "role": "write",
+        "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+      },
+      {
+        "event": 5,
+        "qpc": 7768241059970,
+        "tid": 33688,
+        "pc": 140695054991828,
+        "function": 140695054987808,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+      },
+      {
+        "event": 6,
+        "qpc": 7768241143184,
+        "tid": 36904,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 7,
+        "qpc": 7768241150079,
+        "tid": 33688,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 8,
+        "qpc": 7768241275470,
+        "tid": 35296,
+        "pc": 140695054989557,
+        "function": 140695054987808,
+        "role": "write",
+        "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+      },
+      {
+        "event": 9,
+        "qpc": 7768241276560,
+        "tid": 35296,
+        "pc": 140695054991828,
+        "function": 140695054987808,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+      },
+      {
+        "event": 10,
+        "qpc": 7768241352316,
+        "tid": 33688,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 11,
+        "qpc": 7768241360795,
+        "tid": 35296,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 12,
+        "qpc": 7768241492980,
+        "tid": 22628,
+        "pc": 140695054989557,
+        "function": 140695054987808,
+        "role": "write",
+        "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+      },
+      {
+        "event": 13,
+        "qpc": 7768241494157,
+        "tid": 22628,
+        "pc": 140695054991828,
+        "function": 140695054987808,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+      },
+      {
+        "event": 14,
+        "qpc": 7768241575340,
+        "tid": 22452,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 15,
+        "qpc": 7768241577001,
+        "tid": 36904,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 16,
+        "qpc": 7768241705592,
+        "tid": 24820,
+        "pc": 140695054989557,
+        "function": 140695054987808,
+        "role": "write",
+        "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+      },
+      {
+        "event": 17,
+        "qpc": 7768241706628,
+        "tid": 24820,
+        "pc": 140695054991828,
+        "function": 140695054987808,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+      },
+      {
+        "event": 18,
+        "qpc": 7768241784454,
+        "tid": 36380,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 19,
+        "qpc": 7768241794606,
+        "tid": 35296,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 20,
+        "qpc": 7768241927840,
+        "tid": 36380,
+        "pc": 140695054989557,
+        "function": 140695054987808,
+        "role": "write",
+        "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+      },
+      {
+        "event": 21,
+        "qpc": 7768241928715,
+        "tid": 36380,
+        "pc": 140695054991828,
+        "function": 140695054987808,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+      },
+      {
+        "event": 22,
+        "qpc": 7768242031513,
+        "tid": 17192,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      },
+      {
+        "event": 23,
+        "qpc": 7768242034804,
+        "tid": 35296,
+        "pc": 140695055668950,
+        "function": 140695055668734,
+        "role": "read",
+        "instruction": "vmovsd xmm1, qword ptr [rsi + r15 + 0x200]"
+      }
+    ],
+    "witnesses": [
+      {
+        "write": {
+          "event": 0,
+          "qpc": 7768240830292,
+          "tid": 35292,
+          "pc": 140695054989557,
+          "function": 140695054987808,
+          "role": "write",
+          "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+        },
+        "first_observed_read": {
+          "event": 1,
+          "qpc": 7768240831821,
+          "tid": 35292,
+          "pc": 140695054991828,
+          "function": 140695054987808,
+          "role": "read",
+          "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+        },
+        "same_thread_and_function": true
+      },
+      {
+        "write": {
+          "event": 4,
+          "qpc": 7768241058763,
+          "tid": 33688,
+          "pc": 140695054989557,
+          "function": 140695054987808,
+          "role": "write",
+          "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+        },
+        "first_observed_read": {
+          "event": 5,
+          "qpc": 7768241059970,
+          "tid": 33688,
+          "pc": 140695054991828,
+          "function": 140695054987808,
+          "role": "read",
+          "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+        },
+        "same_thread_and_function": true
+      },
+      {
+        "write": {
+          "event": 8,
+          "qpc": 7768241275470,
+          "tid": 35296,
+          "pc": 140695054989557,
+          "function": 140695054987808,
+          "role": "write",
+          "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+        },
+        "first_observed_read": {
+          "event": 9,
+          "qpc": 7768241276560,
+          "tid": 35296,
+          "pc": 140695054991828,
+          "function": 140695054987808,
+          "role": "read",
+          "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+        },
+        "same_thread_and_function": true
+      },
+      {
+        "write": {
+          "event": 12,
+          "qpc": 7768241492980,
+          "tid": 22628,
+          "pc": 140695054989557,
+          "function": 140695054987808,
+          "role": "write",
+          "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+        },
+        "first_observed_read": {
+          "event": 13,
+          "qpc": 7768241494157,
+          "tid": 22628,
+          "pc": 140695054991828,
+          "function": 140695054987808,
+          "role": "read",
+          "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+        },
+        "same_thread_and_function": true
+      },
+      {
+        "write": {
+          "event": 16,
+          "qpc": 7768241705592,
+          "tid": 24820,
+          "pc": 140695054989557,
+          "function": 140695054987808,
+          "role": "write",
+          "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+        },
+        "first_observed_read": {
+          "event": 17,
+          "qpc": 7768241706628,
+          "tid": 24820,
+          "pc": 140695054991828,
+          "function": 140695054987808,
+          "role": "read",
+          "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+        },
+        "same_thread_and_function": true
+      },
+      {
+        "write": {
+          "event": 20,
+          "qpc": 7768241927840,
+          "tid": 36380,
+          "pc": 140695054989557,
+          "function": 140695054987808,
+          "role": "write",
+          "instruction": "vmovsd qword ptr [rdi + 0x200], xmm0"
+        },
+        "first_observed_read": {
+          "event": 21,
+          "qpc": 7768241928715,
+          "tid": 36380,
+          "pc": 140695054991828,
+          "function": 140695054987808,
+          "role": "read",
+          "instruction": "vmovsd xmm1, qword ptr [rdi + 0x200]"
+        },
+        "same_thread_and_function": true
+      }
+    ],
+    "complete_thread_coverage": false,
+    "absence_of_earlier_consumers_proven": false
+  },
+  "global_task_extent": "unknown",
+  "frequency_per_frame": "unknown: bounded sample is selection biased",
+  "removable_cpu_ms": null,
+  "gpu_ms": null,
+  "probe_wall_time_is_cpu_work": false,
+  "replacement_allowed": false,
+  "contract": {
+    "proved_from_code": [
+      "affine index recipes",
+      "bounded local loop",
+      "observed wrapper forwarding",
+      "atomic decrement exists after local loop"
+    ],
+    "observed_only": [
+      "input freshness per callback",
+      "packet output replay",
+      "same function CPU consumption",
+      "subsequent other-thread reads"
+    ],
+    "unknown": [
+      "all alternate paths",
+      "allocation lifetime and exclusive access",
+      "completion counter external wait and publication",
+      "complete global batch extent",
+      "cost of removable computation"
+    ]
+  },
+  "missing_mechanism": "Recover upstream input producer and immediate CPU consumer as one schedulable region, or retain CPU execution; do not batch stale inputs or defer required reads."
+}

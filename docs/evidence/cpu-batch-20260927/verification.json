@@ -1,0 +1,35 @@
+{
+  "base_commit": "de1e652",
+  "tests": {
+    "cpu_batch_tests": 10,
+    "cpu_producer_tests": 13
+  },
+  "canonical_exe_restored_sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf",
+  "files": [
+    {
+      "path": "build/Release/arc-cpu-producer-watch.dll",
+      "bytes": 68096,
+      "sha256": "8229386454dd5ed11da39d670b6de18011099b3d228f6d3108a6e33931526313"
+    },
+    {
+      "path": "build/Release/arc-cpu-producer-slice.dll",
+      "bytes": 68096,
+      "sha256": "6e315a200fbe684e870f8cb38e89a2dc24c4702ab2cedc67017f914f43ce3422"
+    },
+    {
+      "path": "build/Release/arc-cpu-batch-capture.dll",
+      "bytes": 68608,
+      "sha256": "450521e138d442506a60987f893064925ac65e65fbcf008f25dd72a80245d773"
+    },
+    {
+      "path": "build/producer-host.exe",
+      "bytes": 9654272,
+      "sha256": "bc0737e3512ee2062e0af491a698d792694cebe794e8454e7efc65291a73ad6d"
+    },
+    {
+      "path": "docs/evidence/cpu-batch-20260927/raw.zip",
+      "bytes": 379164,
+      "sha256": "d9ec822506e969174e97d4134b1e78f56f66bb87b11bfb3ba2c9b529a54a1114"
+    }
+  ]
+}
