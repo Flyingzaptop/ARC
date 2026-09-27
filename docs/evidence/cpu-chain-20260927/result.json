@@ -1,0 +1,698 @@
+{
+  "schema": 1,
+  "baseline_commit": "ea42326",
+  "live_replacement": false,
+  "removed_game_cpu_ms": 0,
+  "live_offload_gpu_ms": 0,
+  "applicable_replacement_comparison": null,
+  "regions": [
+    {
+      "candidate_ids": [
+        "bc0737e3512ee206:1cbbe0-1cbed8"
+      ],
+      "entry_rva": 1883104,
+      "scope": "observed_loop_including_callees_and_traps",
+      "wall_ms": {
+        "n": 8,
+        "mean": 2.33635,
+        "median": 2.2572,
+        "min": 1.9213,
+        "p95": 2.6233,
+        "max": 3.3507
+      },
+      "known_handler_ms": {
+        "n": 8,
+        "mean": 0.01695,
+        "median": 0.01695,
+        "min": 0.0109,
+        "p95": 0.0186,
+        "max": 0.0303
+      },
+      "observed_elements": {
+        "n": 8,
+        "mean": 65344,
+        "median": 65344.0,
+        "min": 65344,
+        "p95": 65344,
+        "max": 65344
+      },
+      "element_count_basis": {
+        "stride": 16,
+        "index_register": "r15",
+        "status": "boundary delta with decoded add/cmp/backedge; callee preservation not independently certified"
+      },
+      "discarded_first_partial_per_thread": 8,
+      "calls_per_frame": null,
+      "frequency_note": "sampled owners; concurrent unobserved calls prohibit global invocation frequency",
+      "removable_cpu_ms": null,
+      "critical_path_frame_ms": null,
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-loop-repeated-final-20260927\\candidate-00"
+    },
+    {
+      "candidate_ids": [
+        "bc0737e3512ee206:1d9630-1d9787"
+      ],
+      "entry_rva": 1938992,
+      "scope": "observed_loop_including_callees_and_traps",
+      "wall_ms": {
+        "n": 10,
+        "mean": 2.09783,
+        "median": 2.0757,
+        "min": 1.1557,
+        "p95": 2.5929,
+        "max": 2.6492
+      },
+      "known_handler_ms": {
+        "n": 10,
+        "mean": 0.01252,
+        "median": 0.005399999999999999,
+        "min": 0.0018,
+        "p95": 0.0352,
+        "max": 0.0483
+      },
+      "observed_elements": {
+        "n": 10,
+        "mean": 65344,
+        "median": 65344.0,
+        "min": 65344,
+        "p95": 65344,
+        "max": 65344
+      },
+      "element_count_basis": {
+        "stride": 4,
+        "index_register": "r12",
+        "status": "boundary delta with decoded add/cmp/backedge; callee preservation not independently certified"
+      },
+      "discarded_first_partial_per_thread": 6,
+      "calls_per_frame": null,
+      "frequency_note": "sampled owners; concurrent unobserved calls prohibit global invocation frequency",
+      "removable_cpu_ms": null,
+      "critical_path_frame_ms": null,
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-loop-repeated-final-20260927\\candidate-01"
+    }
+  ],
+  "surrounding_functions": [
+    {
+      "candidate_ids": [
+        "bc0737e3512ee206:1cbbe0-1cbed8"
+      ],
+      "entry_rva": 1881744,
+      "scope": "surrounding_function_including_callees_and_traps",
+      "wall_ms": {
+        "n": 16,
+        "mean": 2.68959375,
+        "median": 2.5088,
+        "min": 2.1248,
+        "p95": 3.3874,
+        "max": 4.6076
+      },
+      "known_handler_ms": {
+        "n": 16,
+        "mean": 0.0155,
+        "median": 0.013500000000000002,
+        "min": 0.0102,
+        "p95": 0.0212,
+        "max": 0.0354
+      },
+      "observed_elements": null,
+      "element_count_basis": {
+        "stride": null,
+        "index_register": null,
+        "status": "boundary delta with decoded add/cmp/backedge; callee preservation not independently certified"
+      },
+      "discarded_first_partial_per_thread": 0,
+      "calls_per_frame": null,
+      "frequency_note": "sampled owners; concurrent unobserved calls prohibit global invocation frequency",
+      "removable_cpu_ms": null,
+      "critical_path_frame_ms": null,
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-repeated-20260927\\candidate-00"
+    },
+    {
+      "candidate_ids": [
+        "bc0737e3512ee206:1d9630-1d9787"
+      ],
+      "entry_rva": 1936816,
+      "scope": "surrounding_function_including_callees_and_traps",
+      "wall_ms": {
+        "n": 16,
+        "mean": 4.45818125,
+        "median": 4.443350000000001,
+        "min": 1.0055,
+        "p95": 7.9056,
+        "max": 8.6606
+      },
+      "known_handler_ms": {
+        "n": 16,
+        "mean": 0.02164375,
+        "median": 0.02245,
+        "min": 0.0032,
+        "p95": 0.0421,
+        "max": 0.0421
+      },
+      "observed_elements": null,
+      "element_count_basis": {
+        "stride": null,
+        "index_register": null,
+        "status": "boundary delta with decoded add/cmp/backedge; callee preservation not independently certified"
+      },
+      "discarded_first_partial_per_thread": 0,
+      "calls_per_frame": null,
+      "frequency_note": "sampled owners; concurrent unobserved calls prohibit global invocation frequency",
+      "removable_cpu_ms": null,
+      "critical_path_frame_ms": null,
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-repeated-20260927\\candidate-01"
+    }
+  ],
+  "traces": [
+    {
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-iterations-holdout-20260927\\candidate-00",
+      "events": 79,
+      "one_traversal_completed": true,
+      "memory_operands_captured": 35,
+      "unmapped_instructions": [],
+      "failed_memory_reads": 0,
+      "operations": {
+        "mov": 17,
+        "lea": 1,
+        "shl": 3,
+        "movzx": 7,
+        "cmp": 7,
+        "jne": 5,
+        "je": 4,
+        "vmovd": 1,
+        "vcvtph2ps": 1,
+        "vsubss": 2,
+        "vmaxss": 2,
+        "vdivss": 1,
+        "vcomiss": 3,
+        "ja": 1,
+        "cmova": 2,
+        "test": 2,
+        "vmulss": 1,
+        "vcvttss2si": 1,
+        "and": 2,
+        "nop": 1,
+        "bsf": 1,
+        "cmovne": 1,
+        "btc": 1,
+        "inc": 2,
+        "or": 2,
+        "vmovss": 6,
+        "add": 1
+      },
+      "observed_calls": [],
+      "replacement_allowed": false,
+      "contract": {
+        "observed": [
+          "executed path, registers and memory values",
+          "normal traversal back to header",
+          "instruction effects only on this sampled path"
+        ],
+        "static": [
+          "byte-verified code and bounded memory operand plans"
+        ],
+        "enforced": [
+          "event/time/memory limits",
+          "original instructions remain executed",
+          "instrumentation disabled before normal continuation"
+        ],
+        "unknown": [
+          "other branches and arithmetic inputs",
+          "whole-batch inter-iteration state algebra",
+          "exclusive access, allocation generations and pointer escapes",
+          "final consumer/publication deadline",
+          "complete GPU lowering and eligibility guards"
+        ]
+      }
+    },
+    {
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-iterations-20260927\\candidate-01",
+      "events": 111,
+      "one_traversal_completed": true,
+      "memory_operands_captured": 29,
+      "unmapped_instructions": [
+        1939144,
+        1939231,
+        1939259,
+        1939318,
+        1846672,
+        1846677,
+        1846682,
+        1846683,
+        1846684,
+        1846686,
+        1846688,
+        1846690,
+        1846694,
+        1846698,
+        1846701,
+        1846705,
+        1846708,
+        1846711,
+        1846717,
+        1846721,
+        1846724,
+        1846726,
+        1846730,
+        1846734,
+        1846738,
+        1846742,
+        1846746,
+        1846944,
+        1846951,
+        1846958,
+        1846963,
+        1846966,
+        1846969,
+        1846977,
+        1846981,
+        1846989,
+        1846993,
+        1846997,
+        1847003,
+        1847009,
+        1847012,
+        1847015,
+        1847019,
+        1847026,
+        1847031,
+        1847035,
+        1847037,
+        1847039,
+        1847041,
+        1847042,
+        1847043
+      ],
+      "failed_memory_reads": 0,
+      "operations": {
+        "mov": 37,
+        "lea": 2,
+        "shl": 2,
+        "cmp": 6,
+        "je": 6,
+        "test": 4,
+        "vsubss": 1,
+        "vcomiss": 2,
+        "jbe": 1,
+        "shr": 2,
+        "and": 2,
+        "jne": 4,
+        "or": 2,
+        "vmovsd": 2,
+        "vinsertps": 2,
+        "vmovss": 2,
+        "vsubps": 1,
+        "vdpps": 1,
+        "vsqrtps": 1,
+        "vaddss": 1,
+        "ja": 1,
+        "add": 3,
+        "vmovaps": 4,
+        "call": 1,
+        "push": 5,
+        "sub": 1,
+        "vpxor": 1,
+        "vmovups": 1,
+        "jmp": 1,
+        "movzx": 2,
+        "vxorps": 1,
+        "vcvtps2ph": 1,
+        "vpextrw": 1,
+        "pop": 5,
+        "ret": 1
+      },
+      "observed_calls": [
+        {
+          "rva": 1939318,
+          "target_rva": 1846672
+        }
+      ],
+      "replacement_allowed": false,
+      "contract": {
+        "observed": [
+          "executed path, registers and memory values",
+          "normal traversal back to header",
+          "instruction effects only on this sampled path"
+        ],
+        "static": [
+          "byte-verified code and bounded memory operand plans"
+        ],
+        "enforced": [
+          "event/time/memory limits",
+          "original instructions remain executed",
+          "instrumentation disabled before normal continuation"
+        ],
+        "unknown": [
+          "other branches and arithmetic inputs",
+          "whole-batch inter-iteration state algebra",
+          "exclusive access, allocation generations and pointer escapes",
+          "final consumer/publication deadline",
+          "complete GPU lowering and eligibility guards"
+        ]
+      }
+    },
+    {
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-iterations-holdout-20260927\\candidate-01",
+      "events": 24,
+      "one_traversal_completed": true,
+      "memory_operands_captured": 9,
+      "unmapped_instructions": [],
+      "failed_memory_reads": 0,
+      "operations": {
+        "mov": 7,
+        "lea": 1,
+        "shl": 1,
+        "cmp": 3,
+        "je": 2,
+        "test": 1,
+        "vsubss": 1,
+        "vcomiss": 1,
+        "jbe": 1,
+        "shr": 1,
+        "and": 1,
+        "jne": 2,
+        "add": 1
+      },
+      "observed_calls": [],
+      "replacement_allowed": false,
+      "contract": {
+        "observed": [
+          "executed path, registers and memory values",
+          "normal traversal back to header",
+          "instruction effects only on this sampled path"
+        ],
+        "static": [
+          "byte-verified code and bounded memory operand plans"
+        ],
+        "enforced": [
+          "event/time/memory limits",
+          "original instructions remain executed",
+          "instrumentation disabled before normal continuation"
+        ],
+        "unknown": [
+          "other branches and arithmetic inputs",
+          "whole-batch inter-iteration state algebra",
+          "exclusive access, allocation generations and pointer escapes",
+          "final consumer/publication deadline",
+          "complete GPU lowering and eligibility guards"
+        ]
+      }
+    },
+    {
+      "source": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-chain-direct-callee-20260927\\candidate-00",
+      "events": 48,
+      "one_traversal_completed": true,
+      "memory_operands_captured": 32,
+      "unmapped_instructions": [],
+      "failed_memory_reads": 0,
+      "operations": {
+        "mov": 16,
+        "push": 5,
+        "sub": 1,
+        "vmovaps": 3,
+        "cmp": 1,
+        "je": 1,
+        "vpxor": 1,
+        "vmovups": 1,
+        "lea": 1,
+        "jmp": 1,
+        "and": 1,
+        "shl": 1,
+        "or": 1,
+        "movzx": 2,
+        "vxorps": 1,
+        "vmovss": 1,
+        "vcvtps2ph": 1,
+        "vpextrw": 1,
+        "add": 1,
+        "pop": 5,
+        "ret": 1
+      },
+      "observed_calls": [],
+      "replacement_allowed": false,
+      "contract": {
+        "observed": [
+          "executed path, registers and memory values",
+          "normal return to caller",
+          "instruction effects only on this sampled path"
+        ],
+        "static": [
+          "byte-verified code and bounded memory operand plans"
+        ],
+        "enforced": [
+          "event/time/memory limits",
+          "original instructions remain executed",
+          "instrumentation disabled before normal continuation"
+        ],
+        "unknown": [
+          "other branches and arithmetic inputs",
+          "whole-batch inter-iteration state algebra",
+          "exclusive access, allocation generations and pointer escapes",
+          "final consumer/publication deadline",
+          "complete GPU lowering and eligibility guards"
+        ]
+      }
+    }
+  ],
+  "primary": {
+    "original": {
+      "CPU processing through submission ms": {
+        "count": 548,
+        "mean": 21.874612591240876,
+        "median": 21.1425,
+        "p95": 26.2546,
+        "p99": 29.3695,
+        "max": 34.6343
+      },
+      "Retired GPU frame span ms": {
+        "count": 547,
+        "mean": 6.617965987550274,
+        "median": 6.6252799,
+        "p95": 6.98060799,
+        "p99": 7.11884785,
+        "max": 7.66463995
+      },
+      "Controlled Present interval": {
+        "count": 548,
+        "mean": 21.8847598540146,
+        "median": 21.164099999999998,
+        "p95": 26.356,
+        "p99": 29.3745,
+        "max": 34.6709
+      },
+      "present_hz": 45.69389870716618
+    },
+    "discovery": {
+      "CPU processing through submission ms": {
+        "count": 531,
+        "mean": 22.586080037664782,
+        "median": 21.9824,
+        "p95": 26.5592,
+        "p99": 31.1167,
+        "max": 48.2182
+      },
+      "Retired GPU frame span ms": {
+        "count": 530,
+        "mean": 6.311520594716981,
+        "median": 6.57817602,
+        "p95": 6.97651196,
+        "p99": 10.8933125,
+        "max": 17.1806717
+      },
+      "Controlled Present interval": {
+        "count": 531,
+        "mean": 22.595041807909606,
+        "median": 21.9893,
+        "p95": 26.5685,
+        "p99": 31.0542,
+        "max": 48.2145
+      },
+      "present_hz": 44.25749722002907
+    },
+    "original2": {
+      "CPU processing through submission ms": {
+        "count": 542,
+        "mean": 22.14703044280443,
+        "median": 21.6023,
+        "p95": 26.1236,
+        "p99": 28.1371,
+        "max": 31.6493
+      },
+      "Retired GPU frame span ms": {
+        "count": 541,
+        "mean": 6.238338605286507,
+        "median": 6.30783987,
+        "p95": 6.88025618,
+        "p99": 12.934144,
+        "max": 13.2034559
+      },
+      "Controlled Present interval": {
+        "count": 542,
+        "mean": 22.158177121771217,
+        "median": 21.6209,
+        "p95": 26.1142,
+        "p99": 28.2036,
+        "max": 31.6193
+      },
+      "present_hz": 45.13006618299226
+    }
+  },
+  "isolated": {
+    "gpu": {
+      "prep_ms": {
+        "median": 0.0016,
+        "mean": 0.001665
+      },
+      "record_ms": {
+        "median": 0.0182,
+        "mean": 0.02001
+      },
+      "submit_ms": {
+        "median": 0.030950000000000002,
+        "mean": 0.032815
+      },
+      "wait_ms": {
+        "median": 0.0516,
+        "mean": 0.050095
+      },
+      "consume_ms": {
+        "median": 0.001,
+        "mean": 0.00105
+      },
+      "full_ms": {
+        "median": 0.10335,
+        "mean": 0.105635
+      },
+      "gpu_upload_ms": {
+        "median": 0.0013440000000000001,
+        "mean": 0.0015488
+      },
+      "gpu_dispatch_ms": {
+        "median": 0.002848,
+        "mean": 0.0025984
+      },
+      "gpu_return_ms": {
+        "median": 0.003072,
+        "mean": 0.0027792
+      },
+      "scope": "owned captured buffers; not game frame savings"
+    },
+    "original_slice": {
+      "original_slice_ms": {
+        "median": 0.0014,
+        "mean": 0.001418
+      },
+      "scope": "owned captured buffers; not game frame savings"
+    }
+  },
+  "second": {
+    "original": {
+      "run": {
+        "scene": "dynamic-city-v1",
+        "adapter": "NVIDIA GeForce RTX 3060 Laptop GPU",
+        "dedicated_vram_bytes": 6285164544,
+        "gpu_timestamp_frequency": 1000000000,
+        "width": 1920,
+        "height": 1080,
+        "instances": 1294,
+        "shadow_casters": 337,
+        "triangles_per_mesh": 12,
+        "lights": 24,
+        "fog_steps": 12,
+        "shadow_size": 2048,
+        "poses_per_cycle": 120,
+        "scene_cycle_seconds": 15,
+        "warmup_frames": 1251,
+        "measured_frames": 10800,
+        "seconds": 12.0775181,
+        "fps": 894.223458046,
+        "vsync": false,
+        "tearing_supported": true,
+        "frames_in_flight": 3,
+        "arc_loaded": false,
+        "experimental_vrs": false,
+        "image_copies_during_measurement": 0,
+        "frame_generation": false,
+        "presentation_enabled": true
+      },
+      "cpu_mean_ms": 1.116962287037037,
+      "gpu_mean_ms": 0.8751387496296297,
+      "cpu_max_ms": 6.5971
+    },
+    "observe_reject": {
+      "run": {
+        "scene": "dynamic-city-v1",
+        "adapter": "NVIDIA GeForce RTX 3060 Laptop GPU",
+        "dedicated_vram_bytes": 6285164544,
+        "gpu_timestamp_frequency": 1000000000,
+        "width": 1920,
+        "height": 1080,
+        "instances": 1294,
+        "shadow_casters": 337,
+        "triangles_per_mesh": 12,
+        "lights": 24,
+        "fog_steps": 12,
+        "shadow_size": 2048,
+        "poses_per_cycle": 120,
+        "scene_cycle_seconds": 15,
+        "warmup_frames": 1227,
+        "measured_frames": 10800,
+        "seconds": 12.0276292,
+        "fps": 897.932570119,
+        "vsync": false,
+        "tearing_supported": true,
+        "frames_in_flight": 3,
+        "arc_loaded": false,
+        "experimental_vrs": false,
+        "image_copies_during_measurement": 0,
+        "frame_generation": false,
+        "presentation_enabled": true
+      },
+      "cpu_mean_ms": 1.1123995925925927,
+      "gpu_mean_ms": 0.8756230637037037,
+      "cpu_max_ms": 6.2085
+    },
+    "original2": {
+      "run": {
+        "scene": "dynamic-city-v1",
+        "adapter": "NVIDIA GeForce RTX 3060 Laptop GPU",
+        "dedicated_vram_bytes": 6285164544,
+        "gpu_timestamp_frequency": 1000000000,
+        "width": 1920,
+        "height": 1080,
+        "instances": 1294,
+        "shadow_casters": 337,
+        "triangles_per_mesh": 12,
+        "lights": 24,
+        "fog_steps": 12,
+        "shadow_size": 2048,
+        "poses_per_cycle": 120,
+        "scene_cycle_seconds": 15,
+        "warmup_frames": 1239,
+        "measured_frames": 10200,
+        "seconds": 12.0495144,
+        "fps": 846.50714223,
+        "vsync": false,
+        "tearing_supported": true,
+        "frames_in_flight": 3,
+        "arc_loaded": false,
+        "experimental_vrs": false,
+        "image_copies_during_measurement": 0,
+        "frame_generation": false,
+        "presentation_enabled": true
+      },
+      "cpu_mean_ms": 1.179755,
+      "gpu_mean_ms": 0.8882327592156862,
+      "cpu_max_ms": 11.0317
+    },
+    "rejection": {
+      "mode": "observe_reject",
+      "replacement_enabled": false,
+      "probe_exit": 0,
+      "attach_exit": 1,
+      "rejection_verified": true,
+      "exit_code": 0,
+      "seconds": 15.634750200086273
+    }
+  }
+}

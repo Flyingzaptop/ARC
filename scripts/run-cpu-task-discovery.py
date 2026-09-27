@@ -1,13 +1,13 @@
 """Owned Wicked observation gate: baseline, then bounded automatic discovery."""
 import argparse,os,subprocess,time,shutil,json,hashlib,sys,csv,statistics
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('output',type=Path);p.add_argument('--runs',default='original,discovery');a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
-r=Path(__file__).resolve().parents[1];w=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/WickedEngine');exe=w/'BUILD/x64/Release/Tests/Tests.exe';source=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/full-arc-20260924/package/Tests.exe');backup=a.output/'Tests-before.exe';shutil.copy2(exe,backup)
+p=argparse.ArgumentParser();p.add_argument('output',type=Path);p.add_argument('--runs',default='original,discovery');p.add_argument('--host',type=Path);p.add_argument('--scene',type=int,default=18);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
+r=Path(__file__).resolve().parents[1];w=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/WickedEngine');exe=w/'BUILD/x64/Release/Tests/Tests.exe';source=a.host.resolve() if a.host else Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/full-arc-20260924/package/Tests.exe');backup=a.output/'Tests-before.exe';shutil.copy2(exe,backup)
 try:
  shutil.copy2(source,exe)
  for name in a.runs.split(','):
   out=a.output/name;out.mkdir();env={k:v for k,v in os.environ.items() if not k.startswith('ARC_')}
-  env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_CPU_PROFILE=str(out/'cpu.csv'),ARC_WICKED_CPU_SCENE='18',ARC_WICKED_CPU_SECONDS='20',ARC_FULL_WARMUP='8',ARC_WICKED_HOOK_TIMING='0',ARC_RESIDENT_QUEUE='0')
+  env.update(ARC_WICKED_EXPERIMENT_MODE='off',ARC_WICKED_CPU_PROFILE=str(out/'cpu.csv'),ARC_WICKED_CPU_SCENE=str(a.scene),ARC_WICKED_CPU_SECONDS='20',ARC_FULL_WARMUP='8',ARC_WICKED_HOOK_TIMING='0',ARC_RESIDENT_QUEUE='0')
   manifest={'mode':name,'exe_sha256':hashlib.file_digest(exe.open('rb'),'sha256').hexdigest(),'sampler_sha256':hashlib.file_digest((r/'build/Release/arc-cpu-task-probe.exe').open('rb'),'sha256').hexdigest(),'warmup_seconds':8,'measurement_seconds':12,'replacement_enabled':False,'names_or_addresses_supplied_to_detector':False,'environment':{k:v for k,v in env.items() if k.startswith('ARC_')}}
   started=time.monotonic();process=subprocess.Popen([str(exe),'alwaysactive','dx12'],cwd=w/'Samples/Tests',env=env);helper=None
   try:

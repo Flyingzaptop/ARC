@@ -1,0 +1,21 @@
+{
+  "raw_hashes": 294,
+  "detector_reproduced": true,
+  "measured_ranking_reproduced": true,
+  "loop_metrics_reproduced": true,
+  "python_tests": 47,
+  "native_final_fixture": {
+    "test_only_explicit_function": true,
+    "calls_checked": 300,
+    "outputs_match": true,
+    "mxcsr_preserved": true,
+    "last_error_preserved": true
+  },
+  "binaries": {
+    "build/Release/arc-cpu-contract-capture.dll": "725f81b7133a58a08e9aa6e89231ff2954330dac95c495e15dae92cef3d92579",
+    "build/Release/arc-cpu-task-probe.exe": "d5f7536da777e671b138f4beecfa8a4ccf940460532f8264ebbf259f5e90a884",
+    "build/producer-host.exe": "bc0737e3512ee2062e0af491a698d792694cebe794e8454e7efc65291a73ad6d",
+    "build/cpu-ir-gpu/bench.exe": "a2d92e5eb6e74c9cbf6fa6bd22c21626aa01f46bc51b768d5a1ee4006e93770e",
+    "build/cpu-ir-gpu/original-bench.exe": "90ec8db884cc229fd62c09f0e894ea29055a649c122c10f17db2daa8e735d5f3"
+  }
+}

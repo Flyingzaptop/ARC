@@ -119,7 +119,7 @@ def incorporate_measurements(ranked,measurements):
         c.setdefault('context_key',context_key(c))
         c.update(economics_status='unknown',net_task_ms_estimate=None,
                  replacement_economics_passed=False,research_attempts=0,
-                 useful_cpu_ms=None,calls_per_frame=None,batch_elements=None,manual_facts_used=False)
+                 useful_cpu_ms=None,calls_per_frame=None,batch_elements=None,manual_facts_used=False,region_cost_hint_ms=None)
         for field in ('replacement_total_ms','net_task_ms_upper_bound','rejection_basis','manual_note','measurement_evidence','measurement_provenance','previous_context_result','reconsidered_reason'):
             c.pop(field,None)
         c['exchange'].update(input_bytes=None,output_bytes=None,upload_ms=None,return_ms=None,wait_ms=None,gpu_consumer_proven=False)
@@ -139,6 +139,8 @@ def incorporate_measurements(ranked,measurements):
             else:
                 c['measurement_evidence']=m.get('evidence')
                 def valid(k):return type(m.get(k)) in (int,float) and math.isfinite(m[k]) and m[k]>=0
+                if valid('region_wall_ms') and m.get('region_time_scope')=='observed_loop_including_callees_and_traps':
+                    c['region_cost_hint_ms']=m['region_wall_ms']
                 for k in ['calls_per_frame','batch_elements']:
                     if valid(k):c[k]=m[k]
                 for k in ['input_bytes','output_bytes','upload_ms','return_ms','wait_ms']:
@@ -170,12 +172,15 @@ def incorporate_measurements(ranked,measurements):
         eligible=c['feasibility_tier']>=2 and c['economics_status'] not in TERMINAL
         c['bounded_research_eligible']=eligible
         c['detailed_capture_eligible']=eligible # legacy reader; bounded, NOT enablement
-        c['cheap_measurement_eligible']=eligible and not c['replacement_economics_passed']
+        # Boundary sampling may inspect unresolved callers without authorizing a deep trace.
+        unresolved_hot=c['sample_hits']>0 and c['topology'] in ('unclosed_element_loop','synchronization_or_atomic')
+        c['cheap_measurement_eligible']=(eligible or unresolved_hot) and c['economics_status'] not in TERMINAL and not c['replacement_economics_passed']
         c['research_budget']={'max_attempts_per_context':RESEARCH_ATTEMPTS,'max_events':32768,'max_ms':100}
         c['next_action']='bounded contract/economics experiment; no replacement admission' if eligible else 'defer until material conditions or algorithm change'
 
-def record_attempt(path,module_sha,ids,ranked,evidence):
+def record_attempt(path,module_sha,ids,ranked,evidence,phase="semantic"):
     """Small local investigation ledger, not a pattern exchange or proof store."""
+    if phase not in ("semantic","measurement"):raise ValueError("Unknown investigation phase")
     ledger=json.loads(path.read_text()) if path.exists() else {'module_sha256':module_sha,'candidates':{}}
     if ledger['module_sha256']!=module_sha:raise ValueError('Ledger generation mismatch')
     lookup={c['id']:c for c in ranked}
@@ -184,8 +189,10 @@ def record_attempt(path,module_sha,ids,ranked,evidence):
         previous=m.get('context_key') or context_key(c,m.get('conditions'))
         if previous!=c['context_key']:m={}
         m.setdefault('provenance','runtime_measured');m['context_key']=c['context_key']
-        m['research_attempts']=m.get('research_attempts',0)+1
-        m['research_evidence']=(m.get('research_evidence',[])+[str(evidence)])[-RESEARCH_ATTEMPTS:]
+        field='measurement_attempts' if phase=='measurement' else 'research_attempts'
+        m[field]=m.get(field,0)+1
+        trail='measurement_captures' if phase=='measurement' else 'research_evidence'
+        m[trail]=(m.get(trail,[])+[str(evidence)])[-(16 if phase=='measurement' else RESEARCH_ATTEMPTS):]
         ledger['candidates'][identity]=m
     temporary=path.with_suffix(path.suffix+'.tmp');temporary.write_text(json.dumps(ledger,indent=2)+'\n',encoding='utf-8');temporary.replace(path)
 
@@ -196,7 +203,7 @@ def recommendations(ranked):
 def ordering(c):
     rejected=c.get('economics_status') in TERMINAL
     return (rejected,-int(c.get('replacement_economics_passed',False)),-int(c['feasibility_tier']>=2),-int(c['sample_hits']>0),-c['feasibility_tier'],
-            -int(c['exchange']['gpu_consumer_proven']),-(c.get('net_task_ms_estimate') or 0),-c['sample_hits'],c['backedge_rva']-c['loop_rva'],c['id'])
+            -int(c['exchange']['gpu_consumer_proven']),-(c.get('net_task_ms_estimate') or 0),-(c.get('region_cost_hint_ms') or 0),-c['sample_hits'],c['backedge_rva']-c['loop_rva'],c['id'])
 
 def build(probe,context=None,measurements=None,conditions=None):
     source=json.loads((probe/'candidates.json').read_text());candidates={c['id']:c for c in source['candidates']}

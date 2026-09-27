@@ -83,4 +83,20 @@ class ParallelScreenTests(unittest.TestCase):
         self.assertEqual(context_key(c,off),context_key(c,{'execution_conditions':feedback.execution_conditions({'grid_gate_histogram':{'0':999}})}))
         c['context_key']=context_key(c,{'execution_conditions':feedback.execution_conditions({'grid_gate_histogram':{'1':10}})})
         incorporate_measurements([c],{'map':v});self.assertTrue(c['bounded_research_eligible']);self.assertIsNone(c['calls_per_frame'])
+    def test_hot_unknown_loop_gets_boundary_not_deep_capture(self):
+        c=assess(self.candidate());c.update(topology='unclosed_element_loop',feasibility_tier=1)
+        incorporate_measurements([c],{});self.assertTrue(c['cheap_measurement_eligible']);self.assertFalse(c['bounded_research_eligible']);self.assertFalse(c['replacement_economics_passed'])
+    def test_rejected_unknown_loop_stays_rejected(self):
+        c=assess(self.candidate());c.update(topology='unclosed_element_loop',feasibility_tier=1)
+        v=self.measurement();v['replacement_total_ms']=10
+        incorporate_measurements([c],{'map':v});self.assertFalse(c['cheap_measurement_eligible'])
+    def test_boundary_measurement_does_not_exhaust_semantic_budget(self):
+        import tempfile,json
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'measurements.json';c=assess(self.candidate());incorporate_measurements([c],{})
+            for _ in range(4):record_attempt(path,'image',['map'],[c],'boundary.json',phase='measurement')
+            m=json.loads(path.read_text())['candidates'];self.assertEqual(m['map']['measurement_attempts'],4);incorporate_measurements([c],m);self.assertTrue(c['bounded_research_eligible'])
+    def test_region_cost_is_only_a_ranking_hint(self):
+        c=assess(self.candidate());incorporate_measurements([c],{'map':{'provenance':'runtime_measured','evidence':'loop.json','region_wall_ms':2,'region_time_scope':'observed_loop_including_callees_and_traps'}})
+        self.assertEqual(c['region_cost_hint_ms'],2);self.assertIsNone(c['useful_cpu_ms']);self.assertFalse(c['replacement_economics_passed'])
 if __name__=='__main__':unittest.main()

@@ -35,5 +35,13 @@ def event_records(path,meta,vectors=False):
    if 'last_error_offset' in meta:e['last_error']=field('last_error_offset','<I');e['last_status']=field('last_status_offset','<I')
    if kind in [1,2]:e['raw_context_hex']=struct.pack('<'+'Q'*(meta['context_bytes']//8),*state[:meta['context_bytes']//8]).hex()
    if vectors:e['xmm_bytes']=struct.pack('<'+'Q'*32,*state[meta['xmm_offset']//8:meta['xmm_offset']//8+32])
+   if meta.get('memory_capture_enabled',meta.get('iteration_mode')):
+    raw=struct.pack('<'+'Q'*words,*state);n=field('memory_count_offset','<I')
+    if n>2:raise ValueError('Invalid memory operand count')
+    e['memory_known']=bool(field('memory_known_offset','<I'));e['memory']=[]
+    for j in range(n):
+     off=meta['memory_offset']+j*meta['memory_record_bytes'];address,size,ok=struct.unpack_from('<QII',raw,off)
+     if size>32:raise ValueError('Invalid read size')
+     e['memory'].append({'address':address,'size':size,'ok':bool(ok),'bytes':raw[off+16:off+16+size].hex()})
    yield e
   if f.read(1):raise ValueError('Unexpected data after declared stream')
