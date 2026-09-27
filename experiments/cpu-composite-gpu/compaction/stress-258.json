@@ -1,0 +1,10 @@
+{
+  "count": 258,
+  "scratch_words": 7,
+  "record_words": 4,
+  "initial_cursor": 2336228136688,
+  "emitted_count": 87,
+  "invalid_count": 2,
+  "publication_allowed": false,
+  "scope": "synthetic 2-group compaction boundary test"
+}

@@ -1,0 +1,26 @@
+{
+  "reason": "HLSL contract hashed pre-write LF text while saved Windows HLSL bytes contain CRLF",
+  "scope": "hash metadata only; shader bytes and all other archived payloads unchanged",
+  "old_archive_sha256": "e666834a188fa4dc36070c9cd5545ac1ae8e22929702ee56c05a15c841380270",
+  "new_archive_sha256": "a9705deee9fbcd5096a2440cf34834b0d85db26d8a2ae5d4ecdfd1fbb49719a5",
+  "contract_corrections": [
+    {
+      "archive_path": "gpu/fixture/contract.json",
+      "local_contract": "build/cpu-ir-gpu/fixture/contract.json",
+      "old_shader_sha256": "810578c4721a69038dedda11a0c4581f0165c7a61ca8a15d748c9341ab93b135",
+      "actual_shader_sha256": "1d08976792c4ceae5b17757771d1f0d5be96ea2973ccb9fa7e122c71eb6f3fd8",
+      "old_contract_sha256": "7cb5816741876c36fcad364589d31bde3cfd9597d91aef92a72bc8d1c66e5a8f",
+      "new_contract_sha256": "40b5a13a378a1c928d76ad1070b087872d9c6d118ef853bbe88c72908ec596d1"
+    },
+    {
+      "archive_path": "gpu/heldout-256/contract.json",
+      "local_contract": "build/cpu-ir-gpu/heldout-256/contract.json",
+      "old_shader_sha256": "810578c4721a69038dedda11a0c4581f0165c7a61ca8a15d748c9341ab93b135",
+      "actual_shader_sha256": "1d08976792c4ceae5b17757771d1f0d5be96ea2973ccb9fa7e122c71eb6f3fd8",
+      "old_contract_sha256": "004f025b7a89ed127966f5c5981d6455db83534f40bde8a0d8c2dfa01b606f16",
+      "new_contract_sha256": "d118b3d5560f70aa32f9bfa971a7be2a378f7112dcac93a7fecab6010666d692"
+    }
+  ],
+  "archive_members_verified": 294,
+  "untouched_archive_members_verified": 292
+}

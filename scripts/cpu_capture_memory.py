@@ -83,6 +83,8 @@ def _describe(ins):
     if ins.group(capstone.CS_GRP_CALL) or ins.group(capstone.CS_GRP_RET) or ins.mnemonic in ('push', 'pop'):
         if 0x66 in ins.prefix or ins.mnemonic not in ('call', 'ret', 'push', 'pop'):
             return {'status': 'unsupported', 'reason': 'nonstandard_stack_width_or_form', 'operands': []}
+        if ins.mnemonic == 'pop' and 0x67 in ins.prefix:
+            return {'status': 'unsupported', 'reason': 'pop_address_size_override', 'operands': []}
         ops = ins.operands
         if ins.mnemonic in ('push', 'pop', 'call'):
             if len(ops) != 1 or (ops[0].type != capstone.x86_const.X86_OP_IMM and ops[0].size != 8):
@@ -113,6 +115,10 @@ def _describe(ins):
         access = _access(ins, operand, item)
         if not access['access_known']:
             return {'status': 'unsupported', 'reason': 'memory_operand_access_unknown', 'operands': []}
+        if ins.mnemonic == 'pop' and (item['base'] == 4 or item['index'] == 4):
+            # POP increments RSP before evaluating a memory destination.
+            # Native capture evaluates these descriptors from pre-instruction GPRs.
+            item['disp'] += (8 if item['base'] == 4 else 0) + (8 * item['scale'] if item['index'] == 4 else 0)
         encoded.append({k: item[k] for k in ('base', 'index', 'scale', 'disp', 'size')} | access)
     if stack:
         encoded.append(stack)

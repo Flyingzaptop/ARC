@@ -1,0 +1,2 @@
+iteration,count,prep_ms,record_ms,submit_ms,wait_ms,consume_ms,full_ms,gpu_upload_ms,gpu_dispatch_ms,gpu_return_ms,validated,mismatch_words
+-1,32,0.0007,0.4896,1.1038,0.0001,0.0016,1.5958,0.002048,0.003072,0.003072,1,11

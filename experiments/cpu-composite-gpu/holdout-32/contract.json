@@ -1,0 +1,355 @@
+{
+  "schema": 1,
+  "scope": "isolated scratch reconstruction of observed path",
+  "count": 32,
+  "input_words_per_call": 39,
+  "output_words_per_call": 7,
+  "record_stride": 16,
+  "scratch_layout": {
+    "validity_word": 0,
+    "record_start_word": 1,
+    "cursor_delta_start_word": 5
+  },
+  "inputs": [
+    {
+      "node": 0,
+      "slot": 0,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 14,
+      "slot": 1,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 22,
+      "slot": 2,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 28,
+      "slot": 3,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 29,
+      "slot": 4,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 30,
+      "slot": 5,
+      "type": "u64",
+      "origin": "memory_input"
+    },
+    {
+      "node": 40,
+      "slot": 7,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 42,
+      "slot": 8,
+      "type": "u64",
+      "origin": "memory_input"
+    },
+    {
+      "node": 52,
+      "slot": 10,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 63,
+      "slot": 11,
+      "type": "u8",
+      "origin": "memory_input"
+    },
+    {
+      "node": 66,
+      "slot": 12,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 70,
+      "slot": 13,
+      "type": "u32x4",
+      "origin": "entry_vector"
+    },
+    {
+      "node": 72,
+      "slot": 17,
+      "type": "u32x4",
+      "origin": "entry_vector"
+    },
+    {
+      "node": 73,
+      "slot": 21,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 77,
+      "slot": 22,
+      "type": "u64",
+      "origin": "entry_register"
+    },
+    {
+      "node": 85,
+      "slot": 24,
+      "type": "u64",
+      "origin": "entry_register"
+    },
+    {
+      "node": 93,
+      "slot": 26,
+      "type": "u8",
+      "origin": "memory_input"
+    },
+    {
+      "node": 96,
+      "slot": 27,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 97,
+      "slot": 28,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 98,
+      "slot": 29,
+      "type": "u32",
+      "origin": "memory_input"
+    },
+    {
+      "node": 104,
+      "slot": 30,
+      "type": "u8",
+      "origin": "memory_input"
+    },
+    {
+      "node": 107,
+      "slot": 31,
+      "type": "u64",
+      "origin": "memory_input"
+    },
+    {
+      "node": 108,
+      "slot": 33,
+      "type": "u64",
+      "origin": "memory_input"
+    },
+    {
+      "node": 110,
+      "slot": 35,
+      "type": "u64",
+      "origin": "entry_register"
+    },
+    {
+      "node": 113,
+      "slot": 37,
+      "type": "u64",
+      "origin": "memory_input"
+    }
+  ],
+  "ordered_output_writes": [
+    {
+      "kind": "record",
+      "offset": 0,
+      "width": 16,
+      "source": 16
+    },
+    {
+      "kind": "cursor_delta",
+      "source": 18,
+      "width": 8
+    },
+    {
+      "kind": "record",
+      "offset": 12,
+      "width": 4,
+      "source": 21
+    },
+    {
+      "kind": "record",
+      "offset": 12,
+      "width": 4,
+      "source": 25
+    },
+    {
+      "kind": "record",
+      "offset": 10,
+      "width": 2,
+      "source": 26
+    },
+    {
+      "kind": "record",
+      "offset": 12,
+      "width": 1,
+      "source": 27
+    },
+    {
+      "kind": "record",
+      "offset": 0,
+      "width": 4,
+      "source": 28
+    },
+    {
+      "kind": "record",
+      "offset": 4,
+      "width": 4,
+      "source": 29
+    },
+    {
+      "kind": "record",
+      "offset": 8,
+      "width": 2,
+      "source": 60
+    }
+  ],
+  "typed_ir_missing_live_contract": [
+    "stable per-record input slots",
+    "external output address recipe",
+    "branch and side-effect closure across alternate paths"
+  ],
+  "pruned_pointer_nodes": [
+    18
+  ],
+  "reachable_nodes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114
+  ],
+  "shader_sha256": "160d7e70811559ac9e47a97f7d80d057598b458ac631e8e4e2804dfd7f009751",
+  "input_sha256": "f3a76ee1a99ef5133b6baf8e3e8a4da314a6403eb234a90f1d3e9874a6901d60",
+  "expected_sha256": "387a4752d550a6f01dcd53a1a0ef0e80c440362e03e29d124d88cf863a1cf821",
+  "replacement_allowed": false,
+  "full_batch_replacement_allowed": false,
+  "batch_compaction": "not_generated; per-row validity is scratch evidence for future prefix/scatter",
+  "packet_preparation": "captured leaf values packed on CPU for isolated trial",
+  "limitations": [
+    "entry register/vector binding is captured only",
+    "one observed path and no-growth append layout only",
+    "no single initial cursor/capacity preflight, GPU prefix, scatter, or final count publication",
+    "f32tof16 and all output bytes require independent GPU validation",
+    "ownership, alternate paths, consumer timing, and full-frame economics unproven"
+  ]
+}

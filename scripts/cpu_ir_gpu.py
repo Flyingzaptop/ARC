@@ -219,7 +219,8 @@ def generate(replay, output, roles=('reconstruction_check','holdout'), packet_ro
     shader = _shader(shape)
     input_bytes = b''.join(b''.join(values) for _,values,_,_ in records)
     expected_bytes = b''.join(expected for _,_,expected,_ in records)
-    (output/'generated.hlsl').write_text(shader,encoding='utf-8')
+    shader_path = output/'generated.hlsl'
+    shader_path.write_bytes(shader.encode('utf-8'))
     (output/'input.bin').write_bytes(input_bytes)
     (output/'expected.bin').write_bytes(expected_bytes)
     if gather is not None:
@@ -235,7 +236,7 @@ def generate(replay, output, roles=('reconstruction_check','holdout'), packet_ro
         'output_map':shape['outputs'],
         'input_sha256':hashlib.sha256(input_bytes).hexdigest(),
         'expected_sha256':hashlib.sha256(expected_bytes).hexdigest(),
-        'shader_sha256':hashlib.sha256(shader.encode()).hexdigest(),
+        'shader_sha256':hashlib.sha256(shader_path.read_bytes()).hexdigest(),
         'replacement_allowed':False,
         'live_blocker':('captured inputs change inside the callback and an early CPU consumer reads the result'
                         if packet_root is not None else 'live applicability, ownership, and consumer timing are not certified'),

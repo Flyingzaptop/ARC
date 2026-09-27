@@ -1,5 +1,5 @@
 {
-  "archive_sha256": "e666834a188fa4dc36070c9cd5545ac1ae8e22929702ee56c05a15c841380270",
+  "archive_sha256": "a9705deee9fbcd5096a2440cf34834b0d85db26d8a2ae5d4ecdfd1fbb49719a5",
   "files": [
     {
       "path": "callee/candidate-00/attach.log",
@@ -259,7 +259,7 @@
     {
       "path": "gpu/fixture/contract.json",
       "bytes": 68552,
-      "sha256": "7cb5816741876c36fcad364589d31bde3cfd9597d91aef92a72bc8d1c66e5a8f"
+      "sha256": "40b5a13a378a1c928d76ad1070b087872d9c6d118ef853bbe88c72908ec596d1"
     },
     {
       "path": "gpu/fixture/expected.bin",
@@ -289,7 +289,7 @@
     {
       "path": "gpu/heldout-256/contract.json",
       "bytes": 22728,
-      "sha256": "004f025b7a89ed127966f5c5981d6455db83534f40bde8a0d8c2dfa01b606f16"
+      "sha256": "d118b3d5560f70aa32f9bfa971a7be2a378f7112dcac93a7fecab6010666d692"
     },
     {
       "path": "gpu/heldout-256/expected.bin",

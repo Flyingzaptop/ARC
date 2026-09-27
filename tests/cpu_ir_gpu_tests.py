@@ -1,4 +1,6 @@
 import json
+import os
+import hashlib
 import importlib.util
 import struct
 import sys
@@ -7,6 +9,8 @@ import unittest
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
+EVIDENCE_OVERRIDE=os.environ.get('ARC_COMPOSITE_EVIDENCE_ROOT')
+CAPTURE_BASE=Path(EVIDENCE_OVERRIDE) if EVIDENCE_OVERRIDE else Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer')
 sys.path.insert(0,str(ROOT/'scripts'))
 from cpu_ir_gpu import Unsupported, _compile_call, _evaluate, generate
 _original_path=ROOT/'experiments/cpu-ir-gpu/original_slice.py'
@@ -42,6 +46,10 @@ class CodegenTests(unittest.TestCase):
             self.assertEqual((out/'input.bin').read_bytes(),struct.pack('<ff',2,3))
             self.assertEqual((out/'expected.bin').read_bytes(),struct.pack('<f',5))
             self.assertIn('precise float t0 = v0 + v1;', (out/'generated.hlsl').read_text())
+            self.assertEqual(contract['shader_sha256'],
+                             hashlib.sha256((out/'generated.hlsl').read_bytes()).hexdigest())
+            self.assertEqual(json.loads((out/'contract.json').read_text())['shader_sha256'],
+                             contract['shader_sha256'])
 
     def test_unsupported_leaf_and_precision_fail_closed(self):
         sample=call()
@@ -66,9 +74,10 @@ class CodegenTests(unittest.TestCase):
                 generate({'calls':[a,b]},Path(temp)/'fixture')
 
     def test_real_packet_holdout(self):
-        packet=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/cpu-batch-final-20260927')
+        packet=CAPTURE_BASE/'cpu-batch-final-20260927'
         if not packet.exists():
-            self.skipTest('local captured packet absent')
+            if EVIDENCE_OVERRIDE:self.fail(f'missing {packet} under ARC_COMPOSITE_EVIDENCE_ROOT')
+            self.skipTest('captured packet absent; set ARC_COMPOSITE_EVIDENCE_ROOT')
         replay=json.loads((ROOT/'docs/evidence/cpu-producer-20260927/result.json').read_text())['replay']
         with tempfile.TemporaryDirectory() as temp:
             contract=generate(replay,Path(temp)/'fixture',packet_root=packet)
@@ -89,8 +98,10 @@ class CodegenTests(unittest.TestCase):
             self.assertEqual(rebuilt,(fixture/'input.bin').read_bytes())
 
     def test_original_slice_guard(self):
-        packet=Path('C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/cpu-batch-final-20260927')
-        if not packet.exists():self.skipTest('local captured packet absent')
+        packet=CAPTURE_BASE/'cpu-batch-final-20260927'
+        if not packet.exists():
+            if EVIDENCE_OVERRIDE:self.fail(f'missing {packet} under ARC_COMPOSITE_EVIDENCE_ROOT')
+            self.skipTest('captured packet absent; set ARC_COMPOSITE_EVIDENCE_ROOT')
         blob,meta=original_slice.build(packet)
         self.assertEqual(meta['original_instruction_count'],19)
         self.assertEqual(len(blob),136)

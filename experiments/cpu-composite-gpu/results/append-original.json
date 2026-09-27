@@ -1,0 +1,19 @@
+{
+  "command": [
+    "C:/Python314/python.exe",
+    "experiments/cpu-composite-native/launch.py",
+    "C:/Users/r3d_flzp/ARC-Hardening-GPU/universal-optimizer/cpu-composite-bulk-covered-v2-20260927/candidate-01/native-manifest.json",
+    "--pack",
+    "build/cpu-composite/original-loop-covered-v2.pack",
+    "--execute",
+    "--timeout-seconds",
+    "30",
+    "--repeats",
+    "3",
+    "--warm-repeats",
+    "5"
+  ],
+  "returncode": 0,
+  "stdout": "{\n  \"returncode\": 0,\n  \"stdout\": \"{\\\"original_cpu_loop_restored_median_ms\\\":2.035,\\\"contract_kind\\\":\\\"append\\\",\\\"packet_count\\\":65344,\\\"after_snapshot_equal\\\":true,\\\"isolated_replay\\\":true,\\\"live_replacement_admitted\\\":false,\\\"restored_reset_mode\\\":\\\"full_views_before_each_run\\\",\\\"isolated_effect_audit_outside_bytes\\\":0,\\\"isolated_effect_audit_first_outside_hex\\\":\\\"0x0\\\",\\\"warm_comparison_admitted\\\":true,\\\"writecombine_output_preserved\\\":false,\\\"restored_samples_ms\\\":[2.0291,2.0789,2.035],\\\"warm_samples_ms\\\":[8.4059,2.1366,2.079,2.0144,2.0819],\\\"original_cpu_loop_warm_median_ms\\\":2.0819}\\n\",\n  \"stderr\": \"\",\n  \"timeout_seconds\": 30.0,\n  \"isolated_child_only\": true\n}\n",
+  "stderr": ""
+}

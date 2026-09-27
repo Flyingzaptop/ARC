@@ -43,5 +43,13 @@ def event_records(path,meta,vectors=False):
      off=meta['memory_offset']+j*meta['memory_record_bytes'];address,size,ok=struct.unpack_from('<QII',raw,off)
      if size>32:raise ValueError('Invalid read size')
      e['memory'].append({'address':address,'size':size,'ok':bool(ok),'bytes':raw[off+16:off+16+size].hex()})
+   if 'previous_memory_count_offset' in meta and meta.get('memory_capture_enabled'):
+    count=field('previous_memory_count_offset','<I')
+    if count>2:raise ValueError('Invalid previous memory count')
+    e['previous_after']=[]
+    for j in range(count):
+     off=meta['previous_memory_offset']+j*meta['memory_record_bytes'];address,size,ok=struct.unpack_from('<QII',raw,off)
+     if size>32:raise ValueError('Invalid previous read size')
+     e['previous_after'].append({'address':address,'size':size,'ok':bool(ok),'bytes':raw[off+16:off+16+size].hex()})
    yield e
   if f.read(1):raise ValueError('Unexpected data after declared stream')

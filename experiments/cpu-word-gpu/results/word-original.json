@@ -1,0 +1,20 @@
+{
+  "command": [
+    "C:/Python314/python.exe",
+    "experiments/cpu-composite-native/launch.py",
+    "experiments/cpu-composite-native/scatter-manifest.json",
+    "--scatter",
+    "--pack",
+    "build/cpu-composite/original-scatter.pack",
+    "--execute",
+    "--timeout-seconds",
+    "30",
+    "--repeats",
+    "3",
+    "--warm-repeats",
+    "5"
+  ],
+  "returncode": 0,
+  "stdout": "{\n  \"returncode\": 0,\n  \"stdout\": \"{\\\"original_cpu_loop_restored_median_ms\\\":2.4135,\\\"contract_kind\\\":\\\"word_scatter\\\",\\\"packet_count\\\":65343,\\\"after_snapshot_equal\\\":true,\\\"isolated_replay\\\":true,\\\"live_replacement_admitted\\\":false,\\\"restored_reset_mode\\\":\\\"full_views_before_each_run\\\",\\\"isolated_effect_audit_outside_bytes\\\":0,\\\"isolated_effect_audit_first_outside_hex\\\":\\\"0x0\\\",\\\"warm_comparison_admitted\\\":true,\\\"writecombine_output_preserved\\\":true,\\\"restored_samples_ms\\\":[2.4135,2.4065,2.6668],\\\"warm_samples_ms\\\":[2.3053,3.987,2.346,2.4539,2.4603],\\\"original_cpu_loop_warm_median_ms\\\":2.4539}\\n\",\n  \"stderr\": \"\",\n  \"timeout_seconds\": 30.0,\n  \"isolated_child_only\": true\n}\n",
+  "stderr": ""
+}

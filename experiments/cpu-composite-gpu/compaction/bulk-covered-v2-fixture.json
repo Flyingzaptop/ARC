@@ -1,0 +1,13 @@
+{
+  "count": 65344,
+  "scratch_words": 7,
+  "record_words": 4,
+  "initial_cursor": 1966386143328,
+  "scratch_path": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\experiments\\cpu-composite-gpu\\covered-v2-bulk\\expected.bin",
+  "packed_expected_path": "C:\\Users\\r3d_flzp\\ARC-Hardening-GPU\\universal-optimizer\\cpu-composite-bulk-covered-v2-20260927\\candidate-01\\expected-records.bin",
+  "metadata_expected_path": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\experiments\\cpu-composite-gpu\\compaction\\bulk-covered-v2-metadata-expected.bin",
+  "emitted_count": 65344,
+  "invalid_count": 0,
+  "independent_after_view_record_sha256": "1ef5d0b40aa3c4be080f956b1cd3e3292e70c7ca27dc0628ecf3bc1498932c3a",
+  "live_replacement_allowed": false
+}

@@ -7,9 +7,11 @@ from capstone.x86 import X86_OP_MEM,X86_OP_IMM
 PURE={"mov","movzx","movsx","movsxd","lea","add","sub","and","or","xor","shl","shr","sar","sal","inc","dec","cmp","test","neg","not","pxor"}
 def pure_instruction(i):return i.mnemonic in PURE and (i.mnemonic=="lea" or not any(x.type==X86_OP_MEM for x in i.operands))
 
-def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=False,stop_unsupported=False,context=None,measurement_path=None,boundary_samples=1,loop_regions=False,iteration_skip=0,callee_from=None):
- if mode=='iteration' and not loop_regions:raise ValueError('iteration mode requires loop boundaries')
- if loop_regions and mode not in ('boundary','iteration'):raise ValueError('incompatible region mode')
+def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=False,stop_unsupported=False,context=None,measurement_path=None,boundary_samples=1,loop_regions=False,iteration_skip=0,callee_from=None,iteration_samples=1,entry_filter=None,view_budget_mib=128,pointer_target_plan=None,defer_first_region=False):
+ if not 16<=view_budget_mib<=256:raise ValueError('view snapshot budget')
+ if not 1<=iteration_samples<=128:raise ValueError('iteration sample budget')
+ if mode in ('iteration','bulk') and not loop_regions:raise ValueError('iteration mode requires loop boundaries')
+ if loop_regions and mode not in ('boundary','iteration','bulk'):raise ValueError('incompatible region mode')
  if (mode=='callee') != (callee_from is not None):raise ValueError('callee mode requires observed call evidence')
  if boundary_samples*2>events:raise ValueError('event budget too small for boundary samples')
  if not 0<=iteration_skip<=1024:raise ValueError('iteration sampling budget')
@@ -86,10 +88,26 @@ def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=Fa
   size=b.EndAddress-b.BeginAddress
   if not 0<size<=65536:raise ValueError('Selected function outside decode budget')
   (directory/'expected-code.bin').write_bytes(pe.get_data(b.BeginAddress,size))
-  effective_mode=('iteration' if mode=='iteration' else 'region') if loop_regions else mode if g['deep_eligible'] or mode=='boundary' else 'boundary'
+  effective_mode=(mode if mode in ('iteration','bulk') else 'region') if loop_regions else mode if g['deep_eligible'] or mode=='boundary' else 'boundary'
   effective_events=max(32,min(events,64)) if effective_mode in ('boundary','region') else min(events,32768)
-  effective_ms=min(ms,5000) if effective_mode in ('iteration','callee') else min(ms,250) if effective_mode in ('boundary','region') else min(ms,100)
-  (directory/'request.txt').write_text(f'{b.BeginAddress:x} {size:x} {pe.FILE_HEADER.TimeDateStamp:x} {pe.OPTIONAL_HEADER.SizeOfImage:x} {effective_events} {effective_ms} {effective_mode} {max_span if g["exchange"] else 0} {int(outermost)} {int(stop_unsupported)} {boundary_samples if effective_mode in ("boundary","region") else 1} {iteration_skip}\n')
+  effective_ms=min(ms,5000) if effective_mode in ('iteration','bulk','callee') else min(ms,250) if effective_mode in ('boundary','region') else min(ms,100)
+  (directory/'request.txt').write_text(f'{b.BeginAddress:x} {size:x} {pe.FILE_HEADER.TimeDateStamp:x} {pe.OPTIONAL_HEADER.SizeOfImage:x} {effective_events} {effective_ms} {effective_mode} {max_span if g["exchange"] else 0} {int(outermost)} {int(stop_unsupported)} {boundary_samples if effective_mode in ("boundary","region") else 1} {iteration_skip} {iteration_samples} {int(defer_first_region)}\n')
+  if effective_mode=='bulk':
+   (directory/'view-budget.txt').write_text(str(view_budget_mib)+'\n')
+   if pointer_target_plan:
+    hints=json.loads(pointer_target_plan.read_text())
+    if hints['module_sha256']!=digest or len(hints['records'])>128:raise ValueError('pointer-hint generation/budget mismatch')
+    for record in hints['records']:
+     code=bytes.fromhex(record['code'])
+     if pe.get_data(record['rva'],len(code))!=code:raise ValueError('pointer-hint code changed')
+    (directory/'pointer-load-sites.txt').write_text(str(len(hints['records']))+'\n'+' '.join(str(x['rva']) for x in hints['records'])+'\n')
+    (directory/'pointer-load-plan.json').write_text(json.dumps(hints,indent=2))
+  if entry_filter is not None:
+   filt=json.loads(entry_filter.read_text())
+   if b.BeginAddress<=filt['branch_rva']<b.EndAddress:
+    if effective_mode not in ('iteration','bulk'):raise ValueError('entry filter requires iteration observer')
+    (directory/'entry-filter.json').write_text(json.dumps(filt,indent=2))
+    (directory/'entry-filter.txt').write_text(f"{filt['register_index']} {filt['mask']} {filt['value']}\n")
   decoder=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_64);decoder.detail=True
   pending=[b.BeginAddress];seen=set();checked=[];pure=[]
   if loop_regions:
@@ -107,7 +125,7 @@ def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=Fa
   with (directory/'checked-functions.bin').open('wb') as sink:
    sink.write(struct.pack('<I',len(checked)))
    for address,blob in checked:sink.write(struct.pack('<II',address,len(blob)));sink.write(blob)
-  if effective_mode in ('iteration','callee'):
+  if effective_mode in ('iteration','bulk','callee'):
    from cpu_capture_memory import build as memory_plan
    memory_plan(directory)
   (directory/'pure-rvas.bin').write_bytes(b''.join(struct.pack('<I',x['rva']) for x in pure))
@@ -116,4 +134,4 @@ def select(probe,output,mode="trace",events=32768,ms=100,max_span=0,outermost=Fa
  result=dict(image_sha256=digest,detector_sha256=hashlib.sha256((probe/'candidates.json').read_bytes()).hexdigest(),symbols_used=False,engine_source_used=False,selection='bounded research independent of replacement economics; rejected contexts are skipped',candidates=plan)
  (output/'selection.json').write_text(json.dumps(result,indent=2));return result
 if __name__=='__main__':
- p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--context',type=Path);p.add_argument('--boundary-samples',type=int,default=1);p.add_argument('--loop-regions',action='store_true');p.add_argument('--iteration-skip',type=int,default=0);p.add_argument('--callee-from',type=Path);p.add_argument('--measurements',type=Path);p.add_argument('--mode',choices=['trace','boundary','training','consumer','iteration','callee'],default='trace');p.add_argument('--events',type=int,default=32768);p.add_argument('--ms',type=int,default=100);p.add_argument('--max-arg-span',type=int,default=0);p.add_argument('--outermost',action='store_true');p.add_argument('--stop-unsupported',action='store_true');a=p.parse_args();j=select(a.probe,a.output,a.mode,a.events,a.ms,a.max_arg_span,a.outermost,a.stop_unsupported,a.context,a.measurements,a.boundary_samples,a.loop_regions,a.iteration_skip,a.callee_from);print('Selected',len(j['candidates']),'whole entry regions')
+ p=argparse.ArgumentParser();p.add_argument('probe',type=Path);p.add_argument('output',type=Path);p.add_argument('--context',type=Path);p.add_argument('--boundary-samples',type=int,default=1);p.add_argument('--loop-regions',action='store_true');p.add_argument('--iteration-skip',type=int,default=0);p.add_argument('--iteration-samples',type=int,default=1);p.add_argument('--entry-filter',type=Path);p.add_argument('--view-budget-mib',type=int,default=128);p.add_argument('--pointer-target-plan',type=Path);p.add_argument('--defer-first-region',action='store_true');p.add_argument('--callee-from',type=Path);p.add_argument('--measurements',type=Path);p.add_argument('--mode',choices=['trace','boundary','training','consumer','iteration','callee','bulk'],default='trace');p.add_argument('--events',type=int,default=32768);p.add_argument('--ms',type=int,default=100);p.add_argument('--max-arg-span',type=int,default=0);p.add_argument('--outermost',action='store_true');p.add_argument('--stop-unsupported',action='store_true');a=p.parse_args();j=select(a.probe,a.output,a.mode,a.events,a.ms,a.max_arg_span,a.outermost,a.stop_unsupported,a.context,a.measurements,a.boundary_samples,a.loop_regions,a.iteration_skip,a.callee_from,a.iteration_samples,a.entry_filter,a.view_budget_mib,a.pointer_target_plan,a.defer_first_region);print('Selected',len(j['candidates']),'whole entry regions')

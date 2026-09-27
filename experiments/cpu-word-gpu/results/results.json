@@ -1,0 +1,72 @@
+{
+  "scope": "isolated owned-snapshot word-scatter GPU route; no live replacement or full-frame claim",
+  "count": 65343,
+  "timed_repetitions": 20,
+  "fused_median_ms": {
+    "prep_ms": 0.43215000000000003,
+    "record_ms": 0.045950000000000005,
+    "submit_ms": 0.0476,
+    "wait_ms": 0.9912000000000001,
+    "consume_ms": 0.01745,
+    "full_ms": 1.5082,
+    "gpu_upload_ms": 0.71328,
+    "gpu_eval_ms": 0.038576,
+    "gpu_local_prefix_ms": 0.008192,
+    "gpu_group_prefix_ms": 0.002048,
+    "gpu_scatter_ms": 0.004096,
+    "gpu_return_ms": 0.023039999999999998
+  },
+  "fused_full_range_ms": [
+    1.416,
+    1.9959
+  ],
+  "correctness": {
+    "warmup_mismatch_words": 0,
+    "final_mismatch_words": 0
+  },
+  "native_gather_ms": 6.8016,
+  "native_gather_source": "three saved bounded native gather reruns; diagnostic verification excluded",
+  "offline_gather_verification_ms": 7.7832,
+  "composed_nonoverlapped_estimate_ms": 8.3098,
+  "original_cpu_loop_warm_median_ms": 2.4539,
+  "estimated_regression_ms": 5.855899999999999,
+  "frame_impact_ms": null,
+  "replacement_allowed": false,
+  "timing_note": "GPU timestamps are components of fused wait/full time and are not added again",
+  "files_sha256": {
+    "word-fused-tail.csv": "77d1bb01a8a6e022c46011b922c856226785862156572133630a43e17e99defa",
+    "word-original.json": "f19fddf2b76fdc931f8acfcb2ca8f6a56d02ca3684deee95f920b995a6902ba4",
+    "word-gather.json": "8499b41c15b40c306ea987f30cb61f51255d86efef3a1974bce1f1d30571a747",
+    "cost-analysis.json": "57b514110343c8a5e065e34dc47a6b8167141aa5033aea609c3632a413029392"
+  },
+  "original_cpu_loop_warm_samples_ms": [
+    2.3053,
+    3.987,
+    2.346,
+    2.4539,
+    2.4603
+  ],
+  "original_cpu_loop_warm_mean_ms": 2.7105,
+  "fused_full_mean_ms": 1.578245,
+  "composed_nonoverlapped_mean_estimate_ms": 8.301278333333332,
+  "regression_vs_cpu_warm_mean_ms": 5.590778333333333,
+  "regression_vs_cpu_warm_median_ms": 5.855899999999999,
+  "decision": "reject_isolated_gpu_route_economics_even_against_cpu_warm_mean",
+  "original_warm_comparison_admitted": true,
+  "output_vm_protect": "0x404",
+  "writecombine_status": "required_and_preserved",
+  "prior_single_gather_ms": 6.6403,
+  "gather_samples_ms": [
+    6.5574,
+    6.8101,
+    6.8016
+  ],
+  "gather_mean_ms": 6.723033333333333,
+  "gather_median_ms": 6.8016,
+  "gather_verification_samples_ms": [
+    7.7832,
+    7.6299,
+    7.8008
+  ],
+  "cost_analysis_file": "cost-analysis.json"
+}

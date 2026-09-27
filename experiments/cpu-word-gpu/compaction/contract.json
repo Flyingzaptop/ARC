@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "isolated_word_prefix_scatter_plan",
+  "count": 65343,
+  "scratch_words": 5,
+  "output_words_per_item": 1,
+  "metadata_words": 9,
+  "metadata_layout": [
+    "emitted_count",
+    "final_index",
+    "counter_after",
+    "flag_after",
+    "invalid_count",
+    "last_word",
+    "last_qword_low",
+    "last_qword_high",
+    "last_byte"
+  ],
+  "packet_inputs": {
+    "initial_index": 1,
+    "initial_counter": 1,
+    "initial_flag": 0,
+    "last_byte": 0,
+    "last_word": 0,
+    "last_qword": 1481640616032
+  },
+  "output_slot_source": "GPU prefix of valid rows, offset from guarded entry index",
+  "publication_guard": "invalid_count==0 and emitted_count==Count",
+  "last_item_metadata": "three packet-level snapshot leaves, not per-row CPU indices",
+  "shader_sha256": {
+    "prefix-local.hlsl": "7617b02a268ce47e19973d88264fc8144ffc29c1f2db384695af884ccf5d4eb4",
+    "prefix-groups.hlsl": "6e670f3a893f08d35f1ff229a47fb4baab80ecbea24fb56512bc23f03e4d586e",
+    "scatter.hlsl": "d030ea4adc1dad077667ecd87ba1d38fb11aa2d0ffc1e161ceb8cc95e35e79ce"
+  },
+  "packet_inputs_sha256": "96e0a3b9030381d76a96bdc8fffc6fbc156ff4462632eff8d438f3eb7fbb0d5f",
+  "replacement_allowed": false,
+  "limitations": [
+    "GPU byte validation and bounded before-view gather pending",
+    "runtime group membership, allocation ownership, and publication still unproven"
+  ]
+}

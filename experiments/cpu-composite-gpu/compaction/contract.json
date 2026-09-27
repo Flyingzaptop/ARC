@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "algorithm": "two_level_exclusive_prefix_then_parallel_scatter",
+  "max_count": 65536,
+  "group_size": 256,
+  "dispatches": [
+    "prefix-local",
+    "prefix-groups",
+    "scatter"
+  ],
+  "group_count": "(Count+255)/256, at most 256",
+  "scratch_input": "per-row validity word, record words, then 64-bit normalized cursor delta",
+  "buffers": {
+    "local_prefix_words": "Count",
+    "group_sums_words": "ceil(Count/256)",
+    "group_invalid_words": "ceil(Count/256)",
+    "group_offsets_words": "ceil(Count/256)",
+    "packed_record_words": "Count*RecordWords worst case",
+    "metadata_words": [
+      "emitted_count",
+      "final_cursor_low",
+      "final_cursor_high",
+      "invalid_count"
+    ]
+  },
+  "row_semantics": {
+    "emit": "validity=1 and delta=RecordWords*4",
+    "reject": "validity=1 and delta=0",
+    "invalid": "validity!=1 or delta outside {0,RecordWords*4}"
+  },
+  "publication_guard": "invalid_count must equal zero before any result publication",
+  "cursor_recipe": "one InitialCursor plus emitted_count*RecordStride on GPU",
+  "requires_preflight": "preflight_packet_no_growth for maximum Count*RecordStride and ownership before dispatch",
+  "output_slot_source": "GPU exclusive prefix of validity flags",
+  "cpu_prefix_required": false,
+  "live_replacement_allowed": false,
+  "limitations": [
+    "requires ordered dispatch barriers and independent GPU byte validation",
+    "invalid_count readback or GPU consumer guard is required before publication",
+    "upstream scratch validity and input binding are not closed for mixed filter paths",
+    "no publication or fallback after partial GPU effects is provided"
+  ],
+  "shader_sha256": {
+    "prefix-local.hlsl": "1e6092797309a8c37ecf0213ccba19644b8e2998ce220e6ddb40d13870857382",
+    "prefix-groups.hlsl": "63a4ae093898135deae9bc146015059d03b2f0eb397ffca2e9bbc29e1753bfb1",
+    "scatter.hlsl": "1e19d7ad3b6bdb1948a7c6c9d183fc91b9e879e459bd63d6e6df726bf9f155bb"
+  }
+}

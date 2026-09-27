@@ -1,0 +1,77 @@
+{
+  "scope": "isolated owned-snapshot GPU tail; original CPU work still runs in normal application",
+  "count": 65344,
+  "timed_repetitions": 20,
+  "fused_median_ms": {
+    "prep_ms": 0.3927,
+    "record_ms": 0.03325,
+    "submit_ms": 0.03585,
+    "wait_ms": 0.9089,
+    "consume_ms": 0.07569999999999999,
+    "full_ms": 1.46115,
+    "gpu_upload_ms": 0.651744,
+    "gpu_eval_ms": 0.03944,
+    "gpu_local_prefix_ms": 0.008192,
+    "gpu_group_prefix_ms": 0.002048,
+    "gpu_scatter_ms": 0.01024,
+    "gpu_return_ms": 0.082288
+  },
+  "fused_full_range_ms": [
+    1.3891,
+    1.9149
+  ],
+  "correctness": {
+    "warmup_mismatch_words": 0,
+    "final_mismatch_words": 0
+  },
+  "external_native_gather_ms": 3.2715,
+  "external_gather_source": "three saved bounded native gather reruns; diagnostic verification excluded",
+  "composed_nonoverlapped_estimate_ms": 4.73265,
+  "warm_original_loop_ms": 2.0819,
+  "frame_impact_ms": null,
+  "replacement_allowed": false,
+  "timing_note": "GPU stage timestamps are already inside fused wait/full time and are not added again",
+  "files_sha256": {
+    "fused-tail.csv": "4cb955a23d466aa48878e62ac72b51516ef83a8e1fabe65166875a936f6c92fd",
+    "bulk-eval.csv": "3121754783923f32f93a76e54135248cb27bf6ff1c794869f48984ef127d2661",
+    "holdout-gpu.csv": "1c0c3c89e9e6eb1451b69a2c548c4fb12da67f01994d444d3ec521a6bae42278",
+    "holdout-diagnostic.csv": "53be27a659c12e193423ea0fe9a4275ae1264c562890d633968d2ae1710ea4fa",
+    "holdout-diagnostic.csv.actual-output.bin": "0f8cfb6d5b63425a80cc1c05a5478337596a630d6e3495658b28a4b3f6c3d08a",
+    "holdout-corrected.csv": "3531563f52128d3ea4200970fadbc9b0d7bf942a968f145132387db08ef7aa05",
+    "append-original.json": "dac5e78966cf5ac13f33e2fb1918cf10eae7549ab4bdd4c33c19231adf85bba2",
+    "append-gather.json": "e6a6b21e1cf5c5aacef22403f13d7fe548d1686339035645c6478097b8351922",
+    "cost-analysis.json": "7430489b9c8e855cab58400ad1b85bf56352ff3dbc7245010a755ba7d6c0c662"
+  },
+  "original_cpu_loop_warm_samples_ms": [
+    8.4059,
+    2.1366,
+    2.079,
+    2.0144,
+    2.0819
+  ],
+  "original_cpu_loop_warm_mean_ms": 3.34356,
+  "original_cpu_loop_warm_median_ms": 2.0819,
+  "fused_full_mean_ms": 1.499855,
+  "composed_nonoverlapped_mean_estimate_ms": 4.8040883333333335,
+  "regression_vs_cpu_warm_mean_ms": 1.4605283333333334,
+  "regression_vs_cpu_warm_median_ms": 2.6507499999999995,
+  "decision": "reject_isolated_gpu_route_economics_even_against_cpu_warm_mean",
+  "original_warm_comparison_admitted": true,
+  "output_vm_protect": "0x4",
+  "writecombine_status": "not_applicable_original_writecombine_false",
+  "prior_single_gather_ms": 3.1998,
+  "gather_samples_ms": [
+    3.2715,
+    3.2113,
+    3.4299
+  ],
+  "gather_mean_ms": 3.3042333333333334,
+  "gather_median_ms": 3.2715,
+  "gather_verification_samples_ms": [
+    3.8843,
+    3.7038,
+    4.1196
+  ],
+  "offline_gather_verification_ms": 3.8843,
+  "cost_analysis_file": "cost-analysis.json"
+}

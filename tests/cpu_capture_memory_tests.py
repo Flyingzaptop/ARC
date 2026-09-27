@@ -98,6 +98,27 @@ class CaptureMemoryTests(unittest.TestCase):
             self.assertEqual(struct.unpack_from('<III', (directory / 'memory-rvas.bin').read_bytes(), 4),
                              (0x6000, 2, UNSUPPORTED))
 
+    def test_pop_rsp_destination_uses_post_increment_address(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            # pop qword ptr [rsp]; pop qword ptr [rsp+0x10]
+            fixture(directory, [(0x7000, bytes.fromhex('8f04248f442410'))])
+            rows = build(directory)['records']
+            self.assertEqual(len(rows), 2)
+            self.assertEqual([op['disp'] for op in rows[0]['operands']], [8, 0])
+            self.assertEqual([op['disp'] for op in rows[1]['operands']], [24, 0])
+            self.assertTrue(rows[0]['operands'][0]['write'])
+            self.assertTrue(rows[0]['operands'][1]['read'])
+
+    def test_pop_address_size_override_is_unsupported(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            fixture(directory, [(0x7100, bytes.fromhex('678f0424'))])
+            row = build(directory)['records'][0]
+            self.assertEqual(row['reason'], 'pop_address_size_override')
+            self.assertEqual(struct.unpack_from('<III', (directory / 'memory-rvas.bin').read_bytes(), 4),
+                             (0x7100, 4, UNSUPPORTED))
+
     def test_decode_gap_and_truncated_input_are_explicit(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)

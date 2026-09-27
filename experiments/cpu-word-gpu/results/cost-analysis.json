@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "kind": "word",
+  "count": 65343,
+  "scope": "isolated nonoverlapped composed route; no frame-impact inference",
+  "sources": {
+    "word-original.json": "f19fddf2b76fdc931f8acfcb2ca8f6a56d02ca3684deee95f920b995a6902ba4",
+    "word-gather.json": "8499b41c15b40c306ea987f30cb61f51255d86efef3a1974bce1f1d30571a747",
+    "word-fused-tail.csv": "77d1bb01a8a6e022c46011b922c856226785862156572133630a43e17e99defa"
+  },
+  "original_cpu_warm_samples_ms": [
+    2.3053,
+    3.987,
+    2.346,
+    2.4539,
+    2.4603
+  ],
+  "original_cpu_warm_mean_ms": 2.7105,
+  "original_cpu_warm_median_ms": 2.4539,
+  "gather_samples_ms": [
+    6.5574,
+    6.8101,
+    6.8016
+  ],
+  "gather_mean_ms": 6.723033333333333,
+  "gather_median_ms": 6.8016,
+  "prior_single_gather_ms": 6.6403,
+  "gather_verification_samples_ms": [
+    7.7832,
+    7.6299,
+    7.8008
+  ],
+  "gather_full_prep_samples_ms": [
+    14.3406,
+    14.44,
+    14.6024
+  ],
+  "fused_full_samples_ms": [
+    1.9959,
+    1.6636,
+    1.416,
+    1.6634,
+    1.7244,
+    1.508,
+    1.4733,
+    1.4758,
+    1.6065,
+    1.5262,
+    1.5084,
+    1.4886,
+    1.478,
+    1.5104,
+    1.4953,
+    1.4849,
+    1.4998,
+    1.9397,
+    1.6113,
+    1.4954
+  ],
+  "fused_full_mean_ms": 1.578245,
+  "fused_full_median_ms": 1.5082,
+  "fused_full_range_ms": [
+    1.416,
+    1.9959
+  ],
+  "fused_component_medians_ms": {
+    "prep_ms": 0.43215000000000003,
+    "record_ms": 0.045950000000000005,
+    "submit_ms": 0.0476,
+    "wait_ms": 0.9912000000000001,
+    "consume_ms": 0.01745,
+    "full_ms": 1.5082,
+    "gpu_upload_ms": 0.71328,
+    "gpu_eval_ms": 0.038576,
+    "gpu_local_prefix_ms": 0.008192,
+    "gpu_group_prefix_ms": 0.002048,
+    "gpu_scatter_ms": 0.004096,
+    "gpu_return_ms": 0.023039999999999998
+  },
+  "composed_nonoverlapped_mean_ms": 8.301278333333332,
+  "composed_nonoverlapped_median_ms": 8.3098,
+  "regression_vs_cpu_warm_mean_ms": 5.590778333333333,
+  "regression_vs_cpu_warm_median_ms": 5.855899999999999,
+  "decision": "reject_isolated_gpu_route_economics_even_against_cpu_warm_mean",
+  "gpu_timing_note": "stage timestamps are within fused wait/full time and are not added again",
+  "gather_timing_note": "diagnostic verification is separate from steady gather; no CPU/GPU overlap assumed",
+  "correctness": {
+    "warmup_mismatch_words": 0,
+    "final_mismatch_words": 0
+  },
+  "packed_input_sha256": "3032b4454786f4b324a746edee92d8739be237de93274623d529945f41a5171c",
+  "gather_executable_sha256": "163f09ff1ab41d1fe84079c6b84602d0e8e469e76098bfd20c387da46875c1d2"
+}

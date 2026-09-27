@@ -1,0 +1,38 @@
+{
+  "samples": [
+    {
+      "command": [
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-ir-gpu\\covered-v2-gather-split-v2\\gather.exe",
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-composite\\measurements\\append-gather-input.bin",
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-composite\\measurements\\append-gather-ranges.csv"
+      ],
+      "returncode": 0,
+      "stdout": "rows=65344 row_bytes=124 gather_ms=3.2715 verification_ms=3.8843 full_prep_ms=7.1558 first_two_exact=1 bounded_snapshot_reads=1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-ir-gpu\\covered-v2-gather-split-v2\\gather.exe",
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-composite\\measurements\\append-gather-input.bin",
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-composite\\measurements\\append-gather-ranges.csv"
+      ],
+      "returncode": 0,
+      "stdout": "rows=65344 row_bytes=124 gather_ms=3.2113 verification_ms=3.7038 full_prep_ms=6.9151 first_two_exact=1 bounded_snapshot_reads=1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-ir-gpu\\covered-v2-gather-split-v2\\gather.exe",
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-composite\\measurements\\append-gather-input.bin",
+        "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\cpu-composite\\measurements\\append-gather-ranges.csv"
+      ],
+      "returncode": 0,
+      "stdout": "rows=65344 row_bytes=124 gather_ms=3.4299 verification_ms=4.1196 full_prep_ms=7.5495 first_two_exact=1 bounded_snapshot_reads=1\n",
+      "stderr": ""
+    }
+  ],
+  "original_input_sha256": "efe35f38d87e464c760a73e2e484c978f74733b183923f8976064cd18889b0ec",
+  "rerun_input_sha256": "efe35f38d87e464c760a73e2e484c978f74733b183923f8976064cd18889b0ec",
+  "executable_sha256": "8691db3ca334ae1fdfb734b9f30271090a64bfd658e66cfcffe179f472047f0d",
+  "scope": "bounded snapshot native gather; diagnostic verification outside steady timer; three evidence-preservation reruns"
+}

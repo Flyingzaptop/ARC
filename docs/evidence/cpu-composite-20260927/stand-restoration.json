@@ -1,0 +1,10 @@
+{
+  "checked_at_utc": "2026-09-27T19:30:58.7110678Z",
+  "executable": "C:/Users/r3d_flzp/ARC-Hardening-GPU/WickedEngine/BUILD/x64/Release/Tests/Tests.exe",
+  "reference": "build/record-pack-control/Tests.original.exe",
+  "executable_sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf",
+  "reference_sha256": "e9e637c582e43dde2a98943badfafc1abef7e8bb3c5b7de3ddf4d313c8e94cbf",
+  "restored": true,
+  "active_experiment_processes": [],
+  "scope": "owned Wicked stand; no commercial games started"
+}

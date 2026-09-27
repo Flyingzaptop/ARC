@@ -7,7 +7,7 @@ GPRS=['rax','rcx','rdx','rbx','rsp','rbp','rsi','rdi','r8','r9','r10','r11','r12
 def reg_index(name):return 16 if name=='rip' else -1 if not name else GPRS.index(name)
 def memory(ins,op):
     if op.mem.segment:raise ValueError('segment-relative memory is outside capture class')
-    m=op.mem;is_store=ins.mnemonic in ['mov','movss','movsd','movups','movaps','vmovss','vmovsd','vmovups','vmovaps','vmovdqu','vmovdqa'] and ins.operands[0].type==X86_OP_MEM;return dict(base=reg_index(ins.reg_name(m.base)),index=reg_index(ins.reg_name(m.index)),scale=m.scale,disp=m.disp,size=op.size,write=is_store or bool(op.access&capstone.CS_AC_WRITE))
+    m=op.mem;is_store=ins.mnemonic in ['mov','movss','movsd','movups','movaps','vmovss','vmovsd','vmovups','vmovaps','vmovdqu','vmovdqa','vpextrw','vpextrd','vpextrq','vextractps'] and ins.operands[0].type==X86_OP_MEM;return dict(base=reg_index(ins.reg_name(m.base)),index=reg_index(ins.reg_name(m.index)),scale=m.scale,disp=m.disp,size=op.size,write=is_store or bool(op.access&capstone.CS_AC_WRITE))
 def address(m,registers,nextpc):
     get=lambda i:0 if i<0 else nextpc if i==16 else registers[i]
     return get(m['base'])+get(m['index'])*m['scale']+m['disp']

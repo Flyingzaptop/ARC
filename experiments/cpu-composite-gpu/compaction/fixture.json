@@ -1,0 +1,11 @@
+{
+  "count": 32,
+  "scratch_words": 7,
+  "record_words": 4,
+  "initial_cursor": 2336228136688,
+  "emitted_count": 32,
+  "final_cursor": 2336228137200,
+  "invalid_count": 0,
+  "source": "independently post-read holdout 32 scratch records; GPU prefix/scatter pending validation",
+  "live_replacement_allowed": false
+}

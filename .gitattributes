@@ -5,3 +5,10 @@
 *.ps1 text eol=crlf
 *.rgb32f binary
 *.rgb8 binary
+experiments/cpu-composite-gpu/**/*.hlsl text eol=lf
+experiments/cpu-word-gpu/**/*.hlsl text eol=lf
+# Raw measurements and hash-bound contracts must keep their exact saved bytes.
+experiments/cpu-composite-gpu/**/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+experiments/cpu-composite-gpu/**/*.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
+experiments/cpu-word-gpu/**/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+experiments/cpu-word-gpu/**/*.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
