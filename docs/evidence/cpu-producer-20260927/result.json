@@ -1,0 +1,2335 @@
+{
+  "status": "exact_fragment_with_later_upload_evidence",
+  "binding_identity": {
+    "session_prefix_sha256": "a3c61c36f9ffaa5e7effce8b9ce9ded33d70a4b91d84c2886b8223dac5e89646",
+    "resource": 367,
+    "generation": 1,
+    "range": [
+      0,
+      131072
+    ]
+  },
+  "replacement_allowed": false,
+  "stop_verified": true,
+  "watch_cost": {
+    "events": 6,
+    "event_limit": 6,
+    "wait_ms": 3000,
+    "qpc_frequency": 10000000,
+    "elapsed_ms": 298.469,
+    "armed": 72,
+    "restored": 72,
+    "allocated_event_bytes": 40960,
+    "replacement_enabled": false
+  },
+  "slice_cost": {
+    "calls": 3,
+    "events": 66,
+    "reason": 0,
+    "skipped_entries": 22971,
+    "armed": 6,
+    "restored": 6,
+    "active_trap": false,
+    "elapsed_ms": 278.993,
+    "event_capacity_bytes": 729088,
+    "replacement_enabled": false
+  },
+  "replay": {
+    "calls": [
+      {
+        "call": 0,
+        "tid": 19560,
+        "input_qpc": 7721111603277,
+        "output_qpc": 7721111605609,
+        "output_address": 1537384264288,
+        "output": "0000a54012c48d400000fc41",
+        "input_memory": [
+          {
+            "pc": 140698996127905,
+            "address": 140699003568024,
+            "bytes": "0000003f"
+          },
+          {
+            "pc": 140698996127913,
+            "address": 1537293930608,
+            "bytes": "85eba640"
+          },
+          {
+            "pc": 140698996127919,
+            "address": 1537293930592,
+            "bytes": "7b14a340"
+          },
+          {
+            "pc": 140698996127924,
+            "address": 1537293930612,
+            "bytes": "97af8f40"
+          },
+          {
+            "pc": 140698996127930,
+            "address": 1537293930596,
+            "bytes": "8dd88b40"
+          },
+          {
+            "pc": 140698996127936,
+            "address": 1537293930616,
+            "bytes": "e17afc41"
+          },
+          {
+            "pc": 140698996127955,
+            "address": 1537293930600,
+            "bytes": "1f85fb41"
+          }
+        ],
+        "memory_writes": [
+          {
+            "pc": 140698996127946,
+            "address": 95780073888,
+            "bytes": "0000a540"
+          },
+          {
+            "pc": 140698996127961,
+            "address": 95780073892,
+            "bytes": "12c48d40"
+          },
+          {
+            "pc": 140698996127970,
+            "address": 95780073896,
+            "bytes": "0000fc41"
+          },
+          {
+            "pc": 140698996127989,
+            "address": 1537384264288,
+            "bytes": "0000a54012c48d40"
+          },
+          {
+            "pc": 140698996127997,
+            "address": 1537384264296,
+            "bytes": "0000fc41"
+          }
+        ],
+        "output_provenance": [
+          {
+            "offset": 0,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930608,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930592,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          },
+          {
+            "offset": 4,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930612,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930596,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          },
+          {
+            "offset": 8,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930616,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930600,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          }
+        ],
+        "classification": "computation_from_captured_memory_inputs",
+        "status": "exact_output_replay",
+        "tolerance": 0,
+        "role": "reconstruction_check"
+      },
+      {
+        "call": 1,
+        "tid": 19560,
+        "input_qpc": 7721111605715,
+        "output_qpc": 7721111608167,
+        "output_address": 1537384264864,
+        "output": "0000b0c0d5bad3be0000f0b2",
+        "input_memory": [
+          {
+            "pc": 140698996127905,
+            "address": 140699003568024,
+            "bytes": "0000003f"
+          },
+          {
+            "pc": 140698996127913,
+            "address": 1537293930640,
+            "bytes": "7b14aec0"
+          },
+          {
+            "pc": 140698996127919,
+            "address": 1537293930624,
+            "bytes": "85ebb1c0"
+          },
+          {
+            "pc": 140698996127924,
+            "address": 1537293930644,
+            "bytes": "8302b5be"
+          },
+          {
+            "pc": 140698996127930,
+            "address": 1537293930628,
+            "bytes": "2773f2be"
+          },
+          {
+            "pc": 140698996127936,
+            "address": 1537293930648,
+            "bytes": "8fc2753d"
+          },
+          {
+            "pc": 140698996127955,
+            "address": 1537293930632,
+            "bytes": "9ec275bd"
+          }
+        ],
+        "memory_writes": [
+          {
+            "pc": 140698996127946,
+            "address": 95780073888,
+            "bytes": "0000b0c0"
+          },
+          {
+            "pc": 140698996127961,
+            "address": 95780073892,
+            "bytes": "d5bad3be"
+          },
+          {
+            "pc": 140698996127970,
+            "address": 95780073896,
+            "bytes": "0000f0b2"
+          },
+          {
+            "pc": 140698996127989,
+            "address": 1537384264864,
+            "bytes": "0000b0c0d5bad3be"
+          },
+          {
+            "pc": 140698996127997,
+            "address": 1537384264872,
+            "bytes": "0000f0b2"
+          }
+        ],
+        "output_provenance": [
+          {
+            "offset": 0,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930640,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930624,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          },
+          {
+            "offset": 4,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930644,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930628,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          },
+          {
+            "offset": 8,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930648,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930632,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          }
+        ],
+        "classification": "computation_from_captured_memory_inputs",
+        "status": "exact_output_replay",
+        "tolerance": 0,
+        "role": "reconstruction_check"
+      },
+      {
+        "call": 2,
+        "tid": 19560,
+        "input_qpc": 7721111608247,
+        "output_qpc": 7721111611149,
+        "output_address": 1537384265440,
+        "output": "0000b0c0d2b8d3beffffff3e",
+        "input_memory": [
+          {
+            "pc": 140698996127905,
+            "address": 140699003568024,
+            "bytes": "0000003f"
+          },
+          {
+            "pc": 140698996127913,
+            "address": 1537293930672,
+            "bytes": "7b14aec0"
+          },
+          {
+            "pc": 140698996127919,
+            "address": 1537293930656,
+            "bytes": "85ebb1c0"
+          },
+          {
+            "pc": 140698996127924,
+            "address": 1537293930676,
+            "bytes": "8000b5be"
+          },
+          {
+            "pc": 140698996127930,
+            "address": 1537293930660,
+            "bytes": "2471f2be"
+          },
+          {
+            "pc": 140698996127936,
+            "address": 1537293930680,
+            "bytes": "295c0f3f"
+          },
+          {
+            "pc": 140698996127955,
+            "address": 1537293930664,
+            "bytes": "ac47e13e"
+          }
+        ],
+        "memory_writes": [
+          {
+            "pc": 140698996127946,
+            "address": 95780073888,
+            "bytes": "0000b0c0"
+          },
+          {
+            "pc": 140698996127961,
+            "address": 95780073892,
+            "bytes": "d2b8d3be"
+          },
+          {
+            "pc": 140698996127970,
+            "address": 95780073896,
+            "bytes": "ffffff3e"
+          },
+          {
+            "pc": 140698996127989,
+            "address": 1537384265440,
+            "bytes": "0000b0c0d2b8d3be"
+          },
+          {
+            "pc": 140698996127997,
+            "address": 1537384265448,
+            "bytes": "ffffff3e"
+          }
+        ],
+        "output_provenance": [
+          {
+            "offset": 0,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930672,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930656,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          },
+          {
+            "offset": 4,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930676,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930660,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          },
+          {
+            "offset": 8,
+            "bytes": 4,
+            "expression": {
+              "op": "vmulss",
+              "precision": "float32",
+              "left": [
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    }
+                  ]
+                },
+                {
+                  "op": "vaddss",
+                  "precision": "float32",
+                  "left": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930680,
+                      "bytes": 4
+                    }
+                  ],
+                  "right": [
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    },
+                    {
+                      "kind": "memory_input",
+                      "address": 1537293930664,
+                      "bytes": 4
+                    }
+                  ]
+                }
+              ],
+              "right": [
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                },
+                {
+                  "kind": "memory_input",
+                  "address": 140699003568024,
+                  "bytes": 4
+                }
+              ]
+            }
+          }
+        ],
+        "classification": "computation_from_captured_memory_inputs",
+        "status": "exact_output_replay",
+        "tolerance": 0,
+        "role": "holdout"
+      }
+    ],
+    "exact": true,
+    "holdout_passed": true,
+    "replacement_allowed": false,
+    "effects_not_proven": [
+      "upper YMM/ZMM state",
+      "MXCSR exception flags for arbitrary inputs",
+      "upstream path and memory ownership",
+      "first external consumers"
+    ]
+  },
+  "writer": {
+    "writer": "vmovsd qword ptr [rdi + 0x200], xmm0",
+    "writer_pc": 140698996127989,
+    "writer_rva": 1259765,
+    "output_bytes": 12,
+    "observed_tid": 33600
+  },
+  "classifications": [
+    "computation_from_captured_memory_inputs"
+  ],
+  "later_upload_matches": [
+    {
+      "cpu_write_event": 1,
+      "cpu_qpc": 7721105830336,
+      "GPU_write_op": 2589,
+      "GPU_record_qpc": 7721106023658,
+      "snapshot": 3,
+      "queue": 1610,
+      "fence": 4,
+      "matched_bytes": 8
+    }
+  ],
+  "observed_element_indices": [
+    0,
+    1,
+    2
+  ],
+  "unknowns": [
+    "memory ownership and concurrent readers",
+    "first CPU consumer",
+    "first shader consumer",
+    "upstream production of the arithmetic input arrays",
+    "original uninstrumented fragment cost",
+    "all unobserved control paths and upper vector/exception state"
+  ]
+}

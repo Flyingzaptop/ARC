@@ -1,0 +1,5 @@
+{
+  "exit_code": 2147483652,
+  "accepted": false,
+  "reason": "unhandled single-step after capture; superseded by corrected stop protocol"
+}

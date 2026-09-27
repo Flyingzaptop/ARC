@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "purpose": "training-only automatic binding to observed CPU writer and bounded computation",
+  "inputs": "live confirmed native-event CPU/GPU correspondence, not oracle data",
+  "identity": ["immutable event-prefix SHA256 within the owned live process", "resource id/generation/range", "automatically discovered CPU address/stride", "observed writer PC and runtime code bytes"],
+  "writer_observer": {"mechanism":"4-byte hardware data watchpoint","watched_field_bytes":12,"maximum_threads":128,"default_events":6,"maximum_events":32,"default_ms":3000,"maximum_ms":10000,"reserved_event_bytes_x64":40960,"new_threads_after_arming":"not covered"},
+  "slice_observer": {"mechanism":"hardware execution breakpoint and bounded trap-flag steps on previously observed writer threads","maximum_static_function_bytes":65536,"maximum_static_function_instructions":2048,"maximum_planned_instructions":65,"maximum_events":512,"reserved_event_bytes_x64":729088,"default_calls":3,"maximum_calls":4,"default_ms":5000,"maximum_ms":10000,"memory_per_instruction":"at most two operands, at most 32 bytes each"},
+  "admission_to_observation": "unoccupied debug registers; no attached debugger; private committed watched memory; no change to application data or instructions",
+  "replay": {"precision":"exact output bytes, no tolerance","rounding":"float32 nearest; non-default rounding/FTZ/DAZ and non-normal arithmetic inputs rejected","control":"only the actually observed bounded path; no claim about unobserved branches","holdout":"third call is verified separately, not used to change the instruction model","not_verified":"full architectural equivalence, upper vector state, arbitrary-input MXCSR exception effects, ownership"},
+  "GPU_witness": "up to three additional completed snapshots requested by inferred resource id/generation; common QPC proves observed CPU store precedes matching subsequent GPU copy recording",
+  "stop": "remove owned breakpoints, clear owned TF, preserve last-error/NT-status; keep inactive handler/DLL until process exit to avoid handler-unload races",
+  "configuration": "run.py exposes watch-events/watch-ms/slice-calls/slice-ms and event-buffer-budget-kib; budgets below fixed x64 event reservation are rejected before launch",
+  "replacement_allowed": false,
+  "standalone_task_proven": false
+}

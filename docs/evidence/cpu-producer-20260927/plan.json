@@ -1,0 +1,682 @@
+{
+  "status": "copy_writer_with_bounded_predecessor_hypothesis",
+  "writer_pc": 140698996127989,
+  "writer_rva": 1259765,
+  "writer": "vmovsd qword ptr [rdi + 0x200], xmm0",
+  "observed_tid": 33600,
+  "entry": 140698996127863,
+  "stop": 140698996128003,
+  "output_memory": {
+    "base": 7,
+    "index": -1,
+    "scale": 1,
+    "disp": 512,
+    "size": 8,
+    "write": true
+  },
+  "output_address": 1537384264288,
+  "output_bytes": 12,
+  "instructions": [
+    {
+      "pc": 140698996127863,
+      "size": 3,
+      "code": "4885c9",
+      "mnemonic": "test",
+      "operands": "rcx, rcx",
+      "memory": []
+    },
+    {
+      "pc": 140698996127866,
+      "size": 2,
+      "code": "7425",
+      "mnemonic": "je",
+      "operands": "0x7ff709af38a1",
+      "memory": []
+    },
+    {
+      "pc": 140698996127868,
+      "size": 8,
+      "code": "488b842418040000",
+      "mnemonic": "mov",
+      "operands": "rax, qword ptr [rsp + 0x418]",
+      "memory": [
+        {
+          "base": 4,
+          "index": -1,
+          "scale": 1,
+          "disp": 1048,
+          "size": 8,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127876,
+      "size": 2,
+      "code": "8b00",
+      "mnemonic": "mov",
+      "operands": "eax, dword ptr [rax]",
+      "memory": [
+        {
+          "base": 0,
+          "index": -1,
+          "scale": 1,
+          "disp": 0,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127878,
+      "size": 4,
+      "code": "488d0440",
+      "mnemonic": "lea",
+      "operands": "rax, [rax + rax*2]",
+      "memory": []
+    },
+    {
+      "pc": 140698996127882,
+      "size": 3,
+      "code": "4803c0",
+      "mnemonic": "add",
+      "operands": "rax, rax",
+      "memory": []
+    },
+    {
+      "pc": 140698996127885,
+      "size": 6,
+      "code": "c5fb1044c120",
+      "mnemonic": "vmovsd",
+      "operands": "xmm0, qword ptr [rcx + rax*8 + 0x20]",
+      "memory": [
+        {
+          "base": 1,
+          "index": 0,
+          "scale": 8,
+          "disp": 32,
+          "size": 8,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127891,
+      "size": 4,
+      "code": "8b44c128",
+      "mnemonic": "mov",
+      "operands": "eax, dword ptr [rcx + rax*8 + 0x28]",
+      "memory": [
+        {
+          "base": 1,
+          "index": 0,
+          "scale": 8,
+          "disp": 40,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127895,
+      "size": 5,
+      "code": "c5fb114500",
+      "mnemonic": "vmovsd",
+      "operands": "qword ptr [rbp], xmm0",
+      "memory": [
+        {
+          "base": 5,
+          "index": -1,
+          "scale": 1,
+          "disp": 0,
+          "size": 8,
+          "write": true
+        }
+      ]
+    },
+    {
+      "pc": 140698996127900,
+      "size": 3,
+      "code": "894508",
+      "mnemonic": "mov",
+      "operands": "dword ptr [rbp + 8], eax",
+      "memory": [
+        {
+          "base": 5,
+          "index": -1,
+          "scale": 1,
+          "disp": 8,
+          "size": 4,
+          "write": true
+        }
+      ]
+    },
+    {
+      "pc": 140698996127903,
+      "size": 2,
+      "code": "eb46",
+      "mnemonic": "jmp",
+      "operands": "0x7ff709af38e7",
+      "memory": []
+    },
+    {
+      "pc": 140698996127905,
+      "size": 8,
+      "code": "c5fa101def867100",
+      "mnemonic": "vmovss",
+      "operands": "xmm3, dword ptr [rip + 0x7186ef]",
+      "memory": [
+        {
+          "base": 16,
+          "index": -1,
+          "scale": 1,
+          "disp": 7440111,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127913,
+      "size": 6,
+      "code": "c4c17a104710",
+      "mnemonic": "vmovss",
+      "operands": "xmm0, dword ptr [r15 + 0x10]",
+      "memory": [
+        {
+          "base": 15,
+          "index": -1,
+          "scale": 1,
+          "disp": 16,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127919,
+      "size": 5,
+      "code": "c4c17a580f",
+      "mnemonic": "vaddss",
+      "operands": "xmm1, xmm0, dword ptr [r15]",
+      "memory": [
+        {
+          "base": 15,
+          "index": -1,
+          "scale": 1,
+          "disp": 0,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127924,
+      "size": 6,
+      "code": "c4c17a104714",
+      "mnemonic": "vmovss",
+      "operands": "xmm0, dword ptr [r15 + 0x14]",
+      "memory": [
+        {
+          "base": 15,
+          "index": -1,
+          "scale": 1,
+          "disp": 20,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127930,
+      "size": 6,
+      "code": "c4c17a585704",
+      "mnemonic": "vaddss",
+      "operands": "xmm2, xmm0, dword ptr [r15 + 4]",
+      "memory": [
+        {
+          "base": 15,
+          "index": -1,
+          "scale": 1,
+          "disp": 4,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127936,
+      "size": 6,
+      "code": "c4c17a104718",
+      "mnemonic": "vmovss",
+      "operands": "xmm0, dword ptr [r15 + 0x18]",
+      "memory": [
+        {
+          "base": 15,
+          "index": -1,
+          "scale": 1,
+          "disp": 24,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127942,
+      "size": 4,
+      "code": "c5f259cb",
+      "mnemonic": "vmulss",
+      "operands": "xmm1, xmm1, xmm3",
+      "memory": []
+    },
+    {
+      "pc": 140698996127946,
+      "size": 5,
+      "code": "c5fa114d00",
+      "mnemonic": "vmovss",
+      "operands": "dword ptr [rbp], xmm1",
+      "memory": [
+        {
+          "base": 5,
+          "index": -1,
+          "scale": 1,
+          "disp": 0,
+          "size": 4,
+          "write": true
+        }
+      ]
+    },
+    {
+      "pc": 140698996127951,
+      "size": 4,
+      "code": "c5ea59cb",
+      "mnemonic": "vmulss",
+      "operands": "xmm1, xmm2, xmm3",
+      "memory": []
+    },
+    {
+      "pc": 140698996127955,
+      "size": 6,
+      "code": "c4c17a585708",
+      "mnemonic": "vaddss",
+      "operands": "xmm2, xmm0, dword ptr [r15 + 8]",
+      "memory": [
+        {
+          "base": 15,
+          "index": -1,
+          "scale": 1,
+          "disp": 8,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127961,
+      "size": 5,
+      "code": "c5fa114d04",
+      "mnemonic": "vmovss",
+      "operands": "dword ptr [rbp + 4], xmm1",
+      "memory": [
+        {
+          "base": 5,
+          "index": -1,
+          "scale": 1,
+          "disp": 4,
+          "size": 4,
+          "write": true
+        }
+      ]
+    },
+    {
+      "pc": 140698996127966,
+      "size": 4,
+      "code": "c5ea59cb",
+      "mnemonic": "vmulss",
+      "operands": "xmm1, xmm2, xmm3",
+      "memory": []
+    },
+    {
+      "pc": 140698996127970,
+      "size": 5,
+      "code": "c5fa114d08",
+      "mnemonic": "vmovss",
+      "operands": "dword ptr [rbp + 8], xmm1",
+      "memory": [
+        {
+          "base": 5,
+          "index": -1,
+          "scale": 1,
+          "disp": 8,
+          "size": 4,
+          "write": true
+        }
+      ]
+    },
+    {
+      "pc": 140698996127975,
+      "size": 4,
+      "code": "488d4500",
+      "mnemonic": "lea",
+      "operands": "rax, [rbp]",
+      "memory": []
+    },
+    {
+      "pc": 140698996127979,
+      "size": 3,
+      "code": "498bcf",
+      "mnemonic": "mov",
+      "operands": "rcx, r15",
+      "memory": []
+    },
+    {
+      "pc": 140698996127982,
+      "size": 4,
+      "code": "c5fb1000",
+      "mnemonic": "vmovsd",
+      "operands": "xmm0, qword ptr [rax]",
+      "memory": [
+        {
+          "base": 0,
+          "index": -1,
+          "scale": 1,
+          "disp": 0,
+          "size": 8,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127986,
+      "size": 3,
+      "code": "8b4008",
+      "mnemonic": "mov",
+      "operands": "eax, dword ptr [rax + 8]",
+      "memory": [
+        {
+          "base": 0,
+          "index": -1,
+          "scale": 1,
+          "disp": 8,
+          "size": 4,
+          "write": false
+        }
+      ]
+    },
+    {
+      "pc": 140698996127989,
+      "size": 8,
+      "code": "c5fb118700020000",
+      "mnemonic": "vmovsd",
+      "operands": "qword ptr [rdi + 0x200], xmm0",
+      "memory": [
+        {
+          "base": 7,
+          "index": -1,
+          "scale": 1,
+          "disp": 512,
+          "size": 8,
+          "write": true
+        }
+      ]
+    },
+    {
+      "pc": 140698996127997,
+      "size": 6,
+      "code": "898708020000",
+      "mnemonic": "mov",
+      "operands": "dword ptr [rdi + 0x208], eax",
+      "memory": [
+        {
+          "base": 7,
+          "index": -1,
+          "scale": 1,
+          "disp": 520,
+          "size": 4,
+          "write": true
+        }
+      ]
+    }
+  ],
+  "binding": {
+    "pid": 24800,
+    "binding": {
+      "session_event_sha256": "a3c61c36f9ffaa5e7effce8b9ce9ded33d70a4b91d84c2886b8223dac5e89646",
+      "resource": 367,
+      "generation": 1,
+      "range": [
+        0,
+        131072
+      ],
+      "observations": [
+        {
+          "event_id": 725,
+          "qpc": 7721045786663,
+          "time_ms": 5118.49,
+          "event": "snapshot_recorded",
+          "snapshot": 0,
+          "resource": 367,
+          "generation": 1,
+          "write_op": 724,
+          "write_qpc": 7721044928132,
+          "write_kind": "CopyBufferRegion",
+          "source_resource": 368,
+          "source_generation": 1,
+          "source_offset": 0,
+          "write_offset": 0,
+          "write_bytes": 16777216,
+          "snapshot_bytes": 131072,
+          "command_list": 1536968521728,
+          "recording": 1597,
+          "completion_event": 731,
+          "queue": 1610,
+          "fence_value": 1
+        },
+        {
+          "event_id": 735,
+          "qpc": 7721046786380,
+          "time_ms": 5218.46,
+          "event": "snapshot_recorded",
+          "snapshot": 1,
+          "resource": 367,
+          "generation": 1,
+          "write_op": 734,
+          "write_qpc": 7721045966181,
+          "write_kind": "CopyBufferRegion",
+          "source_resource": 369,
+          "source_generation": 1,
+          "source_offset": 0,
+          "write_offset": 0,
+          "write_bytes": 16777216,
+          "snapshot_bytes": 131072,
+          "command_list": 1536968521728,
+          "recording": 1612,
+          "completion_event": 741,
+          "queue": 1610,
+          "fence_value": 2
+        },
+        {
+          "event_id": 746,
+          "qpc": 7721047763649,
+          "time_ms": 5316.19,
+          "event": "snapshot_recorded",
+          "snapshot": 2,
+          "resource": 367,
+          "generation": 1,
+          "write_op": 745,
+          "write_qpc": 7721047027503,
+          "write_kind": "CopyBufferRegion",
+          "source_resource": 368,
+          "source_generation": 1,
+          "source_offset": 0,
+          "write_offset": 0,
+          "write_bytes": 16777216,
+          "snapshot_bytes": 131072,
+          "command_list": 1536968521728,
+          "recording": 1626,
+          "completion_event": 751,
+          "queue": 1610,
+          "fence_value": 3
+        }
+      ],
+      "replacement_allowed": false,
+      "discovery": {
+        "schema": 1,
+        "regions_scanned": 64,
+        "seed_needles": 192,
+        "models_tested": 14,
+        "elapsed_seconds": 5.471810900024138,
+        "relations": [
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 608,
+            "cpu_stride": 576,
+            "gpu_offset": 80,
+            "gpu_stride": 256,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 15,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": null,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 612,
+            "cpu_stride": 576,
+            "gpu_offset": 84,
+            "gpu_stride": 256,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 15,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": null,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 608,
+            "cpu_stride": 1152,
+            "gpu_offset": 80,
+            "gpu_stride": 512,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 7,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": 0,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 612,
+            "cpu_stride": 1152,
+            "gpu_offset": 84,
+            "gpu_stride": 512,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 7,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": 1,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 1184,
+            "cpu_stride": 1152,
+            "gpu_offset": 336,
+            "gpu_stride": 512,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 7,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": 0,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 1188,
+            "cpu_stride": 1152,
+            "gpu_offset": 340,
+            "gpu_stride": 512,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 7,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": 1,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 608,
+            "cpu_stride": 1728,
+            "gpu_offset": 80,
+            "gpu_stride": 768,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 5,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": 0,
+            "confirmation": "confirmed_on_new_write"
+          },
+          {
+            "cpu_region": "1537384263680",
+            "cpu_offset": 612,
+            "cpu_stride": 1728,
+            "gpu_offset": 84,
+            "gpu_stride": 768,
+            "width": 12,
+            "validated_records_per_frame": 64,
+            "changed_records": 64,
+            "seed_votes": 5,
+            "status": "observed_exact_affine_correspondence",
+            "replacement_allowed": false,
+            "subsample_of": 1,
+            "confirmation": "confirmed_on_new_write"
+          }
+        ],
+        "claims": {
+          "automatic_layout_correspondence": true,
+          "automatic_capture_selection": false,
+          "semantic_meaning_inferred": false,
+          "ownership_proven": false,
+          "automatic_offload": false
+        }
+      },
+      "confirmation_snapshot": 2,
+      "status": "confirmed",
+      "invalidations": [],
+      "live_binding_valid": true
+    },
+    "relation": {
+      "cpu_region": "1537384263680",
+      "cpu_offset": 608,
+      "cpu_stride": 576,
+      "gpu_offset": 80,
+      "gpu_stride": 256,
+      "width": 12,
+      "validated_records_per_frame": 64,
+      "changed_records": 64,
+      "seed_votes": 15,
+      "status": "observed_exact_affine_correspondence",
+      "replacement_allowed": false,
+      "subsample_of": null,
+      "confirmation": "confirmed_on_new_write"
+    },
+    "target": 1537384264288
+  },
+  "replacement_allowed": false
+}
