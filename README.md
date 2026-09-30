@@ -1,89 +1,59 @@
 # ARC — Adaptive Runtime Core
 
-ARC is an experimental adaptive GPU-memory runtime. It started as a read-only D3D12 observer and now includes a **controlled-lab Stage 2 memory governor** that can choose between whole-resource residency changes and incremental tiled-texture mip quality changes.
+ARC is an experimental graphics runtime and optimizer. It observes graphics work,
+models resources and dependencies, and tests reversible quality/performance actions.
+It is **not a universal 2x FPS optimizer**.
 
-ARC does **not** currently mutate arbitrary commercial games. Write-side behavior remains restricted to ARC-owned synthetic D3D12 workloads while safety, prediction, arbitration, rollback semantics and physical memory evidence are validated.
+## Implemented and measured
 
-## Current architecture
+The existing ARC Legacy / Observer Backend includes D3D12 interception, a resource
+graph, descriptor and lifetime ledgers, GPU attribution, scene/visibility/importance
+analysis, reversible GPU actions, image critics, rollback, and memory arbitration.
+An experimental CPU backend investigates machine-code tasks and CPU-to-GPU offload.
+These subsystems and their evidence are retained.
 
-### Stage 1 observer
+A manually integrated Wicked indirect experiment reduced Present-return interval
+by about 1.49 ms (+6.8% Present Hz in its short series); it is not automatic universal
+offload or a display-FPS measurement. Generated large-loop GPU experiments were
+negative after CPU gathering and transfer costs. See the
+[latest composite-loop report](docs/reports/2026-09-27-composite-offload.md).
+Older Stage 1/2 documents describe historical controlled milestones, not the whole
+current product.
 
-The observer captures resource and heap lifetimes, views, command usage, submissions, copies/resolves, barriers, fences, presents and DXGI budgets. A bounded producer path feeds asynchronous trace collection; graph reconstruction, conservative classification and temporal analysis run outside the application hot path.
+## ARC 2.0 direction and implementation status
 
-Stage 1.1 added strict multi-producer ordering, capture CPU instrumentation, broader view/format coverage and debug-layer validation. See [Stage 1 status](docs/STAGE1_STATUS.md) and [Stage 1.1 hardening](docs/STAGE1_1_HARDENING.md).
+`Game → ARC D3D12 Frontend → ARC IR → Optimizer → native D3D12`
 
-### Stage 2 controlled memory governor
+The new path will capture semantic state at application-facing COM calls before
+forwarding, rather than reconstructing all state afterward. The native runtime and
+driver remain responsible for execution. Unknown accesses remain explicit and
+prevent unsafe changes. This baseline commit establishes the migration; it does
+not claim that the frontend or five-engine validation is already implemented.
+See [ARC2 architecture](docs/ARC2_ARCHITECTURE.md).
 
-The controlled Stage 2 stack now contains:
+Validation targets: **Wicked Engine, AMD Cauldron/FidelityFX, Microsoft MiniEngine,
+Diligent Engine, and bgfx**, each using D3D12. Availability, coverage, performance
+and quality must be reported separately for every workload.
 
-- budget-pressure hysteresis and emergency handling;
-- fence-safe D3D12 `Evict` / `EnqueueMakeResident` execution;
-- confidence-aware reuse prediction with phase-break and stale-prediction handling;
-- compulsory vs predictable miss accounting and anti-thrash grace periods;
-- a mip-aware texture quality governor for reserved/tiled resources;
-- full safe residency and texture candidate surfaces;
-- `MemoryArbiter` and `GlobalMemoryPlanner` for cross-policy decisions;
-- headroom restoration arbitration;
-- multi-pattern memory/latency frontier benchmarking;
-- physical DXGI usage evidence and content readback validation.
+## Build and test
 
-The combined `dx12-global-memory-lab` forces one memory deficit that cannot be solved by only one action class. ARC must execute both whole-resource eviction and mip demotion, then later execute both make-resident and mip promotion while preserving buffer/texture contents.
-
-See [Stage 2 final controlled-memory acceptance](docs/STAGE2_FINAL.md).
-
-## Final Stage 2 validation
-
-On the target Windows/D3D12 machine, the full acceptance suite is one command:
-
-```bat
-run-stage2-final.cmd
-```
-
-To also publish the curated results to an isolated timestamped GitHub branch:
-
-```bat
-run-stage2-final.cmd -PublishResults
-```
-
-A shorter smoke pass is available as `run-stage2-final.cmd -Quick`, but it is not a replacement for the full acceptance run.
-
-The final runner performs Release and Debug validation, stress tests, controlled GPU mutation tests, D3D12 debug-layer validation when Windows Graphics Tools are available, observer overhead measurement, baseline/oracle/autonomous residency benchmarking, a four-pattern five-point memory frontier, and hardware calibration. It produces:
-
-- `traces/stage2-final-acceptance.json`
-- `traces/STAGE2_FINAL_ACCEPTANCE.md`
-- `traces/benchmark-summary.json`
-- `traces/residency-benchmark-summary.json`
-- `traces/residency-frontier-summary.json`
-- `traces/residency-frontier.csv`
-- `traces/tiled-texture-lab.json`
-- `traces/global-memory-lab.json`
-- `traces/hardware-profile.json`
-
-The result publisher refuses to mix measurements with dirty tracked source code. It creates a separate `results/stage2-final-*` branch and returns to the development branch after pushing.
-
-## Developer validation
-
-Lower-level commands remain available:
+Windows requires Visual Studio C++ tools, a Windows SDK and CMake 3.24+:
 
 ```powershell
-./scripts/validate.ps1 -Configuration Release -GpuTests
-./scripts/validate.ps1 -Configuration Debug -GpuTests
-./scripts/validate.ps1 -Configuration Release -GpuTests -DebugLayer
-./scripts/calibrate.ps1
-./scripts/benchmark.ps1 -Iterations 10000 -Rounds 3
-./scripts/residency-benchmark.ps1 -Rounds 6 -Objects 24 -ObjectMiB 2
-./scripts/residency-frontier.ps1 -Rounds 2 -Objects 24 -ObjectMiB 2
+cmake -S . -B build -DARC_BUILD_TESTS=ON
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
-The local validation scripts discover MSVC/CMake/Ninja through Visual Studio Installer. GPU tests are opt-in; hosted CI validates portable core behavior and Windows compilation/tests but cannot substitute for the final physical GPU/DXGI acceptance run on the target machine.
+GPU-backed tests are opt-in with `-DARC_GPU_TESTS=ON`; they require a compatible GPU.
+Historical controlled-memory validation remains `run-stage2-final.cmd`. Python
+research tests require Python and the dependencies documented with each experiment.
+Do not treat unavailable GPU tests or unsupported interfaces as passing evidence.
 
-## Trace tooling
+## Canonical history
 
-```powershell
-./build/Release/dx12-memory-pressure.exe light 100 0.5
-./build/Release/arc-trace-viewer.exe traces/dx12-memory-pressure-light.arcbin build/summary.json build/timeline.csv
-```
-
-Sample observer arguments are `baseline|light|full`, iteration count and optional allocation-pressure fraction. Output files are under `traces/`. The hidden validation swapchain does not take desktop focus.
-
-`arc-calibrate [output.json] [file-to-read]` measures CPU/RAM/cache-warmed storage. `scripts/calibrate.ps1` augments that profile with GPU timestamp proxies, CPU identity, OS build and ARC commit. Storage inputs are opened read-only.
+`master` is the GitHub default and contains the former canonical
+`codex_den/cpu-gpu-offload` history through `d636217`. The pre-migration default is
+preserved by `freeze/pre-arc2-master-20260930`. ARC2 development proceeds on
+`arc2/runtime-ir`, with small tested commits and milestone pushes. Historical
+milestone/result branches and CPU research are retained; no force-push is needed.
