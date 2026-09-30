@@ -2,6 +2,7 @@
 #include "observe.hpp"
 #include "present_metrics.hpp"
 #include "arc/arc2/runtime.hpp"
+#include "frontend_cpu.hpp"
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <atomic>
@@ -25,24 +26,26 @@ public:
  Swapchain(IDXGISwapChain4* p,IUnknown* parent,IUnknown* queue):native_(p),parent_(parent),queue_(queue){parent_->AddRef();queue_->AddRef();id_=runtime().create_object(ObjectKind::Swapchain,reinterpret_cast<uintptr_t>(p));}
  ~Swapchain(){runtime().destroy_object(id_);queue_->Release();parent_->Release();}
  HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out) override {
+  ARC2_CPU_SCOPE(DXGI_QueryInterface);
   if(!out)return E_POINTER;*out=nullptr;
   if(iid==__uuidof(IUnknown)||iid==__uuidof(IDXGIObject)||iid==__uuidof(IDXGIDeviceSubObject)||iid==__uuidof(IDXGISwapChain)||iid==__uuidof(IDXGISwapChain1)||iid==__uuidof(IDXGISwapChain2)||iid==__uuidof(IDXGISwapChain3)||iid==__uuidof(IDXGISwapChain4)){void* check{};auto hr=native_->QueryInterface(iid,&check);if(FAILED(hr))return hr;static_cast<IUnknown*>(check)->Release();*out=static_cast<IDXGISwapChain4*>(this);AddRef();return S_OK;}
   runtime().unsupported({},"DXGI swapchain QueryInterface unsupported");return E_NOINTERFACE;
  }
- ULONG STDMETHODCALLTYPE AddRef() override{return ++refs_;}
- ULONG STDMETHODCALLTYPE Release() override{auto n=--refs_;if(!n)delete this;return n;}
- HRESULT STDMETHODCALLTYPE GetParent(REFIID iid,void** out) override{return parent_->QueryInterface(iid,out);}
- HRESULT STDMETHODCALLTYPE GetDevice(REFIID iid,void** out) override{if(!out)return E_POINTER;*out=nullptr;IUnknown* value{};auto hr=native_->GetDevice(iid,reinterpret_cast<void**>(&value));if(FAILED(hr))return hr;return wrap_object(value,iid,out);}
- HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID name,const IUnknown* value) override{return native_->SetPrivateDataInterface(name,value);}
- HRESULT STDMETHODCALLTYPE GetBuffer(UINT index,REFIID iid,void** out) override{if(!out)return E_POINTER;*out=nullptr;IUnknown* value{};auto hr=native_->GetBuffer(index,iid,reinterpret_cast<void**>(&value));if(FAILED(hr))return hr;auto wrapped=wrap_resource(value,iid,out);if(SUCCEEDED(wrapped)){std::lock_guard lock(buffers_mutex_);buffers_[index]=ObjectId{object_id(static_cast<IUnknown*>(*out))};}return wrapped;}
- HRESULT STDMETHODCALLTYPE Present(UINT sync,UINT flags) override{auto buffer=current_buffer();auto begin=qpc_now();auto hr=native_->Present(sync,flags);auto native_end=qpc_now();after_present(hr,flags,buffer);present_metric(id_.value,begin,native_end,hr,flags);return hr;}
- HRESULT STDMETHODCALLTYPE Present1(UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS* params) override{auto buffer=current_buffer();auto begin=qpc_now();auto hr=native_->Present1(sync,flags,params);auto native_end=qpc_now();after_present(hr,flags,buffer);present_metric(id_.value,begin,native_end,hr,flags);return hr;}
- HRESULT STDMETHODCALLTYPE ResizeBuffers(UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags) override{auto hr=native_->ResizeBuffers(count,width,height,format,flags);if(SUCCEEDED(hr))resized();return hr;}
+ ULONG STDMETHODCALLTYPE AddRef() override{ARC2_CPU_SCOPE(DXGI_AddRef);return ++refs_;}
+ ULONG STDMETHODCALLTYPE Release() override{ARC2_CPU_SCOPE(DXGI_Release);auto n=--refs_;if(!n)delete this;return n;}
+ HRESULT STDMETHODCALLTYPE GetParent(REFIID iid,void** out) override{ARC2_CPU_SCOPE(DXGI_GetParent);return parent_->QueryInterface(iid,out);}
+ HRESULT STDMETHODCALLTYPE GetDevice(REFIID iid,void** out) override{ARC2_CPU_SCOPE(DXGI_GetDevice);if(!out)return E_POINTER;*out=nullptr;IUnknown* value{};auto hr=ARC2_APP_CALL(native_, GetDevice, iid,reinterpret_cast<void**>(&value));if(FAILED(hr))return hr;return wrap_object(value,iid,out);}
+ HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID name,const IUnknown* value) override{ARC2_CPU_SCOPE(DXGI_SetPrivateDataInterface);return ARC2_APP_CALL(native_, SetPrivateDataInterface, name,value);}
+ HRESULT STDMETHODCALLTYPE GetBuffer(UINT index,REFIID iid,void** out) override{ARC2_CPU_SCOPE(DXGI_GetBuffer);if(!out)return E_POINTER;*out=nullptr;IUnknown* value{};auto hr=ARC2_APP_CALL(native_, GetBuffer, index,iid,reinterpret_cast<void**>(&value));if(FAILED(hr))return hr;auto wrapped=wrap_resource(value,iid,out);if(SUCCEEDED(wrapped)){std::lock_guard lock(buffers_mutex_);buffers_[index]=ObjectId{object_id(static_cast<IUnknown*>(*out))};}return wrapped;}
+ HRESULT STDMETHODCALLTYPE Present(UINT sync,UINT flags) override{ARC2_CPU_FRAME_GUARD(id_.value);ARC2_CPU_SCOPE(DXGI_Present);auto buffer=current_buffer();auto begin=qpc_now();auto hr=ARC2_APP_CALL(native_, Present, sync,flags);auto native_end=qpc_now();after_present(hr,flags,buffer);present_metric(id_.value,begin,native_end,hr,flags);return hr;}
+ HRESULT STDMETHODCALLTYPE Present1(UINT sync,UINT flags,const DXGI_PRESENT_PARAMETERS* params) override{ARC2_CPU_FRAME_GUARD(id_.value);ARC2_CPU_SCOPE(DXGI_Present1);auto buffer=current_buffer();auto begin=qpc_now();auto hr=ARC2_APP_CALL(native_, Present1, sync,flags,params);auto native_end=qpc_now();after_present(hr,flags,buffer);present_metric(id_.value,begin,native_end,hr,flags);return hr;}
+ HRESULT STDMETHODCALLTYPE ResizeBuffers(UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags) override{ARC2_CPU_SCOPE(DXGI_ResizeBuffers);auto hr=ARC2_APP_CALL(native_, ResizeBuffers, count,width,height,format,flags);if(SUCCEEDED(hr))resized();return hr;}
  HRESULT STDMETHODCALLTYPE ResizeBuffers1(UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags,const UINT* masks,IUnknown*const* queues) override {
-  if(!queues){auto hr=native_->ResizeBuffers1(count,width,height,format,flags,masks,nullptr);if(SUCCEEDED(hr))resized();return hr;}
+  ARC2_CPU_SCOPE(DXGI_ResizeBuffers1);
+  if(!queues){auto hr=ARC2_APP_CALL(native_, ResizeBuffers1, count,width,height,format,flags,masks,nullptr);if(SUCCEEDED(hr))resized();return hr;}
   DXGI_SWAP_CHAIN_DESC1 desc{};if(!count&&FAILED(native_->GetDesc1(&desc)))return E_FAIL;UINT actual=count?count:desc.BufferCount;
   std::vector<IUnknown*> raw(actual);for(UINT i=0;i<actual;++i)raw[i]=unwrap_unknown(queues[i]);
-  auto hr=native_->ResizeBuffers1(count,width,height,format,flags,masks,raw.data());if(SUCCEEDED(hr)){resized();queue_uncertain_=true;}return hr;
+  auto hr=ARC2_APP_CALL(native_, ResizeBuffers1, count,width,height,format,flags,masks,raw.data());if(SUCCEEDED(hr)){resized();queue_uncertain_=true;}return hr;
  }
 #include "dxgi_swapchain_forward.inl"
 };
@@ -55,24 +58,29 @@ class Factory final : public IDXGIFactory7 {
 public:
  explicit Factory(IDXGIFactory7* p):native_(p){}
  HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid,void** out) override {
+  ARC2_CPU_SCOPE(DXGI_QueryInterface);
   if(!out)return E_POINTER;*out=nullptr;
   if(iid==__uuidof(IUnknown)||iid==__uuidof(IDXGIObject)||iid==__uuidof(IDXGIFactory)||iid==__uuidof(IDXGIFactory1)||iid==__uuidof(IDXGIFactory2)||iid==__uuidof(IDXGIFactory3)||iid==__uuidof(IDXGIFactory4)||iid==__uuidof(IDXGIFactory5)||iid==__uuidof(IDXGIFactory6)||iid==__uuidof(IDXGIFactory7)){void* check{};auto hr=native_->QueryInterface(iid,&check);if(FAILED(hr))return hr;static_cast<IUnknown*>(check)->Release();*out=static_cast<IDXGIFactory7*>(this);AddRef();return S_OK;}
   runtime().unsupported({},"DXGI factory QueryInterface unsupported");return E_NOINTERFACE;
  }
- ULONG STDMETHODCALLTYPE AddRef() override{return ++refs_;}
- ULONG STDMETHODCALLTYPE Release() override{auto n=--refs_;if(!n)delete this;return n;}
- HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID name,const IUnknown* value) override{return native_->SetPrivateDataInterface(name,value);}
+ ULONG STDMETHODCALLTYPE AddRef() override{ARC2_CPU_SCOPE(DXGI_AddRef);return ++refs_;}
+ ULONG STDMETHODCALLTYPE Release() override{ARC2_CPU_SCOPE(DXGI_Release);auto n=--refs_;if(!n)delete this;return n;}
+ HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID name,const IUnknown* value) override{ARC2_CPU_SCOPE(DXGI_SetPrivateDataInterface);return ARC2_APP_CALL(native_, SetPrivateDataInterface, name,value);}
  HRESULT STDMETHODCALLTYPE CreateSwapChain(IUnknown* device,DXGI_SWAP_CHAIN_DESC* desc,IDXGISwapChain** out) override {
-  if(!out)return native_->CreateSwapChain(unwrap_unknown(device),desc,nullptr);*out=nullptr;IDXGISwapChain* raw{};auto hr=native_->CreateSwapChain(unwrap_unknown(device),desc,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain),reinterpret_cast<void**>(out));
+  ARC2_CPU_SCOPE(DXGI_CreateSwapChain);
+  if(!out)return ARC2_APP_CALL(native_, CreateSwapChain, unwrap_unknown(device),desc,nullptr);*out=nullptr;IDXGISwapChain* raw{};auto hr=ARC2_APP_CALL(native_, CreateSwapChain, unwrap_unknown(device),desc,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain),reinterpret_cast<void**>(out));
  }
  HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(IUnknown* device,HWND hwnd,const DXGI_SWAP_CHAIN_DESC1* desc,const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* full,IDXGIOutput* restrict,IDXGISwapChain1** out) override {
-  if(!out)return native_->CreateSwapChainForHwnd(unwrap_unknown(device),hwnd,desc,full,restrict,nullptr);*out=nullptr;IDXGISwapChain1* raw{};auto hr=native_->CreateSwapChainForHwnd(unwrap_unknown(device),hwnd,desc,full,restrict,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain1),reinterpret_cast<void**>(out));
+  ARC2_CPU_SCOPE(DXGI_CreateSwapChainForHwnd);
+  if(!out)return ARC2_APP_CALL(native_, CreateSwapChainForHwnd, unwrap_unknown(device),hwnd,desc,full,restrict,nullptr);*out=nullptr;IDXGISwapChain1* raw{};auto hr=ARC2_APP_CALL(native_, CreateSwapChainForHwnd, unwrap_unknown(device),hwnd,desc,full,restrict,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain1),reinterpret_cast<void**>(out));
  }
  HRESULT STDMETHODCALLTYPE CreateSwapChainForCoreWindow(IUnknown* device,IUnknown* window,const DXGI_SWAP_CHAIN_DESC1* desc,IDXGIOutput* restrict,IDXGISwapChain1** out) override {
-  if(!out)return native_->CreateSwapChainForCoreWindow(unwrap_unknown(device),window,desc,restrict,nullptr);*out=nullptr;IDXGISwapChain1* raw{};auto hr=native_->CreateSwapChainForCoreWindow(unwrap_unknown(device),window,desc,restrict,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain1),reinterpret_cast<void**>(out));
+  ARC2_CPU_SCOPE(DXGI_CreateSwapChainForCoreWindow);
+  if(!out)return ARC2_APP_CALL(native_, CreateSwapChainForCoreWindow, unwrap_unknown(device),window,desc,restrict,nullptr);*out=nullptr;IDXGISwapChain1* raw{};auto hr=ARC2_APP_CALL(native_, CreateSwapChainForCoreWindow, unwrap_unknown(device),window,desc,restrict,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain1),reinterpret_cast<void**>(out));
  }
  HRESULT STDMETHODCALLTYPE CreateSwapChainForComposition(IUnknown* device,const DXGI_SWAP_CHAIN_DESC1* desc,IDXGIOutput* restrict,IDXGISwapChain1** out) override {
-  if(!out)return native_->CreateSwapChainForComposition(unwrap_unknown(device),desc,restrict,nullptr);*out=nullptr;IDXGISwapChain1* raw{};auto hr=native_->CreateSwapChainForComposition(unwrap_unknown(device),desc,restrict,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain1),reinterpret_cast<void**>(out));
+  ARC2_CPU_SCOPE(DXGI_CreateSwapChainForComposition);
+  if(!out)return ARC2_APP_CALL(native_, CreateSwapChainForComposition, unwrap_unknown(device),desc,restrict,nullptr);*out=nullptr;IDXGISwapChain1* raw{};auto hr=ARC2_APP_CALL(native_, CreateSwapChainForComposition, unwrap_unknown(device),desc,restrict,&raw);if(FAILED(hr))return hr;return wrap_swapchain(raw,this,device,__uuidof(IDXGISwapChain1),reinterpret_cast<void**>(out));
  }
 #include "dxgi_factory_forward.inl"
 };
@@ -81,16 +89,16 @@ HRESULT create_factory(UINT flags,REFIID iid,void** out,int version){
  static HMODULE module=LoadLibraryExW((std::wstring(system)+L"\\dxgi.dll").c_str(),nullptr,LOAD_LIBRARY_SEARCH_SYSTEM32);
  if(!module)return HRESULT_FROM_WIN32(GetLastError());
  IUnknown* raw{};HRESULT hr;
- if(version==2){auto proc=reinterpret_cast<decltype(&CreateDXGIFactory2)>(GetProcAddress(module,"CreateDXGIFactory2"));hr=proc(flags,iid,out?reinterpret_cast<void**>(&raw):nullptr);}
- else{auto proc=reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(module,version?"CreateDXGIFactory1":"CreateDXGIFactory"));hr=proc(iid,out?reinterpret_cast<void**>(&raw):nullptr);}
+ if(version==2){auto proc=reinterpret_cast<decltype(&CreateDXGIFactory2)>(GetProcAddress(module,"CreateDXGIFactory2"));hr=ARC2_APP_INVOKE(proc,flags,iid,out?reinterpret_cast<void**>(&raw):nullptr);}
+ else{auto proc=reinterpret_cast<decltype(&CreateDXGIFactory1)>(GetProcAddress(module,version?"CreateDXGIFactory1":"CreateDXGIFactory"));hr=ARC2_APP_INVOKE(proc,iid,out?reinterpret_cast<void**>(&raw):nullptr);}
  if(FAILED(hr)||!out)return hr;*out=nullptr;ComPtr<IDXGIFactory7> typed;auto qi=raw->QueryInterface(IID_PPV_ARGS(&typed));raw->Release();if(FAILED(qi))return qi;
  auto proxy=new(std::nothrow) Factory(typed.Get());if(!proxy)return E_OUTOFMEMORY;auto result=proxy->QueryInterface(iid,out);proxy->Release();return FAILED(result)?result:hr;
 }
 }
 }
-extern "C" __declspec(dllexport) HRESULT WINAPI Arc2CreateDXGIFactory(REFIID iid,void** out){return arc::arc2::create_factory(0,iid,out,0);}
-extern "C" __declspec(dllexport) HRESULT WINAPI Arc2CreateDXGIFactory1(REFIID iid,void** out){return arc::arc2::create_factory(0,iid,out,1);}
-extern "C" __declspec(dllexport) HRESULT WINAPI Arc2CreateDXGIFactory2(UINT flags,REFIID iid,void** out){return arc::arc2::create_factory(flags,iid,out,2);}
+extern "C" __declspec(dllexport) HRESULT WINAPI Arc2CreateDXGIFactory(REFIID iid,void** out){ARC2_CPU_SCOPE(Bootstrap_CreateFactory);return arc::arc2::create_factory(0,iid,out,0);}
+extern "C" __declspec(dllexport) HRESULT WINAPI Arc2CreateDXGIFactory1(REFIID iid,void** out){ARC2_CPU_SCOPE(Bootstrap_CreateFactory1);return arc::arc2::create_factory(0,iid,out,1);}
+extern "C" __declspec(dllexport) HRESULT WINAPI Arc2CreateDXGIFactory2(UINT flags,REFIID iid,void** out){ARC2_CPU_SCOPE(Bootstrap_CreateFactory2);return arc::arc2::create_factory(flags,iid,out,2);}
 extern "C" unsigned long long WINAPI Arc2AcceptedActions();
 extern "C" unsigned long long WINAPI Arc2RejectedActions();
-extern "C" __declspec(dllexport) HRESULT WINAPI Arc2Dump(const wchar_t* path){try{if(!path)return E_POINTER;arc::arc2::stop_observer();arc::arc2::save_observer(path);arc::arc2::save_present_metrics(path);std::ofstream file(std::filesystem::path(path),std::ios::binary);auto data=arc::arc2::serialize(arc::arc2::runtime().snapshot());data.pop_back();file<<data<<",\"accepted_actions\":"<<Arc2AcceptedActions()<<",\"rejected_actions\":"<<Arc2RejectedActions()<<'}';return file?S_OK:E_FAIL;}catch(...){return E_FAIL;}}
+extern "C" __declspec(dllexport) HRESULT WINAPI Arc2Dump(const wchar_t* path){try{if(!path)return E_POINTER;arc::arc2::stop_observer();arc::arc2::save_observer(path);arc::arc2::save_present_metrics(path);ARC2_CPU_SAVE(path);std::ofstream file(std::filesystem::path(path),std::ios::binary);auto data=arc::arc2::serialize(arc::arc2::runtime().snapshot());data.pop_back();file<<data<<",\"accepted_actions\":"<<Arc2AcceptedActions()<<",\"rejected_actions\":"<<Arc2RejectedActions()<<'}';return file?S_OK:E_FAIL;}catch(...){return E_FAIL;}}

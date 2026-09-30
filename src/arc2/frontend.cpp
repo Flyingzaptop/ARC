@@ -1,6 +1,7 @@
 #include "arc/arc2/frontend.hpp"
 #include "arc/arc2/runtime.hpp"
 #include "shader_semantics.hpp"
+#include "frontend_cpu.hpp"
 #include <atomic>
 #include <algorithm>
 #include <array>
@@ -64,7 +65,7 @@ struct ProxyBase {
     HRESULT set_private_bytes(REFGUID guid, UINT size, const void* data) noexcept {
         ID3D12Object* object_interface = nullptr;
         if (FAILED(native->QueryInterface(IID_PPV_ARGS(&object_interface)))) return E_NOINTERFACE;
-        auto hr = object_interface->SetPrivateData(guid, size, data);
+        auto hr = ARC2_APP_CALL(object_interface, SetPrivateData, guid, size, data);
         object_interface->Release();
         if (SUCCEEDED(hr)) {
             std::lock_guard lock(private_mutex);
@@ -78,7 +79,7 @@ struct ProxyBase {
         if (FAILED(native->QueryInterface(IID_PPV_ARGS(&object_interface)))) return E_NOINTERFACE;
         // Private interface data is opaque COM storage. Let the native object
         // retain the application's wrapper reference and its stable IR identity.
-        auto hr = object_interface->SetPrivateDataInterface(guid, data);
+        auto hr = ARC2_APP_CALL(object_interface, SetPrivateDataInterface, guid, data);
         object_interface->Release();
         if (SUCCEEDED(hr)) {
             std::lock_guard lock(private_mutex);
@@ -91,7 +92,7 @@ struct ProxyBase {
     HRESULT get_private_data(REFGUID guid, UINT* size, void* data) noexcept {
         ID3D12Object* object_interface = nullptr;
         if (FAILED(native->QueryInterface(IID_PPV_ARGS(&object_interface)))) return E_NOINTERFACE;
-        auto hr = object_interface->GetPrivateData(guid, size, data);
+        auto hr = ARC2_APP_CALL(object_interface, GetPrivateData, guid, size, data);
         object_interface->Release();
         if (FAILED(hr) || !data || !size || *size != sizeof(IUnknown*)) return hr;
         bool stored_interface = false;
@@ -145,7 +146,7 @@ struct ProxyBase {
         const auto hr = native->QueryInterface(IID_PPV_ARGS(&child));
         if (FAILED(hr)) return hr;
         IUnknown* device = nullptr;
-        const auto device_hr = child->GetDevice(iid, reinterpret_cast<void**>(&device));
+        const auto device_hr = ARC2_APP_CALL(child, GetDevice, iid, reinterpret_cast<void**>(&device));
         child->Release();
         if (FAILED(device_hr)) return device_hr;
         return wrap_object(device, iid, out);
@@ -322,9 +323,9 @@ HRESULT create_device(IUnknown* adapter, D3D_FEATURE_LEVEL level, REFIID iid, vo
     using Fn = HRESULT(WINAPI*)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
     auto fn = reinterpret_cast<Fn>(GetProcAddress(module, "D3D12CreateDevice"));
     if (!fn) return E_NOINTERFACE;
-    if (!out) return fn(unwrap_unknown(adapter), level, iid, nullptr);
+    if (!out) return ARC2_APP_INVOKE(fn, unwrap_unknown(adapter), level, iid, nullptr);
     IUnknown* native = nullptr;
-    auto hr = fn(unwrap_unknown(adapter), level, __uuidof(ID3D12Device), reinterpret_cast<void**>(&native));
+    auto hr = ARC2_APP_INVOKE(fn, unwrap_unknown(adapter), level, __uuidof(ID3D12Device), reinterpret_cast<void**>(&native));
     if (FAILED(hr)) return hr;
     auto wrapped = wrap_object(native, iid, out);
     if (FAILED(wrapped)) frontend_runtime().note_coverage("D3D12CreateDevice " + iid_name(iid));
@@ -334,5 +335,6 @@ HRESULT create_device(IUnknown* adapter, D3D_FEATURE_LEVEL level, REFIID iid, vo
 
 extern "C" __declspec(dllexport) HRESULT WINAPI Arc2D3D12CreateDevice(
     IUnknown* adapter, D3D_FEATURE_LEVEL level, REFIID iid, void** out) noexcept {
+    ARC2_CPU_SCOPE(Bootstrap_CreateDevice);
     return arc::arc2::create_device(adapter, level, iid, out);
 }

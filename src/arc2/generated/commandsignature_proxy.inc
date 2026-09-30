@@ -2,18 +2,18 @@
 class CommandSignatureProxy final : public ID3D12CommandSignature, public ProxyBase {
 public:
     CommandSignatureProxy(ID3D12CommandSignature* native, ObjectId id) : ProxyBase(native, id), native_(native) {}
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** out) override { return query(iid, out); }
-    ULONG STDMETHODCALLTYPE AddRef() override { return add_ref(); }
-    ULONG STDMETHODCALLTYPE Release() override { return release(); }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** out) override { ARC2_CPU_SCOPE(D3D12_QueryInterface); return query(iid, out); }
+    ULONG STDMETHODCALLTYPE AddRef() override { ARC2_CPU_SCOPE(D3D12_AddRef); return add_ref(); }
+    ULONG STDMETHODCALLTYPE Release() override { ARC2_CPU_SCOPE(D3D12_Release); return release(); }
     bool supports(REFIID iid) const noexcept override { return iid == __uuidof(IUnknown) || iid == __uuidof(ID3D12Object) || iid == __uuidof(ID3D12DeviceChild) || iid == __uuidof(ID3D12Pageable) || iid == __uuidof(ID3D12CommandSignature); }
     void* interface_ptr() noexcept override { return static_cast<ID3D12CommandSignature*>(this); }
     const char* type_name() const noexcept override { return "CommandSignature"; }
 private:
     ID3D12CommandSignature* native_;
 public:
-    HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData) override { debug_trace("CommandSignature.GetPrivateData", this, native_, object.value); return get_private_data(guid, pDataSize, pData); }
-    HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID guid, UINT DataSize, const void *pData) override { debug_trace("CommandSignature.SetPrivateData", this, native_, object.value); return set_private_bytes(guid, DataSize, pData); }
-    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID guid, const IUnknown *pData) override { debug_trace("CommandSignature.SetPrivateDataInterface", this, native_, object.value); return set_private_interface(guid, pData); }
-    HRESULT STDMETHODCALLTYPE SetName(LPCWSTR Name) override { debug_trace("CommandSignature.SetName", this, native_, object.value); return native_->SetName(native_arg(Name)); }
-    HRESULT STDMETHODCALLTYPE GetDevice(REFIID riid, void **ppvDevice) override { debug_trace("CommandSignature.GetDevice", this, native_, object.value); return get_device(riid, ppvDevice); }
+    HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData) override { ARC2_CPU_SCOPE(D3D12_GetPrivateData); debug_trace("CommandSignature.GetPrivateData", this, native_, object.value); return get_private_data(guid, pDataSize, pData); }
+    HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID guid, UINT DataSize, const void *pData) override { ARC2_CPU_SCOPE(D3D12_SetPrivateData); debug_trace("CommandSignature.SetPrivateData", this, native_, object.value); return set_private_bytes(guid, DataSize, pData); }
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID guid, const IUnknown *pData) override { ARC2_CPU_SCOPE(D3D12_SetPrivateDataInterface); debug_trace("CommandSignature.SetPrivateDataInterface", this, native_, object.value); return set_private_interface(guid, pData); }
+    HRESULT STDMETHODCALLTYPE SetName(LPCWSTR Name) override { ARC2_CPU_SCOPE(D3D12_SetName); debug_trace("CommandSignature.SetName", this, native_, object.value); return ARC2_APP_CALL(native_, SetName, native_arg(Name)); }
+    HRESULT STDMETHODCALLTYPE GetDevice(REFIID riid, void **ppvDevice) override { ARC2_CPU_SCOPE(D3D12_GetDevice); debug_trace("CommandSignature.GetDevice", this, native_, object.value); return get_device(riid, ppvDevice); }
 };

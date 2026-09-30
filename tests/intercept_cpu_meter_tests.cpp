@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <string_view>
+#include <utility>
 struct FakeClock {
     using duration=std::chrono::nanoseconds;
     using time_point=std::chrono::time_point<FakeClock>;
@@ -45,7 +46,21 @@ int main(int argc,char** argv){
     try{Meter::Scope app(true);FakeClock::advance(4);Meter::Native native;FakeClock::advance(30);throw std::runtime_error("test");}catch(...){}
     {Meter::Scope app(true);FakeClock::advance(9);}
     value=Meter::snapshot();assert(value.own_ns==59&&value.calls==6);
+    // The frontend evaluates native_arg/unwrapping before entering Native.
+    // Its ARC lookup cost must not be included in excluded_native_ns.
+    const auto before_args=Meter::snapshot();
+    auto forwarded=[](auto&& call,auto&&... evaluated_args){
+        Meter::Native native;
+        std::forward<decltype(call)>(call)(std::forward<decltype(evaluated_args)>(evaluated_args)...);
+    };
+    {Meter::Scope app(true);
+        forwarded([](int){FakeClock::advance(20);},(FakeClock::advance(7),42));
+    }
+    const auto after_args=Meter::snapshot();
+    assert(after_args.own_ns-before_args.own_ns==7);
+    assert(after_args.excluded_native_ns-before_args.excluded_native_ns==20);
+    assert(after_args.calls-before_args.calls==1);
     Meter::enable(false);{Meter::Scope off(true);Meter::Native native;FakeClock::advance(1000);}
-    assert(Meter::snapshot().own_ns==59&&Meter::snapshot().calls==6);
+    assert(Meter::snapshot().own_ns==66&&Meter::snapshot().calls==7);
     std::cout<<"Interceptor accounting preserves ARC native work, nested calls, callbacks, disabled mode and exception unwinding\n";
 }

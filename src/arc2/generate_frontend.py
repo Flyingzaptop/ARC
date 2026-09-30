@@ -17,8 +17,8 @@ custom = {
     "CreateGraphicsPipelineState": "if (!pDesc) return E_INVALIDARG; auto copy = *pDesc; copy.pRootSignature = native_arg(copy.pRootSignature); auto hr = create_wrapped([&](void** p) { return native_->CreateGraphicsPipelineState(&copy, riid, p); }, riid, ppPipelineState); if (SUCCEEDED(hr) && ppPipelineState) describe_graphics_pipeline(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppPipelineState))}, *pDesc); return hr;",
     "CreateComputePipelineState": "if (!pDesc) return E_INVALIDARG; auto copy = *pDesc; copy.pRootSignature = native_arg(copy.pRootSignature); auto hr = create_wrapped([&](void** p) { return native_->CreateComputePipelineState(&copy, riid, p); }, riid, ppPipelineState); if (SUCCEEDED(hr) && ppPipelineState) describe_compute_pipeline(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppPipelineState))}, *pDesc); return hr;",
     "CreateCommandList": "auto hr = create_wrapped([&](void** p) { return native_->CreateCommandList(nodeMask, type, native_arg(pCommandAllocator), native_arg(pInitialState), riid, p); }, riid, ppCommandList); if (SUCCEEDED(hr) && ppCommandList) frontend_runtime().reset_command_list(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppCommandList))}, oid(pCommandAllocator), oid(pInitialState)); return hr;",
-    "CreateCommittedResource": "auto hr = create_wrapped([&](void** p) { return native_->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState, pOptimizedClearValue, riidResource, p); }, riidResource, ppvResource); if (SUCCEEDED(hr) && ppvResource && *ppvResource && pDesc) { frontend_runtime().describe_resource(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppvResource))}, native_->GetResourceAllocationInfo(0, 1, pDesc).SizeInBytes); describe_resource_shape(reinterpret_cast<IUnknown*>(*ppvResource),pDesc,ResourceAllocation::Committed); } return hr;",
-    "CreatePlacedResource": "auto hr = create_wrapped([&](void** p) { return native_->CreatePlacedResource(native_arg(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, riid, p); }, riid, ppvResource); if (SUCCEEDED(hr) && ppvResource && *ppvResource && pDesc) { frontend_runtime().describe_resource(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppvResource))}, native_->GetResourceAllocationInfo(0, 1, pDesc).SizeInBytes, oid(pHeap), HeapOffset); describe_resource_shape(reinterpret_cast<IUnknown*>(*ppvResource),pDesc,ResourceAllocation::Placed); } return hr;",
+    "CreateCommittedResource": "auto hr = create_wrapped([&](void** p) { return native_->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState, pOptimizedClearValue, riidResource, p); }, riidResource, ppvResource); if (SUCCEEDED(hr) && ppvResource && *ppvResource && pDesc) { frontend_runtime().describe_resource(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppvResource))}, resource_allocation_size(native_,pDesc)); describe_resource_shape(reinterpret_cast<IUnknown*>(*ppvResource),pDesc,ResourceAllocation::Committed); } return hr;",
+    "CreatePlacedResource": "auto hr = create_wrapped([&](void** p) { return native_->CreatePlacedResource(native_arg(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, riid, p); }, riid, ppvResource); if (SUCCEEDED(hr) && ppvResource && *ppvResource && pDesc) { frontend_runtime().describe_resource(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppvResource))}, resource_allocation_size(native_,pDesc), oid(pHeap), HeapOffset); describe_resource_shape(reinterpret_cast<IUnknown*>(*ppvResource),pDesc,ResourceAllocation::Placed); } return hr;",
     "CreateReservedResource": "auto hr = create_wrapped([&](void** p) { return native_->CreateReservedResource(pDesc, InitialState, pOptimizedClearValue, riid, p); }, riid, ppvResource); if (SUCCEEDED(hr) && ppvResource && *ppvResource) { frontend_runtime().describe_resource(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppvResource))}, 0); describe_resource_shape(reinterpret_cast<IUnknown*>(*ppvResource),pDesc,ResourceAllocation::Reserved); } return hr;",
     "CreateRootSignature": "auto hr = create_wrapped([&](void** p) { return native_->CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, riid, p); }, riid, ppvRootSignature); if (SUCCEEDED(hr) && ppvRootSignature && *ppvRootSignature) describe_root_signature(ObjectId{object_id(reinterpret_cast<IUnknown*>(*ppvRootSignature))}, pBlobWithRootSignature, blobLengthInBytes); return hr;",
     "MakeResident": "return resident_objects(native_, NumObjects, ppObjects, true);",
@@ -140,6 +140,29 @@ for match in re.finditer(r"\b(ID3D12\w+)\s*:\s*public\s+(I\w+)\s*\{\s*public:(.*
         found.append((ret.strip(), method, params, args))
     methods[name] = found
 
+generated_names = set()
+def wrap_native_calls(body):
+    """Move argument evaluation outside the native-exclusion guard."""
+    needle = "native_->"
+    while needle in body:
+        start = body.index(needle)
+        method_match = re.match(r"[A-Za-z_]\w*", body[start + len(needle):])
+        if not method_match:
+            raise ValueError(body[start:])
+        method = method_match.group()
+        opening = start + len(needle) + len(method)
+        if body[opening] != "(":
+            raise ValueError(body[start:])
+        depth = 1
+        closing = opening + 1
+        while depth:
+            if body[closing] == "(": depth += 1
+            elif body[closing] == ")": depth -= 1
+            closing += 1
+        args = body[opening + 1:closing - 1]
+        replacement = f"ARC2_APP_CALL(native_, {method}{', ' if args else ''}{args})"
+        body = body[:start] + replacement + body[closing:]
+    return body
 for suffix in types:
     iface = "ID3D12" + suffix
     ancestry = []
@@ -151,7 +174,8 @@ for suffix in types:
     for parent in ancestry:
         for method in methods[parent]:
             all_methods[method[1]] = method
-    lines = [f"// Generated from {sdk.name}; changes belong in generate_frontend.py or overrides.", f"class {suffix}Proxy final : public {iface}, public ProxyBase {{", "public:", f"    {suffix}Proxy({iface}* native, ObjectId id) : ProxyBase(native, id), native_(native) {{}}", "    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** out) override { return query(iid, out); }", "    ULONG STDMETHODCALLTYPE AddRef() override { return add_ref(); }", "    ULONG STDMETHODCALLTYPE Release() override { return release(); }", f"    bool supports(REFIID iid) const noexcept override {{ return iid == __uuidof(IUnknown) || " + " || ".join(f"iid == __uuidof({a})" for a in ancestry) + "; }", "    void* interface_ptr() noexcept override { return static_cast<" + iface + "*>(this); }", "    const char* type_name() const noexcept override { return \"" + suffix + "\"; }", "private:", f"    {iface}* native_;", "public:"]
+    generated_names.update(all_methods)
+    lines = [f"// Generated from {sdk.name}; changes belong in generate_frontend.py or overrides.", f"class {suffix}Proxy final : public {iface}, public ProxyBase {{", "public:", f"    {suffix}Proxy({iface}* native, ObjectId id) : ProxyBase(native, id), native_(native) {{}}", "    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, void** out) override { ARC2_CPU_SCOPE(D3D12_QueryInterface); return query(iid, out); }", "    ULONG STDMETHODCALLTYPE AddRef() override { ARC2_CPU_SCOPE(D3D12_AddRef); return add_ref(); }", "    ULONG STDMETHODCALLTYPE Release() override { ARC2_CPU_SCOPE(D3D12_Release); return release(); }", f"    bool supports(REFIID iid) const noexcept override {{ return iid == __uuidof(IUnknown) || " + " || ".join(f"iid == __uuidof({a})" for a in ancestry) + "; }", "    void* interface_ptr() noexcept override { return static_cast<" + iface + "*>(this); }", "    const char* type_name() const noexcept override { return \"" + suffix + "\"; }", "private:", f"    {iface}* native_;", "public:"]
     for ret, name, params, args in all_methods.values():
         if name in ("QueryInterface", "AddRef", "Release"):
             continue
@@ -167,7 +191,31 @@ for suffix in types:
             body = f"return create_wrapped([&](void** p) {{ return native_->{name}({prefix}{', ' if prefix else ''}p); }}, {args[-2]}, {args[-1]});"
         else:
             body = f"{'return ' if ret != 'void' else ''}native_->{name}({callargs});"
-        lines.append(f"    {ret} STDMETHODCALLTYPE {name}({params}) override {{ debug_trace(\"{suffix}.{name}\", this, native_, object.value); {body} }}")
+        body = wrap_native_calls(body)
+        lines.append(f"    {ret} STDMETHODCALLTYPE {name}({params}) override {{ ARC2_CPU_SCOPE(D3D12_{name}); debug_trace(\"{suffix}.{name}\", this, native_, object.value); {body} }}")
     lines.append("};")
     (out / f"{suffix.lower()}_proxy.inc").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(suffix, len(all_methods), ancestry)
+
+dxgi_files = [Path(__file__).parent / name for name in
+              ("dxgi.cpp", "dxgi_factory_forward.inl", "dxgi_swapchain_forward.inl")]
+dxgi_names = sorted(set().union(*(set(re.findall(r"STDMETHODCALLTYPE\s+(\w+)\s*\(", p.read_text()))
+                                  for p in dxgi_files)))
+d3d_names = sorted(generated_names | {"QueryInterface", "AddRef", "Release"})
+site_labels = [("D3D12_" + name, "D3D12." + name) for name in d3d_names]
+site_labels += [("DXGI_" + name, "DXGI." + name) for name in dxgi_names]
+site_labels += [("Bootstrap_" + name, "Bootstrap." + name) for name in
+                ("CreateDevice", "CreateFactory", "CreateFactory1", "CreateFactory2")]
+if len(site_labels) > 256:
+    raise RuntimeError(f"ARC2 CPU site inventory exceeds InterceptCpuMeter capacity: {len(site_labels)}")
+cpu_lines = ["// Generated CPU site inventory; diagnostic build only.",
+             "enum class CpuSite : unsigned {"]
+cpu_lines += [f"    {name}," for name, _ in site_labels]
+cpu_lines += ["    Count", "};", "inline unsigned cpu_site(CpuSite site) noexcept {",
+              "    static const auto ids = [] {", "        std::array<unsigned, static_cast<unsigned>(CpuSite::Count)> values{};",
+              "        unsigned index = 0;"]
+cpu_lines += [f"        values[index++] = register_cpu_site(\"{label}\");"
+              for _, label in site_labels]
+cpu_lines += ["        return values;", "    }();", "    return ids[static_cast<unsigned>(site)];", "}"]
+(out / "cpu_sites.inc").write_text("\n".join(cpu_lines) + "\n", encoding="utf-8")
+print("CPU sites", len(site_labels))

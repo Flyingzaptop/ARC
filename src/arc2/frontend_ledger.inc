@@ -30,6 +30,10 @@ void describe_resource_shape(IUnknown* wrapper, const D3D12_RESOURCE_DESC* desc,
                              ResourceAllocation allocation) {
     if (wrapper && desc) frontend_runtime().describe_resource_shape(oid(wrapper), resource_shape(*desc, allocation));
 }
+UINT64 resource_allocation_size(ID3D12Device* native, const D3D12_RESOURCE_DESC* desc) {
+    // ARC's metadata probe, not a forwarded application call.
+    return native->GetResourceAllocationInfo(0, 1, desc).SizeInBytes;
+}
 ObjectId resource_at(D3D12_GPU_VIRTUAL_ADDRESS address) noexcept {
     std::lock_guard lock(registry_mutex);
     ObjectId found{};
@@ -137,25 +141,25 @@ void descriptor_copy_ranges(UINT nd, const D3D12_CPU_DESCRIPTOR_HANDLE* dst, con
 HRESULT resident_objects(ID3D12Device* native, UINT count, ID3D12Pageable* const* objects, bool make) {
     std::vector<ID3D12Pageable*> raw;
     for (UINT i = 0; i < count; ++i) raw.push_back(native_arg(objects[i]));
-    return make ? native->MakeResident(count, raw.data()) : native->Evict(count, raw.data());
+    return make ? ARC2_APP_CALL(native, MakeResident, count, raw.data()) : ARC2_APP_CALL(native, Evict, count, raw.data());
 }
 HRESULT multi_fence_event(ID3D12Device1* native, ID3D12Fence* const* fences,
     const UINT64* values, UINT count, D3D12_MULTIPLE_FENCE_WAIT_FLAGS flags, HANDLE event) {
     std::vector<ID3D12Fence*> raw;
     for (UINT i = 0; i < count; ++i) raw.push_back(native_arg(fences[i]));
-    return native->SetEventOnMultipleFenceCompletion(raw.data(), values, count, flags, event);
+    return ARC2_APP_CALL(native, SetEventOnMultipleFenceCompletion, raw.data(), values, count, flags, event);
 }
 HRESULT set_residency_priority(ID3D12Device1* native, UINT count,
     ID3D12Pageable* const* objects, const D3D12_RESIDENCY_PRIORITY* priority) {
     std::vector<ID3D12Pageable*> raw;
     for (UINT i = 0; i < count; ++i) raw.push_back(native_arg(objects[i]));
-    return native->SetResidencyPriority(count, raw.data(), priority);
+    return ARC2_APP_CALL(native, SetResidencyPriority, count, raw.data(), priority);
 }
 HRESULT enqueue_resident(ID3D12Device3* native, D3D12_RESIDENCY_FLAGS flags, UINT count,
     ID3D12Pageable* const* objects, ID3D12Fence* fence, UINT64 value) {
     std::vector<ID3D12Pageable*> raw;
     for (UINT i = 0; i < count; ++i) raw.push_back(native_arg(objects[i]));
-    auto hr = native->EnqueueMakeResident(flags, count, raw.data(), native_arg(fence), value);
+    auto hr = ARC2_APP_CALL(native, EnqueueMakeResident, flags, count, raw.data(), native_arg(fence), value);
     if (SUCCEEDED(hr)) frontend_runtime().unsupported({}, "EnqueueMakeResident fence edge");
     return hr;
 }
@@ -233,10 +237,10 @@ HRESULT create_pipeline_stream(ID3D12Device2* native, const D3D12_PIPELINE_STATE
         offset = next;
     }
     D3D12_PIPELINE_STATE_STREAM_DESC copy{stream.size(), stream.data()};
-    if (!out) return native->CreatePipelineState(&copy, iid, nullptr);
+    if (!out) return ARC2_APP_CALL(native, CreatePipelineState, &copy, iid, nullptr);
     IUnknown* raw = nullptr;
     debug_trace("CreatePipelineState native begin", native, stream.data(), stream.size());
-    auto hr = native->CreatePipelineState(&copy, iid, reinterpret_cast<void**>(&raw));
+    auto hr = ARC2_APP_CALL(native, CreatePipelineState, &copy, iid, reinterpret_cast<void**>(&raw));
     debug_trace("CreatePipelineState native end", raw, nullptr, static_cast<unsigned>(hr));
     if (FAILED(hr)) return hr;
     auto wrapped = wrap_object(raw, iid, out);
@@ -252,14 +256,14 @@ void execute_lists(ID3D12CommandQueue* native, ObjectId queue, UINT count, ID3D1
     std::vector<ID3D12CommandList*> raw; std::vector<ObjectId> ids;
     for (UINT i = 0; i < count; ++i) { raw.push_back(native_arg(lists[i])); ids.push_back(oid(lists[i])); }
     frontend_runtime().submit(queue, ids);
-    native->ExecuteCommandLists(count, raw.data());
+    ARC2_APP_CALL(native, ExecuteCommandLists, count, raw.data());
 }
 void set_descriptor_heaps(ID3D12GraphicsCommandList* native, ObjectId list, UINT count, ID3D12DescriptorHeap* const* heaps) {
     debug_trace("SetDescriptorHeaps begin", native, heaps, list.value);
     std::vector<ID3D12DescriptorHeap*> raw; std::vector<ObjectId> ids;
     for (UINT i = 0; i < count; ++i) { raw.push_back(native_arg(heaps[i])); ids.push_back(oid(heaps[i])); }
     frontend_runtime().set_descriptor_heaps(list, ids);
-    native->SetDescriptorHeaps(count, raw.data());
+    ARC2_APP_CALL(native, SetDescriptorHeaps, count, raw.data());
     debug_trace("SetDescriptorHeaps end", native, nullptr, list.value);
 }
 void set_targets(ObjectId list, UINT count, const D3D12_CPU_DESCRIPTOR_HANDLE* handles, BOOL contiguous, const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
@@ -284,7 +288,7 @@ void resource_barriers(ID3D12GraphicsCommandList* native, ObjectId list, UINT co
             b.Aliasing.pResourceAfter = native_arg(b.Aliasing.pResourceAfter);
         } else { frontend_runtime().record_work(list, WorkKind::Barrier); b.UAV.pResource = native_arg(b.UAV.pResource); }
     }
-    native->ResourceBarrier(count, copy.data());
+    ARC2_APP_CALL(native, ResourceBarrier, count, copy.data());
 }
 void copy_texture_region(ID3D12GraphicsCommandList* native, ObjectId list,
     const D3D12_TEXTURE_COPY_LOCATION* dst, UINT x, UINT y, UINT z,
@@ -295,7 +299,7 @@ void copy_texture_region(ID3D12GraphicsCommandList* native, ObjectId list,
     frontend_runtime().record_work(list, WorkKind::Copy, access);
     auto d = *dst, s = *src;
     d.pResource = native_arg(d.pResource); s.pResource = native_arg(s.pResource);
-    native->CopyTextureRegion(&d, x, y, z, &s, box);
+    ARC2_APP_CALL(native, CopyTextureRegion, &d, x, y, z, &s, box);
 }
 void atomic_copy(ID3D12GraphicsCommandList1* native, ObjectId list,
     ID3D12Resource* dst, UINT64 dst_offset, ID3D12Resource* src, UINT64 src_offset,
@@ -307,9 +311,9 @@ void atomic_copy(ID3D12GraphicsCommandList1* native, ObjectId list,
         {oid(src),AccessKind::Read,Certainty::Known,src_offset,wide ? 8u : 4u},
         {oid(dst),AccessKind::Write,Certainty::Known,dst_offset,wide ? 8u : 4u}}};
     frontend_runtime().record_work(list, WorkKind::Copy, access);
-    if (wide) native->AtomicCopyBufferUINT64(native_arg(dst),dst_offset,native_arg(src),src_offset,
+    if (wide) ARC2_APP_CALL(native, AtomicCopyBufferUINT64, native_arg(dst),dst_offset,native_arg(src),src_offset,
                                              dependencies,raw.data(),ranges);
-    else native->AtomicCopyBufferUINT(native_arg(dst),dst_offset,native_arg(src),src_offset,
+    else ARC2_APP_CALL(native, AtomicCopyBufferUINT, native_arg(dst),dst_offset,native_arg(src),src_offset,
                                       dependencies,raw.data(),ranges);
 }
 void begin_render_pass(ID3D12GraphicsCommandList4* native, ObjectId list, UINT count,
@@ -334,7 +338,7 @@ void begin_render_pass(ID3D12GraphicsCommandList4* native, ObjectId list, UINT c
     }
     set_targets(list, count, handles.data(), FALSE, depth ? &depth->cpuDescriptor : nullptr);
     frontend_runtime().unsupported(list, "BeginRenderPass semantic boundary");
-    native->BeginRenderPass(count, copy.data(), depth ? &depth_copy : nullptr, flags);
+    ARC2_APP_CALL(native, BeginRenderPass, count, copy.data(), depth ? &depth_copy : nullptr, flags);
 }
 void clear_rtv(ID3D12GraphicsCommandList* native, ObjectId list, D3D12_CPU_DESCRIPTOR_HANDLE handle,
                const FLOAT color[4], UINT count, const D3D12_RECT* rects) {
@@ -344,5 +348,5 @@ void clear_rtv(ID3D12GraphicsCommandList* native, ObjectId list, D3D12_CPU_DESCR
     for (UINT i = 0; i < count; ++i) { sig.push_back(rects[i].left); sig.push_back(rects[i].top); sig.push_back(rects[i].right); sig.push_back(rects[i].bottom); }
     const bool redundant = frontend_runtime().record_clear(list, resolve_cpu(handle), sig);
     auto callback = clear_admit.load();
-    if (!callback || !callback(list.value, redundant)) native->ClearRenderTargetView(handle, color, count, rects);
+    if (!callback || !callback(list.value, redundant)) ARC2_APP_CALL(native, ClearRenderTargetView, handle, color, count, rects);
 }
