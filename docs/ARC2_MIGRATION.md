@@ -1,0 +1,7 @@
+# ARC 2 migration
+
+ARC 2 adds an application-facing semantic frontend before native D3D12 forwarding. The previous observer path remains available as a baseline and fallback. `arc2::Runtime` owns API-time object identity, descriptor versions, command state, work, submissions, synchronization, and Present links. `feed_resource_graph` projects known IR facts into the existing `ResourceGraph`, so existing resource semantics, scene understanding, visibility, attribution, quality admission, and optimizer policy can consume direct observations without a rewrite of the core.
+
+The graph bridge is deliberately lossy: the IR is authoritative for exact binding and unknown/symbolic evidence, while the graph's historical resource and workload aggregates continue to serve analysis. An optimizer must inspect IR completeness and coverage before any mutation. Legacy observer events alone cannot certify the direct-IR state of a call. The old hooks and experiments are retained for comparisons; they are not silently treated as ARC 2 frontend coverage.
+
+Migration proceeds per API surface: wrap a successful native call, update `Runtime` at the application boundary, and forward to native D3D12 while preserving HRESULT and COM identity. Calls without modeled semantics must be reported as unsupported. The first safe rewrite is a narrow consecutive identical RTV clear case, with a same-generation target descriptor and byte-exact color/rectangle signature. Its admission still depends on explicit mode, quality evidence, and coverage.

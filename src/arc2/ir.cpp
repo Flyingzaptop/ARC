@@ -1,0 +1,43 @@
+#include "arc/arc2/ir.hpp"
+#include <bit>
+#include <sstream>
+
+namespace arc::arc2 {
+namespace {
+std::string quote(const std::string& s) { std::string o="\""; for(unsigned char c:s) { if(c=='"'||c=='\\') { o+='\\'; o+=char(c); } else if(c<32) { constexpr char hex[]="0123456789abcdef"; o+="\\u00"; o+=hex[c>>4]; o+=hex[c&15]; } else o+=char(c); } return o+'"'; }
+void access(std::ostringstream& o,const Access& a) { o<<'['<<a.resource.value<<','<<unsigned(a.kind)<<','<<unsigned(a.certainty)<<','<<a.offset<<','<<a.bytes<<','<<quote(a.symbol)<<','<<a.descriptor_heap.value<<','<<a.descriptor_first<<','<<a.descriptor_count<<']'; }
+void refs(std::ostringstream& o,const std::vector<DescriptorRef>& values) { o<<'['; bool first=true; for(auto x:values) {if(!first)o<<',';first=false;o<<'['<<x.heap.value<<','<<x.index<<','<<x.generation<<']';}o<<']'; }
+void bindings(std::ostringstream& o,const std::map<std::uint32_t,RootBinding>& values) { o<<'['; bool first=true;for(const auto& [slot,b]:values){if(!first)o<<',';first=false;o<<'['<<slot<<','<<unsigned(b.kind)<<','<<b.table.heap.value<<','<<b.table.index<<','<<b.table.generation<<','<<b.resource.value<<','<<b.address<<",[";bool f=true;for(auto c:b.constants){if(!f)o<<',';f=false;o<<c;}o<<"],";if(b.descriptor_kind)o<<unsigned(*b.descriptor_kind);else o<<"null";o<<']';}o<<']'; }
+void fixed(std::ostringstream& o,const FixedPipelineState& f) {
+    o<<'['<<(f.raster_known?1:0)<<','<<(f.depth_known?1:0)<<','<<(f.blend_known?1:0)<<','<<(f.topology_known?1:0)<<','<<f.raster_fill<<','<<f.raster_cull<<','<<(f.front_ccw?1:0)<<','<<(f.depth_clip?1:0)<<','<<(f.conservative_raster?1:0)<<','<<f.depth_bias<<','<<std::bit_cast<std::uint32_t>(f.depth_bias_clamp)<<','<<std::bit_cast<std::uint32_t>(f.slope_scaled_depth_bias)<<','<<(f.multisample_enable?1:0)<<','<<(f.antialiased_line_enable?1:0)<<','<<f.forced_sample_count<<','<<(f.depth_enable?1:0)<<','<<(f.depth_write?1:0)<<','<<(f.stencil_enable?1:0)<<','<<f.depth_func<<','<<f.stencil_read_mask<<','<<f.stencil_write_mask;
+    auto face=[&](const FixedStencilFace& x){o<<",["<<x.fail_op<<','<<x.depth_fail_op<<','<<x.pass_op<<','<<x.compare_op<<']';}; face(f.front_stencil);face(f.back_stencil);
+    o<<','<<f.topology_type<<','<<f.sample_mask<<','<<f.sample_count<<','<<(f.alpha_to_coverage?1:0)<<','<<(f.independent_blend?1:0)<<",[";
+    bool first=true;for(const auto& t:f.targets){if(!first)o<<',';first=false;o<<'['<<(t.blend_enable?1:0)<<','<<(t.logic_enable?1:0)<<','<<t.src_color<<','<<t.dst_color<<','<<t.color_op<<','<<t.src_alpha<<','<<t.dst_alpha<<','<<t.alpha_op<<','<<t.logic_op<<','<<t.write_mask<<']';}o<<"]]";
+}
+void state(std::ostringstream& o,const PipelineSnapshot& s) {
+    o<<"{\"pipeline\":"<<s.pipeline.value<<",\"graphics_root\":"<<s.graphics_root.value<<",\"compute_root\":"<<s.compute_root.value<<",\"heaps\":[";
+    bool first=true;for(auto h:s.descriptor_heaps){if(!first)o<<',';first=false;o<<h.value;}o<<"],\"graphics_bindings\":";bindings(o,s.graphics_bindings);o<<",\"compute_bindings\":";bindings(o,s.compute_bindings);
+    o<<",\"vb\":[";first=true;for(const auto& [slot,b]:s.vertex_buffers){if(!first)o<<',';first=false;o<<'['<<slot<<','<<b.resource.value<<','<<b.offset<<','<<b.bytes<<']';}o<<"],\"ib\":["<<s.index_buffer.resource.value<<','<<s.index_buffer.offset<<','<<s.index_buffer.bytes<<"],\"rt\":";refs(o,s.render_targets);
+    o<<",\"depth\":["<<s.depth_target.heap.value<<','<<s.depth_target.index<<','<<s.depth_target.generation<<"],\"scissor\":";
+    if(s.scissor)o<<'['<<s.scissor->x<<','<<s.scissor->y<<','<<s.scissor->width<<','<<s.scissor->height<<']';else o<<"null";
+    o<<",\"viewports\":[";first=true;for(const auto& v:s.viewports){if(!first)o<<',';first=false;o<<'['<<std::bit_cast<std::uint32_t>(v.x)<<','<<std::bit_cast<std::uint32_t>(v.y)<<','<<std::bit_cast<std::uint32_t>(v.width)<<','<<std::bit_cast<std::uint32_t>(v.height)<<','<<std::bit_cast<std::uint32_t>(v.min_depth)<<','<<std::bit_cast<std::uint32_t>(v.max_depth)<<']';}o<<"],\"fixed\":";fixed(o,s.fixed);
+    o<<",\"topology\":"<<s.topology<<",\"topology_known\":"<<(s.topology_known?1:0)<<",\"stencil_ref\":"<<s.stencil_ref<<",\"stencil_ref_known\":"<<(s.stencil_ref_known?1:0)<<",\"blend_factor\":[";first=true;for(float v:s.blend_factor){if(!first)o<<',';first=false;o<<std::bit_cast<std::uint32_t>(v);}o<<"],\"blend_factor_known\":"<<(s.blend_factor_known?1:0);
+    o<<",\"shaders\":[";first=true;for(auto sh:s.shaders){if(!first)o<<',';first=false;o<<sh.value;}o<<"],\"shading_rate\":"<<s.shading_rate<<",\"shading_rate_combiners\":[";first=true;for(auto c:s.shading_rate_combiners){if(!first)o<<',';first=false;o<<c;}o<<"],\"shading_rate_known\":"<<(s.shading_rate_known?1:0)<<",\"raster_known\":"<<(s.raster_known?1:0)<<",\"depth_known\":"<<(s.depth_known?1:0)<<",\"blend_known\":"<<(s.blend_known?1:0)<<'}';
+}
+}
+std::string serialize(const IrSnapshot& s) {
+    std::ostringstream o;
+    o<<"{\"schema\":0,\"total_work\":"<<s.total_work<<",\"dropped\":"<<s.dropped<<",\"uncertain_submissions\":"<<s.uncertain_submissions<<",\"incomplete\":"<<(s.incomplete?"true":"false")<<",\"history_truncated\":"<<(s.history_truncated?"true":"false");
+    o<<",\"objects\":["; bool first=true; for(const auto& x:s.objects) { if(!first)o<<','; first=false; o<<'['<<x.id.value<<','<<unsigned(x.kind)<<','<<(x.alive?1:0)<<']'; } o<<']';
+    o<<",\"resources\":["; first=true; for(const auto& x:s.resources) { if(!first)o<<','; first=false; const auto& r=x.shape; o<<'['<<x.resource.value<<','<<x.heap.value<<','<<x.bytes<<','<<x.offset<<','<<unsigned(r.dimension)<<','<<unsigned(r.allocation)<<','<<r.width<<','<<r.height<<','<<r.depth<<','<<r.array_layers<<','<<r.mips<<','<<r.format<<','<<r.samples<<','<<r.flags<<','<<r.format_namespace<<','<<r.flags_namespace<<']'; } o<<']';
+    o<<",\"shaders\":[";first=true;for(const auto& x:s.shaders){if(!first)o<<',';first=false;o<<'['<<x.shader.value<<",[";bool f=true;for(const auto& a:x.declared){if(!f)o<<',';f=false;access(o,a);}o<<"],[";f=true;for(const auto& b:x.bindings){if(!f)o<<',';f=false;o<<'['<<unsigned(b.kind)<<','<<b.space<<','<<b.first_register<<','<<b.count<<','<<(b.dynamic_indexing?1:0)<<','<<unsigned(b.access)<<']';}o<<"]]";}o<<']';
+    o<<",\"root_signatures\":[";first=true;for(const auto& x:s.root_signatures){if(!first)o<<',';first=false;o<<'['<<x.root.value<<",[";bool fp=true;for(const auto& p:x.parameters){if(!fp)o<<',';fp=false;o<<'['<<p.slot<<','<<unsigned(p.kind)<<','<<unsigned(p.descriptor_kind)<<','<<p.space<<','<<p.shader_register<<','<<p.constant_count<<",[";bool fr=true;for(const auto& r:p.ranges){if(!fr)o<<',';fr=false;o<<'['<<unsigned(r.kind)<<','<<r.space<<','<<r.first_register<<','<<r.count<<','<<r.table_offset<<']';}o<<"]]";}o<<"]]";}o<<']';
+    o<<",\"descriptors\":["; first=true; for(const auto& x:s.descriptors) { if(!first)o<<','; first=false; o<<'['<<x.ref.heap.value<<','<<x.ref.index<<','<<x.ref.generation<<','<<x.resource.value<<','<<unsigned(x.kind)<<','<<(x.valid?1:0)<<']'; } o<<']';
+    o<<",\"work\":["; first=true; for(const auto& x:s.work) { if(!first)o<<','; first=false; o<<"{\"id\":"<<x.id.value<<",\"list\":"<<x.list.value<<",\"generation\":"<<x.list_generation<<",\"kind\":"<<unsigned(x.kind)<<",\"state\":";state(o,x.state);o<<",\"eligible\":"<<(x.rewrite_eligible?"true":"false")<<",\"supported\":"<<(x.supported?"true":"false")<<",\"coverage\":"<<quote(x.coverage)<<",\"dependencies\":[";bool fd=true;for(auto d:x.dependencies){if(!fd)o<<',';fd=false;o<<d.value;}o<<"],\"access\":["; bool fa=true; for(const auto& a:x.accesses) { if(!fa)o<<','; fa=false; access(o,a); } o<<"]}"; } o<<']';
+    o<<",\"submissions\":["; first=true; for(const auto& x:s.submissions) { if(!first)o<<','; first=false; o<<'['<<x.id.value<<','<<x.queue.value<<",["; bool f=true; for(auto w:x.work) {if(!f)o<<',';f=false;o<<w.value;} o<<"],[";f=true;for(auto d:x.dependencies){if(!f)o<<',';f=false;o<<d.value;}o<<"],"<<(x.complete?1:0)<<']';}o<<']';
+    o<<",\"fences\":["; first=true; for(const auto& x:s.fences){if(!first)o<<',';first=false;o<<'['<<x.queue.value<<','<<x.fence.value<<','<<x.value<<','<<x.submission.value<<','<<(x.signal?1:0)<<','<<(x.satisfied?1:0)<<']';}o<<']';
+    o<<",\"transitions\":[";first=true;for(const auto& x:s.transitions){if(!first)o<<',';first=false;o<<'['<<x.work.value<<','<<x.resource.value<<','<<x.before<<','<<x.after<<','<<(x.known?1:0)<<','<<(x.aliasing?1:0)<<']';}o<<']';
+    o<<",\"presents\":[";first=true;for(const auto& x:s.presents){if(!first)o<<',';first=false;o<<'['<<x.swapchain.value<<','<<x.queue.value<<','<<x.backbuffer.value<<','<<x.sequence<<','<<x.swapchain_generation<<','<<x.reachable.value<<','<<x.result<<']';}o<<"]}";
+    return o.str();
+}
+} // namespace arc::arc2

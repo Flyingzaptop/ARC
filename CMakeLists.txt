@@ -387,3 +387,6 @@ if(ARC_BUILD_TESTS)
         add_test(NAME arc-${target_name}-tests COMMAND arc-${target_name}-tests)
     endforeach()
 endif()
+
+include(cmake/arc2.cmake)
+
