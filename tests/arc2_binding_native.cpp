@@ -8,6 +8,8 @@
 #include <string>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include "arc/arc2/bootstrap.hpp"
 using Microsoft::WRL::ComPtr;
 static void ok(HRESULT h){if(FAILED(h))throw std::runtime_error("HRESULT "+std::to_string(unsigned(h)));}
@@ -43,6 +45,18 @@ int main(){try{
  list->SetPipelineState(streamed.Get());list->SetComputeRootSignature(root.Get());list->SetComputeRoot32BitConstant(2,49,0);list->Dispatch(1,1,1);
  D3D12_RESOURCE_BARRIER transition{};transition.Transition={output.Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_UNORDERED_ACCESS,D3D12_RESOURCE_STATE_COPY_SOURCE};list->ResourceBarrier(1,&transition);list->CopyResource(readback.Get(),output.Get());ok(list->Close());ID3D12CommandList* cls[]={list.Get()};q->ExecuteCommandLists(1,cls);ComPtr<ID3D12Fence> f;ok(d->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&f)));HANDLE event=CreateEvent(nullptr,FALSE,FALSE,nullptr);ok(q->Signal(f.Get(),1));ok(f->SetEventOnCompletion(1,event));if(WaitForSingleObject(event,10000)!=WAIT_OBJECT_0)throw std::runtime_error("timeout");CloseHandle(event);
  unsigned* data{};ok(readback->Map(0,nullptr,reinterpret_cast<void**>(&data)));for(unsigned i=0;i<4;++i)if(data[i]!=2*(i+1)+49)throw std::runtime_error("GPU binding result mismatch");readback->Unmap(0,nullptr);ok(d->GetDeviceRemovedReason());if(legacy){auto end=reinterpret_cast<DWORD(WINAPI*)(void*)>(GetProcAddress(legacy,"ArcEndCapture"));std::wstring graph=std::wstring(path)+L".graph.json";if(!end||end(graph.data()))throw std::runtime_error("legacy capture output");}
- if(arc2_bootstrap::loader().module)ok(arc2_bootstrap::flush());
+ if(arc2_bootstrap::loader().module){
+  ok(arc2_bootstrap::flush());
+  wchar_t ir_path[32768]{};auto length=GetEnvironmentVariableW(L"ARC2_OUTPUT",ir_path,32768);
+  if(!length||length>=32768)throw std::runtime_error("ARC2 output path missing");
+  std::ifstream input(std::filesystem::path(ir_path),std::ios::binary);
+  if(!input)throw std::runtime_error("ARC2 IR dump missing");
+  const std::string ir{std::istreambuf_iterator<char>(input),std::istreambuf_iterator<char>()};
+  const std::string dispatch="\"arguments\":{\"known\":true,\"type\":\"dispatch\",\"x\":1,\"y\":1,\"z\":1}";
+  const auto first=ir.find(dispatch);
+  if(ir.find("\"command_payload_version\":1")==std::string::npos||first==std::string::npos||
+     ir.find(dispatch,first+dispatch.size())==std::string::npos)
+      throw std::runtime_error("ARC2 did not retain both exact dispatch payloads");
+ }
  std::cout<<"PASS root tables/constants, same root signature, GPU readback, parent identity\n";return 0;
  }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}}

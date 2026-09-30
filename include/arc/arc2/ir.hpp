@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace arc::arc2 {
@@ -27,8 +28,9 @@ struct DescriptorRef { ObjectId heap{}; std::uint32_t index{}; std::uint64_t gen
 struct Descriptor { DescriptorRef ref{}; ObjectId resource{}; ViewKind kind{ViewKind::Unknown}; bool valid{}; };
 struct Access { ObjectId resource{}; AccessKind kind{AccessKind::Unknown}; Certainty certainty{Certainty::Unknown}; std::uint64_t offset{}, bytes{}; std::string symbol; ObjectId descriptor_heap{}; std::uint64_t descriptor_first{}, descriptor_count{}; };
 struct RootBinding { enum class Kind : std::uint8_t { Table, Descriptor, Constants }; Kind kind{Kind::Table}; DescriptorRef table{}; ObjectId resource{}; std::uint64_t address{}; std::vector<std::uint32_t> constants; std::optional<BindingKind> descriptor_kind; std::vector<std::uint8_t> constants_known; bool constants_overflow{}; };
-struct BufferBinding { ObjectId resource{}; std::uint64_t offset{}, bytes{}; };
+struct BufferBinding { ObjectId resource{}; std::uint64_t offset{}, bytes{}; std::optional<std::uint32_t> stride, index_format; std::uint32_t format_namespace{}; };
 struct Rect { std::int32_t x{}, y{}, width{}, height{}; };
+struct ScissorRect { std::int32_t left{}, top{}, right{}, bottom{}; };
 struct Viewport { float x{}, y{}, width{}, height{}, min_depth{}, max_depth{}; };
 struct FixedTargetBlend { bool blend_enable{}, logic_enable{}; std::uint32_t src_color{}, dst_color{}, color_op{}, src_alpha{}, dst_alpha{}, alpha_op{}, logic_op{}, write_mask{}; };
 struct FixedStencilFace { std::uint32_t fail_op{}, depth_fail_op{}, pass_op{}, compare_op{}; };
@@ -56,6 +58,8 @@ struct PipelineSnapshot {
     std::vector<DescriptorRef> render_targets;
     DescriptorRef depth_target{};
     std::optional<Rect> scissor;
+    std::vector<ScissorRect> scissors;
+    bool scissors_known{};
     std::vector<Viewport> viewports;
     FixedPipelineState fixed;
     std::uint32_t topology{}, stencil_ref{};
@@ -67,7 +71,12 @@ struct PipelineSnapshot {
     bool shading_rate_known{};
     bool raster_known{}, depth_known{}, blend_known{};
 };
-struct WorkItem { WorkId id{}; ObjectId list{}; std::uint64_t list_generation{}; WorkKind kind{WorkKind::Unknown}; PipelineSnapshot state; std::vector<Access> accesses; std::vector<WorkId> dependencies; bool supported{true}, rewrite_eligible{}; std::string coverage; };
+struct DrawArguments { std::uint32_t count_per_instance{}, instance_count{}, start_vertex_or_index{}; std::int32_t base_vertex{}; std::uint32_t start_instance{}; };
+struct DispatchArguments { std::uint32_t x{}, y{}, z{}; };
+struct IndirectArguments { ObjectId signature{}; std::uint32_t max_count{}; ObjectId argument_buffer{}; std::uint64_t argument_offset{}; ObjectId count_buffer{}; std::uint64_t count_offset{}; bool count_buffer_present{}; };
+struct ClearArguments { DescriptorRef target{}; std::vector<std::uint32_t> exact_signature; bool target_known{}; };
+using WorkArguments = std::variant<std::monostate, DrawArguments, DispatchArguments, IndirectArguments, ClearArguments>;
+struct WorkItem { WorkId id{}; ObjectId list{}; std::uint64_t list_generation{}; WorkKind kind{WorkKind::Unknown}; PipelineSnapshot state; WorkArguments arguments; std::vector<Access> accesses; std::vector<WorkId> dependencies; bool supported{true}, rewrite_eligible{}; std::string coverage; };
 struct Submission { SubmissionId id{}; ObjectId queue{}; std::vector<WorkId> work; std::vector<SubmissionId> dependencies; bool complete{}; };
 struct FenceEdge { ObjectId queue{}, fence{}; std::uint64_t value{}; SubmissionId submission{}; bool signal{}; bool satisfied{}; };
 struct Transition { WorkId work{}; ObjectId resource{}; std::uint64_t before{}, after{}; bool known{}; bool aliasing{}; };

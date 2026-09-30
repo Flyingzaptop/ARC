@@ -5,6 +5,10 @@
 #include <cassert>
 #include <iostream>
 
+#ifdef NDEBUG
+#error ARC2 IR tests require active assertions
+#endif
+
 using namespace arc::arc2;
 int main() {
     Runtime r(64,64);
@@ -35,6 +39,8 @@ int main() {
     auto last=r.last_work(list); assert(last && last->rewrite_eligible);
     auto clear_snapshot=r.snapshot();
     assert(clear_snapshot.work.back()==last);
+    auto clear_args=std::get_if<ClearArguments>(&clear_snapshot.work.back()->arguments);
+    assert(clear_args && clear_args->target==copied && clear_args->target_known && clear_args->exact_signature==std::vector<std::uint32_t>(color.begin(),color.end()));
     r.touch_command(list);
     assert(!r.record_clear(list,copied,color));
     assert(clear_snapshot.work.back()->rewrite_eligible && clear_snapshot.work.back()->id==last->id);
@@ -226,6 +232,42 @@ int main() {
     poison.reset_command_list(pl,{});
     assert(!poison.record_clear(pl,pd,color));
     assert(poison.record_clear(pl,pd,color));
+    Runtime command_payloads;
+    auto command_list=command_payloads.create_object(ObjectKind::CommandList,100);
+    auto signature_id=command_payloads.create_object(ObjectKind::CommandSignature,101);
+    auto argument_buffer=command_payloads.create_object(ObjectKind::Resource,102);
+    auto count_buffer=command_payloads.create_object(ObjectKind::Resource,103);
+    command_payloads.record_work(command_list,WorkKind::Draw,{},WorkArguments{DrawArguments{0,0,0,0,0}});
+    command_payloads.record_work(command_list,WorkKind::DrawIndexed,{},WorkArguments{DrawArguments{7,2,3,-11,5}});
+    command_payloads.record_work(command_list,WorkKind::Dispatch,{},WorkArguments{DispatchArguments{0,4,9}});
+    command_payloads.record_work(command_list,WorkKind::ExecuteIndirect,{},WorkArguments{IndirectArguments{signature_id,13,argument_buffer,4096,count_buffer,128,true}});
+    auto payload_snapshot=command_payloads.snapshot();
+    assert(std::get<DrawArguments>(payload_snapshot.work[0]->arguments).count_per_instance==0);
+    assert(std::get<DrawArguments>(payload_snapshot.work[1]->arguments).base_vertex==-11);
+    assert(std::get<DispatchArguments>(payload_snapshot.work[2]->arguments).x==0);
+    auto indirect=std::get<IndirectArguments>(payload_snapshot.work[3]->arguments);
+    assert(indirect.signature==signature_id && indirect.max_count==13 && indirect.argument_buffer==argument_buffer && indirect.argument_offset==4096 && indirect.count_buffer==count_buffer && indirect.count_offset==128);
+    auto payload_json=serialize(payload_snapshot);
+    assert(payload_json.find("\"schema\":1,\"command_payload_version\":1")!=std::string::npos);
+    assert(payload_json.find("\"base_vertex\":-11")!=std::string::npos);
+    assert(payload_json.find("\"count_per_instance\":0")!=std::string::npos);
+    assert(payload_json.find("\"argument_offset\":4096")!=std::string::npos);
+    command_payloads.record_work(command_list,WorkKind::ExecuteIndirect,{},IndirectArguments{signature_id,1,argument_buffer,0,{},0,true});
+    assert(serialize(command_payloads.snapshot()).find("\"count_buffer_known\":false")!=std::string::npos);
+    command_payloads.record_work(command_list,WorkKind::ExecuteIndirect,{},IndirectArguments{signature_id,1,argument_buffer,0,{},0,false});
+    assert(serialize(command_payloads.snapshot()).find("\"count_buffer_present\":false,\"count_buffer_known\":true")!=std::string::npos);
+    command_payloads.record_work(command_list,WorkKind::ExecuteIndirect,{},IndirectArguments{signature_id,1,argument_buffer,0,count_buffer,0,false});
+    assert(serialize(command_payloads.snapshot()).find("\"count_buffer_present\":false,\"count_buffer_known\":false")!=std::string::npos);
+    command_payloads.record_work(command_list,WorkKind::ExecuteIndirect,{},IndirectArguments{{},1,argument_buffer,0,{},0,false});
+    assert(serialize(command_payloads.snapshot()).find("\"signature_known\":false")!=std::string::npos);
+    command_payloads.record_work(command_list,WorkKind::Draw,{},DispatchArguments{1,1,1});
+    assert(command_payloads.snapshot().incomplete);
+    assert(!command_payloads.snapshot().work.back()->supported);
+    command_payloads.reset_command_list(command_list,{});
+    command_payloads.record_work(command_list,WorkKind::Dispatch);
+    assert(std::holds_alternative<std::monostate>(command_payloads.snapshot().work.back()->arguments));
+    assert(serialize(command_payloads.snapshot()).find("\"known\":false,\"type\":\"unknown\"")!=std::string::npos);
+    assert(std::get<DrawArguments>(payload_snapshot.work[1]->arguments).base_vertex==-11);
     Runtime bounded(1,1);
     auto b=bounded.create_object(ObjectKind::CommandList,10);
     bounded.record_work(b,WorkKind::Draw);
@@ -281,6 +323,28 @@ int main() {
     optional_interface.unsupported({},"unmodeled global API");
     auto global_unknown=optional_interface.snapshot();
     assert(global_unknown.incomplete && global_unknown.work.empty());
+    Runtime ia;
+    auto ia_list=ia.create_object(ObjectKind::CommandList,290);
+    ia.set_vertex_buffer(ia_list,3,{},0,32,0);
+    ia.set_index_buffer(ia_list,{},4,12,42,1);
+    const std::array<ScissorRect,2> scissors{{{-10,-20,30,40},{INT32_MIN,0,INT32_MAX,5}}};
+    ia.set_scissors(ia_list,scissors);
+    ia.record_work(ia_list,WorkKind::Draw,{},DrawArguments{0,1,0,0,0});
+    auto ia_snapshot=ia.snapshot();
+    assert(ia_snapshot.work[0]->state.vertex_buffers.at(3).stride==0);
+    assert(ia_snapshot.work[0]->state.index_buffer.index_format==42);
+    assert(ia_snapshot.work[0]->state.scissors.size()==2 && ia_snapshot.work[0]->state.scissors_known);
+    auto ia_json=serialize(ia_snapshot);
+    assert(ia_json.find("\"vb\":[[3,0,0,32,0]]")!=std::string::npos);
+    assert(ia_json.find("\"ib\":[0,4,12,42,1]")!=std::string::npos);
+    assert(ia_json.find("[-2147483648,0,2147483647,5]")!=std::string::npos);
+    ia.set_scissors(ia_list,{});
+    ia.record_work(ia_list,WorkKind::Draw);
+    assert(ia.snapshot().work.back()->state.scissors_known && ia.snapshot().work.back()->state.scissors.empty());
+    assert(ia_snapshot.work[0]->state.scissors.size()==2);
+    ia.unknown_scissors(ia_list);
+    ia.record_work(ia_list,WorkKind::Draw);
+    assert(!ia.snapshot().work.back()->state.scissors_known && ia.snapshot().work.back()->state.scissors.empty());
     Runtime floating;
     auto fl=floating.create_object(ObjectKind::CommandList,300);
     floating.set_blend_factor(fl,{std::bit_cast<float>(0x7fc00001u),std::bit_cast<float>(0x80000000u),std::bit_cast<float>(0x7f800000u),std::bit_cast<float>(0xff800000u)});
