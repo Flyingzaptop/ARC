@@ -4,6 +4,7 @@
 #include <deque>
 #include <mutex>
 #include <span>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 
@@ -56,6 +57,7 @@ public:
     void present(ObjectId swapchain, ObjectId queue, ObjectId backbuffer, std::int32_t result, bool test_only = false);
     void resize_swapchain(ObjectId swapchain);
     void unsupported(ObjectId list, std::string_view api);
+    void note_coverage(std::string_view api);
     void touch_command(ObjectId list);
     std::optional<WorkItem> last_work(ObjectId list) const;
     std::uint64_t state_sequence(ObjectId list) const;
@@ -85,6 +87,7 @@ private:
     std::map<ObjectId, std::vector<RootParameter>> root_parameters_;
     std::map<ObjectId, std::uint32_t> descriptor_heap_counts_;
     std::map<ObjectId, std::vector<ObjectId>> pipeline_shaders_;
+    std::map<std::string, std::uint64_t> interface_coverage_;
     std::map<ObjectId, FixedPipelineState> pipeline_fixed_;
     std::deque<WorkItem> work_;
     std::vector<Submission> submissions_;

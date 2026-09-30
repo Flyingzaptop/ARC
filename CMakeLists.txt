@@ -389,4 +389,3 @@ if(ARC_BUILD_TESTS)
 endif()
 
 include(cmake/arc2.cmake)
-

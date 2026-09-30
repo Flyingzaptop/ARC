@@ -48,6 +48,8 @@ int main() {
     auto sub2=r.submit(queue2,std::array<ObjectId,1>{list});
     auto swap=r.create_object(ObjectKind::Swapchain,9);
     r.present(swap,queue2,reused,0);
+    r.present(swap,queue2,reused,1); // positive DXGI status is not a presented frame
+    r.present(swap,queue2,reused,-1);
     r.resize_swapchain(swap);
     r.present(swap,queue2,reused,0);
     auto ir=r.snapshot();
@@ -105,8 +107,8 @@ int main() {
     assert(captured.work[0].state.fixed.raster_cull==3 && captured.work[0].state.raster_known);
     assert(captured.work[0].state.viewports.front().width==640 && captured.work[0].state.stencil_ref==7);
     auto serialized=serialize(captured);
-    assert(serialized.find("[0,2,0,0,0,0,0,[11,22],null]")!=std::string::npos);
-    assert(serialized.find("[0,2,0,0,0,0,0,[99,22],null]")!=std::string::npos);
+    assert(serialized.find("[0,2,0,0,0,0,0,[11,22],null,[1,1],0]")!=std::string::npos);
+    assert(serialized.find("[0,2,0,0,0,0,0,[99,22],null,[1,1],0]")!=std::string::npos);
     state.set_root_signature(l,root2,false);
     state.record_work(l,WorkKind::Draw);
     assert(state.snapshot().work[2].state.graphics_bindings.empty());
@@ -166,6 +168,24 @@ int main() {
     auto inline_work=inline_constants.snapshot().work.back();
     assert(inline_work.accesses.empty());
     assert(inline_work.state.compute_bindings.at(2).constants.at(0)==17);
+    Runtime sparse;
+    auto sparse_list=sparse.create_object(ObjectKind::CommandList,94);
+    auto sparse_root=sparse.create_object(ObjectKind::RootSignature,95);
+    auto sparse_root2=sparse.create_object(ObjectKind::RootSignature,96);
+    sparse.set_root_signature(sparse_list,sparse_root,true);
+    sparse.set_root_constants(sparse_list,true,3,2,std::array<std::uint32_t,1>{49});
+    sparse.record_work(sparse_list,WorkKind::Dispatch);
+    auto sparse_binding=sparse.snapshot().work.back().state.compute_bindings.at(3);
+    assert(sparse_binding.constants.size()==3 && sparse_binding.constants[2]==49);
+    assert(sparse_binding.constants_known==std::vector<std::uint8_t>({0,0,1}));
+    assert(serialize(sparse.snapshot()).find("[0,0,49],null,[0,0,1],0")!=std::string::npos);
+    sparse.set_root_signature(sparse_list,sparse_root2,true);
+    sparse.record_work(sparse_list,WorkKind::Dispatch);
+    assert(sparse.snapshot().work.back().state.compute_bindings.empty());
+    sparse.set_root_constants(sparse_list,true,3,64,std::array<std::uint32_t,1>{1});
+    sparse.record_work(sparse_list,WorkKind::Dispatch);
+    assert(sparse.snapshot().incomplete);
+    assert(sparse.snapshot().work.back().state.compute_bindings.at(3).constants_overflow);
     // A descriptor changed after recording invalidates submitted access evidence.
     Runtime stale;
     auto q=stale.create_object(ObjectKind::Queue,30);
@@ -214,6 +234,15 @@ int main() {
     invalid_access.record_work(il,WorkKind::Copy,std::array<Access,1>{out_of_bounds});
     assert(invalid_access.snapshot().incomplete);
     assert(invalid_access.snapshot().work.front().accesses.front().certainty==Certainty::Unknown);
+    Runtime optional_interface;
+    optional_interface.note_coverage("frontend missing native-supported IID test");
+    optional_interface.note_coverage("frontend missing native-supported IID test");
+    auto optional_snapshot=optional_interface.snapshot();
+    assert(!optional_snapshot.incomplete && optional_snapshot.work.empty());
+    assert(optional_snapshot.interface_coverage.size()==1 && optional_snapshot.interface_coverage.front().second==2);
+    optional_interface.unsupported({},"unmodeled global API");
+    auto global_unknown=optional_interface.snapshot();
+    assert(global_unknown.incomplete && global_unknown.work.empty());
     (void)device;(void)sub2;
     std::cout<<"ARC2 IR tests passed\n";
 }

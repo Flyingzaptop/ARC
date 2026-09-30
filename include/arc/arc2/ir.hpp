@@ -25,7 +25,7 @@ struct ShaderBinding { BindingKind kind{BindingKind::Srv}; std::uint32_t space{}
 struct DescriptorRef { ObjectId heap{}; std::uint32_t index{}; std::uint64_t generation{}; friend bool operator==(DescriptorRef, DescriptorRef) = default; };
 struct Descriptor { DescriptorRef ref{}; ObjectId resource{}; ViewKind kind{ViewKind::Unknown}; bool valid{}; };
 struct Access { ObjectId resource{}; AccessKind kind{AccessKind::Unknown}; Certainty certainty{Certainty::Unknown}; std::uint64_t offset{}, bytes{}; std::string symbol; ObjectId descriptor_heap{}; std::uint64_t descriptor_first{}, descriptor_count{}; };
-struct RootBinding { enum class Kind : std::uint8_t { Table, Descriptor, Constants }; Kind kind{Kind::Table}; DescriptorRef table{}; ObjectId resource{}; std::uint64_t address{}; std::vector<std::uint32_t> constants; std::optional<BindingKind> descriptor_kind; };
+struct RootBinding { enum class Kind : std::uint8_t { Table, Descriptor, Constants }; Kind kind{Kind::Table}; DescriptorRef table{}; ObjectId resource{}; std::uint64_t address{}; std::vector<std::uint32_t> constants; std::optional<BindingKind> descriptor_kind; std::vector<std::uint8_t> constants_known; bool constants_overflow{}; };
 struct BufferBinding { ObjectId resource{}; std::uint64_t offset{}, bytes{}; };
 struct Rect { std::int32_t x{}, y{}, width{}, height{}; };
 struct Viewport { float x{}, y{}, width{}, height{}, min_depth{}, max_depth{}; };
@@ -78,7 +78,7 @@ struct ResourceShape { ResourceDimension dimension{ResourceDimension::Unknown}; 
 struct ResourceDescription { ObjectId resource{}, heap{}; std::uint64_t bytes{}, offset{}; ResourceShape shape; };
 struct ShaderDescription { ObjectId shader{}; std::vector<Access> declared; std::vector<ShaderBinding> bindings; };
 struct RootSignatureDescription { ObjectId root{}; std::vector<RootParameter> parameters; };
-struct IrSnapshot { std::vector<ObjectRecord> objects; std::vector<ResourceDescription> resources; std::vector<ShaderDescription> shaders; std::vector<RootSignatureDescription> root_signatures; std::vector<Descriptor> descriptors; std::vector<WorkItem> work; std::vector<Submission> submissions; std::vector<FenceEdge> fences; std::vector<Transition> transitions; std::vector<Present> presents; std::uint64_t total_work{}, dropped{}, uncertain_submissions{}; bool incomplete{}, history_truncated{}; };
+struct IrSnapshot { std::vector<ObjectRecord> objects; std::vector<ResourceDescription> resources; std::vector<ShaderDescription> shaders; std::vector<RootSignatureDescription> root_signatures; std::vector<Descriptor> descriptors; std::vector<WorkItem> work; std::vector<Submission> submissions; std::vector<FenceEdge> fences; std::vector<Transition> transitions; std::vector<Present> presents; std::vector<std::pair<std::string,std::uint64_t>> interface_coverage; std::uint64_t total_work{}, dropped{}, uncertain_submissions{}; bool incomplete{}, history_truncated{}; };
 std::string serialize(const IrSnapshot& snapshot);
 
 } // namespace arc::arc2
