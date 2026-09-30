@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <array>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -78,7 +79,7 @@ struct ResourceShape { ResourceDimension dimension{ResourceDimension::Unknown}; 
 struct ResourceDescription { ObjectId resource{}, heap{}; std::uint64_t bytes{}, offset{}; ResourceShape shape; };
 struct ShaderDescription { ObjectId shader{}; std::vector<Access> declared; std::vector<ShaderBinding> bindings; };
 struct RootSignatureDescription { ObjectId root{}; std::vector<RootParameter> parameters; };
-struct IrSnapshot { std::vector<ObjectRecord> objects; std::vector<ResourceDescription> resources; std::vector<ShaderDescription> shaders; std::vector<RootSignatureDescription> root_signatures; std::vector<Descriptor> descriptors; std::vector<WorkItem> work; std::vector<Submission> submissions; std::vector<FenceEdge> fences; std::vector<Transition> transitions; std::vector<Present> presents; std::vector<std::pair<std::string,std::uint64_t>> interface_coverage; std::uint64_t total_work{}, dropped{}, uncertain_submissions{}; bool incomplete{}, history_truncated{}; };
+struct IrSnapshot { std::vector<ObjectRecord> objects; std::vector<ResourceDescription> resources; std::vector<ShaderDescription> shaders; std::vector<RootSignatureDescription> root_signatures; std::vector<Descriptor> descriptors; std::vector<std::shared_ptr<const WorkItem>> work; std::vector<Submission> submissions; std::vector<FenceEdge> fences; std::vector<Transition> transitions; std::vector<Present> presents; std::vector<std::pair<std::string,std::uint64_t>> interface_coverage; std::uint64_t total_work{}, dropped{}, uncertain_submissions{}; bool incomplete{}, history_truncated{}; };
 std::string serialize(const IrSnapshot& snapshot);
 
 } // namespace arc::arc2

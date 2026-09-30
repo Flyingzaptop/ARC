@@ -32,8 +32,11 @@ int main() {
     assert(!r.record_clear(list,copied,color));
     assert(r.record_clear(list,copied,color));
     auto last=r.last_work(list); assert(last && last->rewrite_eligible);
+    auto clear_snapshot=r.snapshot();
+    assert(clear_snapshot.work.back()==last);
     r.touch_command(list);
     assert(!r.record_clear(list,copied,color));
+    assert(clear_snapshot.work.back()->rewrite_eligible && clear_snapshot.work.back()->id==last->id);
     r.set_root_table(list,false,0,overwritten);
     auto draw=r.record_work(list,WorkKind::Draw); assert(draw.value);
     r.close_command_list(list);
@@ -102,18 +105,22 @@ int main() {
     state.set_root_constants(l,false,0,0,constants);
     state.record_work(l,WorkKind::Draw);
     auto captured=state.snapshot();
-    assert(captured.work[0].state.graphics_bindings.at(0).constants[0]==11);
-    assert(captured.work[1].state.graphics_bindings.at(0).constants[0]==99);
-    assert(captured.work[0].state.fixed.raster_cull==3 && captured.work[0].state.raster_known);
-    assert(captured.work[0].state.viewports.front().width==640 && captured.work[0].state.stencil_ref==7);
+    assert(captured.work[0]->state.graphics_bindings.at(0).constants[0]==11);
+    assert(captured.work[1]->state.graphics_bindings.at(0).constants[0]==99);
+    assert(captured.work[0]->state.fixed.raster_cull==3 && captured.work[0]->state.raster_known);
+    assert(captured.work[0]->state.viewports.front().width==640 && captured.work[0]->state.stencil_ref==7);
     auto serialized=serialize(captured);
     assert(serialized.find("[0,2,0,0,0,0,0,[11,22],null,[1,1],0]")!=std::string::npos);
     assert(serialized.find("[0,2,0,0,0,0,0,[99,22],null,[1,1],0]")!=std::string::npos);
     state.set_root_signature(l,root2,false);
     state.record_work(l,WorkKind::Draw);
-    assert(state.snapshot().work[2].state.graphics_bindings.empty());
+    assert(state.snapshot().work[2]->state.graphics_bindings.empty());
+    state.reset_command_list(l,{});
+    state.record_work(l,WorkKind::Draw);
+    assert(captured.work[0]->state.graphics_bindings.at(0).constants[0]==11);
+    assert(captured.work[1]->state.graphics_bindings.at(0).constants[0]==99);
     state.execute_bundle(l,l);
-    assert(state.snapshot().work.back().accesses.front().certainty==Certainty::Symbolic);
+    assert(state.snapshot().work.back()->accesses.front().certainty==Certainty::Symbolic);
     auto shader=state.create_object(ObjectKind::Shader,24);
     Access dynamic{{},AccessKind::Read,Certainty::Symbolic,0,0,"space1:t0[dynamic]"};
     state.describe_shader(shader,std::array<Access,1>{dynamic});
@@ -121,7 +128,7 @@ int main() {
     state.set_pipeline(l,pso);
     state.record_work(l,WorkKind::Dispatch);
     auto shader_ir=state.snapshot();
-    assert(shader_ir.work.back().accesses.front().certainty==Certainty::Symbolic);
+    assert(shader_ir.work.back()->accesses.front().certainty==Certainty::Symbolic);
     assert(shader_ir.shaders.size()==1 && serialize(shader_ir).find("space1:t0[dynamic]")!=std::string::npos);
     Runtime ranges;
     auto rl=ranges.create_object(ObjectKind::CommandList,50);
@@ -140,7 +147,7 @@ int main() {
     ranges.set_root_signature(rl,rr,false);
     ranges.set_root_table(rl,false,0,DescriptorRef{rh,0,0});
     ranges.record_work(rl,WorkKind::Draw);
-    auto mapped=ranges.snapshot().work.back().accesses;
+    auto mapped=ranges.snapshot().work.back()->accesses;
     assert(mapped.size()>=2 && mapped[0].certainty==Certainty::Symbolic && mapped[0].descriptor_heap==rh);
     assert(mapped[0].descriptor_first==3 && mapped[0].descriptor_count==2);
     assert(mapped[1].descriptor_first==5 && mapped[1].descriptor_count==2);
@@ -148,7 +155,7 @@ int main() {
     // An overflowing table range stays unknown, never clipped into evidence.
     ranges.set_root_table(rl,false,0,DescriptorRef{rh,9,0});
     ranges.record_work(rl,WorkKind::Draw);
-    assert(ranges.snapshot().work.back().accesses[0].certainty==Certainty::Unknown);
+    assert(ranges.snapshot().work.back()->accesses[0].certainty==Certainty::Unknown);
     // A reflected b0 CBV can be supplied by inline root constants. The value
     // is captured, but it creates no GPU resource dependency.
     Runtime inline_constants;
@@ -166,8 +173,8 @@ int main() {
     inline_constants.set_root_constants(ic_list,true,2,0,std::array<std::uint32_t,1>{17});
     inline_constants.record_work(ic_list,WorkKind::Dispatch);
     auto inline_work=inline_constants.snapshot().work.back();
-    assert(inline_work.accesses.empty());
-    assert(inline_work.state.compute_bindings.at(2).constants.at(0)==17);
+    assert(inline_work->accesses.empty());
+    assert(inline_work->state.compute_bindings.at(2).constants.at(0)==17);
     Runtime sparse;
     auto sparse_list=sparse.create_object(ObjectKind::CommandList,94);
     auto sparse_root=sparse.create_object(ObjectKind::RootSignature,95);
@@ -175,17 +182,17 @@ int main() {
     sparse.set_root_signature(sparse_list,sparse_root,true);
     sparse.set_root_constants(sparse_list,true,3,2,std::array<std::uint32_t,1>{49});
     sparse.record_work(sparse_list,WorkKind::Dispatch);
-    auto sparse_binding=sparse.snapshot().work.back().state.compute_bindings.at(3);
+    auto sparse_binding=sparse.snapshot().work.back()->state.compute_bindings.at(3);
     assert(sparse_binding.constants.size()==3 && sparse_binding.constants[2]==49);
     assert(sparse_binding.constants_known==std::vector<std::uint8_t>({0,0,1}));
     assert(serialize(sparse.snapshot()).find("[0,0,49],null,[0,0,1],0")!=std::string::npos);
     sparse.set_root_signature(sparse_list,sparse_root2,true);
     sparse.record_work(sparse_list,WorkKind::Dispatch);
-    assert(sparse.snapshot().work.back().state.compute_bindings.empty());
+    assert(sparse.snapshot().work.back()->state.compute_bindings.empty());
     sparse.set_root_constants(sparse_list,true,3,64,std::array<std::uint32_t,1>{1});
     sparse.record_work(sparse_list,WorkKind::Dispatch);
     assert(sparse.snapshot().incomplete);
-    assert(sparse.snapshot().work.back().state.compute_bindings.at(3).constants_overflow);
+    assert(sparse.snapshot().work.back()->state.compute_bindings.at(3).constants_overflow);
     // A descriptor changed after recording invalidates submitted access evidence.
     Runtime stale;
     auto q=stale.create_object(ObjectKind::Queue,30);
@@ -195,12 +202,14 @@ int main() {
     auto d=stale.write_descriptor(h,0,res,ViewKind::Rtv);
     stale.set_targets(c,std::array<DescriptorRef,1>{d});
     stale.record_work(c,WorkKind::Draw);
+    auto prior_work=stale.snapshot().work.front();
     stale.close_command_list(c);
     stale.write_descriptor(h,0,res,ViewKind::Rtv);
     stale.submit(q,std::array<ObjectId,1>{c});
     auto invalid=stale.snapshot();
     assert(invalid.uncertain_submissions==1 && !invalid.submissions.front().complete);
-    assert(invalid.work.front().supported);
+    assert(invalid.work.front()->supported);
+    assert(invalid.work.front()==prior_work && prior_work->state.render_targets.front()==d);
     // Unmodeled commands permanently prohibit list-local clear elision until reset.
     Runtime poison;
     auto pl=poison.create_object(ObjectKind::CommandList,40);
@@ -208,8 +217,11 @@ int main() {
     auto pr=poison.create_object(ObjectKind::Resource,42);
     auto pd=poison.write_descriptor(ph,0,pr,ViewKind::Rtv);
     poison.unsupported(pl,"SetPredication");
+    auto unsupported_snapshot=poison.snapshot();
+    assert(unsupported_snapshot.work.back()->coverage=="SetPredication");
     assert(!poison.record_clear(pl,pd,color));
     assert(!poison.record_clear(pl,pd,color));
+    assert(unsupported_snapshot.work.back()->coverage=="SetPredication");
     poison.reset_command_list(pl,{});
     assert(!poison.record_clear(pl,pd,color));
     assert(poison.record_clear(pl,pd,color));
@@ -221,11 +233,36 @@ int main() {
     Runtime rolling(1,2);
     auto roll=rolling.create_object(ObjectKind::CommandList,60);
     rolling.record_work(roll,WorkKind::Draw);
+    auto original=rolling.snapshot();
+    std::weak_ptr<const WorkItem> retired=original.work.front();
     rolling.reset_command_list(roll,{});
     rolling.record_work(roll,WorkKind::Draw);
     auto rolled=rolling.snapshot();
-    assert(rolled.total_work==2 && rolled.work.size()==1 && rolled.work.front().id.value==2);
+    assert(rolled.total_work==2 && rolled.work.size()==1 && rolled.work.front()->id.value==2);
     assert(rolled.history_truncated && !rolled.incomplete);
+    assert(!retired.expired() && original.work.front()->id.value==1);
+    original.work.clear();
+    assert(retired.expired());
+    Runtime retained_events(8,2);
+    auto event_list=retained_events.create_object(ObjectKind::CommandList,61);
+    auto event_queue=retained_events.create_object(ObjectKind::Queue,62);
+    auto event_fence=retained_events.create_object(ObjectKind::Fence,63);
+    auto event_resource=retained_events.create_object(ObjectKind::Resource,64);
+    auto event_swapchain=retained_events.create_object(ObjectKind::Swapchain,65);
+    for(std::uint64_t i=1;i<=3;++i) {
+        retained_events.reset_command_list(event_list,{});
+        retained_events.barrier(event_list,event_resource,i-1,i);
+        retained_events.close_command_list(event_list);
+        retained_events.submit(event_queue,std::array<ObjectId,1>{event_list});
+        retained_events.signal(event_queue,event_fence,i);
+        retained_events.present(event_swapchain,event_queue);
+    }
+    auto tail=retained_events.snapshot();
+    assert(tail.submissions.size()==2 && tail.submissions.front().id.value==2 && tail.submissions.back().id.value==3);
+    assert(tail.transitions.size()==2 && tail.transitions.front().work.value==2 && tail.transitions.back().work.value==3);
+    assert(tail.fences.size()==2 && tail.fences.front().value==2 && tail.fences.back().value==3);
+    assert(tail.presents.size()==2 && tail.presents.front().sequence==2 && tail.presents.back().sequence==3);
+    assert(tail.dropped==4 && tail.history_truncated && !tail.incomplete);
     Runtime invalid_access;
     auto il=invalid_access.create_object(ObjectKind::CommandList,80);
     auto irsrc=invalid_access.create_object(ObjectKind::Resource,81);
@@ -233,7 +270,7 @@ int main() {
     Access out_of_bounds{irsrc,AccessKind::Read,Certainty::Known,12,8};
     invalid_access.record_work(il,WorkKind::Copy,std::array<Access,1>{out_of_bounds});
     assert(invalid_access.snapshot().incomplete);
-    assert(invalid_access.snapshot().work.front().accesses.front().certainty==Certainty::Unknown);
+    assert(invalid_access.snapshot().work.front()->accesses.front().certainty==Certainty::Unknown);
     Runtime optional_interface;
     optional_interface.note_coverage("frontend missing native-supported IID test");
     optional_interface.note_coverage("frontend missing native-supported IID test");

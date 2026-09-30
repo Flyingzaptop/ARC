@@ -59,18 +59,18 @@ public:
     void unsupported(ObjectId list, std::string_view api);
     void note_coverage(std::string_view api);
     void touch_command(ObjectId list);
-    std::optional<WorkItem> last_work(ObjectId list) const;
+    std::shared_ptr<const WorkItem> last_work(ObjectId list) const;
     std::uint64_t state_sequence(ObjectId list) const;
     IrSnapshot snapshot() const;
 private:
-    struct List { ObjectId allocator{}; std::uint64_t generation{1}, sequence{}; bool closed{}, poisoned{}; PipelineSnapshot state; std::vector<WorkId> work; std::vector<WorkItem> recorded; DescriptorRef last_clear_target{}; std::vector<std::uint32_t> last_clear_signature; bool last_was_clear{}; };
+    struct List { ObjectId allocator{}; std::uint64_t generation{1}, sequence{}; bool closed{}, poisoned{}; PipelineSnapshot state; std::vector<WorkId> work; std::vector<std::shared_ptr<const WorkItem>> recorded; DescriptorRef last_clear_target{}; std::vector<std::uint32_t> last_clear_signature; bool last_was_clear{}; };
     struct Resource { std::uint64_t bytes{}, offset{}; ObjectId heap{}; ResourceShape shape; };
     struct Slot { Descriptor current{}; std::uint64_t generation{}; };
     struct Key { ObjectId heap{}; std::uint32_t index{}; friend bool operator==(Key, Key) = default; };
     struct KeyHash { std::size_t operator()(Key k) const noexcept { return std::hash<std::uint64_t>{}(k.heap.value ^ (std::uint64_t(k.index) << 32)); } };
     bool valid(ObjectId id, ObjectKind kind) const;
     void touch(ObjectId id);
-    WorkId record_locked(ObjectId list, WorkKind kind, std::span<const Access> access);
+    WorkId record_locked(ObjectId list, WorkKind kind, std::span<const Access> access, bool rewrite_eligible = false, std::string_view coverage = {});
     void push_accesses(WorkItem& item);
     bool descriptors_current(const WorkItem& item) const;
     mutable std::mutex mutex_;
@@ -89,11 +89,11 @@ private:
     std::map<ObjectId, std::vector<ObjectId>> pipeline_shaders_;
     std::map<std::string, std::uint64_t> interface_coverage_;
     std::map<ObjectId, FixedPipelineState> pipeline_fixed_;
-    std::deque<WorkItem> work_;
-    std::vector<Submission> submissions_;
-    std::vector<FenceEdge> fences_;
-    std::vector<Transition> transitions_;
-    std::vector<Present> presents_;
+    std::deque<std::shared_ptr<const WorkItem>> work_;
+    std::deque<Submission> submissions_;
+    std::deque<FenceEdge> fences_;
+    std::deque<Transition> transitions_;
+    std::deque<Present> presents_;
     std::map<ObjectId, SubmissionId> queue_last_;
     std::map<ObjectId, std::map<std::uint64_t, SubmissionId>> fence_signals_;
     std::map<ObjectId, std::vector<SubmissionId>> queue_waits_;

@@ -35,7 +35,7 @@ void feed_resource_graph(const IrSnapshot& ir,arc::ResourceGraph& graph) {
         }
     }
     std::map<std::uint64_t,const WorkItem*> work;
-    for(const auto& w:ir.work) work[w.id.value]=&w;
+    for(const auto& w:ir.work) work[w->id.value]=w.get();
     for(const auto& sub:ir.submissions) {
         // A synthetic command per submission preserves list reuse and multiple
         // queue submissions without replaying mutable command-list state.
