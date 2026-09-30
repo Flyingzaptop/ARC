@@ -1,6 +1,7 @@
 #include "arc/arc2/runtime.hpp"
 #include "arc/arc2/bridge.hpp"
 #include <array>
+#include <bit>
 #include <cassert>
 #include <iostream>
 
@@ -280,6 +281,12 @@ int main() {
     optional_interface.unsupported({},"unmodeled global API");
     auto global_unknown=optional_interface.snapshot();
     assert(global_unknown.incomplete && global_unknown.work.empty());
+    Runtime floating;
+    auto fl=floating.create_object(ObjectKind::CommandList,300);
+    floating.set_blend_factor(fl,{std::bit_cast<float>(0x7fc00001u),std::bit_cast<float>(0x80000000u),std::bit_cast<float>(0x7f800000u),std::bit_cast<float>(0xff800000u)});
+    floating.record_work(fl,WorkKind::Draw);
+    auto encoded=serialize(floating.snapshot());
+    for(auto bits:{0x7fc00001u,0x80000000u,0x7f800000u,0xff800000u})assert(encoded.find(std::to_string(bits))!=std::string::npos);
     (void)device;(void)sub2;
     std::cout<<"ARC2 IR tests passed\n";
 }

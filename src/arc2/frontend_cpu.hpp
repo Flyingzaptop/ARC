@@ -48,15 +48,16 @@ decltype(auto) app_invoke(F&& function, Args&&... args) {
         return std::forward<F>(function)(std::forward<Args>(args)...);
     });
 }
-struct Frame { std::uint64_t swapchain{}, own_ns{}, excluded_native_ns{}, calls{}; };
+struct Frame { std::uint64_t swapchain{}, own_ns{}, excluded_native_ns{}, calls{}; std::int64_t qpc{}; };
 inline std::mutex frames_mutex;
 inline std::vector<Frame> frames;
 inline std::atomic<std::uint64_t> dropped_frames{};
 inline void record_present(std::uint64_t swapchain) noexcept {
     try {
         const auto snapshot = arc::InterceptCpuMeter::snapshot();
+        LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp);
         std::lock_guard lock(frames_mutex);
-        if (frames.size() < 65536) frames.push_back({swapchain, snapshot.own_ns, snapshot.excluded_native_ns, snapshot.calls});
+        if (frames.size() < 65536) frames.push_back({swapchain, snapshot.own_ns, snapshot.excluded_native_ns, snapshot.calls, stamp.QuadPart});
         else dropped_frames.fetch_add(1, std::memory_order_relaxed);
     } catch (...) {
         dropped_frames.fetch_add(1, std::memory_order_relaxed);
@@ -71,13 +72,13 @@ inline void save(const wchar_t* path) {
     if (!path) return;
     std::ofstream out(std::filesystem::path(std::wstring(path) + L".cpu.json"), std::ios::binary);
     if (!out) return;
-    out << "{\"schema\":\"arc2-cpu-diagnostic-v1\",\"interpretation\":\"aggregate interceptor wall cost across threads; not critical-path CPU frame time; excluded_native_ns is forwarded-call envelope and may contain nested ARC callbacks\",\"frame_columns\":[\"swapchain\",\"own_ns\",\"excluded_native_ns\",\"calls\"],\"frames\":[";
+    out << "{\"schema\":\"arc2-cpu-diagnostic-v1\",\"interpretation\":\"aggregate interceptor wall cost across threads; not critical-path CPU frame time; excluded_native_ns is forwarded-call envelope and may contain nested ARC callbacks\",\"frame_columns\":[\"swapchain\",\"own_ns\",\"excluded_native_ns\",\"calls\",\"qpc\"],\"frames\":[";
     { std::lock_guard lock(frames_mutex);
       bool first = true;
       for (const auto& frame : frames) {
           if (!first) out << ','; first = false;
           out << '[' << frame.swapchain << ',' << frame.own_ns << ','
-              << frame.excluded_native_ns << ',' << frame.calls << ']';
+              << frame.excluded_native_ns << ',' << frame.calls << ',' << frame.qpc << ']';
       }
     }
     out << "],\"dropped_frames\":" << dropped_frames.load(std::memory_order_relaxed) << ",\"sites\":[";
