@@ -1,0 +1,16 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+    Start 86: arc2-ir-tests
+1/4 Test #86: arc2-ir-tests ....................   Passed    0.03 sec
+    Start 87: arc2-native-passthrough
+2/4 Test #87: arc2-native-passthrough ..........   Passed    0.61 sec
+    Start 88: arc2-native-rollback
+3/4 Test #88: arc2-native-rollback .............   Passed    0.60 sec
+    Start 89: arc2-native-bindings
+4/4 Test #89: arc2-native-bindings .............   Passed    0.35 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+gpu    =   1.56 sec*proc (3 tests)
+
+Total Test time (real) =   1.65 sec

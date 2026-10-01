@@ -1,0 +1,16 @@
+diff --git a/SampleBase/src/SampleApp.cpp b/SampleBase/src/SampleApp.cpp
+index b185a02..abc2649 100644
+--- a/SampleBase/src/SampleApp.cpp
++++ b/SampleBase/src/SampleApp.cpp
+@@ -866,6 +866,11 @@ void SampleApp::WindowResize(int width, int height)
+ 
+ void SampleApp::Update(double CurrTime, double ElapsedTime)
+ {
++    if (std::getenv("ARC2_DILIGENT_FIXED_DT")) {
++        static unsigned long long arc2_frame = 0;
++        CurrTime = double(arc2_frame++) / 60.0;
++        ElapsedTime = 1.0 / 60.0;
++    }
+     m_CurrentTime = CurrTime;
+ 
+     UpdateAppSettings(false);

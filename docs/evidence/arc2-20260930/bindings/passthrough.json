@@ -1,0 +1,5 @@
+{
+  "returncode": 0,
+  "stdout": "PASS root tables/constants, same root signature, GPU readback, parent identity\n",
+  "stderr": ""
+}

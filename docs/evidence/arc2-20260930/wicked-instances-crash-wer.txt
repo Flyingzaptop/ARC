@@ -1,0 +1,11 @@
+Faulting application name: Tests.exe, version: 0.0.0.0, time stamp: 0x6abd1e42
+Faulting module name: D3D12Core.dll, version: 10.0.26100.5651, time stamp: 0x671a7d94
+Exception code: 0xc0000005
+Fault offset: 0x00000000001951ca
+Faulting process id: 0x31C0
+Faulting application start time: 0x1DD50E9F67BE2BF
+Faulting application path: C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\arc2-testbeds\wicked-build\Samples\Tests\Release\Tests.exe
+Faulting module path: C:\WINDOWS\SYSTEM32\D3D12Core.dll
+Report Id: 1e43173b-d3ea-4d1e-85a2-caa811d2becd
+Faulting package full name: 
+Faulting package-relative application ID: 

@@ -1,0 +1,13 @@
+{
+  "mode": "optimize",
+  "command": [
+    "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\Release\\arc2-native-lab.exe",
+    "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\docs\\evidence\\arc2-20260930\\native-lab\\modified",
+    "128",
+    "40",
+    "debug"
+  ],
+  "returncode": 0,
+  "stdout": "{\"status\":\"PASS\",\"frames\":40,\"resize\":true,\"width\":320,\"height\":180,\"display_fps_measured\":false}\n",
+  "stderr": ""
+}

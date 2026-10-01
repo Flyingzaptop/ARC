@@ -1,0 +1,18 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+    Start  7: arc-intercept-cpu-meter-tests
+1/5 Test  #7: arc-intercept-cpu-meter-tests ....   Passed    0.01 sec
+    Start 86: arc2-ir-tests
+2/5 Test #86: arc2-ir-tests ....................   Passed    0.01 sec
+    Start 87: arc2-native-passthrough
+3/5 Test #87: arc2-native-passthrough ..........   Passed    0.62 sec
+    Start 88: arc2-native-rollback
+4/5 Test #88: arc2-native-rollback .............   Passed    0.64 sec
+    Start 89: arc2-native-bindings
+5/5 Test #89: arc2-native-bindings .............   Passed    0.32 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Label Time Summary:
+gpu    =   1.58 sec*proc (3 tests)
+
+Total Test time (real) =   1.62 sec

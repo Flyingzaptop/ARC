@@ -1,0 +1,73 @@
+{
+  "schema": "arc2-testbed-inventory-v1",
+  "date": "2026-09-30",
+  "host": {
+    "os_build": "10.0.26200",
+    "cpu": "Intel Core i7-11800H, 8 cores, 16 logical processors",
+    "gpus": [
+      {"name": "NVIDIA GeForce RTX 3060 Laptop GPU", "driver_version": "32.0.16.1664"},
+      {"name": "Intel UHD Graphics", "driver_version": "30.0.101.2079"}
+    ],
+    "compiler": "MSVC 19.50.35729 x64",
+    "msbuild": "18.5.4.18101",
+    "cmake": "4.2.3-msvc3",
+    "disk_free_before_acquisition_bytes": 112189075456
+  },
+  "testbeds": [
+    {
+      "id": "wicked",
+      "source": "https://github.com/turanszkij/WickedEngine",
+      "pin": "df44c3db4c4927492bc9c791eac715d98d7ed091",
+      "path": "build/arc2-testbeds/WickedEngine",
+      "build": "Release Tests.exe built after CMake -DWICKED_EDITOR=OFF -DWICKED_TESTS=ON -DWICKED_IMGUI_EXAMPLE=OFF -DWICKED_WINDOWS_TEMPLATE=OFF",
+      "bootstrap": "compiled and linked",
+      "native_run": "pending",
+      "arc2_run": "pending"
+    },
+    {
+      "id": "cauldron",
+      "source": "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/releases/tag/v1.1.4",
+      "pin": "v1.1.4 archive sha256 0216556bfb0e243cec30004a2a98d38f4e3f7406cb7938e3c1b85c758e95d952",
+      "path": "build/arc2-testbeds/FidelityFX-1.1.4",
+      "build": "clean v1.1.4 archive extracted; SDK and DX12 BrixelizerGI host built ReleaseDX12",
+      "bootstrap": "creation-entry bootstrap compiled and linked",
+      "native_run": "pending",
+      "arc2_run": "pending"
+    },
+    {
+      "id": "miniengine",
+      "source": "https://github.com/microsoft/DirectX-Graphics-Samples",
+      "pin": "e5975f9b0744fc5096dd593ed72bf8f5c004164f",
+      "path": "build/arc2-testbeds/DirectX-Graphics-Samples",
+      "build": "Release ModelViewer.exe built with NuGet packages.config restore, vcpkg manifest and short subst X: path",
+      "bootstrap": "compiled and linked, plus native Present timer",
+      "native_run": "pending",
+      "arc2_run": "Sponza passthrough exit 0 after window close with 462 successful Present rows; ARC IR total_work 162519, dropped 100435, incomplete true, 61285 stored work items had known pipeline; no screenshot, no performance conclusion",
+      "failed_attempts": ["Sparse checkout lacked vcpkg/DirectX.vcpkg.props", "NuGet WinPixEventRuntime.1.0.240308001 missing until restore", "vcpkg directx-headers try-compile failed at deep C: path with cl C1083 Invalid argument; short X: path passed"]
+    },
+    {
+      "id": "diligent",
+      "source": "https://github.com/DiligentGraphics/DiligentEngine",
+      "pin": "e24e719488a2127b28878c3450d49cb76063c391",
+      "submodules": {"DiligentCore": "bcb8b11eecd0899962c330b798ebe3e786b02bbb", "DiligentFX": "2bf72b78741d99c8a3a47546c23e31992d72807b", "DiligentSamples": "7c96699bdd8392d1fbe5174a6c02e08f5109dd22", "DiligentTools": "c9a29cc7e85389a4fc45dc86e0dbd44f90af069f"},
+      "path": "build/arc2-testbeds/DiligentEngine",
+      "build": "GLTFViewer and Tutorial14_ComputeShader Release built with testbed-only ATL CComPtr compatibility include path; D3D12_SUPPORTED TRUE",
+      "bootstrap": "compiled and linked, plus native Present timer",
+      "native_run": "GLTFViewer DamagedHelmet captured 30 visually correct identical PNGs; sample archived as diligent-native-helmet.png, hashes in diligent-native-helmet-hashes.csv",
+      "arc2_run": "Same GLTFViewer executable and model with frontend DLL sha256 44f82da7e9e22bea591daca06cbff42e0d167affd5edbb409f0f3346fd98fc4c self-exited c0000005 before first Present or PNG; stderr/stdout and run manifest archived",
+      "failed_attempts": ["Nested SPIRV-Cross checkout needed git -c core.longpaths=true", "Visual Studio installer modify --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart --noUpdateInstaller exited 5007; installer log: quiet or passive commands should be run elevated from the beginning"]
+    },
+    {
+      "id": "bgfx",
+      "source": "https://github.com/bkaradzic/bgfx",
+      "pin": "b743ef8f7e875b3d89105f48f93a516b0631a0a3",
+      "dependencies": {"bx": "3b8366af830a5caf7d20df171190cda25a8e0858", "bimg": "de45e4f8d65f6da53709b23bf86627ddf8ca12b0"},
+      "path": "build/arc2-testbeds/bgfx",
+      "build": "Release example-17-drawstress and example-21-deferred built with genie vs2022 and MSBuild PlatformToolset=v145",
+      "bootstrap": "both executables compiled and linked, plus native Present timer",
+      "native_run": "Each launched with --d3d12 from examples/runtime, remained alive for 10 s, closed via CloseMainWindow, exit 0; frames and renderer identity not yet measured",
+      "arc2_run": "Initial DLL dd2b3bbb... crashed c0000005 at renderer_d3d12.cpp:10080; updated frontend reported seven Present rows in bounded rerun after GraphicsCommandList5/6 wrapper fix, image still unverified"
+    }
+  ],
+  "measurement_caveat": "No five-engine A/B/C/D result or frontend coverage verdict follows from this inventory."
+}

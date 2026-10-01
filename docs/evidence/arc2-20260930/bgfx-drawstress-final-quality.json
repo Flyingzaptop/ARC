@@ -1,0 +1,890 @@
+{
+  "schema": "arc2-capture-comparison-v1",
+  "before": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\bgfx-drawstress-final-A1\\images-png",
+  "modified": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\bgfx-drawstress-final-B\\images-png",
+  "after": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\bgfx-drawstress-final-A2\\images-png",
+  "tile_size": 32,
+  "scene_crop_xywh": [
+    320,
+    100,
+    620,
+    550
+  ],
+  "frames": 25,
+  "exact_images": 0,
+  "max_absolute_channel_error": 255,
+  "max_tile_mean_error": 109.26236979166667,
+  "max_scene_crop_channel_error": 255,
+  "max_temporal_difference_error": 510,
+  "per_frame": [
+    {
+      "frame": "frame-000.png",
+      "before_sha256": "7723553fa713e74c16db13922c8b0e556b29603e6f7d9215ccd95b26cf50912b",
+      "modified_sha256": "83ea944a7324d96f2db647b50b0dc7f6edb11395c4d2e4e93f723cd0f638604e",
+      "modified_error": {
+        "mean_absolute_channel_error": 15.004717881944444,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 108.77799479166667,
+        "changed_channels": 379661
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 39.852809384164225,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 108.578125,
+        "changed_channels": 370961
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.366707175925926,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 16.4833984375,
+        "changed_channels": 261325
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.3844760508308895,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 15.302408854166666,
+        "changed_channels": 256270
+      }
+    },
+    {
+      "frame": "frame-001.png",
+      "before_sha256": "9533339a5da1110d8bad8e43cde0879fe1aa8d276c5b4fca807ea77702807af0",
+      "modified_sha256": "7eb959e0047777df4c13284a4f5ec99bba5049b124d36bebf8cb90ecc6abb7b9",
+      "modified_error": {
+        "mean_absolute_channel_error": 14.912842158564814,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 107.619140625,
+        "changed_channels": 378713
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 39.586643206256106,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 108.29264322916667,
+        "changed_channels": 370073
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.360027488425926,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.8671875,
+        "changed_channels": 261411
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.3990273704789833,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 14.944661458333334,
+        "changed_channels": 256341
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.7799493634259259,
+        "max_absolute_channel_error": 461,
+        "max_tile_mean_error": 26.619140625,
+        "changed_channels": 256711
+      }
+    },
+    {
+      "frame": "frame-002.png",
+      "before_sha256": "f0d6666cd6125ae64c3354820d2097aee02f62e248902ce8eb884a3d3683aeeb",
+      "modified_sha256": "5d7f30b4b31cf51fd77fe2cfbdfa13a78d102a436431db93bfc54abdaf739a3a",
+      "modified_error": {
+        "mean_absolute_channel_error": 14.768947120949074,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 107.43359375,
+        "changed_channels": 378030
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 39.20051808406647,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 108.30826822916667,
+        "changed_channels": 369468
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.3587008101851852,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 15.248046875,
+        "changed_channels": 260849
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.3912394916911044,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 15.119791666666666,
+        "changed_channels": 256475
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.8306275318287037,
+        "max_absolute_channel_error": 491,
+        "max_tile_mean_error": 29.083984375,
+        "changed_channels": 256701
+      }
+    },
+    {
+      "frame": "frame-003.png",
+      "before_sha256": "8eaf1b1da06b2e43279190f6c42d240694b26f0dcf10130d32b32c2ddda14955",
+      "modified_sha256": "5699ec833e3ee9aede0729eb4db742ef827ca02df2414dfb62e52467d10b2d88",
+      "modified_error": {
+        "mean_absolute_channel_error": 14.562907262731482,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 107.99869791666667,
+        "changed_channels": 377397
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 38.65361388074291,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 109.01953125,
+        "changed_channels": 368883
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.453082320601852,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.86328125,
+        "changed_channels": 265034
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.6088817204301074,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 17.589518229166668,
+        "changed_channels": 259370
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.9262301070601853,
+        "max_absolute_channel_error": 510,
+        "max_tile_mean_error": 32.396484375,
+        "changed_channels": 332723
+      }
+    },
+    {
+      "frame": "frame-004.png",
+      "before_sha256": "1b88ea3bc948c28a0ea836a2371f8255408b0a5cde1ef3e663398e7a22d4bf57",
+      "modified_sha256": "85bb845276c01927ecb413803e1e4683184050f3e0ee74ac6b14e29d67361395",
+      "modified_error": {
+        "mean_absolute_channel_error": 14.381925636574074,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 109.26236979166667,
+        "changed_channels": 375656
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 38.290213098729225,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 110.3603515625,
+        "changed_channels": 367919
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.4720543981481482,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 21.3935546875,
+        "changed_channels": 263470
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.6668455522971652,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.004231770833332,
+        "changed_channels": 259294
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0729542824074074,
+        "max_absolute_channel_error": 495,
+        "max_tile_mean_error": 31.25390625,
+        "changed_channels": 299131
+      }
+    },
+    {
+      "frame": "frame-005.png",
+      "before_sha256": "e4295daaefeb86def61f65edf3733be532497f8a9572b8cf3b0d71db0b672c7e",
+      "modified_sha256": "d657cc75badb2be05a31fe4bfc29f9d27d21fb1212f48611a08b2aa07d5ecff6",
+      "modified_error": {
+        "mean_absolute_channel_error": 14.26849681712963,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 107.05598958333333,
+        "changed_channels": 374998
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 37.90958846529814,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 108.85904947916667,
+        "changed_channels": 366721
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.4845822482638888,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.3544921875,
+        "changed_channels": 265386
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.6902375366568916,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.841796875,
+        "changed_channels": 259413
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.031058304398148,
+        "max_absolute_channel_error": 510,
+        "max_tile_mean_error": 28.673828125,
+        "changed_channels": 292199
+      }
+    },
+    {
+      "frame": "frame-006.png",
+      "before_sha256": "d491ba9706242b7cd78f7014d0ffc7c8740bf1f7f6cacf2934b08843411d6a7c",
+      "modified_sha256": "15342dfb51795e2629629ef547c45543c1a14275ceefce7a0d7d817cbaa27b09",
+      "modified_error": {
+        "mean_absolute_channel_error": 14.108296802662037,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 104.36588541666667,
+        "changed_channels": 374069
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 37.46518279569892,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 106.01953125,
+        "changed_channels": 365675
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.5896903935185185,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.3544921875,
+        "changed_channels": 266492
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 3.9939403714565005,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.58984375,
+        "changed_channels": 262166
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0441106047453703,
+        "max_absolute_channel_error": 506,
+        "max_tile_mean_error": 26.3125,
+        "changed_channels": 301794
+      }
+    },
+    {
+      "frame": "frame-007.png",
+      "before_sha256": "a8701473254688f6cebe26546835c146aea0a1616c2a7b67d5d83c850aeb1d53",
+      "modified_sha256": "3168da05ea4d5f3fdf07442fbff046afed09471e8f9d2ba15a2a37c8a8544db8",
+      "modified_error": {
+        "mean_absolute_channel_error": 13.933845124421296,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 102.859375,
+        "changed_channels": 373475
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 36.9658963831867,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 103.25716145833333,
+        "changed_channels": 364985
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.7030211950231482,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 20.9169921875,
+        "changed_channels": 268536
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.168212121212121,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.106770833333332,
+        "changed_channels": 263298
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.046255787037037,
+        "max_absolute_channel_error": 510,
+        "max_tile_mean_error": 31.3671875,
+        "changed_channels": 300640
+      }
+    },
+    {
+      "frame": "frame-008.png",
+      "before_sha256": "766faa03c7ab6f20c3475abd184574625e22d315506cec111ec6a44c17d48a92",
+      "modified_sha256": "35ddaf1367e93845dff32af4701dbf6e43cb55ee5cd325eae460d86bd582e5d9",
+      "modified_error": {
+        "mean_absolute_channel_error": 13.77327980324074,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 101.80696614583333,
+        "changed_channels": 372419
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 36.52734799608993,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 103.275390625,
+        "changed_channels": 363758
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.6782544849537038,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 16.990234375,
+        "changed_channels": 267437
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.252077223851417,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.18359375,
+        "changed_channels": 263993
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.9979466869212963,
+        "max_absolute_channel_error": 469,
+        "max_tile_mean_error": 28.9658203125,
+        "changed_channels": 302724
+      }
+    },
+    {
+      "frame": "frame-009.png",
+      "before_sha256": "97653ccdd4b889243815202f53684f6788693dc57c448013a695ca375c2469fb",
+      "modified_sha256": "a15ad7ace5263e96c7004907af66eb3741e1fa7ec94133b6cfcd2f2bfacc91dc",
+      "modified_error": {
+        "mean_absolute_channel_error": 13.59702220775463,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 100.4169921875,
+        "changed_channels": 370436
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 36.07003714565005,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 102.05403645833333,
+        "changed_channels": 362480
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.7108315248842592,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.708984375,
+        "changed_channels": 269681
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.3084115347018574,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.84765625,
+        "changed_channels": 264767
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0009790943287038,
+        "max_absolute_channel_error": 504,
+        "max_tile_mean_error": 31.5068359375,
+        "changed_channels": 299613
+      }
+    },
+    {
+      "frame": "frame-010.png",
+      "before_sha256": "03ba0ed4afbf94a614c545c0227582d59e07fbf466cd70f7ac74b9bb1e2074d1",
+      "modified_sha256": "2660cbe90da60ba8611f412112d1763b04dd4be60f15f9b006bb06e1d01c1ab8",
+      "modified_error": {
+        "mean_absolute_channel_error": 13.40370261863426,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 97.69986979166667,
+        "changed_channels": 369013
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 35.55536754643206,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 98.77278645833333,
+        "changed_channels": 360763
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.745421730324074,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.1328125,
+        "changed_channels": 269690
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.413336265884653,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.43359375,
+        "changed_channels": 265286
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.9886024305555555,
+        "max_absolute_channel_error": 509,
+        "max_tile_mean_error": 29.5078125,
+        "changed_channels": 303644
+      }
+    },
+    {
+      "frame": "frame-011.png",
+      "before_sha256": "9c3db79d4bc15bc421a6a53b7934b271f7263bc533394a5dd8ce4d2fefa28eaa",
+      "modified_sha256": "a0a20dafd8cb5e5e81db62bb17be7277205ab3923cd12c0a84a8d1e0f7c5d314",
+      "modified_error": {
+        "mean_absolute_channel_error": 13.148243995949073,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 94.80143229166667,
+        "changed_channels": 366504
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 34.85970869990225,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 94.9443359375,
+        "changed_channels": 358050
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.776060836226852,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 21.470703125,
+        "changed_channels": 270284
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.487532746823069,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.708984375,
+        "changed_channels": 265448
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.1215183738425927,
+        "max_absolute_channel_error": 509,
+        "max_tile_mean_error": 29.2587890625,
+        "changed_channels": 304962
+      }
+    },
+    {
+      "frame": "frame-012.png",
+      "before_sha256": "4042a34e71aa2ed29367cb0acde093da4c93c27a9415b3391a04aeb01dcb151e",
+      "modified_sha256": "52ffdd5c2339783bc267f45a39cea29df92def8ed99d08c92192e52ccb3a55fc",
+      "modified_error": {
+        "mean_absolute_channel_error": 12.908919270833334,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 93.51985677083333,
+        "changed_channels": 362846
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 34.26423167155425,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 93.62044270833333,
+        "changed_channels": 354890
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.7937297453703704,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.684895833333332,
+        "changed_channels": 270679
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.5736373411534705,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.777669270833332,
+        "changed_channels": 266299
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.9773390480324075,
+        "max_absolute_channel_error": 508,
+        "max_tile_mean_error": 29.203125,
+        "changed_channels": 303540
+      }
+    },
+    {
+      "frame": "frame-013.png",
+      "before_sha256": "b54b568f4e4113be3475a7f66338aedc157de7b3289455f1a6cee674bf61607c",
+      "modified_sha256": "85ecb28c07776729aa4bb42c3fc3d6070cc2979709785e0ab60ee69174bd4a17",
+      "modified_error": {
+        "mean_absolute_channel_error": 12.705071976273148,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 91.74739583333333,
+        "changed_channels": 360549
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 33.6490596285435,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 92.61490885416667,
+        "changed_channels": 351807
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.810771484375,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 20.5634765625,
+        "changed_channels": 270788
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.625791788856305,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.296549479166668,
+        "changed_channels": 266615
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0101472077546296,
+        "max_absolute_channel_error": 506,
+        "max_tile_mean_error": 31.048828125,
+        "changed_channels": 304818
+      }
+    },
+    {
+      "frame": "frame-014.png",
+      "before_sha256": "ace964623774cacead7d974a782c48dddeeb3d014ff833ef7c0b63aef81fb8ba",
+      "modified_sha256": "781c94fbd78b270a25e2b46ec64076ef0888a26034d59abe12f0b16c5edc02e6",
+      "modified_error": {
+        "mean_absolute_channel_error": 12.46076316550926,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 90.06184895833333,
+        "changed_channels": 354770
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 33.01247018572825,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 90.08984375,
+        "changed_channels": 346700
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.816312572337963,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 20.19921875,
+        "changed_channels": 270620
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.678984359726295,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.6376953125,
+        "changed_channels": 266987
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.9498433883101852,
+        "max_absolute_channel_error": 499,
+        "max_tile_mean_error": 24.310546875,
+        "changed_channels": 300979
+      }
+    },
+    {
+      "frame": "frame-015.png",
+      "before_sha256": "2d2a0553855be7151d7a6a578c3b2ca7cca6668c87e454b38561fb9a0152082b",
+      "modified_sha256": "42c0e04be3df4837ed6d17077cf23b1e4220a190c705e6cedf4db3603b9e505e",
+      "modified_error": {
+        "mean_absolute_channel_error": 12.116130280671296,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 87.234375,
+        "changed_channels": 342003
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 32.091638318670576,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 87.35546875,
+        "changed_channels": 333891
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8465541811342592,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 20.199544270833332,
+        "changed_channels": 272270
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.708989247311828,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.388020833333332,
+        "changed_channels": 267536
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0401472077546297,
+        "max_absolute_channel_error": 501,
+        "max_tile_mean_error": 28.8056640625,
+        "changed_channels": 310394
+      }
+    },
+    {
+      "frame": "frame-016.png",
+      "before_sha256": "66566c0bf84c8d7241db08b6d6fec422d8e6e077c42883223212893164329470",
+      "modified_sha256": "b557ac0856d82ec48fc24efad62c80da9ce034c813761486dca2446f33d8d8da",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.801546223958333,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 85.4677734375,
+        "changed_channels": 319187
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 31.256782991202346,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 85.34440104166667,
+        "changed_channels": 311174
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.826669921875,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 20.716145833333332,
+        "changed_channels": 270829
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.7210879765395894,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.3857421875,
+        "changed_channels": 267802
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.9368200231481482,
+        "max_absolute_channel_error": 501,
+        "max_tile_mean_error": 34.3828125,
+        "changed_channels": 306335
+      }
+    },
+    {
+      "frame": "frame-017.png",
+      "before_sha256": "ea147dfbb78e1467e001884abd4630dc75c7654afff63cd3212b78b933b77615",
+      "modified_sha256": "7d25d62e42df53953104b86aff409664ac08b766c00fd41017934b522e5dcb98",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.647238498263889,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 83.744140625,
+        "changed_channels": 313067
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.790243401759533,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 82.92578125,
+        "changed_channels": 304682
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8471050347222222,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.960286458333332,
+        "changed_channels": 272414
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.717129032258065,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.357421875,
+        "changed_channels": 267629
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.8875,
+        "max_absolute_channel_error": 505,
+        "max_tile_mean_error": 27.1044921875,
+        "changed_channels": 302128
+      }
+    },
+    {
+      "frame": "frame-018.png",
+      "before_sha256": "27088ea818c3dbf0b339b509e65beefc247684a7a749e757568a90cdbacf7025",
+      "modified_sha256": "191d0a5edb3589cc519d8b933aa90ef35b6f9285cee2d8a74cc925a1f22698d4",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.658038194444444,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 83.44498697916667,
+        "changed_channels": 341178
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.878287390029325,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 82.51627604166667,
+        "changed_channels": 333549
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8156467013888888,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.713541666666668,
+        "changed_channels": 271169
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.6598269794721405,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.040690104166668,
+        "changed_channels": 267404
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.187320240162037,
+        "max_absolute_channel_error": 500,
+        "max_tile_mean_error": 26.2978515625,
+        "changed_channels": 317443
+      }
+    },
+    {
+      "frame": "frame-019.png",
+      "before_sha256": "99f97305e2c6de1cec75cffd7dab4127a80d6d266fd471ebad2447355f38936c",
+      "modified_sha256": "d4a460b7c65507a7e4213a6919fd992abff76c23e3fd5c474a94190861f1e0d9",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.626615668402778,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 83.04817708333333,
+        "changed_channels": 353062
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.752607038123166,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 82.65299479166667,
+        "changed_channels": 344941
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.821333912037037,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 21.6357421875,
+        "changed_channels": 273040
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.631112414467253,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.315104166666668,
+        "changed_channels": 267661
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.1747269241898148,
+        "max_absolute_channel_error": 503,
+        "max_tile_mean_error": 27.3056640625,
+        "changed_channels": 313174
+      }
+    },
+    {
+      "frame": "frame-020.png",
+      "before_sha256": "299d19db37ead7c4586fbf653d82bdefffb8a0854fd35d7885af3865ab4162da",
+      "modified_sha256": "84bb6833b3107082afa6493e2087c4692c3c3a9a072bb541b460239ba3f06818",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.526991825810185,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 82.44563802083333,
+        "changed_channels": 355916
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.500066471163244,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 83.07259114583333,
+        "changed_channels": 347807
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8087102141203704,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 20.943359375,
+        "changed_channels": 272625
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.556995112414468,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.015625,
+        "changed_channels": 267606
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0847243923611112,
+        "max_absolute_channel_error": 507,
+        "max_tile_mean_error": 34.279296875,
+        "changed_channels": 317490
+      }
+    },
+    {
+      "frame": "frame-021.png",
+      "before_sha256": "7a3a08f8236d17defca60f3623029ab4d8b042b06083a8b0f1bf53997c03f201",
+      "modified_sha256": "47903dfd22d51744c55e203cc1db9cd538afc6d31f0dcfeb8da2eb3cb4faaf5f",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.468137297453703,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 82.76953125,
+        "changed_channels": 357871
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.376127077223853,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 83.32649739583333,
+        "changed_channels": 349918
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8133478009259258,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.3408203125,
+        "changed_channels": 273746
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.616185728250245,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.145182291666668,
+        "changed_channels": 268190
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.024566333912037,
+        "max_absolute_channel_error": 483,
+        "max_tile_mean_error": 32.904296875,
+        "changed_channels": 299984
+      }
+    },
+    {
+      "frame": "frame-022.png",
+      "before_sha256": "f5fafe2a9d5e018137a12da51151b396ef82c18186e386f2fc8fe065b3a5eeda",
+      "modified_sha256": "241e56852f62e7c3a3b94a9dc8f0df88792f4020babd46827211426113f668ac",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.468871889467593,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 81.83333333333333,
+        "changed_channels": 358986
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.342613880742913,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 82.34114583333333,
+        "changed_channels": 350925
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8100643807870371,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 18.71484375,
+        "changed_channels": 271749
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.605127077223852,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.521809895833332,
+        "changed_channels": 268146
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.0774584056712964,
+        "max_absolute_channel_error": 488,
+        "max_tile_mean_error": 31.892578125,
+        "changed_channels": 302357
+      }
+    },
+    {
+      "frame": "frame-023.png",
+      "before_sha256": "2747511461a7d88d006934c9f79b7281c52ecfc4de33f75c6b4676d05c229801",
+      "modified_sha256": "26201fd06df778e96b2cdd2aa9e9cef9dc92f3e271c307258543dbe17c62dc19",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.417642144097222,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 80.83561197916667,
+        "changed_channels": 361246
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 30.196571847507332,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 81.77994791666667,
+        "changed_channels": 352999
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.8058695023148148,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.0302734375,
+        "changed_channels": 272836
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.60213880742913,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.5322265625,
+        "changed_channels": 267850
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 1.2893677662037037,
+        "max_absolute_channel_error": 510,
+        "max_tile_mean_error": 30.4423828125,
+        "changed_channels": 313253
+      }
+    },
+    {
+      "frame": "frame-024.png",
+      "before_sha256": "bf2810d9698397f4fe37474a0de9ce7f9a588a4e693550f59129a49d03640217",
+      "modified_sha256": "561857defe0f414da6ff43bef60dc3bc7a450ee49fc5e97b5bfdb59885b75931",
+      "modified_error": {
+        "mean_absolute_channel_error": 11.299352936921297,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 78.94010416666667,
+        "changed_channels": 360460
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 29.89336265884653,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 79.9599609375,
+        "changed_channels": 352465
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 1.7850159143518518,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.8125,
+        "changed_channels": 272058
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 4.581720430107527,
+        "max_absolute_channel_error": 255,
+        "max_tile_mean_error": 19.753580729166668,
+        "changed_channels": 267783
+      },
+      "temporal_difference_error": {
+        "mean_absolute_channel_error": 0.8743431712962964,
+        "max_absolute_channel_error": 510,
+        "max_tile_mean_error": 25.9765625,
+        "changed_channels": 305492
+      }
+    }
+  ]
+}

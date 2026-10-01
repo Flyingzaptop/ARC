@@ -1,0 +1,155 @@
+{
+  "scope": "owned compute binding fixture; graph node types differ and extra ARC2 barriers/queries are not extra GPU work",
+  "legacy": {
+    "graph_nodes": 3,
+    "unresolved_nodes": 3,
+    "access_edges": 6,
+    "graph_errors": 2,
+    "shader_access_complete": false,
+    "capture_state_complete": false,
+    "present_queue_known": false
+  },
+  "arc2": {
+    "recorded_work": 5,
+    "retained_work": 5,
+    "known_accesses": 2,
+    "symbolic_accesses": 14,
+    "unknown_accesses": 0,
+    "unknown_work": 0,
+    "declared_shaders": 1,
+    "root_signatures": 1,
+    "incomplete": false,
+    "history_truncated": false,
+    "uncertain_submissions": 0,
+    "dispatch_constants": [
+      [
+        [
+          0,
+          0,
+          14,
+          0,
+          1,
+          0,
+          0,
+          [],
+          null,
+          [],
+          0
+        ],
+        [
+          1,
+          0,
+          14,
+          2,
+          1,
+          0,
+          0,
+          [],
+          null,
+          [],
+          0
+        ],
+        [
+          2,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          [
+            17
+          ],
+          null,
+          [
+            1
+          ],
+          0
+        ]
+      ],
+      [
+        [
+          0,
+          0,
+          14,
+          0,
+          1,
+          0,
+          0,
+          [],
+          null,
+          [],
+          0
+        ],
+        [
+          1,
+          0,
+          14,
+          2,
+          1,
+          0,
+          0,
+          [],
+          null,
+          [],
+          0
+        ],
+        [
+          2,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          [
+            49
+          ],
+          null,
+          [
+            1
+          ],
+          0
+        ]
+      ]
+    ],
+    "heap_intervals": [
+      [
+        14,
+        0,
+        1
+      ],
+      [
+        14,
+        1,
+        1
+      ],
+      [
+        14,
+        2,
+        1
+      ],
+      [
+        14,
+        0,
+        1
+      ],
+      [
+        14,
+        1,
+        1
+      ],
+      [
+        14,
+        2,
+        1
+      ]
+    ]
+  },
+  "limits": [
+    "Known means recorded identity, not proof of all shader execution effects.",
+    "Symbolic declared bindings are not exact runtime indices.",
+    "Legacy unresolved-node and ARC2 access certainty are different units; no percentage-reduction claim.",
+    "This control has no Present; use native-lab frame control for Present links."
+  ]
+}

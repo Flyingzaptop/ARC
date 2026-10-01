@@ -1,0 +1,12 @@
+Log Worker thread started
+Log Worker thread ended
+Processor Name: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
+Processor Vendor: GenuineIntel
+Processor Family: 0x6
+Processor Group Count: 1
+NUMA Node Count: 1
+Processor Core Count: 8
+Logical Processor Count: 16
+Max Last Level Cache Size: 25165824 Bytes
+Max Processor Efficiency Class: 0x00
+MaxMhz: 2304 MHz

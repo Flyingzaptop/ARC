@@ -1,0 +1,32 @@
+{
+  "schema": "arc2-testbed-run-v1",
+  "testbed": "cauldron",
+  "workload": "brixelizer-gi",
+  "mode": "native",
+  "executable": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\FidelityFX-1.1.4\\bin\\FFX_BRIXELIZER_GI_DX12.exe",
+  "executable_sha256": "f4d74f8afc21e518bb817a993290f7b9df6281d07dd09c1dffcf4c41ac29d038",
+  "working_directory": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\FidelityFX-1.1.4\\bin",
+  "arguments": [
+    "-resolution",
+    "1280",
+    "720",
+    "-benchmark",
+    "duration=180",
+    "path=C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\cauldron-brix-A",
+    "json",
+    "-screenshot"
+  ],
+  "arc_commit": "f72b02c3f24127cbbaa5250d3a681e8eb425b949",
+  "frontend_dll": null,
+  "frontend_sha256": null,
+  "started_utc": "2026-09-30T14:05:37.5681346+00:00",
+  "finished_utc": "2026-09-30T14:05:43.8522526+00:00",
+  "pid": 10696,
+  "shutdown": "self-exit",
+  "exit_code": 0,
+  "arc_trace_exists": false,
+  "present_rows": 0,
+  "native_present_rows": 274,
+  "eligible_for_timing_analysis": true,
+  "failure": null
+}

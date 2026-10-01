@@ -1,0 +1,122 @@
+{
+  "schema": "arc2-counterbalanced-summary-v1",
+  "workload": "diligent-compute-new-quick",
+  "measurement": "successful application Present-return cadence; not display FPS",
+  "rounds": 1,
+  "mode_cadence_median_hz": {
+    "native": 1914.5086620460017,
+    "passthrough": 1691.143130181832
+  },
+  "runs": [
+    {
+      "round": 1,
+      "order_index": 1,
+      "mode": "native",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-compute-new-quick\\r01-native\\run.json",
+      "status": "measured",
+      "window_seconds": 12.025447,
+      "native_app_present": {
+        "successful_presents": 24763,
+        "present_return_cadence_hz": 2059.181690077738,
+        "present_interval_ms_p50": 0.3441,
+        "present_interval_ms_p95": 1.8503,
+        "present_interval_ms_p99": 2.0780779999999996,
+        "present_call_ms_p50": 0.0982,
+        "present_call_ms_p95": 0.1426,
+        "present_call_ms_p99": 0.1755
+      },
+      "frontend_present": null,
+      "frontend_present_wrapper_us_p50": null,
+      "cpu_processing_to_submission_ms": null,
+      "gpu_frame_span_ms": null,
+      "display_fps": null
+    },
+    {
+      "round": 1,
+      "order_index": 2,
+      "mode": "passthrough",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-compute-new-quick\\r02-passthrough\\run.json",
+      "status": "measured",
+      "window_seconds": 12.0089981,
+      "native_app_present": {
+        "successful_presents": 20696,
+        "present_return_cadence_hz": 1723.3462435935883,
+        "present_interval_ms_p50": 0.4543,
+        "present_interval_ms_p95": 1.9193,
+        "present_interval_ms_p99": 2.139448000000001,
+        "present_call_ms_p50": 0.1045,
+        "present_call_ms_p95": 0.1551,
+        "present_call_ms_p99": 0.1843
+      },
+      "frontend_present": {
+        "successful_presents": 20696,
+        "present_return_cadence_hz": 1723.3462292426714,
+        "present_interval_ms_p50": 0.4543,
+        "present_interval_ms_p95": 1.91933,
+        "present_interval_ms_p99": 2.1394540000000015,
+        "present_call_ms_p50": 0.1031,
+        "present_call_ms_p95": 0.1538,
+        "present_call_ms_p99": 0.18270499999999992
+      },
+      "frontend_present_wrapper_us_p50": 2.1,
+      "cpu_processing_to_submission_ms": null,
+      "gpu_frame_span_ms": null,
+      "display_fps": null
+    },
+    {
+      "round": 1,
+      "order_index": 3,
+      "mode": "passthrough",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-compute-new-quick\\r03-passthrough\\run.json",
+      "status": "measured",
+      "window_seconds": 12.0240032,
+      "native_app_present": {
+        "successful_presents": 19944,
+        "present_return_cadence_hz": 1658.940016770076,
+        "present_interval_ms_p50": 0.4558,
+        "present_interval_ms_p95": 2.1095799999999993,
+        "present_interval_ms_p99": 2.3363479999999988,
+        "present_call_ms_p50": 0.1023,
+        "present_call_ms_p95": 0.1509,
+        "present_call_ms_p99": 0.17935699999999996
+      },
+      "frontend_present": {
+        "successful_presents": 19944,
+        "present_return_cadence_hz": 1658.9400305698152,
+        "present_interval_ms_p50": 0.4559,
+        "present_interval_ms_p95": 2.109759999999999,
+        "present_interval_ms_p99": 2.3361159999999996,
+        "present_call_ms_p50": 0.101,
+        "present_call_ms_p95": 0.1494,
+        "present_call_ms_p99": 0.17791399999999993
+      },
+      "frontend_present_wrapper_us_p50": 2.2,
+      "cpu_processing_to_submission_ms": null,
+      "gpu_frame_span_ms": null,
+      "display_fps": null
+    },
+    {
+      "round": 1,
+      "order_index": 4,
+      "mode": "native",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-compute-new-quick\\r04-native\\run.json",
+      "status": "measured",
+      "window_seconds": 12.0194083,
+      "native_app_present": {
+        "successful_presents": 21272,
+        "present_return_cadence_hz": 1769.8356340142655,
+        "present_interval_ms_p50": 0.364,
+        "present_interval_ms_p95": 2.42395,
+        "present_interval_ms_p99": 2.62936,
+        "present_call_ms_p50": 0.1005,
+        "present_call_ms_p95": 0.1463,
+        "present_call_ms_p99": 0.1763
+      },
+      "frontend_present": null,
+      "frontend_present_wrapper_us_p50": null,
+      "cpu_processing_to_submission_ms": null,
+      "gpu_frame_span_ms": null,
+      "display_fps": null
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+diff --git a/Samples/Tests/Tests.cpp b/Samples/Tests/Tests.cpp
+index b957a31..d3f3d7b 100644
+--- a/Samples/Tests/Tests.cpp
++++ b/Samples/Tests/Tests.cpp
+@@ -40,6 +40,11 @@ wi::SpriteFont
+ 	s_l, s_r, // Stick Axes: Left Stick, Right Stick
+ 	i_led; // Controller LED status
+ 
++bool Tests::SaveArc2Capture(const char* path)
++{
++    return wi::helper::saveTextureToFile(renderer.GetRenderResult3D(), path);
++}
++
+ void Tests::Initialize()
+ {
+     wi::Application::Initialize();
+@@ -427,8 +432,20 @@ void TestsRenderer::Load()
+ 		}
+ 
+ 	});
+-	testSelector.SetSelected(0);
++	char arc2_scene[32]{};
++	GetEnvironmentVariableA("ARC2_WICKED_SCENE", arc2_scene, sizeof(arc2_scene));
++	if (strcmp(arc2_scene, "instances") == 0)
++		testSelector.SetSelectedByUserdata(INSTANCESTEST);
++	else if (strcmp(arc2_scene, "visibility") == 0)
++		testSelector.SetSelectedByUserdata(SHADOWSTEST);
++	else
++		testSelector.SetSelected(0);
+ 	gui.AddWidget(&testSelector);
++    if (GetEnvironmentVariableA("ARC2_WICKED_QUALITY_FIXED", nullptr, 0) > 0) {
++        wi::renderer::SetTemporalAAEnabled(false);
++        setEyeAdaptionEnabled(false);
++        setExposure(1.0f);
++    }
+ 
+ 	// Set a theme globally:
+ 	{
+@@ -622,6 +639,16 @@ void TestsRenderer::Update(float dt)
+ 
+ 	}
+ 
++    if (userdata == SHADOWSTEST) {
++        // Deterministic camera translation; no ARC metadata or callbacks.
++        static unsigned arc2_frame = 0;
++        const float phase = float(arc2_frame++ % 600) * 0.012f;
++        TransformComponent route;
++        route.Translate(XMFLOAT3(std::sin(phase) * 1.5f, 2.0f,
++                                 -4.5f + std::cos(phase) * 0.5f));
++        route.UpdateTransform();
++        wi::scene::GetCamera().TransformCamera(route);
++    }
+     RenderPath3D::Update(dt);
+ }
+ 
+diff --git a/Samples/Tests/Tests.h b/Samples/Tests/Tests.h
+index 10bc5f1..855cd99 100644
+--- a/Samples/Tests/Tests.h
++++ b/Samples/Tests/Tests.h
+@@ -22,5 +22,6 @@ class Tests : public wi::Application
+ 	TestsRenderer renderer;
+ public:
+ 	void Initialize() override;
++    bool SaveArc2Capture(const char* path);
+ };
+ 
+diff --git a/Samples/Tests/main_Windows.cpp b/Samples/Tests/main_Windows.cpp
+index 8f0360d..434915b 100644
+--- a/Samples/Tests/main_Windows.cpp
++++ b/Samples/Tests/main_Windows.cpp
+@@ -2,6 +2,7 @@
+ //
+ 
+ #include "stdafx.h"
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/include/arc/arc2/bootstrap_loader.hpp"
+ #include "main_Windows.h"
+ 
+ #define MAX_LOADSTRING 100
+@@ -47,6 +48,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WICKEDENGINETESTS));
+ 
+ 
++	char arc2_frames_text[32]{};
++	GetEnvironmentVariableA("ARC2_WICKED_FRAMES", arc2_frames_text, sizeof(arc2_frames_text));
++	const unsigned arc2_max_frames = static_cast<unsigned>(atoi(arc2_frames_text));
++	unsigned arc2_frames = 0;
++    char arc2_sequence_dir[32768]{};
++    GetEnvironmentVariableA("ARC2_WICKED_CAPTURE_DIR", arc2_sequence_dir, sizeof(arc2_sequence_dir));
++    bool arc2_sequence_ok = true;
+ 	MSG msg = { 0 };
+ 	while (msg.message != WM_QUIT)
+ 	{
+@@ -57,6 +65,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+ 		else {
+ 
+ 			tests.Run();
++            if (arc2_sequence_dir[0] && arc2_frames >= 179 && arc2_frames < 204) {
++                char arc2_path[32768]{};
++                sprintf_s(arc2_path, "%s/frame%03u.png", arc2_sequence_dir, arc2_frames - 179);
++                arc2_sequence_ok &= tests.SaveArc2Capture(arc2_path);
++            }
++			if (arc2_max_frames && ++arc2_frames >= arc2_max_frames)
++			{
++				char arc2_capture[32768]{};
++				GetEnvironmentVariableA("ARC2_WICKED_SCREENSHOT", arc2_capture, sizeof(arc2_capture));
++				const bool arc2_capture_ok = !arc2_capture[0] || tests.SaveArc2Capture(arc2_capture);
++				arc2_bootstrap::flush();
++				PostQuitMessage((arc2_capture_ok && arc2_sequence_ok) ? 0 : 2);
++			}
+ 
+ 		}
+ 	}
+diff --git a/WickedEngine/wiApplication.cpp b/WickedEngine/wiApplication.cpp
+index 44f9778..cb8b1dd 100644
+--- a/WickedEngine/wiApplication.cpp
++++ b/WickedEngine/wiApplication.cpp
+@@ -278,6 +278,8 @@ namespace wi
+ 
+ 		// avoid instability caused by large delta time
+ 		deltaTime = clamp(deltaTime, 0.0f, 0.5f);
++        if (GetEnvironmentVariableA("ARC2_WICKED_FIXED_DT", nullptr, 0) > 0)
++            deltaTime = 1.0f / 60.0f; // Deterministic testbed simulation step only.
+ 
+ 		wi::input::Update(window, canvas);
+ 
+diff --git a/WickedEngine/wiGraphicsDevice_DX12.cpp b/WickedEngine/wiGraphicsDevice_DX12.cpp
+index 6d7fa55..80b180f 100644
+--- a/WickedEngine/wiGraphicsDevice_DX12.cpp
++++ b/WickedEngine/wiGraphicsDevice_DX12.cpp
+@@ -1,4 +1,11 @@
+ #include "wiGraphicsDevice_DX12.h"
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/scripts/arc2/native-present-timer.hpp"
++// ARC2 testbed bootstrap (creation entry points only).
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/include/arc/arc2/bootstrap.hpp"
++#undef D3D12CreateDevice
++#undef CreateDXGIFactory
++#undef CreateDXGIFactory1
++#undef CreateDXGIFactory2
+ 
+ #ifdef WICKEDENGINE_BUILD_DX12
+ #include "wiHelper.h"
+@@ -2258,6 +2265,7 @@ std::mutex queue_locker;
+ 		}
+ 
+ 		CreateDXGIFactory2 = (PFN_CREATE_DXGI_FACTORY_2)wiGetProcAddress(dxgi, "CreateDXGIFactory2");
++		if (arc2_bootstrap::loader().requested) CreateDXGIFactory2 = &arc2_bootstrap::factory2;
+ 		assert(CreateDXGIFactory2 != nullptr);
+ 		if (CreateDXGIFactory2 == nullptr)
+ 		{
+@@ -2276,6 +2284,7 @@ std::mutex queue_locker;
+ #endif
+ 
+ 		D3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)wiGetProcAddress(dx12, "D3D12CreateDevice");
++			if (arc2_bootstrap::loader().requested) D3D12CreateDevice = &arc2_bootstrap::device;
+ 		assert(D3D12CreateDevice != nullptr);
+ 		if (D3D12CreateDevice == nullptr)
+ 		{
+@@ -5491,7 +5500,9 @@ std::mutex queue_locker;
+ 						presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+ 					}
+ 
++					const auto arc2_present_begin = arc2_native_present::now();
+ 					HRESULT hr = dx12_check(swapchain_internal->swapChain->Present(swapchain->desc.vsync, presentFlags));
++					arc2_native_present::record(arc2_present_begin, hr, presentFlags);
+ 
+ 					// If the device was reset we must completely reinitialize the renderer.
+ 					if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+diff --git a/WickedEngine/wiRandom.cpp b/WickedEngine/wiRandom.cpp
+index 778ca72..dac6301 100644
+--- a/WickedEngine/wiRandom.cpp
++++ b/WickedEngine/wiRandom.cpp
+@@ -1,10 +1,14 @@
+ #include "wiRandom.h"
+ 
+ #include <time.h>
++#include <cstdlib>
+ 
+ namespace wi::random
+ {
+-	static thread_local RNG rng(time(nullptr));
++	static thread_local RNG rng([] {
++        const char* value = std::getenv("ARC2_WICKED_SEED");
++        return value && *value ? uint64_t(std::strtoull(value, nullptr, 10)) : uint64_t(time(nullptr));
++    }());
+ 
+ 	int GetRandom(int minValue, int maxValue)
+ 	{

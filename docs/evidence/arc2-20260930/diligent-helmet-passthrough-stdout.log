@@ -1,0 +1,6 @@
+[39mDiligent Engine: Info: Using adapter 0: 'NVIDIA GeForce RTX 3060 Laptop GPU'
+[39m[39mDiligent Engine: Info: D3D12-capable adapter found: NVIDIA GeForce RTX 3060 Laptop GPU (5994 MB)
+[39m[39mDiligent Engine: Info: Created dynamic memory page. Size: 1.00 MB; GPU virtual address 0x80e0000
+[39m[39mDiligent Engine: Info: Max device shader model: 6_7
+[39m[91mDiligent Engine: ERROR: Failed to initialize Diligent Engine.
+[39m

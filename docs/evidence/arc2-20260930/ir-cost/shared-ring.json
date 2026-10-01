@@ -1,0 +1,20 @@
+{
+  "scope": "CPU-only IR retention cost, not game frame time",
+  "samples": [
+    {
+      "returncode": 0,
+      "stdout": "{\"iterations\":12000,\"history_capacity\":4096,\"early_mean_ms\":0.004091,\"saturated_mean_ms\":0.00247797}\n",
+      "stderr": ""
+    },
+    {
+      "returncode": 0,
+      "stdout": "{\"iterations\":12000,\"history_capacity\":4096,\"early_mean_ms\":0.006622,\"saturated_mean_ms\":0.00251935}\n",
+      "stderr": ""
+    },
+    {
+      "returncode": 0,
+      "stdout": "{\"iterations\":12000,\"history_capacity\":4096,\"early_mean_ms\":0.0037602,\"saturated_mean_ms\":0.00267822}\n",
+      "stderr": ""
+    }
+  ]
+}

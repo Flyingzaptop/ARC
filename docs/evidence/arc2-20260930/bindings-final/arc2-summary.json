@@ -1,0 +1,180 @@
+{
+  "schema": "arc2-ir-dump-summary-v1",
+  "dump_sha256": "d7d7c4973e08c2c8f2b29197925bf89aa1197c1e99d09a56e2b90b8e0226ae5c",
+  "dump_bytes": 7676,
+  "global_total_work": 5,
+  "retained_work": 5,
+  "dropped_count_reported": 0,
+  "history_truncated": false,
+  "incomplete": false,
+  "uncertain_submissions": 0,
+  "objects": 15,
+  "resources": 5,
+  "descriptors": 3,
+  "presents": 0,
+  "shaders": [
+    [
+      7,
+      [
+        [
+          0,
+          0,
+          1,
+          0,
+          1,
+          "cs:5a8a1e4a625408d8edff96651c62f719fc1451532e0e425bd3f2e9999f43c375:space=0,register=0,count=1,type=2,indexing=may-access-declared-range",
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          1,
+          1,
+          "cs:5a8a1e4a625408d8edff96651c62f719fc1451532e0e425bd3f2e9999f43c375:space=0,register=1,count=1,type=2,indexing=may-access-declared-range",
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          1,
+          0,
+          1,
+          "cs:5a8a1e4a625408d8edff96651c62f719fc1451532e0e425bd3f2e9999f43c375:space=0,register=0,count=1,type=4,indexing=may-access-declared-range",
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          1,
+          "cs:5a8a1e4a625408d8edff96651c62f719fc1451532e0e425bd3f2e9999f43c375:space=0,register=0,count=1,type=0,indexing=may-access-declared-range",
+          0,
+          0,
+          0
+        ]
+      ],
+      [
+        [
+          1,
+          0,
+          0,
+          1,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          1,
+          1,
+          1,
+          0
+        ],
+        [
+          2,
+          0,
+          0,
+          1,
+          1,
+          2
+        ],
+        [
+          0,
+          0,
+          0,
+          1,
+          1,
+          0
+        ]
+      ]
+    ]
+  ],
+  "root_signatures": [
+    [
+      5,
+      [
+        [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          [
+            [
+              1,
+              0,
+              0,
+              2,
+              0
+            ]
+          ]
+        ],
+        [
+          1,
+          0,
+          1,
+          0,
+          0,
+          0,
+          [
+            [
+              2,
+              0,
+              0,
+              1,
+              0
+            ]
+          ]
+        ],
+        [
+          2,
+          1,
+          1,
+          0,
+          0,
+          1,
+          []
+        ]
+      ]
+    ]
+  ],
+  "accepted_actions": 0,
+  "rejected_actions": 0,
+  "interface_coverage": [],
+  "retained_history_statistics": {
+    "work_kind_counts": {
+      "2": 2,
+      "7": 2,
+      "4": 1
+    },
+    "known_pipeline": 5,
+    "eligible": 0,
+    "unsupported": 0,
+    "unknown_coverage": 0
+  },
+  "retained_semantic_statistics": {
+    "access_edges": 16,
+    "known_access_edges": 2,
+    "symbolic_access_edges": 14,
+    "unknown_access_edges": 0,
+    "unknown_access_fraction": 0.0,
+    "symbolic_or_unknown_access_fraction": 0.875,
+    "descriptor_interval_edges": 6,
+    "present_linked_retained_work": 0,
+    "present_linked_unretained_work_ids": 0,
+    "missing_reachable_submission_ids": 0,
+    "recording_consistent_submissions": 1,
+    "dependency_closure_proven": null,
+    "scope": "retained API-intent records; certainty is not executed shader effects; Present links are recorded submission reachability, not full resource-dependency closure"
+  },
+  "statistics_limit": "work-kind and pipeline counts describe only retained history when history_truncated=true"
+}

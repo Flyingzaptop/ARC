@@ -1,0 +1,38 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.14.3",
+  "commands": [
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "f72b02c3f24127cbbaa5250d3a681e8eb425b949\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version,memory.total,power.limit,temperature.gpu,power.draw,clocks.gr,clocks.mem",
+        "--format=csv"
+      ],
+      "returncode": 0,
+      "stdout": "name, driver_version, memory.total [MiB], power.limit [W], temperature.gpu, power.draw [W], clocks.current.graphics [MHz], clocks.current.memory [MHz]\nNVIDIA GeForce RTX 3060 Laptop GPU, 616.64, 6144 MiB, [N/A], 42, 11.98 W, 210 MHz, 405 MHz\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe",
+        "--version"
+      ],
+      "returncode": 0,
+      "stdout": "cmake version 4.2.3-msvc3\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).\n",
+      "stderr": ""
+    }
+  ],
+  "baseline_commit": "f72b02c3f24127cbbaa5250d3a681e8eb425b949",
+  "freeze_tag": "freeze/pre-arc2-master-20260930",
+  "gpu_power_limit_requirement": null
+}

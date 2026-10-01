@@ -1,0 +1,61 @@
+Test project C:/Users/r3d_flzp/Desktop/ARC-perceptual/build
+      Start 29: arc-multisession-stress
+ 1/26 Test #29: arc-multisession-stress ...........................   Passed    5.61 sec
+      Start 31: arc-gpu-attribution-native
+ 2/26 Test #31: arc-gpu-attribution-native ........................   Passed    0.34 sec
+      Start 32: arc-dx12-enhanced-tests
+ 3/26 Test #32: arc-dx12-enhanced-tests ...........................   Passed    0.34 sec
+      Start 33: dx12-memory-pressure
+ 4/26 Test #33: dx12-memory-pressure ..............................   Passed    0.45 sec
+      Start 34: dx12-texture-pressure
+ 5/26 Test #34: dx12-texture-pressure .............................   Passed    0.47 sec
+      Start 35: dx12-mixed-resources
+ 6/26 Test #35: dx12-mixed-resources ..............................   Passed    0.49 sec
+      Start 36: dx12-residency-lab-baseline
+ 7/26 Test #36: dx12-residency-lab-baseline .......................   Passed    2.21 sec
+      Start 37: dx12-residency-lab-arc
+ 8/26 Test #37: dx12-residency-lab-arc ............................   Passed    2.21 sec
+      Start 38: dx12-residency-lab-auto
+ 9/26 Test #38: dx12-residency-lab-auto ...........................   Passed    2.15 sec
+      Start 39: dx12-tiled-texture-lab
+10/26 Test #39: dx12-tiled-texture-lab ............................   Passed    0.68 sec
+      Start 40: dx12-global-memory-lab
+11/26 Test #40: dx12-global-memory-lab ............................   Passed    0.92 sec
+      Start 41: dx12-live-runtime-lab
+12/26 Test #41: dx12-live-runtime-lab .............................   Passed    0.71 sec
+      Start 42: dx12-runtime-event-bridge-lab
+13/26 Test #42: dx12-runtime-event-bridge-lab .....................   Passed    0.31 sec
+      Start 43: dx12-runtime-backend-lab
+14/26 Test #43: dx12-runtime-backend-lab ..........................   Passed    0.30 sec
+      Start 49: dx12-adaptive-quality-benchmark-smoke
+15/26 Test #49: dx12-adaptive-quality-benchmark-smoke .............   Passed    6.37 sec
+      Start 50: dx12-mixed-graphics-benchmark-smoke
+16/26 Test #50: dx12-mixed-graphics-benchmark-smoke ...............   Passed    8.40 sec
+      Start 53: dx12-closed-loop-mixed-graphics-benchmark-smoke
+17/26 Test #53: dx12-closed-loop-mixed-graphics-benchmark-smoke ...   Passed   13.09 sec
+      Start 57: dx12-mega-stage-a-benchmark-smoke
+18/26 Test #57: dx12-mega-stage-a-benchmark-smoke .................   Passed   61.08 sec
+      Start 60: dx12-mega-stage-b-host-renderer-smoke
+19/26 Test #60: dx12-mega-stage-b-host-renderer-smoke .............   Passed   54.58 sec
+      Start 64: arc-temporal-visibility-native
+20/26 Test #64: arc-temporal-visibility-native ....................   Passed    0.36 sec
+      Start 66: arc-perceptual-native
+21/26 Test #66: arc-perceptual-native .............................   Passed    0.50 sec
+      Start 71: arc-generic-gpu-control-native-tests
+22/26 Test #71: arc-generic-gpu-control-native-tests ..............   Passed    0.48 sec
+      Start 72: arc-generic-probe-native-tests
+23/26 Test #72: arc-generic-probe-native-tests ....................   Passed    0.63 sec
+      Start 87: arc2-native-passthrough
+24/26 Test #87: arc2-native-passthrough ...........................   Passed    0.57 sec
+      Start 88: arc2-native-rollback
+25/26 Test #88: arc2-native-rollback ..............................   Passed    0.60 sec
+      Start 89: arc2-native-bindings
+26/26 Test #89: arc2-native-bindings ..............................   Passed    0.35 sec
+
+100% tests passed, 0 tests failed out of 26
+
+Label Time Summary:
+gpu       = 158.59 sec*proc (25 tests)
+stress    =   5.61 sec*proc (1 test)
+
+Total Test time (real) = 164.79 sec

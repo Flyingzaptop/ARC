@@ -1,0 +1,14 @@
+{
+  "schema": "arc2-command-payload-check-v1",
+  "passed": true,
+  "retained_work": 5,
+  "global_total_work": 5,
+  "retained_command_counts": {
+    "dispatch": 2
+  },
+  "unresolved_indirect_work": 0,
+  "history_truncated": false,
+  "failures": [],
+  "warnings": [],
+  "scope": "retained API-intent records only; no GPU execution, shader effects, or replay proof"
+}

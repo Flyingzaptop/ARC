@@ -1,0 +1,10 @@
+{
+  "command": [
+    "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-package-smoke\\arc2-binding-native.exe"
+  ],
+  "returncode": 0,
+  "stdout": "PASS root tables/constants, same root signature, GPU readback, parent identity\n",
+  "stderr": "",
+  "package": "arc2-experimental-20261001.zip",
+  "purpose": "extracted package native GPU binding and exact dispatch payload startup"
+}

@@ -1,0 +1,20 @@
+
+--- ASSERT ---
+
+Exception Handler(-1): Access violation. Exception Code c0000005
+
+Callstack (7):
+	 #: File ---                                                                           Line  PC ---            Function ---
+	 0: /r3d_flzp/Desktop/ARC-perceptual/build/arc2-testbeds/bgfx/src/renderer_d3d12.cpp  10080        0xcfdeec3d  bgfx::d3d12::RendererContextD3D12::submit
+	 1: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/arc2-testbeds/bgfx/src/bgfx.cpp     3022        0xcfdbdd34  bgfx::Context::renderFrame
+	 2: C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/arc2-testbeds/bgfx/src/bgfx.cpp     1868        0xcfdbdea7  bgfx::renderFrame
+	 3: /ARC-perceptual/build/arc2-testbeds/bgfx/examples/common/entry/entry_windows.cpp    525        0xcfe5c34a  entry::Context::run
+	 4: D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/exe_common.inl                 288        0xcfeca1dc  __scrt_common_main_seh
+	 5: <Unknown?>                                                                           -1        0x51bbe8d7  <Unknown?>
+	 6: <Unknown?>                                                                           -1        0x52df28dc  <Unknown?>
+
+Build info:
+	Compiler: MSVC 17.0, CPU: x86, Arch: 64-bit, OS: Windows, CRT: MSVC C Runtime, C++: C++20, Date: Sep 30 2026, Time: 15:09:46
+
+--- END ---
+

@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-01",
+  "commercial_games_launched": false,
+  "original_user_testbed_checkout_modified": false,
+  "external_sources": "new pinned testbed trees under ignored build/arc2-testbeds; reviewable harness patches retained",
+  "native_frontend_dll_preserved": "build/arc2-frozen-e8b/arc2-frontend.dll",
+  "temporary_subst_X": "Removed after exact target matched C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/arc2-testbeds; created for this run MAX_PATH build workaround",
+  "remaining_subst_output": "",
+  "runner_environment": "per-run ARC2 variables restored in finally; no persistent ARC2 environment writes",
+  "parent_ARC2_environment": {},
+  "mcp_sidequest": "User-requested local ARC-only MCP configuration intentionally retained; separate Desktop/ARC-shared-memory database is private and not committed"
+}

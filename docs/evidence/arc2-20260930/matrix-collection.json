@@ -1,0 +1,260 @@
+{
+  "schema": "arc2-matrix-collection-v1",
+  "workloads": [
+    {
+      "archive": "bgfx-deferred-matrix-v2.zip",
+      "workload": "bgfx-deferred",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "def3b69db7ce7b7970fa1dc7f72d6c93311fb4dbbdc5d9dd16dff9b74b6300fe"
+      ],
+      "environment": {},
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 144.02857198510586,
+        "passthrough": 143.7778076652284,
+        "observe": 141.5214135215544,
+        "optimize": 141.90065162529405
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -0.17439105503787578,
+        "observe": -1.741015693834036,
+        "optimize": -1.47732661338556
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "bgfx-drawstress-8000-matrix-v2.zip",
+      "workload": "bgfx-drawstress-8000",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "f3a9fc25202c09dbc6cd4d4f86881122bab012d379ebe46269408f986bdac62b"
+      ],
+      "environment": {
+        "ARC2_BGFX_DIM": "20"
+      },
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 335.75294824957274,
+        "passthrough": 34.29199767584534,
+        "observe": 33.37608759520121,
+        "optimize": 32.50051636378619
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -89.59514225288741,
+        "observe": -90.21066197679133,
+        "optimize": -90.34219151814871
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "cauldron-brix-matrix-v2.zip",
+      "workload": "cauldron-brixelizer-gi",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "f45700a9e80aa4578cf2500ee27ebbef99227964cb7c0106ff473921f4ab9683"
+      ],
+      "environment": {},
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 59.993621109614466,
+        "passthrough": 20.08695534723376,
+        "observe": 18.887699510349126,
+        "optimize": 19.08363874370849
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -66.51215514457428,
+        "observe": -68.51521675813242,
+        "optimize": -68.18900815775174
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "cauldron-cacao-matrix-v2.zip",
+      "workload": "cauldron-cacao",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "5a72e14900cb88658877f060ed7cb2c2df7bf5544d491bd5e897e4500506180f"
+      ],
+      "environment": {},
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 59.99128680737033,
+        "passthrough": 36.86809187476146,
+        "observe": 35.29115619977207,
+        "optimize": 36.19118863786885
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -38.527758550227645,
+        "observe": -41.16844845559628,
+        "optimize": -39.66566069287897
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "diligent-compute-realtime-matrix-v2.zip",
+      "workload": "diligent-compute",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "02b015bde7da928953c0d43f18674bf8f4a0cc09e6ba25df58dd863b9de0b7e9"
+      ],
+      "environment": {},
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 1793.242994711577,
+        "passthrough": 1640.4115167482444,
+        "observe": 1616.0805125768693,
+        "optimize": 1704.289721385595
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -10.307237869201824,
+        "observe": -11.15580120538241,
+        "optimize": -5.550615097575285
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "diligent-helmet-matrix-v2.zip",
+      "workload": "diligent-helmet",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "49e0c1dca1ba912baf72883ff8802bd447179ac8ccb17169a9b0508247d3caf8"
+      ],
+      "environment": {},
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 1783.6130657137837,
+        "passthrough": 1801.9362245105985,
+        "observe": 1741.382200637015,
+        "optimize": 1744.9821340218518
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -3.422265949233305,
+        "observe": -5.8773166604531415,
+        "optimize": -5.49147692078108
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "miniengine-cesiumman-matrix-v2.zip",
+      "workload": "miniengine-cesiumman",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "8ab138339209b21070fc58be523301d49035d1c1da40a29931cc70ab7dc16655"
+      ],
+      "environment": {
+        "ARC2_MINI_FIXED_DT": "1"
+      },
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 144.0282863226892,
+        "passthrough": 144.02448364129907,
+        "observe": 144.00155512541536,
+        "optimize": 144.02589641519364
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -0.0002117970999415686,
+        "observe": -0.018559673834217527,
+        "optimize": -0.0008829939313614865
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "miniengine-sponza-matrix-v2.zip",
+      "workload": "miniengine-sponza",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "8fcdb5c1ebd80e39b73a8163b0a9308ca893e77aadacff6eac47f49a0d7db9cc"
+      ],
+      "environment": {},
+      "measured_runs": 16,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {
+        "native": 144.02855606951925,
+        "passthrough": 144.0274473383347,
+        "observe": 144.02818014240512,
+        "optimize": 144.02405024005967
+      },
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -0.0019534430369727573,
+        "observe": -0.00041101000525234355,
+        "optimize": -0.005884112326920432
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "wicked-instances-65k-matrix-v2.zip",
+      "workload": "wicked-instances-65k",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "f64823f70120752241a88a34320cd1e16abccac87b8970660992c43bff8ad947"
+      ],
+      "environment": {
+        "ARC2_WICKED_SEED": "123456789",
+        "ARC2_WICKED_SCENE": "instances",
+        "ARC2_WICKED_QUALITY_FIXED": "1",
+        "ARC2_WICKED_FRAMES": "0"
+      },
+      "measured_runs": 12,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {},
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -5.721847205971382,
+        "observe": -16.974205815531263,
+        "optimize": -9.490568564409664
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    },
+    {
+      "archive": "wicked-visibility-shadows-matrix-v2.zip",
+      "workload": "wicked-visibility-shadows",
+      "frontend_hashes": [
+        "e8b3917c5285343a55eaa13df8eac850db50c3cbc4bf52533a5f3415731b84b6"
+      ],
+      "executable_hashes": [
+        "f64823f70120752241a88a34320cd1e16abccac87b8970660992c43bff8ad947"
+      ],
+      "environment": {
+        "ARC2_WICKED_SCENE": "visibility",
+        "ARC2_WICKED_FRAMES": "0",
+        "ARC2_WICKED_SEED": "123456789",
+        "ARC2_WICKED_QUALITY_FIXED": "1"
+      },
+      "measured_runs": 13,
+      "total_runs": 16,
+      "mode_cadence_median_hz": {},
+      "native_bracket_adjusted_median_percent": {
+        "passthrough": -7.874450361460205,
+        "optimize": -32.88767681607351,
+        "observe": -28.365884791806074
+      },
+      "measurement": "successful application Present-return cadence; not display FPS"
+    }
+  ],
+  "warning": "Version-separated descriptive results; quality, API coverage and CPU/GPU timing gates require separate evidence. No inferred display FPS."
+}

@@ -1,0 +1,21 @@
+{
+  "commit": "324081d",
+  "scope": "CPU-only IR retention cost, not game frame time",
+  "samples": [
+    {
+      "returncode": 0,
+      "stdout": "{\"iterations\":12000,\"history_capacity\":4096,\"early_mean_ms\":0.0047544,\"saturated_mean_ms\":0.0310391}\n",
+      "stderr": ""
+    },
+    {
+      "returncode": 0,
+      "stdout": "{\"iterations\":12000,\"history_capacity\":4096,\"early_mean_ms\":0.0044,\"saturated_mean_ms\":0.0297235}\n",
+      "stderr": ""
+    },
+    {
+      "returncode": 0,
+      "stdout": "{\"iterations\":12000,\"history_capacity\":4096,\"early_mean_ms\":0.0053398,\"saturated_mean_ms\":0.0314672}\n",
+      "stderr": ""
+    }
+  ]
+}

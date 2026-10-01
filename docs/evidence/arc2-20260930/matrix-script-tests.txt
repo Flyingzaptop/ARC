@@ -1,0 +1,30 @@
+ARC2 matrix-script synthetic test receipt
+Platform: Windows, PowerShell workspace at C:\Users\r3d_flzp\Desktop\ARC-perceptual
+Command: python -m unittest tests/arc2_matrix_scripts_tests.py -v
+Exit code: 0
+Tool wall time: 22.1 seconds
+Unittest reported time: 21.378 seconds
+Result: 11 tests passed
+
+Combined command output captured by exec_command (stdout/stderr stream separation was
+not retained by the tool):
+
+test_baseline_and_relocated_archive (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_baseline_and_relocated_archive) ... ok
+test_regenerates_stale_ir_summary (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_regenerates_stale_ir_summary) ... ok
+test_rejects_binary_or_head_change_during_run (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_binary_or_head_change_during_run) ... ok
+test_rejects_frontend_only_warmup_and_dropped_rows (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_frontend_only_warmup_and_dropped_rows) ... ok
+test_rejects_ir_zip_mismatched_to_dump (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_ir_zip_mismatched_to_dump) ... ok
+test_rejects_missing_frontend_dump (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_missing_frontend_dump) ... ok
+test_rejects_missing_native_csv (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_missing_native_csv) ... ok
+test_rejects_order_and_cross_arm_identity (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_order_and_cross_arm_identity) ... ok
+test_rejects_reused_runner_directory (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_reused_runner_directory) ... ok
+test_rejects_status_test_flag_and_out_of_order (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_rejects_status_test_flag_and_out_of_order) ... ok
+test_windows_literal_run_and_output_paths_relocate (tests.arc2_matrix_scripts_tests.MatrixScriptsTest.test_windows_literal_run_and_output_paths_relocate) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 21.378s
+
+OK
+
+The Windows-literal path test exercised portable-path handling on Windows.
+It did not execute on Linux and does not prove Linux replay by itself.

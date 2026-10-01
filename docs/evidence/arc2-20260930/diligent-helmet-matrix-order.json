@@ -1,0 +1,195 @@
+{
+  "schema": "arc2-counterbalanced-v1",
+  "workload": "diligent-helmet",
+  "rounds": 2,
+  "warmup_seconds": 10,
+  "seconds": 22,
+  "order": [
+    "native",
+    "passthrough",
+    "observe",
+    "optimize",
+    "optimize",
+    "observe",
+    "passthrough",
+    "native"
+  ],
+  "runs": [
+    {
+      "round": 1,
+      "order_index": 1,
+      "mode": "native",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-01-native\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 37211,
+      "frontend_present_rows": 0,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 2,
+      "mode": "passthrough",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-02-passthrough\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 36140,
+      "frontend_present_rows": 33328,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 3,
+      "mode": "observe",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-03-observe\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 33039,
+      "frontend_present_rows": 25446,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 4,
+      "mode": "optimize",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-04-optimize\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 32810,
+      "frontend_present_rows": 25301,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 5,
+      "mode": "optimize",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-05-optimize\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 30570,
+      "frontend_present_rows": 23616,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 6,
+      "mode": "observe",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-06-observe\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 27711,
+      "frontend_present_rows": 21055,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 7,
+      "mode": "passthrough",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-07-passthrough\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 36437,
+      "frontend_present_rows": 33653,
+      "timing_eligible": true
+    },
+    {
+      "round": 1,
+      "order_index": 8,
+      "mode": "native",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r01-08-native\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 39265,
+      "frontend_present_rows": 0,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 9,
+      "mode": "native",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-09-native\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 37666,
+      "frontend_present_rows": 0,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 10,
+      "mode": "passthrough",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-10-passthrough\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 35700,
+      "frontend_present_rows": 32893,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 11,
+      "mode": "observe",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-11-observe\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 33258,
+      "frontend_present_rows": 26204,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 12,
+      "mode": "optimize",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-12-optimize\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 32555,
+      "frontend_present_rows": 24920,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 13,
+      "mode": "optimize",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-13-optimize\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 31026,
+      "frontend_present_rows": 24025,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 14,
+      "mode": "observe",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-14-observe\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 28079,
+      "frontend_present_rows": 21423,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 15,
+      "mode": "passthrough",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-15-passthrough\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 37221,
+      "frontend_present_rows": 33729,
+      "timing_eligible": true
+    },
+    {
+      "round": 2,
+      "order_index": 16,
+      "mode": "native",
+      "run_json": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\matrix\\diligent-helmet-20260930\\r02-16-native\\run.json",
+      "exit_code": 0,
+      "shutdown": "window-close",
+      "native_present_rows": 39321,
+      "frontend_present_rows": 0,
+      "timing_eligible": true
+    }
+  ]
+}

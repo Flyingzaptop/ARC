@@ -1,0 +1,45 @@
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc-core.lib
+  bridge.cpp
+  ir.cpp
+  runtime.cpp
+  Создание кода...
+  arc2-ir.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-ir.lib
+  dxgi.cpp
+  fixed_pipeline.cpp
+  frontend.cpp
+  observe.cpp
+  root_signature.cpp
+  shader_semantics.cpp
+  Создание кода...
+     Создается библиотека C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc2-frontend.lib и объект C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc2-frontend.exp
+  arc2-frontend.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-frontend.dll
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc-core.lib
+  arc2-ir.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-ir.lib
+  dxgi.cpp
+  fixed_pipeline.cpp
+  frontend.cpp
+  observe.cpp
+  root_signature.cpp
+  shader_semantics.cpp
+  Создание кода...
+     Создается библиотека C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc2-frontend-meter.lib и объект C:/Users/r3d_flzp/Desktop/ARC-perceptual/build/Release/arc2-frontend-meter.exp
+  arc2-frontend-meter.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-frontend-meter.dll
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc-core.lib
+  arc2-ir.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-ir.lib
+cl : командная строка  warning D9025: переопределение "/DNDEBUG" на "/UNDEBUG" [C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\arc2-ir-tests.vcxproj]
+  arc2_ir_tests.cpp
+  arc2-ir-tests.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-ir-tests.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc2_binding_native.cpp
+  arc2-binding-native.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-binding-native.exe
+MSBuild version 18.5.4+cb4e32d21 for .NET Framework
+
+  arc-core.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc-core.lib
+  arc2-native-lab.vcxproj -> C:\Users\r3d_flzp\Desktop\ARC-perceptual\build\Release\arc2-native-lab.exe

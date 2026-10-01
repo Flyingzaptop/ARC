@@ -1,0 +1,126 @@
+{
+  "schema": "arc2-cpu-diagnostic-summary-v1",
+  "interpretation": "aggregate interceptor wall cost across threads; not critical-path CPU frame time; excluded_native_ns is forwarded-call envelope and may contain nested ARC callbacks",
+  "frontend_sha256": "5c0a2b18a4282ef7b6e48aedfe19e571824bb6fe06d52a93cd41379127045bd7",
+  "measured_present_intervals": 219,
+  "measured_seconds": 11.9914332,
+  "aggregate_interceptor_wall_ms_per_present": 46.89446757990868,
+  "aggregate_interceptor_interval_ms": {
+    "p50": 45.6572,
+    "p95": 53.70246,
+    "p99": 61.538371999999995
+  },
+  "excluded_native_envelope_ms_per_present": 3.131663926940639,
+  "instrumented_calls_per_present": 61600.0,
+  "site_totals_scope": "whole session including warmup, not measurement-window attribution",
+  "top_session_sites": [
+    [
+      "D3D12.DrawIndexedInstanced",
+      4933647200,
+      1632701
+    ],
+    [
+      "D3D12.IASetVertexBuffers",
+      4796390000,
+      1631496
+    ],
+    [
+      "D3D12.SetGraphicsRootConstantBufferView",
+      2725800400,
+      4901652
+    ],
+    [
+      "D3D12.IASetIndexBuffer",
+      2187050700,
+      1631496
+    ],
+    [
+      "D3D12.ExecuteCommandLists",
+      837260700,
+      1741
+    ],
+    [
+      "D3D12.ResourceBarrier",
+      491566200,
+      34454
+    ],
+    [
+      "D3D12.SetGraphicsRootDescriptorTable",
+      482129600,
+      3276904
+    ],
+    [
+      "D3D12.Release",
+      304892700,
+      55702
+    ],
+    [
+      "D3D12.SetGraphicsRootSignature",
+      274340900,
+      1632308
+    ],
+    [
+      "D3D12.GetGPUVirtualAddress",
+      219244500,
+      6547783
+    ],
+    [
+      "D3D12.CopyDescriptorsSimple",
+      132261300,
+      145929
+    ],
+    [
+      "D3D12.CreatePlacedResource",
+      115132300,
+      876
+    ],
+    [
+      "D3D12.CreateUnorderedAccessView",
+      103051600,
+      137196
+    ],
+    [
+      "D3D12.CopyBufferRegion",
+      99361000,
+      3980
+    ],
+    [
+      "D3D12.CopyTextureRegion",
+      96798000,
+      3669
+    ],
+    [
+      "D3D12.CreateCommandList",
+      82490700,
+      6189
+    ],
+    [
+      "D3D12.Dispatch",
+      53872400,
+      18505
+    ],
+    [
+      "D3D12.CreateShaderResourceView",
+      46552300,
+      55109
+    ],
+    [
+      "D3D12.EndQuery",
+      44795100,
+      16115
+    ],
+    [
+      "D3D12.Signal",
+      39865000,
+      2549
+    ]
+  ],
+  "dropped_frames": 0,
+  "site_overflow": 0,
+  "limits": [
+    "Includes metering disturbance.",
+    "Parallel threads contribute summed wall time.",
+    "Background analysis is outside this boundary meter.",
+    "Not native CPUft, display FPS or proof of performance acceptance."
+  ]
+}

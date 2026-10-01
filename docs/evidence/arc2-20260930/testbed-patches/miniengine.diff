@@ -1,0 +1,62 @@
+diff --git a/MiniEngine/Core/Display.cpp b/MiniEngine/Core/Display.cpp
+index fdd499c..0ad1ddb 100644
+--- a/MiniEngine/Core/Display.cpp
++++ b/MiniEngine/Core/Display.cpp
+@@ -12,6 +12,9 @@
+ //
+ 
+ #include "pch.h"
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/scripts/arc2/native-present-timer.hpp"
++// ARC2 testbed bootstrap (creation entry points only).
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/include/arc/arc2/bootstrap.hpp"
+ #include "Display.h"
+ #include "GraphicsCore.h"
+ #include "BufferManager.h"
+@@ -487,7 +490,20 @@ void Display::Present(void)
+ 
+     UINT PresentInterval = s_EnableVSync ? std::min(4, (int)Round(s_FrameTime * 60.0f)) : 0;
+ 
+-    s_SwapChain1->Present(PresentInterval, 0);
++    static unsigned arc2_capture_frame = 0;
++    if (++arc2_capture_frame == 180) {
++        wchar_t arc2_capture_path[32768]{};
++        const DWORD n = GetEnvironmentVariableW(L"ARC2_MINI_READBACK", arc2_capture_path, 32768);
++        if (n && n < 32768) {
++            g_DisplayPlane[g_CurrentBuffer].ExportToFile(arc2_capture_path);
++            GraphicsContext& arc2_restore = GraphicsContext::Begin(L"ARC2 testbed restore Present state");
++            arc2_restore.TransitionResource(g_DisplayPlane[g_CurrentBuffer], D3D12_RESOURCE_STATE_PRESENT);
++            arc2_restore.Finish(true);
++        }
++    }
++    const auto arc2_present_begin = arc2_native_present::now();
++    const HRESULT arc2_present_hr = s_SwapChain1->Present(PresentInterval, 0);
++    arc2_native_present::record(arc2_present_begin, arc2_present_hr, 0);
+ 
+     g_CurrentBuffer = (g_CurrentBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
+ 
+diff --git a/MiniEngine/Core/GameCore.cpp b/MiniEngine/Core/GameCore.cpp
+index 3e72e3e..94b20dc 100644
+--- a/MiniEngine/Core/GameCore.cpp
++++ b/MiniEngine/Core/GameCore.cpp
+@@ -59,6 +59,8 @@ namespace GameCore
+         EngineProfiling::Update();
+ 
+         float DeltaTime = Graphics::GetFrameTime();
++        if (GetEnvironmentVariableW(L"ARC2_MINI_FIXED_DT", nullptr, 0) > 0)
++            DeltaTime = 1.0f / 60.0f; // Testbed simulation only; GPU/QPC timing stays real.
+     
+         GameInput::Update(DeltaTime);
+         EngineTuning::Update(DeltaTime);
+diff --git a/MiniEngine/Core/GraphicsCore.cpp b/MiniEngine/Core/GraphicsCore.cpp
+index cdf4a16..fba72cb 100644
+--- a/MiniEngine/Core/GraphicsCore.cpp
++++ b/MiniEngine/Core/GraphicsCore.cpp
+@@ -12,6 +12,8 @@
+ //
+ 
+ #include "pch.h"
++// ARC2 testbed bootstrap (creation entry points only).
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/include/arc/arc2/bootstrap.hpp"
+ #include "GraphicsCore.h"
+ #include "GameCore.h"
+ #include "BufferManager.h"

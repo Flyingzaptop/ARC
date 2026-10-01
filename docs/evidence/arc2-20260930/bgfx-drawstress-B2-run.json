@@ -1,0 +1,36 @@
+{
+  "schema": "arc2-testbed-run-v1",
+  "testbed": "bgfx",
+  "workload": "drawstress-8000",
+  "mode": "passthrough",
+  "executable": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\bgfx\\.build\\win64_vs2022\\bin\\example-17-drawstressRelease.exe",
+  "executable_sha256": "c8910563bf5bc51b87a0f33f227691104ad8eb758387f49f26e8c1a07579399a",
+  "working_directory": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\bgfx\\examples\\runtime",
+  "arguments": [
+    "--d3d12"
+  ],
+  "environment": {
+    "ARC2_BGFX_DIM": "20"
+  },
+  "arc_commit": "0fa02a24df0cbc27c8d68c384741b7ca05de3319",
+  "frontend_dll": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\Release\\arc2-frontend.dll",
+  "frontend_sha256": "ff02b7d53f8a21885f60c42ad884bda3f7e7eae4b2a369f731a4fdbd99ac121f",
+  "started_utc": "2026-09-30T14:45:38.6015852+00:00",
+  "finished_utc": "2026-09-30T14:45:52.9635996+00:00",
+  "qpc_frequency": 10000000,
+  "process_start_qpc": 191335190339,
+  "measurement_start_qpc": 191335190339,
+  "measurement_end_qpc": 191416081300,
+  "warmup_seconds": 0,
+  "pid": 13908,
+  "shutdown": "window-close",
+  "exit_code": 0,
+  "arc_trace_exists": true,
+  "present_rows": 133,
+  "native_present_rows": 212,
+  "dump_status": "success",
+  "dump_failure": null,
+  "capture_enabled": false,
+  "eligible_for_timing_analysis": true,
+  "failure": null
+}

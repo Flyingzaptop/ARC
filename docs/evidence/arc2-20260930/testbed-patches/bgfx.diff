@@ -1,0 +1,140 @@
+diff --git a/examples/17-drawstress/drawstress.cpp b/examples/17-drawstress/drawstress.cpp
+index 87e4c10..e7c9a58 100644
+--- a/examples/17-drawstress/drawstress.cpp
++++ b/examples/17-drawstress/drawstress.cpp
+@@ -4,6 +4,7 @@
+  */
+ 
+ #include "common.h"
++#include <cstdlib>
+ #include "bgfx_utils.h"
+ 
+ #include <bx/thread.h>
+@@ -510,6 +511,11 @@ public:
+ 			const uint32_t numThreads = m_numThreads;
+ 
+ 			ImGui::SliderInt("Dim", &m_dim, 5, m_maxDim);
++            // Benchmark selection only: ARC receives no scene or draw hints.
++            if (const char* arc2_dim = std::getenv("ARC2_BGFX_DIM")) {
++                m_autoAdjust = false;
++                m_dim = bx::clamp(std::atoi(arc2_dim), 5, m_maxDim);
++            }
+ 			ImGui::Text("Draw calls: %d", m_dim*m_dim*m_dim);
+ 			ImGui::SliderInt("Textures", &m_numTextures, 0, kMaxBenchTextures);
+ 			ImGui::TextWrapped("0 = no texture bind\n>0 cycles N textures, one setTexture per draw");
+diff --git a/examples/common/entry/entry.cpp b/examples/common/entry/entry.cpp
+index adabe7d..7479ae2 100644
+--- a/examples/common/entry/entry.cpp
++++ b/examples/common/entry/entry.cpp
+@@ -567,6 +567,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
+ 		TestRun(int _argc, const char* const* _argv)
+ 			: m_frame(0)
+ 			, m_screenshotFrame(0)
++			, m_screenshotCount(1)
+ 		{
+ 			bx::CommandLine cmdLine(_argc, _argv);
+ 
+@@ -576,6 +577,11 @@ BX_PRAGMA_DIAGNOSTIC_POP();
+ 				bx::strCopy(m_screenshot, sizeof(m_screenshot), screenshot);
+ 				m_screenshotFrame = 60;
+ 
++				const char* count = cmdLine.findOption("screenshot-count");
++                if (NULL != count) {
++                    bx::fromString(&m_screenshotCount, count);
++                    m_screenshotCount = bx::clamp(m_screenshotCount, 1u, 256u);
++                }
+ 				const char* frame = cmdLine.findOption("screenshot-frame");
+ 				if (NULL != frame)
+ 				{
+@@ -606,16 +612,24 @@ BX_PRAGMA_DIAGNOSTIC_POP();
+ 
+ 			++m_frame;
+ 
+-			if (m_frame == m_screenshotFrame)
+-			{
+-				bgfx::requestScreenShot(BGFX_INVALID_HANDLE, m_screenshot);
+-			}
+-
+-			return m_frame < m_screenshotFrame + 3;
++			if (m_frame >= m_screenshotFrame && m_frame < m_screenshotFrame + m_screenshotCount)
++            {
++                if (m_screenshotCount == 1) {
++                    bgfx::requestScreenShot(BGFX_INVALID_HANDLE, m_screenshot);
++                } else {
++                    char path[bx::kMaxFilePath];
++                    bx::snprintf(path, sizeof(path), "%s-%03u", m_screenshot,
++                                 m_frame - m_screenshotFrame);
++                    bgfx::requestScreenShot(BGFX_INVALID_HANDLE, path);
++                }
++            }
++
++			return m_frame < m_screenshotFrame + m_screenshotCount + 3;
+ 		}
+ 
+ 		uint32_t m_frame;
+ 		uint32_t m_screenshotFrame;
++        uint32_t m_screenshotCount;
+ 		char     m_screenshot[bx::kMaxFilePath];
+ 	};
+ 
+diff --git a/src/dxgi.cpp b/src/dxgi.cpp
+index 265c0da..cffea55 100644
+--- a/src/dxgi.cpp
++++ b/src/dxgi.cpp
+@@ -9,6 +9,12 @@
+ 
+ #include "dxgi.h"
+ #include "renderer_d3d.h"
++// ARC2 testbed bootstrap (creation entry points only).
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/include/arc/arc2/bootstrap.hpp"
++#undef D3D12CreateDevice
++#undef CreateDXGIFactory
++#undef CreateDXGIFactory1
++#undef CreateDXGIFactory2
+ 
+ #if !BX_PLATFORM_WINDOWS && !BX_PLATFORM_LINUX
+ #	include <inspectable.h>
+@@ -242,6 +248,7 @@ namespace bgfx
+ 		}
+ 
+ 		CreateDXGIFactory = (PFN_CREATE_DXGI_FACTORY)bx::dlsym(m_dxgiDll, "CreateDXGIFactory1");
++			if (arc2_bootstrap::loader().requested) CreateDXGIFactory = &arc2_bootstrap::factory1;
+ 
+ 		if (NULL == CreateDXGIFactory)
+ 		{
+diff --git a/src/renderer_d3d12.cpp b/src/renderer_d3d12.cpp
+index 61de705..acec501 100644
+--- a/src/renderer_d3d12.cpp
++++ b/src/renderer_d3d12.cpp
+@@ -7,6 +7,13 @@
+ 
+ #if BGFX_CONFIG_RENDERER_DIRECT3D12
+ #	include "renderer_d3d12.h"
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/scripts/arc2/native-present-timer.hpp"
++// ARC2 testbed bootstrap (creation entry points only).
++#include "C:/Users/r3d_flzp/Desktop/ARC-perceptual/include/arc/arc2/bootstrap.hpp"
++#undef D3D12CreateDevice
++#undef CreateDXGIFactory
++#undef CreateDXGIFactory1
++#undef CreateDXGIFactory2
+ #	include "video_d3d12.h"
+ #	include <bx/pixelformat.h>
+ 
+@@ -1001,6 +1008,7 @@ namespace bgfx { namespace d3d12
+ 			BX_WARN(NULL != D3D12EnableExperimentalFeatures, "Function D3D12EnableExperimentalFeatures not found.");
+ 
+ 			D3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)bx::dlsym(m_d3d12Dll, "D3D12CreateDevice");
++			if (arc2_bootstrap::loader().requested) D3D12CreateDevice = &arc2_bootstrap::device;
+ 			BX_WARN(NULL != D3D12CreateDevice, "Function D3D12CreateDevice not found.");
+ 
+ 			D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)bx::dlsym(m_d3d12Dll, "D3D12GetDebugInterface");
+@@ -8187,7 +8195,9 @@ namespace bgfx { namespace d3d12
+ 	{
+ 		if (m_needPresent)
+ 		{
++			const auto arc2_present_begin = arc2_native_present::now();
+ 			HRESULT hr = m_swapChain->Present(_syncInterval, _flags);
++			arc2_native_present::record(arc2_present_begin, hr, _flags);
+ 			hr = !isLost(hr) ? S_OK : hr;
+ 			m_needPresent = false;
+ 

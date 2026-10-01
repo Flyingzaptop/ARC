@@ -1,0 +1,24 @@
+{
+  "schema": "arc2-testbed-run-v1",
+  "testbed": "bgfx",
+  "workload": "drawstress",
+  "mode": "passthrough",
+  "executable": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\bgfx\\.build\\win64_vs2022\\bin\\example-17-drawstressRelease.exe",
+  "executable_sha256": "6c31908e0cc0fbd0433e197999e585ea2f75923dc6ec56dc34adec07f39501a6",
+  "working_directory": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\bgfx\\examples\\runtime",
+  "arguments": [
+    "--d3d12"
+  ],
+  "arc_commit": "f72b02c3f24127cbbaa5250d3a681e8eb425b949",
+  "frontend_dll": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\Release\\arc2-frontend.dll",
+  "frontend_sha256": "dd2b3bbb4f6ccd271b7a1301d25c3a86043e67e4d48751c7cd8bddd9f9174fcc",
+  "started_utc": "2026-09-30T13:32:28.0436488+00:00",
+  "finished_utc": "2026-09-30T13:32:29.4006380+00:00",
+  "pid": 20392,
+  "shutdown": "self-exit",
+  "exit_code": 1,
+  "arc_trace_exists": false,
+  "present_rows": 0,
+  "valid_for_performance": false,
+  "failure": null
+}

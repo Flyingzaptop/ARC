@@ -1,0 +1,50 @@
+{
+  "schema": "arc2-capture-comparison-v1",
+  "before": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\miniengine-sponza-A-readback",
+  "modified": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\miniengine-sponza-B-readback-v2",
+  "after": "C:\\Users\\r3d_flzp\\Desktop\\ARC-perceptual\\build\\arc2-testbeds\\runs\\miniengine-sponza-A2-readback",
+  "tile_size": 32,
+  "scene_crop_xywh": [
+    0,
+    30,
+    1540,
+    815
+  ],
+  "frames": 1,
+  "exact_images": 0,
+  "max_absolute_channel_error": 245,
+  "max_tile_mean_error": 24.344401041666668,
+  "max_scene_crop_channel_error": 1,
+  "max_temporal_difference_error": 0,
+  "per_frame": [
+    {
+      "frame": "sponza.png",
+      "before_sha256": "0d2b2ef9001c7f7db3e59f09bd425253c9f6334d171a1cfc7277b15fcb3e0485",
+      "modified_sha256": "52b197f7db42d0c26c1bb30719ffd1471a57c753b91e4049827d388ba2462e6b",
+      "modified_error": {
+        "mean_absolute_channel_error": 0.051726222495453264,
+        "max_absolute_channel_error": 245,
+        "max_tile_mean_error": 24.344401041666668,
+        "changed_channels": 2641
+      },
+      "scene_crop_error": {
+        "mean_absolute_channel_error": 6.905160279393408e-06,
+        "max_absolute_channel_error": 1,
+        "max_tile_mean_error": 0.005208333333333333,
+        "changed_channels": 26
+      },
+      "baseline_drift": {
+        "mean_absolute_channel_error": 0.04076769384461692,
+        "max_absolute_channel_error": 239,
+        "max_tile_mean_error": 24.829752604166668,
+        "changed_channels": 2153
+      },
+      "baseline_crop_drift": {
+        "mean_absolute_channel_error": 1.4341486734124772e-05,
+        "max_absolute_channel_error": 1,
+        "max_tile_mean_error": 0.005208333333333333,
+        "changed_channels": 54
+      }
+    }
+  ]
+}
