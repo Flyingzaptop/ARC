@@ -20,32 +20,59 @@ negative after CPU gathering and transfer costs. See the
 Older Stage 1/2 documents describe historical controlled milestones, not the whole
 current product.
 
-## ARC 2.0 direction and implementation status
+## ARC 2.0 implementation
 
-`Game → ARC D3D12 Frontend → ARC IR → Optimizer → native D3D12`
+`Game → ARC D3D12 Frontend → ARC IR → guarded rewrite → native D3D12`
 
-The new path will capture semantic state at application-facing COM calls before
-forwarding, rather than reconstructing all state afterward. The native runtime and
-driver remain responsible for execution. Unknown accesses remain explicit and
-prevent unsafe changes. This baseline commit establishes the migration; it does
-not claim that the frontend or five-engine validation is already implemented.
-See [ARC2 architecture](docs/ARC2_ARCHITECTURE.md).
+The experimental frontend now owns application-facing COM wrappers and captures
+state before forwarding. It includes resource/descriptor identities, command-state
+snapshots, root binding and shader identities, symbolic access intervals,
+submissions/fences, DXGI Present/resize, and a bridge to the existing ResourceGraph
+and read-only resource/scene inference. A narrowly admitted exact duplicate-clear
+rewrite passes owned GPU readback, critic and rollback tests.
 
-Validation targets: **Wicked Engine, AMD Cauldron/FidelityFX, Microsoft MiniEngine,
-Diligent Engine, and bgfx**, each using D3D12. Availability, coverage, performance
-and quality must be reported separately for every workload.
+The delivered source revision records typed Draw/DrawIndexed counts and starts,
+Dispatch group counts, and ExecuteIndirect object IDs and offsets before native
+forwarding. It also records vertex stride, index format and full scissor arrays.
+Owned native compute assertions and targeted runs on all five codebases validate
+their captured shape. The published performance matrices used an earlier DLL;
+they do not establish performance or full image acceptance of the delivered
+revision. Command payloads express API requests, not completed GPU effects.
+
+This does **not** mean the entire legacy optimizer has migrated. General shader
+transforms, temporal visibility, visual importance and memory actuation remain
+separate migration work. Symbolic or unknown dependencies are not treated as
+permission to rewrite. Native-supported interface gaps are reported explicitly.
+
+The same frontend has rendered owned workloads from **Wicked Engine, AMD
+Cauldron/FidelityFX, Microsoft MiniEngine, Diligent Engine and bgfx**. Startup is
+not performance or quality acceptance. Initial measured results are negative;
+a history-retirement regression was fixed and the revised matrix is documented
+separately. No independent-engine net acceleration or universal compatibility is
+claimed. See [architecture](docs/ARC2_ARCHITECTURE.md), [IR](docs/ARC2_IR.md),
+[migration limits](docs/ARC2_MIGRATION.md), [test matrix](docs/ARC2_TEST_MATRIX.md)
+and [measurements](docs/ARC2_RESULTS.md). The [validation coverage map](docs/ARC2_VALIDATION_LIMITS.md)
+distinguishes unit evidence, native GPU evidence and still-unsupported cases.
+
+Testbeds redirect only D3D12/DXGI creation through the generic bootstrap; their
+normal graphics calls remain standard COM APIs. Deterministic timing, scene
+selection and GPU readback patches are test-harness instrumentation, not engine
+semantic hints. Deployment into arbitrary unmodified commercial games is not
+established by these source-bootstrap experiments.
 
 ## Build and test
 
 Windows requires Visual Studio C++ tools, a Windows SDK and CMake 3.24+:
 
 ```powershell
-cmake -S . -B build -DARC_BUILD_TESTS=ON
+cmake -S . -B build -DARC_BUILD_TESTS=ON -DARC2_FRONTEND=ON
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
 GPU-backed tests are opt-in with `-DARC_GPU_TESTS=ON`; they require a compatible GPU.
+Use `-DARC2_CPU_DIAGNOSTICS=ON` to additionally build the separate
+`arc2-frontend-meter.dll`; its measurement overhead is not part of the normal DLL.
 Historical controlled-memory validation remains `run-stage2-final.cmd`. Python
 research tests require Python and the dependencies documented with each experiment.
 Do not treat unavailable GPU tests or unsupported interfaces as passing evidence.
