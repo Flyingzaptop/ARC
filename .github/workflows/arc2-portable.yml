@@ -1,0 +1,31 @@
+name: ARC2 portable validation
+on:
+  push:
+    branches: [master, arc2/runtime-ir]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: arc2-portable-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/docs/evidence/**
+      - name: Configure portable tests (GPU acceptance is local)
+        run: cmake -S . -B build-ci -DARC_BUILD_TESTS=ON -DARC2_FRONTEND=ON -DARC_GPU_TESTS=OFF -DARC_STRESS_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
+      - name: Build portable IR and core checks
+        run: cmake --build build-ci --config Release --target arc2-ir-tests arc-intercept-cpu-meter-tests --parallel 2
+      - name: Run portable unit checks
+        run: ctest --test-dir build-ci -C Release -R "^(arc2-ir-tests|arc-intercept-cpu-meter-tests)$" --output-on-failure

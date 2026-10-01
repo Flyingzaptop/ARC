@@ -81,6 +81,9 @@ Do not treat unavailable GPU tests or unsupported interfaces as passing evidence
 
 `master` is the GitHub default and contains the former canonical
 `codex_den/cpu-gpu-offload` history through `d636217`. The pre-migration default is
-preserved by `freeze/pre-arc2-master-20260930`. ARC2 development proceeds on
+preserved by the annotated tag `refs/tags/freeze/pre-arc2-master-20260930`
+(old master `a4ebef0`). The separate branch
+`refs/heads/freeze/pre-arc2-master-20260930` freezes the pre-ARC2 canonical
+development head `d636217`. ARC2 development proceeds on
 `arc2/runtime-ir`, with small tested commits and milestone pushes. Historical
 milestone/result branches and CPU research are retained; no force-push is needed.
