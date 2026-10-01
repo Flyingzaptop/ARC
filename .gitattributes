@@ -12,3 +12,5 @@ experiments/cpu-composite-gpu/**/*.json -text whitespace=trailing-space,space-be
 experiments/cpu-composite-gpu/**/*.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
 experiments/cpu-word-gpu/**/*.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
 experiments/cpu-word-gpu/**/*.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
+# ARC2 evidence manifests hash exact bytes, including Windows CSV line endings.
+docs/evidence/arc2-*/** -text whitespace=trailing-space,space-before-tab,cr-at-eol

@@ -1,0 +1,72 @@
+{
+  "schema": "arc2-workload-manifest-v1",
+  "workloads": [
+    {
+      "id": "wicked-instances-65k", "testbed": "wicked",
+      "exe": "build/arc2-testbeds/wicked-build/Samples/Tests/Release/Tests.exe",
+      "working_directory": "build/arc2-testbeds/WickedEngine/Samples/Tests",
+      "arguments": [],
+      "environment": {"ARC2_WICKED_SCENE": "instances", "ARC2_WICKED_FRAMES": "0", "ARC2_WICKED_SEED": "123456789", "ARC2_WICKED_QUALITY_FIXED": "1"}
+    },
+    {
+      "id": "wicked-visibility-shadows", "testbed": "wicked",
+      "exe": "build/arc2-testbeds/wicked-build/Samples/Tests/Release/Tests.exe",
+      "working_directory": "build/arc2-testbeds/WickedEngine/Samples/Tests",
+      "arguments": [],
+      "environment": {"ARC2_WICKED_SCENE": "visibility", "ARC2_WICKED_FRAMES": "0", "ARC2_WICKED_SEED": "123456789", "ARC2_WICKED_QUALITY_FIXED": "1"}
+    },
+    {
+      "id": "cauldron-brixelizer-gi", "testbed": "cauldron",
+      "exe": "build/arc2-testbeds/FidelityFX-1.1.4/bin/FFX_BRIXELIZER_GI_DX12.exe",
+      "working_directory": "build/arc2-testbeds/FidelityFX-1.1.4/bin",
+      "arguments": ["-resolution", "1280", "720", "-benchmark", "duration=10000", "path={OUT}", "json"],
+      "environment": {}
+    },
+    {
+      "id": "cauldron-cacao", "testbed": "cauldron",
+      "exe": "build/arc2-testbeds/FidelityFX-1.1.4/bin/FFX_CACAO_DX12.exe",
+      "working_directory": "build/arc2-testbeds/FidelityFX-1.1.4/bin",
+      "arguments": ["-resolution", "1280", "720", "-benchmark", "duration=10000", "path={OUT}", "json"],
+      "environment": {}
+    },
+    {
+      "id": "miniengine-sponza", "testbed": "miniengine",
+      "exe": "build/arc2-testbeds/DirectX-Graphics-Samples/MiniEngine/Build/x64/Release/Output/ModelViewer/ModelViewer.exe",
+      "working_directory": "build/arc2-testbeds/DirectX-Graphics-Samples/MiniEngine/Build/x64/Release/Output/ModelViewer",
+      "arguments": [], "environment": {}
+    },
+    {
+      "id": "miniengine-cesiumman", "testbed": "miniengine",
+      "exe": "build/arc2-testbeds/DirectX-Graphics-Samples/MiniEngine/Build/x64/Release/Output/ModelViewer/ModelViewer.exe",
+      "working_directory": "build/arc2-testbeds/DirectX-Graphics-Samples/MiniEngine/Build/x64/Release/Output/ModelViewer",
+      "arguments": ["-model", "{ROOT}/build/arc2-testbeds/DiligentEngine/DiligentSamples/Samples/GLTFViewer/assets/models/CesiumMan/glTF/CesiumMan.gltf"],
+      "environment": {"ARC2_MINI_FIXED_DT": "1"}
+    },
+    {
+      "id": "diligent-helmet", "testbed": "diligent",
+      "exe": "build/arc2-testbeds/diligent-build/DiligentSamples/Samples/GLTFViewer/Release/GLTFViewer.exe",
+      "working_directory": "build/arc2-testbeds/diligent-build/DiligentSamples/Samples/GLTFViewer/Release",
+      "arguments": ["--mode", "d3d12", "--model", "{ROOT}/build/arc2-testbeds/DiligentEngine/DiligentSamples/Samples/GLTFViewer/assets/models/DamagedHelmet/DamagedHelmet.gltf", "--width", "640", "--height", "480", "--adapters_dialog", "0", "--show_ui", "0"],
+      "environment": {}
+    },
+    {
+      "id": "diligent-compute", "testbed": "diligent",
+      "exe": "build/arc2-testbeds/diligent-build/DiligentSamples/Tutorials/Tutorial14_ComputeShader/Release/Tutorial14_ComputeShader.exe",
+      "working_directory": "build/arc2-testbeds/diligent-build/DiligentSamples/Tutorials/Tutorial14_ComputeShader/Release",
+      "arguments": ["--mode", "d3d12", "--width", "640", "--height", "480", "--adapters_dialog", "0", "--show_ui", "0"],
+      "environment": {}
+    },
+    {
+      "id": "bgfx-drawstress-8000", "testbed": "bgfx",
+      "exe": "build/arc2-testbeds/bgfx/.build/win64_vs2022/bin/example-17-drawstressRelease.exe",
+      "working_directory": "build/arc2-testbeds/bgfx/examples/runtime",
+      "arguments": ["--d3d12"], "environment": {"ARC2_BGFX_DIM": "20"}
+    },
+    {
+      "id": "bgfx-deferred", "testbed": "bgfx",
+      "exe": "build/arc2-testbeds/bgfx/.build/win64_vs2022/bin/example-21-deferredRelease.exe",
+      "working_directory": "build/arc2-testbeds/bgfx/examples/runtime",
+      "arguments": ["--d3d12"], "environment": {}
+    }
+  ]
+}
